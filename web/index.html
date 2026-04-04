@@ -1,0 +1,144 @@
+<!DOCTYPE html><html><head>
+  <base href="/">
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="SnackUp App">
+
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="SnackUp">
+  
+  <title>SnackUp</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" href="favicon.ico">
+  
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      /* ESTA ES LA LÍNEA MÁGICA DEL DEGRADADO */
+      background: linear-gradient(to bottom, #4a54df, #c942ba);
+      /* -------------------------------------- */
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    /* El contenedor de tu logo */
+    .loading-container {
+      text-align: center;
+      /* Opcional: una pequeña animación de pulso */
+      animation: pulse 2s infinite ease-in-out;
+    }
+
+    /* Tu imagen de logo */
+    .loading-logo {
+      width: 150px; /* Ajusta este tamaño si lo quieres más grande o chico */
+      height: auto;
+    }
+
+    /* Definición de la animación de pulso suave */
+    @keyframes pulse {
+      0% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.05); opacity: 0.8; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+  </style>
+  <style id="splash-screen-style">
+    html {
+      height: 100%
+    }
+
+    body {
+      margin: 0;
+      min-height: 100%;
+      background-color: #4a54df;
+          background-size: 100% 100%;
+    }
+
+    .center {
+      margin: 0;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      -ms-transform: translate(-50%, -50%);
+      transform: translate(-50%, -50%);
+    }
+
+    .contain {
+      display:block;
+      width:100%; height:100%;
+      object-fit: contain;
+    }
+
+    .stretch {
+      display:block;
+      width:100%; height:100%;
+    }
+
+    .cover {
+      display:block;
+      width:100%; height:100%;
+      object-fit: cover;
+    }
+
+    .bottom {
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      -ms-transform: translate(-50%, 0);
+      transform: translate(-50%, 0);
+    }
+
+    .bottomLeft {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+    }
+
+    .bottomRight {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+    }
+  </style>
+  <script id="splash-screen-script">
+    function removeSplashFromWeb() {
+      document.getElementById("splash")?.remove();
+      document.getElementById("splash-branding")?.remove();
+      document.body.style.background = "transparent";
+    }
+  </script>
+  <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
+</head>
+<body>
+  <picture id="splash">
+      <source srcset="splash/img/light-1x.png 1x, splash/img/light-2x.png 2x, splash/img/light-3x.png 3x, splash/img/light-4x.png 4x" media="(prefers-color-scheme: light)">
+      <source srcset="splash/img/dark-1x.png 1x, splash/img/dark-2x.png 2x, splash/img/dark-3x.png 3x, splash/img/dark-4x.png 4x" media="(prefers-color-scheme: dark)">
+      <img class="center" aria-hidden="true" src="splash/img/light-1x.png" alt="">
+  </picture>
+  <div class="loading-container">
+    <img src="logo_carga.png" class="loading-logo">
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyDK5N-TA3bA7VKv5TJQqUXICA617wOywzU",
+      authDomain: "snackup-8fe96.firebaseapp.com",
+      projectId: "snackup-8fe96",
+      storageBucket: "snackup-8fe96.firebasestorage.app",
+      messagingSenderId: "685155856831",
+      appId: "1:685155856831:web:8047d0df9ed1522ff5b10a",
+      measurementId: "G-PE33SNB39W"
+    };
+    firebase.initializeApp(firebaseConfig);
+  </script>
+
+  <script src="main.dart.js" type="application/javascript"></script>
+
+</body></html>
