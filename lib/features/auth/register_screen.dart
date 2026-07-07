@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:snackup/theme/app_colors.dart';
 import 'package:snackup/theme/app_text.dart';
+import 'privacy_terms_widget.dart'; 
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -23,6 +24,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   String _errorMessage = '';
+  
+  // NUEVA VARIABLE DE ESTADO PARA LOS TÉRMINOS
+  bool _terminosAceptados = false;
 
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) {
@@ -393,6 +397,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                   const SizedBox(height: 30),
 
+                  // INTEGRACIÓN DEL WIDGET DE PRIVACIDAD
+                  PrivacyTermsWidget(
+                    onAccepted: (bool isAccepted) {
+                      setState(() {
+                        _terminosAceptados = isAccepted;
+                      });
+                    },
+                  ),
+
+                  const SizedBox(height: 30),
+
                   // BOTÓN DE REGISTRO
                   if (_isLoading)
                     Container(
@@ -414,7 +429,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     )
                   else
                     ElevatedButton(
-                      onPressed: _register,
+                      // SE CONDICIONA EL BOTÓN A QUE LOS TÉRMINOS ESTÉN ACEPTADOS
+                      onPressed: _terminosAceptados ? _register : null,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.accent,
                         foregroundColor: Colors.white,
