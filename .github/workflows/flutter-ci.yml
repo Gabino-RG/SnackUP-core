@@ -1,39 +1,48 @@
-name: SnackUP Flutter CI
+name: Flutter CI
 
 on:
-  pull_request:
-    branches:
-      - main
-      - develop
-      - 'release/**'
   push:
-    branches:
-      - develop
+    branches: [develop]
+  pull_request:
+    branches: [main, develop]
+
+permissions:
+  contents: read
 
 jobs:
-  flutter-analyze-test:
+  validate:
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: app
 
     steps:
-      - name: Descargar repositorio
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configurar Flutter
+      - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.29.0'
+          channel: stable
+          cache: true
 
-      - name: Instalar dependencias
+      - name: Dependencies
         run: flutter pub get
 
-      - name: Analizar codigo
+      - name: Format
+        run: dart format --output=none --set-exit-if-changed .
+
+      - name: Static analysis
         run: flutter analyze
 
-      - name: Ejecutar pruebas
+      - name: Unit and widget tests
         run: flutter test --coverage
 
-      - name: Compilar version web
-        run: flutter build web
+      - name: Debug APK build
+        run: flutter build apk --debug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: snackup-debug-apk
+          path: app/build/app/outputs/flutter-apk/app-debug.apk

@@ -1,8 +1,14 @@
 # Integración continua
 
-El workflow `.github/workflows/flutter-ci.yml` ejecuta la instalación de
-dependencias, el análisis, las pruebas con cobertura y la compilación web
-desde `app/`.
+El workflow `.github/workflows/flutter-ci.yml` se ejecuta en pushes a `develop`
+y en pull requests hacia `main` o `develop`, con permiso de lectura del contenido.
+Usa Flutter del canal estable con caché y ejecuta la instalación de dependencias,
+la comprobación de formato, el análisis estático, las pruebas con cobertura y la
+compilación del APK de depuración desde `app/`.
+
+Al completar las validaciones y la compilación, publica el artefacto
+`snackup-debug-apk` a partir de
+`app/build/app/outputs/flutter-apk/app-debug.apk`.
 
 ## Comprobar cobertura
 
