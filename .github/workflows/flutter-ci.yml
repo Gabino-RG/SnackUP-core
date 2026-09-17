@@ -13,6 +13,9 @@ on:
 jobs:
   flutter-analyze-test:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
 
     steps:
       - name: Descargar repositorio
@@ -30,7 +33,7 @@ jobs:
         run: flutter analyze
 
       - name: Ejecutar pruebas
-        run: flutter test
+        run: flutter test --coverage
 
       - name: Compilar version web
         run: flutter build web
