@@ -36,11 +36,3 @@ jobs:
       - name: Unit and widget tests
         run: flutter test --coverage
 
-      - name: Debug APK build
-        run: flutter build apk --debug
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: snackup-debug-apk
-          path: app/build/app/outputs/flutter-apk/app-debug.apk
