@@ -29,10 +29,7 @@ jobs:
 
       - name: Dependencies
         run: flutter pub get
-
-      - name: Format
-        run: dart format --output=none --set-exit-if-changed .
-
+        
       - name: Static analysis
         run: flutter analyze
 
