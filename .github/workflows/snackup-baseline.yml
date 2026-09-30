@@ -15,8 +15,10 @@ jobs:
     if: github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'test/api-aaa-sonarqube'
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    permissions:
-      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [documented, candidate]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -29,39 +31,28 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      - name: Install actual dependencies and prepare lockfile
-        id: install
+      - name: Install locked dependencies
         working-directory: tests/api
         run: |
           mkdir -p reports
-          if [ -s package-lock.json ]; then
-            npm ci
-          else
-            npm install --save-dev --save-exact firebase @firebase/rules-unit-testing firebase-tools
-          fi
+          npm ci
           cp package.json reports/package.installed.json
           cp package-lock.json reports/package-lock.installed.json
           npm ls --depth=0 > reports/dependency-versions.txt
-      - name: Preserve first generated manifests on the isolated QA branch only
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          git add tests/api/package.json tests/api/package-lock.json
-          if ! git diff --cached --quiet; then
-            git config user.name 'github-actions[bot]'
-            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-            git commit -m 'build: lock actual Firebase QA dependencies'
-            AUTH=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
-            git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $AUTH" push origin HEAD:refs/heads/test/api-aaa-sonarqube
-            unset AUTH
-          fi
-      - name: Run AAA against the documented baseline (not deployed Rules)
+      - name: Run same AAA suite against explicitly identified Rules
         working-directory: tests/api
         env:
           GCLOUD_PROJECT: demo-snackup-qa
+          PROFILE: ${{ matrix.profile }}
         run: |
-          cp baselines/documented-annex-a.rules firestore.rules
-          cp baselines/source.json reports/rules-source.json
+          if [ "$PROFILE" = documented ]; then
+            cp baselines/documented-annex-a.rules firestore.rules
+          else
+            cp candidates/order-hardening.rules firestore.rules
+          fi
+          cp baselines/source.json reports/documentary-source.json
+          cp firestore.rules reports/executed.rules
+          printf '%s\n' "$PROFILE" > reports/profile.txt
           git rev-parse HEAD > reports/executed-source-commit.txt
           sha256sum firestore.rules package-lock.json > reports/input-sha256.txt
           set -o pipefail
@@ -70,7 +61,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: documented-rules-diagnostic
+          name: rules-${{ matrix.profile }}-diagnostic
           path: tests/api/reports/
           if-no-files-found: error
           retention-days: 30
