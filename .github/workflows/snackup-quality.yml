@@ -1,0 +1,170 @@
+name: SnackUP QA and SonarQube
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [develop]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: snackup-quality-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  qa-kit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax and isolation tests (not REST cases)
+        working-directory: tests/api
+        run: |
+          mkdir -p reports
+          npm run check
+          node --test --test-reporter=spec --test-reporter=junit --test-reporter-destination=stdout --test-reporter-destination=reports/guard-junit.xml guard.test.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: qa-kit-isolation
+          path: tests/api/reports/guard-junit.xml
+          if-no-files-found: error
+          retention-days: 14
+  api-rest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Require authorized Firestore Rules
+        working-directory: tests/api
+        run: node preflight.mjs
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install locked dependencies or prepare first lockfile
+        working-directory: tests/api
+        run: |
+          if [ -s package-lock.json ]; then
+            npm ci
+          else
+            npm install --save-dev --save-exact firebase @firebase/rules-unit-testing firebase-tools
+            cp package.json reports/package.generated.json
+            cp package-lock.json reports/package-lock.generated.json
+            echo '::error::Initial lockfile generated. Review and commit both generated manifests before accepting a reproducible run.'
+            exit 1
+          fi
+      - name: Execute the 12 REST AAA cases
+        working-directory: tests/api
+        run: npm run test:ci
+      - name: Preserve preflight and any actual API results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-rest-evidence
+          path: tests/api/reports/
+          if-no-files-found: error
+          retention-days: 14
+  flutter-coverage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.32.0'
+          channel: stable
+          cache: true
+      - name: Run existing Flutter tests and preserve real coverage
+        working-directory: app
+        run: |
+          mkdir -p coverage
+          flutter --version > coverage/flutter-version.txt
+          git rev-parse HEAD > coverage/source-commit.txt
+          flutter pub get
+          set -o pipefail
+          flutter test --coverage 2>&1 | tee coverage/flutter-tests.log
+          test -s coverage/lcov.info
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: flutter-coverage-evidence
+          path: app/coverage/
+          if-no-files-found: error
+          retention-days: 14
+  sonar:
+    needs: flutter-coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check Sonar credentials without exposing values
+        env:
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          mkdir -p sonar-evidence
+          python3 - <<'PY'
+          import json, os, pathlib, sys
+          missing = [key for key in ('SONAR_HOST_URL', 'SONAR_TOKEN') if not os.environ.get(key)]
+          data = {'commit': os.environ.get('GITHUB_SHA'), 'stage': 'configuration', 'status': 'BLOCKED' if missing else 'READY', 'missing': missing, 'sonar_analysis_executed': False}
+          pathlib.Path('sonar-evidence/preflight.json').write_text(json.dumps(data, indent=2))
+          print(json.dumps(data, indent=2))
+          sys.exit(1 if missing else 0)
+          PY
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.32.0'
+          channel: stable
+          cache: true
+      - name: Resolve Dart dependencies
+        working-directory: app
+        run: flutter pub get
+      - uses: actions/download-artifact@v4
+        with:
+          name: flutter-coverage-evidence
+          path: app/coverage
+      - name: Scan Dart and wait for the actual Quality Gate
+        uses: SonarSource/sonarqube-scan-action@v6
+        env:
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          projectBaseDir: app
+          args: >
+            -Dsonar.qualitygate.wait=true
+            -Dsonar.qualitygate.timeout=300
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sonar-evidence
+          path: |
+            sonar-evidence/
+            app/.scannerwork/report-task.txt
+          if-no-files-found: warn
+          retention-days: 14
+  quality-gate:
+    if: always()
+    needs: [qa-kit, api-rest, flutter-coverage, sonar]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every stage to succeed
+        env:
+          KIT_RESULT: ${{ needs.qa-kit.result }}
+          API_RESULT: ${{ needs.api-rest.result }}
+          FLUTTER_RESULT: ${{ needs.flutter-coverage.result }}
+          SONAR_RESULT: ${{ needs.sonar.result }}
+        run: |
+          printf 'Kit=%s API=%s Flutter=%s Sonar=%s\n' "$KIT_RESULT" "$API_RESULT" "$FLUTTER_RESULT" "$SONAR_RESULT" >> "$GITHUB_STEP_SUMMARY"
+          test "$KIT_RESULT" = success
+          test "$API_RESULT" = success
+          test "$FLUTTER_RESULT" = success
+          test "$SONAR_RESULT" = success
