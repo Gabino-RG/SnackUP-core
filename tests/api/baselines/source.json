@@ -1,0 +1,11 @@
+{
+  "scope": "documentary-baseline-not-production",
+  "source": "Principios_Medidas_Codificacion_Segura_SnackUp_FINAL_COMPLETO.pdf",
+  "section": "Anexo A. Reglas de Cloud Firestore compartidas",
+  "pages": [15, 16],
+  "retrieved_at_utc": "2026-09-30",
+  "source_file_id": "file_0000000060b8723082671cedefcef8a9",
+  "transcription": "Same executable rules; introductory comments and formatting added for provenance. No Annex B recommendations silently substituted.",
+  "deployed_rules_verified": false,
+  "deployment_authorized": false
+}
