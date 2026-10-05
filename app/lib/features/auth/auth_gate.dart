@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'login_screen.dart';
 import '../home/user_dashboard_screen.dart'; // <-- ¡USAMOS EL NUEVO DASHBOARD!
 import '../home/business_home_screen.dart';
+import '../admin/admin_dashboard_screen.dart';
 
 // --- 1. AuthWrapper (Modificado) ---
 class AuthWrapper extends StatelessWidget {
@@ -13,7 +14,7 @@ class AuthWrapper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
+      stream: FirebaseAuth.instance.idTokenChanges(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const LoadingScreen();
@@ -32,23 +33,45 @@ class RoleGate extends StatelessWidget {
   final String userId;
   const RoleGate({super.key, required this.userId});
 
+  Future<({bool admin, Map<String, dynamic>? profile})?> _loadAccess() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || user.uid != userId) return null;
+    final token = await user.getIdTokenResult();
+    // Administrative access is granted by a trusted backend custom claim.
+    // A self-editable Firestore profile must never grant administrative access.
+    if (token.claims?['admin'] == true) return (admin: true, profile: null);
+    final profile = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .get();
+    return (admin: false, profile: profile.data());
+  }
+
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<DocumentSnapshot>(
-      future: FirebaseFirestore.instance.collection('users').doc(userId).get(),
+    return FutureBuilder<({bool admin, Map<String, dynamic>? profile})?>(
+      future: _loadAccess(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const LoadingScreen();
         }
         if (snapshot.hasError) {
-          return const Scaffold(body: Center(child: Text("Error al cargar datos")));
+          return const Scaffold(
+            body: Center(child: Text("Error al cargar datos")),
+          );
         }
-        if (!snapshot.data!.exists || snapshot.data!.data() == null) {
+        final access = snapshot.data;
+        if (access?.admin == true) {
+          return AdminDashboardScreen(
+            onSignOut: () => FirebaseAuth.instance.signOut(),
+          );
+        }
+        if (access?.profile == null) {
           Future.microtask(() => FirebaseAuth.instance.signOut());
-          return const LoginScreen(); 
+          return const LoginScreen();
         }
 
-        final data = snapshot.data!.data() as Map<String, dynamic>;
+        final data = access!.profile!;
         final String? role = data['role'];
 
         if (role == 'business') {
@@ -56,7 +79,7 @@ class RoleGate extends StatelessWidget {
         } else if (role == 'user') {
           // --- ¡CAMBIO AQUÍ! ---
           // Mandamos al usuario al nuevo Dashboard
-          return const UserDashboardScreen(); 
+          return const UserDashboardScreen();
         }
 
         Future.microtask(() => FirebaseAuth.instance.signOut());
@@ -71,10 +94,6 @@ class LoadingScreen extends StatelessWidget {
   const LoadingScreen({super.key});
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(
-        child: CircularProgressIndicator(),
-      ),
-    );
+    return const Scaffold(body: Center(child: CircularProgressIndicator()));
   }
 }

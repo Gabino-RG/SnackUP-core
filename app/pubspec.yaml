@@ -101,6 +101,13 @@ flutter:
   assets:
     - assets/sounds/
   fonts:
+    # Flutter's engine fallback is bundled so the demo needs no font CDN.
+    - family: Roboto
+      fonts:
+        - asset: assets/fonts/Roboto/Roboto-Regular.ttf
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter/Inter-Variable.ttf
     - family: Lato
       fonts:
         # La ruta es la carpeta 'Lato' y luego el archivo

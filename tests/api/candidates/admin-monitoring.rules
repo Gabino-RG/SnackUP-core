@@ -1,0 +1,105 @@
+// REVIEW CANDIDATE ONLY. NOT DEPLOYED; NOT A PRODUCTION SECURITY BASELINE.
+// Extends order-hardening.rules for reviews and administrative follow-up.
+// Unrelated legacy collection rules still need their own security review.
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function ownsBusiness(businessId) {
+      return request.auth != null && request.auth.uid ==
+        get(/databases/$(database)/documents/businesses/$(businessId)).data.ownerId;
+    }
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      match /{allPaths=**} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+    match /businesses/{businessId} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == resource.data.ownerId;
+    }
+    match /products/{productId} {
+      allow read: if true;
+      allow create: if ownsBusiness(request.resource.data.businessId);
+      allow update, delete: if ownsBusiness(resource.data.businessId);
+    }
+    match /orders/{orderId} {
+      function validTransition() {
+        return (resource.data.status == 'pending' && request.resource.data.status in ['preparing','cancelled']) ||
+          (resource.data.status == 'preparing' && request.resource.data.status in ['ready','cancelled']) ||
+          (resource.data.status == 'ready' && request.resource.data.status == 'completed');
+      }
+      allow create: if request.auth != null &&
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.status == 'pending';
+      allow read: if request.auth != null && (
+        request.auth.uid == resource.data.userId || ownsBusiness(resource.data.businessId));
+      allow update: if ownsBusiness(resource.data.businessId) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) && validTransition();
+      allow delete: if false;
+    }
+
+    // Administrative access never depends on a user-editable profile field.
+    function isAdmin() {
+      return request.auth != null && request.auth.token.get('admin', false) == true;
+    }
+    match /reviews/{reviewId} {
+      function rating(value) { return value is int && value >= 1 && value <= 5; }
+      function validReview() {
+        let data = request.resource.data;
+        let order = get(/databases/$(database)/documents/orders/$(reviewId)).data;
+        return data.keys().hasAll(['businessId','userId','orderId','rating','serviceRating',
+            'foodRating','career','group','comment','createdAt','schemaVersion']) &&
+          data.keys().hasOnly(['businessId','userId','orderId','rating','serviceRating',
+            'foodRating','career','group','comment','createdAt','schemaVersion']) &&
+          data.schemaVersion == 2 && data.orderId == reviewId &&
+          data.userId == request.auth.uid && order.userId == request.auth.uid &&
+          order.businessId == data.businessId && order.status == 'completed' &&
+          rating(data.rating) && rating(data.serviceRating) && rating(data.foodRating) &&
+          data.career is string && data.career.size() <= 120 &&
+          data.group is string && data.group.size() <= 40 &&
+          data.comment is string && data.comment.size() <= 1500 &&
+          data.createdAt == request.time;
+      }
+      // A student can read their own deterministic slot, including when empty,
+      // so the create-only transaction can check for duplicates.
+      allow get: if isAdmin() || (request.auth != null && (
+        (exists(/databases/$(database)/documents/reviews/$(reviewId)) && resource.data.userId == request.auth.uid) ||
+        (!exists(/databases/$(database)/documents/reviews/$(reviewId)) &&
+          exists(/databases/$(database)/documents/orders/$(reviewId)) &&
+          get(/databases/$(database)/documents/orders/$(reviewId)).data.userId == request.auth.uid)));
+      allow list: if isAdmin() || (request.auth != null && resource.data.userId == request.auth.uid);
+      allow create: if request.auth != null && validReview();
+      allow update, delete: if false;
+    }
+    match /admin_followups/{reviewId} {
+      function validFollowup() {
+        let data = request.resource.data;
+        let review = get(/databases/$(database)/documents/reviews/$(reviewId)).data;
+        return data.keys().hasAll(['reviewId','businessId','status','assignee','note','updatedAt','updatedBy']) &&
+          data.keys().hasOnly(['reviewId','businessId','status','assignee','note','updatedAt','updatedBy']) &&
+          data.reviewId == reviewId && data.businessId == review.businessId &&
+          data.status in ['pending','in_review','resolved'] &&
+          data.assignee is string && data.assignee.size() > 0 && data.assignee.size() <= 120 &&
+          data.note is string && data.note.size() > 0 && data.note.size() <= 2000 &&
+          data.updatedAt == request.time && data.updatedBy == request.auth.uid;
+      }
+      allow read: if isAdmin();
+      allow create, update: if isAdmin() && validFollowup();
+      allow delete: if false;
+      match /history/{eventId} {
+        allow read: if isAdmin();
+        allow create: if isAdmin() && validFollowup() &&
+          request.resource.data == getAfter(/databases/$(database)/documents/admin_followups/$(reviewId)).data;
+        allow update, delete: if false;
+      }
+    }
+    match /chats/{chatId} {
+      allow create: if request.auth != null;
+      allow read, update: if request.auth != null;
+      match /messages/{messageId} {
+        allow read, write: if request.auth != null;
+      }
+    }
+  }
+}
