@@ -17,7 +17,7 @@ void main() {
     AppBootstrap(
       initialize: _initializeFirebase,
       appBuilder: () => const SnackUpApp(),
-      onReload: kIsWeb ? reloadApplication : null,
+      onReload: kIsWeb ? () => reloadApplication() : null,
     ),
   );
 }
