@@ -158,7 +158,9 @@ class FirebaseAdminRepository implements AdminRepository {
       throw ArgumentError('Indica responsable y nota de seguimiento.');
     }
     final ref = _db.collection('admin_followups').doc(followup.reviewId);
+    final event = ref.collection('history').doc();
     final values = <String, dynamic>{
+      'eventId': event.id,
       'reviewId': followup.reviewId,
       'businessId': followup.businessId,
       'status': followup.status.code,
@@ -169,7 +171,7 @@ class FirebaseAdminRepository implements AdminRepository {
     };
     final batch = _db.batch();
     batch.set(ref, values);
-    batch.set(ref.collection('history').doc(), values);
+    batch.set(event, values);
     await batch.commit();
   }
 }

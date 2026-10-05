@@ -1,6 +1,6 @@
 # SnackUP · Monitoreo administrativo
 
-Propuesta implementada en `test/api-aaa-sonarqube`. El módulo permite al personal autorizado revisar la experiencia de los alumnos por local, carrera, grupo y horario, y registrar acciones de mejora. No modifica `main` ni despliega reglas o datos en Firebase.
+Módulo integrado en `test/api-aaa-sonarqube`. El módulo permite al personal autorizado revisar la experiencia de los alumnos por local, carrera, grupo y horario, y registrar acciones de mejora. No modifica `main` ni despliega reglas o datos en Firebase.
 
 ## Flujos
 
@@ -20,7 +20,11 @@ Propuesta implementada en `test/api-aaa-sonarqube`. El módulo permite al person
 - El panel no muestra nombre, matrícula ni correo del alumno. Un comentario puede contener datos personales escritos por su autor: debe tratarse como información de acceso administrativo.
 - Los cuatro nombres y las cifras del modo de demostración son ficticios. En modo conectado los negocios proceden de `businesses`; no se inventan locales para completar cuatro ni se ocultan negocios adicionales.
 
-## Demostración sin Firebase
+## Aplicación integrada
+
+El acceso real forma parte de `app/lib/main.dart`: alumno, negocio y administrador utilizan el mismo inicio de sesión y backend. Consulta [INTEGRACION.md](../INTEGRACION.md) para el recorrido completo, configuración del servidor y límites de validación, y [PC.md](../PC.md) para ejecutar la aplicación completa en Windows. El paquete `SnackUP-PC.zip` usa esa entrada conectada, sin datos ficticios.
+
+## Demostración sin Firebase (referencia visual opcional)
 
 Desde `app/`, con Flutter 3.32.0:
 
@@ -42,8 +46,8 @@ Las reseñas antiguas con ID aleatorio se leen, pero no se migran ni se borran. 
 ### Activación pendiente en un entorno aprobado por TI
 
 - Designar las cuentas administrativas y asignar el custom claim desde un entorno de confianza con Firebase Admin SDK. Preservar otros claims existentes; nunca hacerlo desde Flutter ni desde un campo editable por el alumno. Cerrar y volver a iniciar sesión para renovar el token.
-- Revisar `tests/api/candidates/admin-monitoring.rules`, que amplía la candidata de pedidos con reseñas y seguimientos. Es una candidata aislada, **no reglas de producción aprobadas**: otras colecciones conservan limitaciones heredadas.
-- Probar la candidata en un entorno local/de pruebas aprobado: alumno A no lee reseñas de B, alumno no lee/escribe seguimientos, campo de perfil no concede administración, reseña exige pedido completado y propio, ID único, puntajes 1–5 y validación de tamaños, historial no editable.
+- Revisar las reglas integradas de `app/firestore.rules`, `app/storage.rules` y los índices de `app/firestore.indexes.json`. `app/firebase.json` ya los referencia. No están desplegados ni aprobados por una ejecución contra el servidor; los archivos de `tests/api/candidates/` son antecedentes de la implementación anterior.
+- Probar las reglas integradas en un entorno local/de pruebas aprobado: alumno A no lee reseñas de B, alumno no lee/escribe seguimientos, campo de perfil no concede administración, reseña exige pedido completado y propio, ID único, puntajes 1–5 y validación de tamaños, historial no editable.
 - Integrar únicamente los bloques aprobados con las reglas vigentes reales. Firebase aplica las reglas del servidor; ocultar una pantalla no sustituye estas reglas.
 - Validar con los cuatro locales reales, cuentas de alumno y administración, y reseñas consentidas. No hay credenciales administrativas ni información real de alumnos en los fixtures.
 
@@ -53,7 +57,7 @@ No se han asignado privilegios, desplegado reglas ni ejecutado escrituras en Fir
 
 `reviews/{orderId}`: `schemaVersion: 2`, `orderId`, `businessId`, `userId`, `rating`, `serviceRating`, `foodRating`, `career`, `group`, `comment`, `createdAt` (timestamp del servidor). Sin `userName` en las reseñas nuevas. Carrera ≤120 caracteres, grupo ≤40, comentario ≤1500. Carrera y grupo vacíos significan no informados.
 
-`admin_followups/{reviewId}` y `history/{eventId}`: `reviewId`, `businessId`, `status` (`pending`, `in_review`, `resolved`), `assignee`, `note`, `updatedAt`, `updatedBy`. La aplicación guarda el estado y el evento en un mismo batch. Responsable ≤120 caracteres y nota ≤2000; ambos obligatorios. La candidata permite estas colecciones sólo al claim administrativo y prohíbe modificar o eliminar los eventos.
+`admin_followups/{reviewId}` y `history/{eventId}`: `reviewId`, `businessId`, `status` (`pending`, `in_review`, `resolved`), `assignee`, `note`, `updatedAt`, `updatedBy`, `eventId`. La aplicación guarda el estado y el evento en un mismo batch. Las reglas integradas exigen que cada actualización incluya un evento nuevo cuyo contenido coincida con el estado. Responsable ≤120 caracteres y nota ≤2000; ambos obligatorios. Las reglas integradas permiten estas colecciones sólo al claim administrativo y prohíbe modificar o eliminar los eventos.
 
 ## Diseño
 

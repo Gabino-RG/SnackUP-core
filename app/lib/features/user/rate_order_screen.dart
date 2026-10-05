@@ -154,7 +154,7 @@ class _RateOrderScreenState extends State<RateOrderScreen> {
         '¡Gracias! Tu opinión ayudará a mejorar el local.',
         success: true,
       );
-      Navigator.of(context).pop();
+      Navigator.of(context).pop(true);
     } on ReviewSubmissionException catch (error) {
       _showMessage(error.message);
     } on FirebaseException catch (error) {

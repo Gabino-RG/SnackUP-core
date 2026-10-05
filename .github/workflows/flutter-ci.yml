@@ -2,7 +2,7 @@ name: Flutter CI
 
 on:
   push:
-    branches: [develop]
+    branches: [develop, test/api-aaa-sonarqube]
   pull_request:
     branches: [main, develop]
 
@@ -36,3 +36,13 @@ jobs:
       - name: Unit and widget tests
         run: flutter test --coverage
 
+      - name: Build integrated application
+        run: flutter build web --no-web-resources-cdn --target lib/main.dart
+
+      - name: Preserve integrated web build
+        uses: actions/upload-artifact@v4
+        with:
+          name: snackup-integrated-web
+          path: app/build/web
+          if-no-files-found: error
+          retention-days: 14

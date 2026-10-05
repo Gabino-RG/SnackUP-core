@@ -21,10 +21,13 @@ class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
   int _selectedIndex = 0;
   String? _fetchedBusinessId;
   StreamSubscription? _newOrderSubscription;
-  int _previousNewOrderCount = -1;
+  Set<String>? _previousPendingIds;
   final AudioPlayer _audioPlayer = AudioPlayer();
   bool _alertShownForThisBatch = false;
   int _pendingOrdersCount = 0;
+  bool _businessLoadFailed = false;
+  bool _updatingOpenStatus = false;
+  String? _ordersError;
 
   @override
   void initState() {
@@ -33,29 +36,64 @@ class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
   }
 
   Future<void> _fetchBusinessIdAndListen() async {
-    _fetchedBusinessId = await _getBusinessId();
-    if (_fetchedBusinessId != null && mounted) {
-      _listenForNewOrders(_fetchedBusinessId!);
-      setState(() {});
-    } else if (mounted) {
-      print("Error: No se encontró businessId vinculado");
-      FirebaseAuth.instance.signOut();
-    }
-  }
-
-  Future<String?> _getBusinessId() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return null;
+    if (mounted) setState(() => _businessLoadFailed = false);
     try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) throw StateError('Sesión terminada');
       final query = await FirebaseFirestore.instance
           .collection('businesses')
           .where('ownerId', isEqualTo: user.uid)
           .limit(1)
           .get();
-      return query.docs.isNotEmpty ? query.docs.first.id : null;
-    } catch (e) {
-      print("Error al obtener businessId: $e");
-      return null;
+      if (!mounted) return;
+      if (query.docs.isEmpty) throw StateError('Sin negocio vinculado');
+      _fetchedBusinessId = query.docs.first.id;
+      _listenForNewOrders(_fetchedBusinessId!);
+      setState(() {});
+    } catch (_) {
+      if (mounted) setState(() => _businessLoadFailed = true);
+    }
+  }
+
+  Future<void> _changeOpenStatus(bool isOpen) async {
+    if (_updatingOpenStatus || _fetchedBusinessId == null) return;
+    setState(() => _updatingOpenStatus = true);
+    try {
+      await FirebaseFirestore.instance
+          .collection('businesses')
+          .doc(_fetchedBusinessId!)
+          .update({'isOpen': isOpen});
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isOpen
+                  ? 'Tu negocio ya acepta nuevos pedidos.'
+                  : 'Nuevos pedidos pausados. Puedes terminar los pedidos existentes.',
+            ),
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'No se pudo cambiar la disponibilidad. Revisa tu conexión y permisos.',
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _updatingOpenStatus = false);
+    }
+  }
+
+  Future<void> _playNewOrderSound() async {
+    try {
+      await _audioPlayer.play(AssetSource('sounds/notification_bell.mp3'));
+    } catch (_) {
+      // Browsers can block audio until a user gesture. The visual alert remains.
     }
   }
 
@@ -64,26 +102,25 @@ class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
 
     final query = FirebaseFirestore.instance
         .collection('orders')
-        .where('businessId', isEqualTo: businessId)
-        .where('status', isEqualTo: 'pending')
-        .where('scheduledPickupTime', isEqualTo: null);
+        .where('businessId', isEqualTo: businessId);
 
     _newOrderSubscription = query.snapshots().listen(
       (snapshot) {
-        final currentOrderCount = snapshot.docs.length;
+        if (!mounted) return;
+        _ordersError = null;
+        final pendingIds = snapshot.docs
+            .where((doc) => doc.data()['status'] == 'pending')
+            .map((doc) => doc.id)
+            .toSet();
+        final currentOrderCount = pendingIds.length;
         _pendingOrdersCount = currentOrderCount; // Actualizar contador
 
-        if (_previousNewOrderCount != -1 && 
-            currentOrderCount > _previousNewOrderCount && 
+        if (_previousPendingIds != null &&
+            pendingIds.difference(_previousPendingIds!).isNotEmpty &&
             !_alertShownForThisBatch) {
-          print("🛎️ Nuevo pedido ASAP detectado! Total: $currentOrderCount");
           _alertShownForThisBatch = true;
 
-          try {
-            _audioPlayer.play(AssetSource('sounds/notification_bell.mp3'));
-          } catch (e) {
-            print("Error al reproducir sonido: $e");
-          }
+          _playNewOrderSound();
 
           if (mounted) {
             _showNewOrderDialog(context, currentOrderCount);
@@ -95,28 +132,35 @@ class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
             }
           });
         }
-        _previousNewOrderCount = currentOrderCount;
-        
+        _previousPendingIds = pendingIds;
+
         // Actualizar UI si estamos en la pestaña de pedidos
-        if (mounted && _selectedIndex == 0) {
+        if (mounted) {
           setState(() {});
         }
       },
       onError: (error) {
-        print("Error escuchando nuevos pedidos: $error");
+        if (mounted) {
+          setState(
+            () => _ordersError =
+                'No se pueden recibir pedidos en tiempo real. Revisa tu conexión y permisos.',
+          );
+        }
       },
     );
   }
 
   void _showNewOrderDialog(BuildContext context, int orderCount) {
     if (ModalRoute.of(context)?.isCurrent != true) return;
-    
+
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           backgroundColor: AppColors.background,
           surfaceTintColor: Colors.transparent,
           title: Row(
@@ -137,9 +181,7 @@ class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
               Expanded(
                 child: Text(
                   "¡Nuevo Pedido!",
-                  style: AppText.h3.copyWith(
-                    color: AppColors.textPrimary,
-                  ),
+                  style: AppText.h3.copyWith(color: AppColors.textPrimary),
                 ),
               ),
             ],
@@ -149,10 +191,8 @@ class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                "Tienes un nuevo pedido para preparar inmediatamente.",
-                style: AppText.body.copyWith(
-                  color: AppColors.textSecondary,
-                ),
+                "Llegó un pedido nuevo. Revisa su horario de recogida.",
+                style: AppText.body.copyWith(color: AppColors.textSecondary),
               ),
               const SizedBox(height: 8),
               Container(
@@ -188,9 +228,7 @@ class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
               },
               child: Text(
                 "Más tarde",
-                style: AppText.body.copyWith(
-                  color: AppColors.textSecondary,
-                ),
+                style: AppText.body.copyWith(color: AppColors.textSecondary),
               ),
             ),
             ElevatedButton(
@@ -237,6 +275,7 @@ class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_businessLoadFailed) return _buildErrorState();
     if (_fetchedBusinessId == null) {
       return const LoadingScreen();
     }
@@ -247,18 +286,20 @@ class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
           .doc(_fetchedBusinessId!)
           .snapshots(),
       builder: (context, businessSnapshot) {
-        if (businessSnapshot.connectionState == ConnectionState.waiting && 
+        if (businessSnapshot.connectionState == ConnectionState.waiting &&
             !businessSnapshot.hasData) {
           return const LoadingScreen();
         }
-        
-        if (businessSnapshot.hasError || 
-            !businessSnapshot.data!.exists || 
+
+        if (businessSnapshot.hasError ||
+            !businessSnapshot.hasData ||
+            !businessSnapshot.data!.exists ||
             businessSnapshot.data!.data() == null) {
           return _buildErrorState();
         }
 
-        final businessData = businessSnapshot.data!.data() as Map<String, dynamic>;
+        final businessData =
+            businessSnapshot.data!.data() as Map<String, dynamic>;
         final bool isOpen = businessData['isOpen'] ?? false;
         final String businessName = businessData['name'] ?? 'Mi Negocio';
 
@@ -288,7 +329,21 @@ class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
               _buildLogoutButton(context),
             ],
           ),
-          body: pages[_selectedIndex],
+          body: Column(
+            children: [
+              if (_ordersError != null)
+                MaterialBanner(
+                  content: Text(_ordersError!),
+                  actions: [
+                    TextButton(
+                      onPressed: () => _listenForNewOrders(_fetchedBusinessId!),
+                      child: const Text('Reintentar'),
+                    ),
+                  ],
+                ),
+              Expanded(child: pages[_selectedIndex]),
+            ],
+          ),
           bottomNavigationBar: _buildBottomNavigationBar(),
         );
       },
@@ -315,12 +370,7 @@ class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
           const SizedBox(width: 6),
           Switch(
             value: isOpen,
-            onChanged: (newValue) {
-              FirebaseFirestore.instance
-                  .collection('businesses')
-                  .doc(_fetchedBusinessId!)
-                  .update({'isOpen': newValue});
-            },
+            onChanged: _updatingOpenStatus ? null : _changeOpenStatus,
             activeColor: AppColors.success,
             inactiveThumbColor: AppColors.error,
             activeTrackColor: AppColors.success.withOpacity(0.4),
@@ -334,36 +384,29 @@ class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
 
   Widget _buildLogoutButton(BuildContext context) {
     return IconButton(
-      icon: Icon(
-        Icons.logout_rounded,
-        color: AppColors.textSecondary,
-      ),
+      icon: Icon(Icons.logout_rounded, color: AppColors.textSecondary),
       tooltip: 'Cerrar Sesión',
       onPressed: () {
         showDialog(
           context: context,
           builder: (ctx) => AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
             title: Text(
               'Cerrar Sesión',
-              style: AppText.h3.copyWith(
-                color: AppColors.textPrimary,
-              ),
+              style: AppText.h3.copyWith(color: AppColors.textPrimary),
             ),
             content: Text(
               '¿Estás seguro de que quieres cerrar sesión?',
-              style: AppText.body.copyWith(
-                color: AppColors.textSecondary,
-              ),
+              style: AppText.body.copyWith(color: AppColors.textSecondary),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop(),
                 child: Text(
                   'Cancelar',
-                  style: AppText.body.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
+                  style: AppText.body.copyWith(color: AppColors.textSecondary),
                 ),
               ),
               ElevatedButton(
@@ -393,12 +436,7 @@ class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
   Widget _buildBottomNavigationBar() {
     return Container(
       decoration: BoxDecoration(
-        border: Border(
-          top: BorderSide(
-            color: AppColors.borders,
-            width: 1,
-          ),
-        ),
+        border: Border(top: BorderSide(color: AppColors.borders, width: 1)),
       ),
       child: BottomNavigationBar(
         currentIndex: _selectedIndex,
@@ -410,9 +448,7 @@ class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
         backgroundColor: AppColors.background,
         selectedItemColor: AppColors.primary,
         unselectedItemColor: AppColors.textSecondary,
-        selectedLabelStyle: AppText.notes.copyWith(
-          fontWeight: FontWeight.w600,
-        ),
+        selectedLabelStyle: AppText.notes.copyWith(fontWeight: FontWeight.w600),
         unselectedLabelStyle: AppText.notes,
         showUnselectedLabels: true,
         type: BottomNavigationBarType.fixed,
@@ -436,7 +472,9 @@ class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
                         minHeight: 16,
                       ),
                       child: Text(
-                        _pendingOrdersCount > 9 ? '9+' : _pendingOrdersCount.toString(),
+                        _pendingOrdersCount > 9
+                            ? '9+'
+                            : _pendingOrdersCount.toString(),
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 8,
@@ -479,33 +517,33 @@ class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
               const SizedBox(height: 16),
               Text(
                 'Error al cargar el negocio',
-                style: AppText.h3.copyWith(
-                  color: AppColors.textPrimary,
-                ),
+                style: AppText.h3.copyWith(color: AppColors.textPrimary),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 12),
               Text(
-                'No se pudo cargar la información de tu negocio. Por favor, intenta nuevamente.',
-                style: AppText.body.copyWith(
-                  color: AppColors.textSecondary,
-                ),
+                'No se pudo cargar tu negocio. Revisa tu conexión y que esta cuenta tenga un negocio vinculado.',
+                style: AppText.body.copyWith(color: AppColors.textSecondary),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
               ElevatedButton(
-                onPressed: () => FirebaseAuth.instance.signOut(),
+                onPressed: _fetchBusinessIdAndListen,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
                 ),
                 child: Text(
-                  'Volver al Inicio',
+                  'Reintentar',
                   style: AppText.body.copyWith(
                     fontWeight: FontWeight.w600,
                     color: Colors.white,
                   ),
                 ),
+              ),
+              TextButton(
+                onPressed: () => FirebaseAuth.instance.signOut(),
+                child: const Text('Cerrar sesión'),
               ),
             ],
           ),

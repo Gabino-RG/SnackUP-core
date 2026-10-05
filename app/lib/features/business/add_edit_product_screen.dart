@@ -1,10 +1,10 @@
-import 'dart:io';
+import 'dart:async';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:snackup/theme/app_colors.dart';
 import 'package:snackup/theme/app_text.dart';
 
@@ -30,12 +30,16 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
   final _stockController = TextEditingController();
   final _categoryController = TextEditingController();
 
-  File? _imageFile;
+  Uint8List? _imageBytes;
+  String _imageExtension = 'jpg';
+  String _imageContentType = 'image/jpeg';
   String? _existingImageUrl;
   bool _isFeatured = false;
   bool _isAvailable = true;
   bool _isLoading = false;
   bool _isEditing = false;
+  bool _loadFailed = false;
+  int? _loadedStock;
   double _uploadProgress = 0;
 
   @override
@@ -48,115 +52,149 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
   }
 
   Future<void> _loadProductData() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _loadFailed = false;
+    });
     try {
       final doc = await FirebaseFirestore.instance
           .collection('products')
           .doc(widget.productId)
           .get();
 
-      if (doc.exists && doc.data() != null) {
+      if (!mounted) return;
+      if (doc.exists && doc.data()?['businessId'] == widget.businessId) {
         final data = doc.data()!;
         _nameController.text = data['name'] ?? '';
         _descriptionController.text = data['description'] ?? '';
-        _priceController.text = (data['price'] ?? 0.0).toString();
+        _priceController.text = data['priceCents'] is int
+            ? ((data['priceCents'] as int) / 100).toStringAsFixed(2)
+            : (data['price'] ?? 0.0).toString();
         _stockController.text = (data['stock'] ?? 0).toString();
+        _loadedStock = (data['stock'] as num?)?.toInt() ?? 0;
         _categoryController.text = data['category'] ?? '';
         setState(() {
           _isFeatured = data['isFeatured'] ?? false;
           _isAvailable = data['isAvailable'] ?? true;
           _existingImageUrl = data['imageUrl'];
         });
+      } else {
+        _loadFailed = true;
+        _showError('El producto no existe o no pertenece a este negocio.');
       }
     } catch (e) {
+      _loadFailed = true;
       _showError('Error al cargar producto: ${e.toString()}');
     }
-    setState(() => _isLoading = false);
+    if (mounted) setState(() => _isLoading = false);
   }
 
   Future<void> _pickImage() async {
-    var status = await Permission.photos.request();
-    if (status.isDenied || status.isPermanentlyDenied) {
-      _showError('Necesitas dar permiso a la galería para subir fotos.');
-      return;
-    }
-    
-    final ImagePicker picker = ImagePicker();
-    final XFile? pickedFile = await picker.pickImage(
-      source: ImageSource.gallery, 
-      imageQuality: 70,
-      maxWidth: 800,
-    );
+    if (_isLoading) return;
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? pickedFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 70,
+        maxWidth: 800,
+      );
 
-    if (pickedFile != null) {
-      setState(() {
-        _imageFile = File(pickedFile.path);
-      });
+      if (pickedFile != null) {
+        final extension = pickedFile.name.split('.').last.toLowerCase();
+        const contentTypes = {
+          'jpg': 'image/jpeg',
+          'jpeg': 'image/jpeg',
+          'png': 'image/png',
+          'webp': 'image/webp',
+        };
+        if (!contentTypes.containsKey(extension)) {
+          _showError('Selecciona una imagen JPG, PNG o WebP.');
+          return;
+        }
+        if (await pickedFile.length() > 5 * 1024 * 1024) {
+          _showError('La imagen debe pesar como máximo 5 MB.');
+          return;
+        }
+        final bytes = await pickedFile.readAsBytes();
+        if (!mounted) return;
+        setState(() {
+          _imageBytes = bytes;
+          _imageExtension = extension;
+          _imageContentType = contentTypes[extension]!;
+        });
+      }
+    } catch (_) {
+      _showError('No se pudo abrir la imagen. Revisa los permisos de galería.');
     }
   }
 
   Future<String?> _uploadImage() async {
-    if (_imageFile == null) return null;
-    
-    setState(() => _isLoading = true);
-    
+    if (_imageBytes == null) return null;
+    StreamSubscription<TaskSnapshot>? progressSubscription;
     try {
-      String fileName = '${widget.businessId}-${DateTime.now().millisecondsSinceEpoch}.jpg';
+      String fileName =
+          '${DateTime.now().microsecondsSinceEpoch}.$_imageExtension';
       Reference storageRef = FirebaseStorage.instance
           .ref()
           .child('product_images')
+          .child(widget.businessId)
           .child(fileName);
 
-      UploadTask uploadTask = storageRef.putFile(_imageFile!);
+      UploadTask uploadTask = storageRef.putData(
+        _imageBytes!,
+        SettableMetadata(contentType: _imageContentType),
+      );
 
-      uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
+      progressSubscription = uploadTask.snapshotEvents.listen((
+        TaskSnapshot snapshot,
+      ) {
+        if (!mounted || snapshot.totalBytes == 0) return;
         setState(() {
           _uploadProgress = (snapshot.bytesTransferred / snapshot.totalBytes);
         });
-      });
+      }, onError: (Object _) {});
 
       TaskSnapshot taskSnapshot = await uploadTask;
       String downloadUrl = await taskSnapshot.ref.getDownloadURL();
-      
-      setState(() {
-        _isLoading = false;
-        _uploadProgress = 0;
-      });
-      return downloadUrl;
 
+      return downloadUrl;
     } catch (e) {
       _showError('Error al subir imagen: $e');
-      setState(() {
-        _isLoading = false;
-        _uploadProgress = 0;
-      });
       return null;
+    } finally {
+      await progressSubscription?.cancel();
+      if (mounted) setState(() => _uploadProgress = 0);
     }
   }
 
   Future<void> _saveProduct() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (_isLoading || _loadFailed || !_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
+      await _verifyOwner();
       String? imageUrl;
 
-      if (_imageFile != null) {
+      if (_imageBytes != null) {
         imageUrl = await _uploadImage();
         if (imageUrl == null) return;
       } else {
         imageUrl = _existingImageUrl;
       }
-      
-      final price = double.tryParse(_priceController.text) ?? 0.0;
+
+      final price = double.parse(
+        _priceController.text.trim().replaceAll(',', '.'),
+      );
+      final priceCents = (price * 100).round();
       final stock = int.tryParse(_stockController.text) ?? 0;
 
       final productData = {
         'businessId': widget.businessId,
         'name': _nameController.text.trim(),
         'description': _descriptionController.text.trim(),
-        'price': price,
+        'price': priceCents / 100,
+        'priceCents': priceCents,
         'stock': stock,
         'isAvailable': _isAvailable,
         'isFeatured': _isFeatured,
@@ -166,25 +204,93 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         'name_searchable': _nameController.text.trim().toLowerCase(),
       };
 
-      if (_isEditing) {
-        await FirebaseFirestore.instance
-            .collection('products')
-            .doc(widget.productId)
-            .update(productData);
-      } else {
-        await FirebaseFirestore.instance
-            .collection('products')
-            .add(productData);
-      }
+      final firestore = FirebaseFirestore.instance;
+      final reference = firestore.collection('products').doc(widget.productId);
+      await firestore.runTransaction((transaction) async {
+        if (_isEditing) {
+          final current = await transaction.get(reference);
+          if (!current.exists ||
+              current.data()?['businessId'] != widget.businessId) {
+            throw StateError('El producto ya no está disponible para editar.');
+          }
+          final updates = Map<String, dynamic>.from(productData);
+          if (stock == _loadedStock) {
+            updates.remove('stock');
+          } else if (current.data()?['stock'] != _loadedStock) {
+            throw StateError(
+              'El stock cambió mientras editabas. Abre el producto de nuevo antes de ajustarlo.',
+            );
+          }
+          transaction.update(reference, updates);
+        } else {
+          transaction.set(reference, {
+            ...productData,
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+        }
+      });
 
       if (mounted) Navigator.of(context).pop();
-
     } catch (e) {
       _showError('Error al guardar: ${e.toString()}');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
-    
-    if (mounted) {
-      setState(() => _isLoading = false);
+  }
+
+  Future<void> _verifyOwner() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final business = await FirebaseFirestore.instance
+        .collection('businesses')
+        .doc(widget.businessId)
+        .get();
+    if (uid == null || business.data()?['ownerId'] != uid) {
+      throw StateError('Tu cuenta no administra este negocio.');
+    }
+  }
+
+  Future<void> _deleteProduct() async {
+    if (_isLoading || _loadFailed) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Eliminar producto'),
+        content: const Text(
+          'Se quitará del menú. Los pedidos que ya lo incluyen conservarán su información.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => _isLoading = true);
+    try {
+      await _verifyOwner();
+      final firestore = FirebaseFirestore.instance;
+      final reference = firestore.collection('products').doc(widget.productId);
+      await firestore.runTransaction((transaction) async {
+        final product = await transaction.get(reference);
+        if (!product.exists ||
+            product.data()?['businessId'] != widget.businessId) {
+          throw StateError('El producto no pertenece a este negocio.');
+        }
+        transaction.delete(reference);
+      });
+      if (mounted) Navigator.of(context).pop();
+    } catch (_) {
+      _showError(
+        'No se pudo eliminar el producto. Revisa tu conexión y permisos.',
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -216,11 +322,28 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         foregroundColor: AppColors.textPrimary,
         actions: _isEditing ? [_buildDeleteButton()] : null,
       ),
-      body: _isLoading && _uploadProgress == 0
-          ? const Center(
-              child: CircularProgressIndicator(
-                color: AppColors.primary,
+      body: _loadFailed
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'No se pudo cargar el producto. Verifica tu conexión y permisos.',
+                    ),
+                    const SizedBox(height: 16),
+                    FilledButton(
+                      onPressed: _loadProductData,
+                      child: const Text('Reintentar'),
+                    ),
+                  ],
+                ),
               ),
+            )
+          : _isLoading && _uploadProgress == 0
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
             )
           : SingleChildScrollView(
               padding: const EdgeInsets.all(20.0),
@@ -249,9 +372,9 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
-                              _isEditing 
-                                ? 'Actualiza la información de tu producto'
-                                : 'Agrega un nuevo producto a tu menú',
+                              _isEditing
+                                  ? 'Actualiza la información de tu producto'
+                                  : 'Agrega un nuevo producto a tu menú',
                               style: AppText.notes.copyWith(
                                 color: AppColors.tertiary,
                                 fontWeight: FontWeight.w500,
@@ -327,10 +450,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
             decoration: BoxDecoration(
               color: AppColors.componentBase,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: AppColors.borders,
-                width: 2,
-              ),
+              border: Border.all(color: AppColors.borders, width: 2),
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(14),
@@ -339,7 +459,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                 children: [
                   // CONTENIDO DE LA IMAGEN
                   _buildImageContent(),
-                  
+
                   // OVERLAY PARA SELECCIONAR
                   Container(
                     decoration: BoxDecoration(
@@ -354,7 +474,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
-                          _imageFile != null || _existingImageUrl != null
+                          _imageBytes != null || _existingImageUrl != null
                               ? Icons.camera_alt_rounded
                               : Icons.add_photo_alternate_rounded,
                           color: AppColors.primary,
@@ -371,17 +491,15 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         const SizedBox(height: 4),
         Text(
           'Toca para seleccionar una imagen',
-          style: AppText.notes.copyWith(
-            color: AppColors.textSecondary,
-          ),
+          style: AppText.notes.copyWith(color: AppColors.textSecondary),
         ),
       ],
     );
   }
 
   Widget _buildImageContent() {
-    if (_imageFile != null) {
-      return Image.file(_imageFile!, fit: BoxFit.cover);
+    if (_imageBytes != null) {
+      return Image.memory(_imageBytes!, fit: BoxFit.cover);
     } else if (_existingImageUrl != null) {
       return Image.network(
         _existingImageUrl!,
@@ -392,7 +510,8 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
           return Center(
             child: CircularProgressIndicator(
               value: loadingProgress.expectedTotalBytes != null
-                  ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                  ? loadingProgress.cumulativeBytesLoaded /
+                        loadingProgress.expectedTotalBytes!
                   : null,
               color: AppColors.primary,
             ),
@@ -416,9 +535,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         const SizedBox(height: 8),
         Text(
           'Agregar imagen',
-          style: AppText.notes.copyWith(
-            color: AppColors.textSecondary,
-          ),
+          style: AppText.notes.copyWith(color: AppColors.textSecondary),
         ),
       ],
     );
@@ -432,8 +549,9 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         _buildTextField(
           controller: _nameController,
           label: 'Nombre del Producto',
+          maxLength: 160,
           hintText: 'Ej: Taco al Pastor',
-          validator: (value) => value == null || value.isEmpty
+          validator: (value) => value == null || value.trim().isEmpty
               ? 'El nombre es obligatorio'
               : null,
         ),
@@ -444,8 +562,9 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         _buildTextField(
           controller: _categoryController,
           label: 'Categoría',
+          maxLength: 120,
           hintText: 'Ej: TACOS, BEBIDAS, POSTRES',
-          validator: (value) => value == null || value.isEmpty
+          validator: (value) => value == null || value.trim().isEmpty
               ? 'La categoría es obligatoria'
               : null,
         ),
@@ -456,6 +575,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         _buildTextField(
           controller: _descriptionController,
           label: 'Descripción',
+          maxLength: 2000,
           hintText: 'Describe tu producto...',
           maxLines: 3,
         ),
@@ -475,9 +595,15 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                   if (value == null || value.isEmpty) {
                     return 'El precio es obligatorio';
                   }
-                  final price = double.tryParse(value);
-                  if (price == null || price <= 0) {
-                    return 'Precio inválido';
+                  final price = double.tryParse(
+                    value.trim().replaceAll(',', '.'),
+                  );
+                  if (price == null ||
+                      !price.isFinite ||
+                      price <= 0 ||
+                      price > 10000 ||
+                      (price * 100).round() < 1) {
+                    return 'Precio entre \$0.01 y \$10,000';
                   }
                   return null;
                 },
@@ -495,8 +621,8 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                     return 'El stock es obligatorio';
                   }
                   final stock = int.tryParse(value);
-                  if (stock == null || stock < 0) {
-                    return 'Stock inválido';
+                  if (stock == null || stock < 0 || stock > 1000000) {
+                    return 'Stock entre 0 y 1,000,000';
                   }
                   return null;
                 },
@@ -541,6 +667,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     required String label,
     String? hintText,
     int maxLines = 1,
+    int? maxLength,
     TextInputType? keyboardType,
     String? Function(String?)? validator,
   }) {
@@ -575,6 +702,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
             ),
           ),
           maxLines: maxLines,
+          maxLength: maxLength,
           keyboardType: keyboardType,
           validator: validator,
         ),
@@ -604,9 +732,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
               const SizedBox(height: 4),
               Text(
                 subtitle,
-                style: AppText.notes.copyWith(
-                  color: AppColors.textSecondary,
-                ),
+                style: AppText.notes.copyWith(color: AppColors.textSecondary),
               ),
             ],
           ),
@@ -622,16 +748,15 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
 
   Widget _buildSaveButton() {
     return ElevatedButton(
-      onPressed: _isLoading ? null : _saveProduct,
+      onPressed: _isLoading || _loadFailed ? null : _saveProduct,
       style: ElevatedButton.styleFrom(
         backgroundColor: _isEditing ? AppColors.accent : AppColors.primary,
         foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(vertical: 16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         elevation: 2,
-        shadowColor: (_isEditing ? AppColors.accent : AppColors.primary).withOpacity(0.3),
+        shadowColor: (_isEditing ? AppColors.accent : AppColors.primary)
+            .withOpacity(0.3),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -646,15 +771,12 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
               ),
             )
           else
-            Icon(
-              _isEditing ? Icons.save_rounded : Icons.add_rounded,
-              size: 20,
-            ),
+            Icon(_isEditing ? Icons.save_rounded : Icons.add_rounded, size: 20),
           const SizedBox(width: 8),
           Text(
-            _isLoading 
-              ? 'Guardando...' 
-              : (_isEditing ? 'Guardar Cambios' : 'Agregar Producto'),
+            _isLoading
+                ? 'Guardando...'
+                : (_isEditing ? 'Guardar Cambios' : 'Agregar Producto'),
             style: AppText.body.copyWith(
               fontWeight: FontWeight.w600,
               color: Colors.white,
@@ -669,9 +791,8 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
   Widget _buildDeleteButton() {
     return IconButton(
       icon: const Icon(Icons.delete_outline_rounded),
-      onPressed: () {
-        // TODO: Implementar eliminación
-      },
+      tooltip: 'Eliminar producto',
+      onPressed: _isLoading || _loadFailed ? null : _deleteProduct,
     );
   }
 

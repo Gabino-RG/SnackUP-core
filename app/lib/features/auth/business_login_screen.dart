@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'auth_repository.dart';
 import 'package:snackup/theme/app_colors.dart'; // Ajusta la ruta según tu proyecto
 import 'package:snackup/theme/app_text.dart';
 
 class BusinessLoginScreen extends StatefulWidget {
-  const BusinessLoginScreen({super.key});
+  const BusinessLoginScreen({super.key, this.repository});
+  final SnackAuthRepository? repository;
 
   @override
   State<BusinessLoginScreen> createState() => _BusinessLoginScreenState();
@@ -16,42 +17,62 @@ class _BusinessLoginScreenState extends State<BusinessLoginScreen> {
   bool _isLoading = false;
   bool _obscurePassword = true;
   String _errorMessage = '';
+  late final SnackAuthRepository _repository;
+  @override
+  void initState() {
+    super.initState();
+    _repository = widget.repository ?? FirebaseSnackAuthRepository();
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   Future<void> _signInAsBusiness() async {
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+    if (_isLoading) return;
+    if (_emailController.text.trim().isEmpty ||
+        _passwordController.text.isEmpty) {
       setState(() => _errorMessage = 'Por favor, llena ambos campos');
       return;
     }
-
     setState(() {
       _isLoading = true;
       _errorMessage = '';
     });
-
     try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-      );
+      await _repository.signIn(_emailController.text, _passwordController.text);
+      if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
+    } catch (error) {
+      if (mounted) setState(() => _errorMessage = authErrorMessage(error));
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
+  Future<void> _resetPassword() async {
+    if (_isLoading) return;
+    setState(() {
+      _isLoading = true;
+      _errorMessage = '';
+    });
+    try {
+      await _repository.sendPasswordReset(_emailController.text);
       if (mounted) {
-        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Si el correo tiene una cuenta, recibirás instrucciones para restablecer tu contraseña.',
+            ),
+          ),
+        );
       }
-
-    } on FirebaseAuthException catch (e) {
-      setState(() {
-        _isLoading = false;
-        if (e.code == 'user-not-found' || e.code == 'wrong-password' || e.code == 'invalid-credential') {
-          _errorMessage = 'Correo o contraseña incorrectos';
-        } else {
-          _errorMessage = 'Ocurrió un error. Intenta de nuevo.';
-        }
-      });
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-        _errorMessage = 'Ocurrió un error inesperado.';
-      });
+    } catch (error) {
+      if (mounted) setState(() => _errorMessage = authErrorMessage(error));
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -219,9 +240,7 @@ class _BusinessLoginScreenState extends State<BusinessLoginScreen> {
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
-                  onPressed: () {
-                    // TODO: Implementar recuperación de contraseña
-                  },
+                  onPressed: _isLoading ? null : _resetPassword,
                   child: Text(
                     '¿Olvidaste tu contraseña?',
                     style: AppText.notes.copyWith(
@@ -291,9 +310,7 @@ class _BusinessLoginScreenState extends State<BusinessLoginScreen> {
                   decoration: BoxDecoration(
                     color: AppColors.error.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: AppColors.error.withOpacity(0.3),
-                    ),
+                    border: Border.all(color: AppColors.error.withOpacity(0.3)),
                   ),
                   child: Row(
                     children: [

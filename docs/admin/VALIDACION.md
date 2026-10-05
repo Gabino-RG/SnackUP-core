@@ -2,6 +2,8 @@
 
 Fecha de revisión: 4 de octubre de 2026 (México). Rama: `test/api-aaa-sonarqube`. Base anterior: `3697f5f3b5b5ff152c94b5be26ba340559e9ce3a`.
 
+La verificación posterior de la aplicación completa está en [VALIDACION_INTEGRADA.md](../VALIDACION_INTEGRADA.md). Este documento conserva los resultados de la primera entrega administrativa.
+
 ## Resultados ejecutados
 
 | Comprobación | Resultado |

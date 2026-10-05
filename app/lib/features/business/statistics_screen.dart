@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'business_metrics.dart';
 import 'package:snackup/theme/app_colors.dart';
 import 'package:snackup/theme/app_text.dart';
 
@@ -21,7 +22,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     _completedOrdersStream = FirebaseFirestore.instance
         .collection('orders')
         .where('businessId', isEqualTo: widget.businessId)
-        .where('status', isEqualTo: 'completed')
         .snapshots();
   }
 
@@ -49,17 +49,30 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return _buildLoadingState();
           }
-          if (snapshot.data!.docs.isEmpty) {
+          if (snapshot.data?.docs.isEmpty ?? true) {
             return _buildEmptyState();
           }
 
-          final docs = snapshot.data!.docs;
-          
-          final double totalRevenue = _calculateTotalRevenue(docs);
-          final Map<String, int> paymentMethods = _calculatePaymentMethods(docs);
-          final Map<String, int> topItems = _calculateTopItems(docs);
-          final Map<int, double> salesByDay = _calculateSalesByDay(docs);
-          final int totalOrders = docs.length;
+          final metrics = BusinessMetrics.fromOrders(
+            snapshot.data!.docs.map((doc) {
+              final data = Map<String, dynamic>.from(
+                doc.data() as Map<String, dynamic>,
+              );
+              for (final field in ['createdAt', 'completedAt']) {
+                if (data[field] is Timestamp) {
+                  data[field] = (data[field] as Timestamp).toDate();
+                }
+              }
+              return data;
+            }),
+            now: DateTime.now(),
+          );
+          if (metrics.totalOrders == 0) return _buildEmptyState();
+          final totalRevenue = metrics.totalRevenue;
+          final paymentMethods = metrics.paymentMethods;
+          final topItems = metrics.topItems;
+          final salesByDay = metrics.salesByDay;
+          final totalOrders = metrics.totalOrders;
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(20),
@@ -74,7 +87,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                 // GRÁFICA DE VENTAS POR DÍA
                 _buildChartSection(
                   title: 'Ventas - Últimos 7 Días',
-                  subtitle: 'Distribución de ingresos por día de la semana',
+                  subtitle:
+                      'Importes entregados · horario de Querétaro (UTC−6)',
                   child: _buildSalesByDayChart(salesByDay),
                 ),
 
@@ -92,7 +106,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                 // MÉTODOS DE PAGO
                 _buildChartSection(
                   title: 'Métodos de Pago',
-                  subtitle: 'Distribución de métodos de pago utilizados',
+                  subtitle: 'Método indicado al pedir; cobro en el local',
                   child: _buildPaymentChart(paymentMethods),
                 ),
 
@@ -120,17 +134,13 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             const SizedBox(height: 16),
             Text(
               'Error al cargar estadísticas',
-              style: AppText.h3.copyWith(
-                color: AppColors.textPrimary,
-              ),
+              style: AppText.h3.copyWith(color: AppColors.textPrimary),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
               'Verifica tu conexión e intenta nuevamente',
-              style: AppText.body.copyWith(
-                color: AppColors.textSecondary,
-              ),
+              style: AppText.body.copyWith(color: AppColors.textSecondary),
               textAlign: TextAlign.center,
             ),
           ],
@@ -144,15 +154,11 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          CircularProgressIndicator(
-            color: AppColors.primary,
-          ),
+          CircularProgressIndicator(color: AppColors.primary),
           const SizedBox(height: 16),
           Text(
             'Cargando estadísticas...',
-            style: AppText.body.copyWith(
-              color: AppColors.textSecondary,
-            ),
+            style: AppText.body.copyWith(color: AppColors.textSecondary),
           ),
         ],
       ),
@@ -182,17 +188,13 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             const SizedBox(height: 24),
             Text(
               'Aún no tienes estadísticas',
-              style: AppText.h3.copyWith(
-                color: AppColors.textPrimary,
-              ),
+              style: AppText.h3.copyWith(color: AppColors.textPrimary),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 12),
             Text(
               'Los datos aparecerán aquí una vez que completes tus primeros pedidos',
-              style: AppText.body.copyWith(
-                color: AppColors.textSecondary,
-              ),
+              style: AppText.body.copyWith(color: AppColors.textSecondary),
               textAlign: TextAlign.center,
             ),
           ],
@@ -228,7 +230,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Ingresos Totales',
+                    'Importe entregado',
                     style: AppText.body.copyWith(
                       color: Colors.white.withOpacity(0.9),
                       fontSize: 16,
@@ -300,10 +302,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       decoration: BoxDecoration(
         color: AppColors.background,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppColors.borders,
-          width: 1,
-        ),
+        border: Border.all(color: AppColors.borders, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -318,9 +317,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
           const SizedBox(height: 4),
           Text(
             subtitle,
-            style: AppText.notes.copyWith(
-              color: AppColors.textSecondary,
-            ),
+            style: AppText.notes.copyWith(color: AppColors.textSecondary),
           ),
           const SizedBox(height: 16),
           child,
@@ -331,12 +328,12 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 
   Widget _buildSalesByDayChart(Map<int, double> salesByDay) {
     final maxSales = salesByDay.values.reduce((a, b) => a > b ? a : b);
-    
+
     final List<BarChartGroupData> barGroups = List.generate(7, (index) {
       final day = index + 1;
       final sales = salesByDay[day] ?? 0.0;
-      final isToday = day == DateTime.now().weekday;
-      
+      final isToday = day == BusinessMetrics.campusDate(DateTime.now()).weekday;
+
       return BarChartGroupData(
         x: day,
         barRods: [
@@ -348,8 +345,10 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
               topLeft: Radius.circular(6),
               topRight: Radius.circular(6),
             ),
-            gradient: _createBarGradient(isToday ? AppColors.accent : AppColors.primary),
-          )
+            gradient: _createBarGradient(
+              isToday ? AppColors.accent : AppColors.primary,
+            ),
+          ),
         ],
         showingTooltipIndicators: sales > 0 ? [0] : [],
       );
@@ -360,7 +359,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       child: BarChart(
         BarChartData(
           alignment: BarChartAlignment.spaceAround,
-          maxY: maxSales * 1.2,
+          maxY: maxSales > 0 ? maxSales * 1.2 : 1,
           minY: 0,
           barGroups: barGroups,
           titlesData: FlTitlesData(
@@ -376,14 +375,30 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                   );
                   String text;
                   switch (value.toInt()) {
-                    case 1: text = 'Lun'; break;
-                    case 2: text = 'Mar'; break;
-                    case 3: text = 'Mié'; break;
-                    case 4: text = 'Jue'; break;
-                    case 5: text = 'Vie'; break;
-                    case 6: text = 'Sáb'; break;
-                    case 7: text = 'Dom'; break;
-                    default: text = ''; break;
+                    case 1:
+                      text = 'Lun';
+                      break;
+                    case 2:
+                      text = 'Mar';
+                      break;
+                    case 3:
+                      text = 'Mié';
+                      break;
+                    case 4:
+                      text = 'Jue';
+                      break;
+                    case 5:
+                      text = 'Vie';
+                      break;
+                    case 6:
+                      text = 'Sáb';
+                      break;
+                    case 7:
+                      text = 'Dom';
+                      break;
+                    default:
+                      text = '';
+                      break;
                   }
                   return SideTitleWidget(
                     axisSide: meta.axisSide,
@@ -411,21 +426,24 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                 interval: maxSales > 0 ? (maxSales / 4).ceilToDouble() : 1,
               ),
             ),
-            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            rightTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
           ),
           borderData: FlBorderData(
             show: true,
-            border: Border.all(
-              color: AppColors.borders,
-              width: 1,
-            ),
+            border: Border.all(color: AppColors.borders, width: 1),
           ),
           gridData: FlGridData(
             show: true,
             drawVerticalLine: false,
             drawHorizontalLine: true,
-            horizontalInterval: maxSales > 0 ? (maxSales / 4).ceilToDouble() : 1,
+            horizontalInterval: maxSales > 0
+                ? (maxSales / 4).ceilToDouble()
+                : 1,
             getDrawingHorizontalLine: (value) => FlLine(
               color: AppColors.borders.withOpacity(0.3),
               strokeWidth: 1,
@@ -463,10 +481,11 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     final top5Items = sortedItems.take(5).toList();
     final maxValue = top5Items.first.value.toDouble();
 
-    final List<BarChartGroupData> barGroups = List.generate(top5Items.length, (index) {
+    final List<BarChartGroupData> barGroups = List.generate(top5Items.length, (
+      index,
+    ) {
       final item = top5Items[index];
-      final percentage = (item.value / maxValue * 100).round();
-      
+
       return BarChartGroupData(
         x: index,
         barRods: [
@@ -479,7 +498,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
               topRight: Radius.circular(6),
             ),
             gradient: _createBarGradient(_getProductColor(index)),
-          )
+          ),
         ],
         showingTooltipIndicators: [0],
       );
@@ -499,10 +518,12 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
               sideTitles: SideTitles(
                 showTitles: true,
                 getTitlesWidget: (value, meta) {
-                  if (value.toInt() >= top5Items.length) return const SizedBox.shrink();
+                  if (value.toInt() < 0 || value.toInt() >= top5Items.length) {
+                    return const SizedBox.shrink();
+                  }
                   final item = top5Items[value.toInt()];
-                  final shortName = item.key.length > 12 
-                      ? '${item.key.substring(0, 12)}...' 
+                  final shortName = item.key.length > 12
+                      ? '${item.key.substring(0, 12)}...'
                       : item.key;
                   return SideTitleWidget(
                     axisSide: meta.axisSide,
@@ -538,21 +559,24 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                 interval: maxValue > 0 ? (maxValue / 4).ceilToDouble() : 1,
               ),
             ),
-            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            rightTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
           ),
           borderData: FlBorderData(
             show: true,
-            border: Border.all(
-              color: AppColors.borders,
-              width: 1,
-            ),
+            border: Border.all(color: AppColors.borders, width: 1),
           ),
           gridData: FlGridData(
             show: true,
             drawVerticalLine: false,
             drawHorizontalLine: true,
-            horizontalInterval: maxValue > 0 ? (maxValue / 4).ceilToDouble() : 1,
+            horizontalInterval: maxValue > 0
+                ? (maxValue / 4).ceilToDouble()
+                : 1,
             getDrawingHorizontalLine: (value) => FlLine(
               color: AppColors.borders.withOpacity(0.3),
               strokeWidth: 1,
@@ -585,7 +609,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 
   Widget _buildPaymentChart(Map<String, int> paymentMethods) {
     if (paymentMethods.isEmpty) return _buildNoDataPlaceholder();
-    
+
     final total = paymentMethods.values.reduce((a, b) => a + b);
     final List<PieChartSectionData> sections = [];
     final List<Color> colors = [
@@ -636,7 +660,10 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     );
   }
 
-  Widget _buildPaymentLegend(Map<String, int> paymentMethods, List<Color> colors) {
+  Widget _buildPaymentLegend(
+    Map<String, int> paymentMethods,
+    List<Color> colors,
+  ) {
     final total = paymentMethods.values.reduce((a, b) => a + b);
     int colorIndex = 0;
 
@@ -647,17 +674,14 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         final percentage = ((entry.value / total) * 100).round();
         final color = colors[colorIndex % colors.length];
         colorIndex++;
-        
+
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
               width: 12,
               height: 12,
-              decoration: BoxDecoration(
-                color: color,
-                shape: BoxShape.circle,
-              ),
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
             ),
             const SizedBox(width: 6),
             Text(
@@ -692,9 +716,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             const SizedBox(height: 8),
             Text(
               'No hay datos disponibles',
-              style: AppText.notes.copyWith(
-                color: AppColors.textSecondary,
-              ),
+              style: AppText.notes.copyWith(color: AppColors.textSecondary),
             ),
           ],
         ),
@@ -704,10 +726,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 
   LinearGradient _createBarGradient(Color baseColor) {
     return LinearGradient(
-      colors: [
-        baseColor,
-        baseColor.withOpacity(0.7),
-      ],
+      colors: [baseColor, baseColor.withOpacity(0.7)],
       begin: Alignment.bottomCenter,
       end: Alignment.topCenter,
     );
@@ -722,56 +741,5 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       AppColors.warning,
     ];
     return colors[index % colors.length];
-  }
-
-  // --- FUNCIONES DE CÁLCULO (Sin cambios) ---
-  double _calculateTotalRevenue(List<QueryDocumentSnapshot> docs) {
-    double total = 0.0;
-    for (var doc in docs) {
-      total += (doc['totalPrice'] as num?) ?? 0.0;
-    }
-    return total;
-  }
-
-  Map<String, int> _calculatePaymentMethods(List<QueryDocumentSnapshot> docs) {
-    Map<String, int> counts = {};
-    for (var doc in docs) {
-      String method = (doc['paymentMethod'] as String?) ?? 'Desconocido';
-      counts[method] = (counts[method] ?? 0) + 1;
-    }
-    return counts;
-  }
-
-  Map<String, int> _calculateTopItems(List<QueryDocumentSnapshot> docs) {
-    Map<String, int> counts = {};
-    for (var doc in docs) {
-      List<dynamic> items = (doc['items'] as List<dynamic>?) ?? [];
-      for (var item in items) {
-        if (item is Map) {
-          String name = (item['name'] as String?) ?? 'Producto';
-          int quantity = (item['quantity'] as num?)?.toInt() ?? 0;
-          counts[name] = (counts[name] ?? 0) + quantity;
-        }
-      }
-    }
-    return counts;
-  }
-  
-  Map<int, double> _calculateSalesByDay(List<QueryDocumentSnapshot> docs) {
-    Map<int, double> dailySales = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0};
-    final now = DateTime.now();
-    final sevenDaysAgo = DateTime(now.year, now.month, now.day).subtract(const Duration(days: 6));
-
-    for (var doc in docs) {
-      final timestamp = doc['createdAt'] as Timestamp?;
-      final price = (doc['totalPrice'] as num?) ?? 0.0;
-      if (timestamp == null) continue;
-      final date = timestamp.toDate();
-      
-      if (date.isAfter(sevenDaysAgo)) {
-        dailySales[date.weekday] = (dailySales[date.weekday] ?? 0) + price;
-      }
-    }
-    return dailySales;
   }
 }
