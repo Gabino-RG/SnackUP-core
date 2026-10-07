@@ -1,0 +1,55 @@
+SNACKUP · VIDEO DE EVIDENCIA DEL AGENTE CI
+Duración de referencia: aproximadamente 65 segundos.
+Formato: captura del panel con subtítulos; no requiere narración.
+
+IDENTIFICACIÓN QUE DEBE PERMANECER VISIBLE
+“Reproducción acelerada de ejecuciones reales de GitHub Actions”
+Repositorio: Gabino-RG/SnackUP-core
+Rama de la evidencia: test/api-aaa-sonarqube
+
+00:00–00:08 · Presentación
+Mostrar el panel del agente, la rama y el SHA.
+Subtítulo: “SnackUP: agente basado en reglas para observar el pipeline de Integración Continua.”
+
+00:08–00:22 · Avance del pipeline aprobado
+Seleccionar “CI aprobado real” y “Reproducir evidencia real”.
+Mostrar descarga, entorno Flutter, dependencias y análisis.
+Subtítulo: “Cada etapa cambia de pendiente a ejecución y aprobada. El agente permite revisar el registro.”
+Mantener la identificación de reproducción real.
+
+00:22–00:35 · Pruebas y compilación
+Mostrar las pruebas aprobadas y la compilación Web.
+Subtítulo: “Ejecución real 37257224068: 59 pruebas aprobadas y compilación Web completada.”
+Nota visual: “El análisis histórico toleró 124 avisos/informaciones.”
+
+00:35–00:42 · Artefacto y límites de la evidencia
+Mostrar el artefacto snackup-integrated-web y el enlace de origen.
+Subtítulo: “CI termina con el artefacto. No se despliega a producción.”
+Nota visual: “18 pruebas REST aprobaron en otro workflow del mismo commit; ese workflow falló en Sonar.”
+
+00:42–00:56 · Fallo real y fail fast
+Cambiar a “CI fallido real” y reproducir el fallo de compilación.
+Mostrar el mensaje relacionado con reloadApplication y el artefacto omitido.
+Subtítulo: “La compilación falla. El pipeline detiene las etapas siguientes y el agente recomienda revisar el error.”
+Nota visual: “Fallo histórico 37257039123; corregido en una revisión posterior.”
+
+00:56–01:05 · Cierre
+Mostrar la decisión del agente y el enlace de GitHub.
+Subtítulo: “Evidencia verificable: estados, registros, SHA y resultados del proyecto SnackUP.”
+
+FUENTES PARA COMPROBAR LO MOSTRADO
+CI aprobado:
+https://github.com/Gabino-RG/SnackUP-core/actions/runs/37257224068
+SHA ddf0d461b07c407510bca28ef2cd5026aa4a624f
+
+CI fallido:
+https://github.com/Gabino-RG/SnackUP-core/actions/runs/37257039123
+SHA 9b8cd9e53a12ed12083ced94cb43401b0d145956
+
+Pruebas REST, workflow separado:
+https://github.com/Gabino-RG/SnackUP-core/actions/runs/37257224010
+
+PARA GRABAR UNA NUEVA EJECUCIÓN EN VIVO
+Iniciar el agente en Windows, seleccionar “Consultar GitHub”, elegir el repositorio y una ejecución real y pulsar “Monitorear”. Grabar el avance observado. Si la ejecución ya concluyó, identificarla como consulta de resultados o reproducción, no como ejecución en vivo.
+
+La opción “Demo: falla rápido” sirve para explicar los estados, pero no debe presentarse como evidencia de pruebas, compilación o integración reales de SnackUP. El workflow nuevo preparado requiere su propia ejecución antes de afirmar que aprobó.

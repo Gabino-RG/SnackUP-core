@@ -1,0 +1,473 @@
+{
+  "total_count": 5,
+  "jobs": [
+    {
+      "id": 111596799713,
+      "run_id": 37257224010,
+      "workflow_name": "SnackUP QA and SonarQube Cloud",
+      "head_branch": "test/api-aaa-sonarqube",
+      "run_url": "https://api.github.com/repos/Gabino-RG/SnackUP-core/actions/runs/37257224010",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOR5VXGM8AAAAZ-7AG4Q",
+      "head_sha": "ddf0d461b07c407510bca28ef2cd5026aa4a624f",
+      "url": "https://api.github.com/repos/Gabino-RG/SnackUP-core/actions/jobs/111596799713",
+      "html_url": "https://github.com/Gabino-RG/SnackUP-core/actions/runs/37257224010/job/111596799713",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-05T02:54:21Z",
+      "started_at": "2026-10-05T02:54:23Z",
+      "completed_at": "2026-10-05T02:55:26Z",
+      "name": "api-rest",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-05T02:54:23Z",
+          "completed_at": "2026-10-05T02:54:25Z"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-05T02:54:25Z",
+          "completed_at": "2026-10-05T02:54:26Z"
+        },
+        {
+          "name": "Run actions/setup-node@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-05T02:54:26Z",
+          "completed_at": "2026-10-05T02:54:29Z"
+        },
+        {
+          "name": "Require authorized Firestore Rules",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-05T02:54:29Z",
+          "completed_at": "2026-10-05T02:54:29Z"
+        },
+        {
+          "name": "Run actions/setup-java@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-10-05T02:54:29Z",
+          "completed_at": "2026-10-05T02:54:29Z"
+        },
+        {
+          "name": "Install locked dependencies",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-10-05T02:54:29Z",
+          "completed_at": "2026-10-05T02:55:03Z"
+        },
+        {
+          "name": "Execute the 12 REST AAA cases",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-10-05T02:55:03Z",
+          "completed_at": "2026-10-05T02:55:23Z"
+        },
+        {
+          "name": "Preserve preflight and any actual API results",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-10-05T02:55:23Z",
+          "completed_at": "2026-10-05T02:55:23Z"
+        },
+        {
+          "name": "Post Run actions/setup-java@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 14,
+          "started_at": "2026-10-05T02:55:23Z",
+          "completed_at": "2026-10-05T02:55:24Z"
+        },
+        {
+          "name": "Post Run actions/setup-node@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-10-05T02:55:24Z",
+          "completed_at": "2026-10-05T02:55:24Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 16,
+          "started_at": "2026-10-05T02:55:24Z",
+          "completed_at": "2026-10-05T02:55:24Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 17,
+          "started_at": "2026-10-05T02:55:24Z",
+          "completed_at": "2026-10-05T02:55:24Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/Gabino-RG/SnackUP-core/check-runs/111596799713",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": 1000000084,
+      "runner_name": "GitHub Actions 1000000084",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 111596799981,
+      "run_id": 37257224010,
+      "workflow_name": "SnackUP QA and SonarQube Cloud",
+      "head_branch": "test/api-aaa-sonarqube",
+      "run_url": "https://api.github.com/repos/Gabino-RG/SnackUP-core/actions/runs/37257224010",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOR5VXGM8AAAAZ-7AH7Q",
+      "head_sha": "ddf0d461b07c407510bca28ef2cd5026aa4a624f",
+      "url": "https://api.github.com/repos/Gabino-RG/SnackUP-core/actions/jobs/111596799981",
+      "html_url": "https://github.com/Gabino-RG/SnackUP-core/actions/runs/37257224010/job/111596799981",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-05T02:54:21Z",
+      "started_at": "2026-10-05T02:54:23Z",
+      "completed_at": "2026-10-05T02:54:30Z",
+      "name": "qa-kit",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-05T02:54:24Z",
+          "completed_at": "2026-10-05T02:54:25Z"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-05T02:54:25Z",
+          "completed_at": "2026-10-05T02:54:26Z"
+        },
+        {
+          "name": "Run actions/setup-node@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-05T02:54:26Z",
+          "completed_at": "2026-10-05T02:54:26Z"
+        },
+        {
+          "name": "Syntax and isolation tests (not REST cases)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-05T02:54:26Z",
+          "completed_at": "2026-10-05T02:54:27Z"
+        },
+        {
+          "name": "Run actions/upload-artifact@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-10-05T02:54:27Z",
+          "completed_at": "2026-10-05T02:54:28Z"
+        },
+        {
+          "name": "Post Run actions/setup-node@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-10-05T02:54:28Z",
+          "completed_at": "2026-10-05T02:54:28Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-10-05T02:54:28Z",
+          "completed_at": "2026-10-05T02:54:28Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-10-05T02:54:28Z",
+          "completed_at": "2026-10-05T02:54:28Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/Gabino-RG/SnackUP-core/check-runs/111596799981",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": 1000000086,
+      "runner_name": "GitHub Actions 1000000086",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 111596800014,
+      "run_id": 37257224010,
+      "workflow_name": "SnackUP QA and SonarQube Cloud",
+      "head_branch": "test/api-aaa-sonarqube",
+      "run_url": "https://api.github.com/repos/Gabino-RG/SnackUP-core/actions/runs/37257224010",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOR5VXGM8AAAAZ-7AIDg",
+      "head_sha": "ddf0d461b07c407510bca28ef2cd5026aa4a624f",
+      "url": "https://api.github.com/repos/Gabino-RG/SnackUP-core/actions/jobs/111596800014",
+      "html_url": "https://github.com/Gabino-RG/SnackUP-core/actions/runs/37257224010/job/111596800014",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-05T02:54:21Z",
+      "started_at": "2026-10-05T02:54:23Z",
+      "completed_at": "2026-10-05T02:55:09Z",
+      "name": "flutter-coverage",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-05T02:54:23Z",
+          "completed_at": "2026-10-05T02:54:26Z"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-05T02:54:26Z",
+          "completed_at": "2026-10-05T02:54:27Z"
+        },
+        {
+          "name": "Run subosito/flutter-action@v2",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-05T02:54:27Z",
+          "completed_at": "2026-10-05T02:54:48Z"
+        },
+        {
+          "name": "Run Flutter tests and generate LCOV",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-05T02:54:48Z",
+          "completed_at": "2026-10-05T02:55:06Z"
+        },
+        {
+          "name": "Run actions/upload-artifact@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-10-05T02:55:06Z",
+          "completed_at": "2026-10-05T02:55:07Z"
+        },
+        {
+          "name": "Post Run subosito/flutter-action@v2",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-10-05T02:55:07Z",
+          "completed_at": "2026-10-05T02:55:07Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-10-05T02:55:07Z",
+          "completed_at": "2026-10-05T02:55:08Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-10-05T02:55:08Z",
+          "completed_at": "2026-10-05T02:55:08Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/Gabino-RG/SnackUP-core/check-runs/111596800014",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": 1000000087,
+      "runner_name": "GitHub Actions 1000000087",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 111596965595,
+      "run_id": 37257224010,
+      "workflow_name": "SnackUP QA and SonarQube Cloud",
+      "head_branch": "test/api-aaa-sonarqube",
+      "run_url": "https://api.github.com/repos/Gabino-RG/SnackUP-core/actions/runs/37257224010",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOR5VXGM8AAAAZ-7KO2w",
+      "head_sha": "ddf0d461b07c407510bca28ef2cd5026aa4a624f",
+      "url": "https://api.github.com/repos/Gabino-RG/SnackUP-core/actions/jobs/111596965595",
+      "html_url": "https://github.com/Gabino-RG/SnackUP-core/actions/runs/37257224010/job/111596965595",
+      "status": "completed",
+      "conclusion": "failure",
+      "created_at": "2026-10-05T02:55:09Z",
+      "started_at": "2026-10-05T02:55:11Z",
+      "completed_at": "2026-10-05T02:55:19Z",
+      "name": "sonar",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-05T02:55:12Z",
+          "completed_at": "2026-10-05T02:55:14Z"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-05T02:55:14Z",
+          "completed_at": "2026-10-05T02:55:16Z"
+        },
+        {
+          "name": "Check SonarQube Cloud configuration without exposing secrets",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 3,
+          "started_at": "2026-10-05T02:55:16Z",
+          "completed_at": "2026-10-05T02:55:16Z"
+        },
+        {
+          "name": "Run subosito/flutter-action@v2",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 4,
+          "started_at": "2026-10-05T02:55:16Z",
+          "completed_at": "2026-10-05T02:55:16Z"
+        },
+        {
+          "name": "Resolve Dart dependencies",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 5,
+          "started_at": "2026-10-05T02:55:16Z",
+          "completed_at": "2026-10-05T02:55:16Z"
+        },
+        {
+          "name": "Run actions/download-artifact@v4",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 6,
+          "started_at": "2026-10-05T02:55:16Z",
+          "completed_at": "2026-10-05T02:55:16Z"
+        },
+        {
+          "name": "Scan Dart and wait for the actual Quality Gate",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 7,
+          "started_at": "2026-10-05T02:55:16Z",
+          "completed_at": "2026-10-05T02:55:16Z"
+        },
+        {
+          "name": "Run actions/upload-artifact@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-10-05T02:55:16Z",
+          "completed_at": "2026-10-05T02:55:17Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 16,
+          "started_at": "2026-10-05T02:55:17Z",
+          "completed_at": "2026-10-05T02:55:17Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 17,
+          "started_at": "2026-10-05T02:55:17Z",
+          "completed_at": "2026-10-05T02:55:17Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/Gabino-RG/SnackUP-core/check-runs/111596965595",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": 1000000088,
+      "runner_name": "GitHub Actions 1000000088",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 111597018004,
+      "run_id": 37257224010,
+      "workflow_name": "SnackUP QA and SonarQube Cloud",
+      "head_branch": "test/api-aaa-sonarqube",
+      "run_url": "https://api.github.com/repos/Gabino-RG/SnackUP-core/actions/runs/37257224010",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOR5VXGM8AAAAZ-7NblA",
+      "head_sha": "ddf0d461b07c407510bca28ef2cd5026aa4a624f",
+      "url": "https://api.github.com/repos/Gabino-RG/SnackUP-core/actions/jobs/111597018004",
+      "html_url": "https://github.com/Gabino-RG/SnackUP-core/actions/runs/37257224010/job/111597018004",
+      "status": "completed",
+      "conclusion": "failure",
+      "created_at": "2026-10-05T02:55:26Z",
+      "started_at": "2026-10-05T02:55:27Z",
+      "completed_at": "2026-10-05T02:55:30Z",
+      "name": "quality-gate",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-05T02:55:28Z",
+          "completed_at": "2026-10-05T02:55:28Z"
+        },
+        {
+          "name": "Require every stage to succeed",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 2,
+          "started_at": "2026-10-05T02:55:28Z",
+          "completed_at": "2026-10-05T02:55:28Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-05T02:55:28Z",
+          "completed_at": "2026-10-05T02:55:28Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/Gabino-RG/SnackUP-core/check-runs/111597018004",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": 1000000089,
+      "runner_name": "GitHub Actions 1000000089",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    }
+  ]
+}
