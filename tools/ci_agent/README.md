@@ -20,7 +20,7 @@ También puedes iniciar desde una terminal ubicada en la carpeta del paquete con
 | Evidencia registrada | Reproduce cronológicamente resultados reales descargados de GitHub Actions; permite acelerar el avance. | Lo ocurrido en la ejecución identificada por su URL y SHA. No inicia un nuevo CI. |
 | GitHub | Consulta ejecuciones y estados de un repositorio público mediante la API de GitHub. | El estado reportado por GitHub en el momento de la consulta. El monitor observa; las reglas del workflow remoto detienen el CI. |
 | CI local | Ejecuta comandos definidos del pipeline en una copia local de SnackUP y presenta su salida. | Los resultados de esa ejecución local, con los requisitos disponibles en la computadora. |
-| Demo: falla rápido | Con el servidor, ejecuta comandos Python sobre un ejemplo aislado; sin servidor, ofrece una secuencia visual de ejemplo. | El funcionamiento didáctico de las reglas. No acredita pruebas de SnackUP. |
+| Demo: falla rápido | Ejecuta comandos Python sobre un ejemplo aislado; requiere el servidor local. | El funcionamiento didáctico de las reglas. No acredita pruebas de SnackUP. |
 
 Una reproducción no se etiqueta como ejecución en vivo. Una compilación aprobada no se presenta como despliegue a producción. El video incluido muestra una reproducción de registros reales, con rótulos que identifican su origen.
 

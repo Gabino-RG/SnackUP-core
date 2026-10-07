@@ -27,6 +27,7 @@ async function main() {
     const evidence=JSON.parse(fs.readFileSync(path.join(__dirname,'evidence',which==='success'?'evidence.json':'evidence-failure.json'),'utf8'));
     const start=Date.parse(evidence.stages[0].started_at), end=Date.parse(evidence.stages.at(-1).completed_at);
     const duration=(end-start)/1000;
+    if(frame===0 || time===40){await page.evaluate(speed=>{const select=document.getElementById('speedSelect');select.add(new Option(speed.toFixed(2)+'×',String(speed),true,true));}, duration/(which==='success'?30:18));}
     let elapsed,caption;
     if(time<4){elapsed=0;caption='SnackUP · Agente inteligente basado en reglas | Evidencia real de GitHub Actions';}
     else if(time<34){elapsed=(time-4)/30*duration;caption='Reproducción acelerada: commit → entorno → análisis → pruebas → compilación → artefacto';}
@@ -51,7 +52,8 @@ async function main() {
   if(errors.length)throw new Error('Browser errors: '+errors.join('\n'));
   await browser.close();
   const result=spawnSync('ffmpeg',['-y','-framerate',String(fps),'-i',path.join(frames,'%05d.png'),'-vf','fps=30','-c:v','libx264','-preset','fast','-crf','21','-pix_fmt','yuv420p','-movflags','+faststart',path.join(out,'SnackUP_Pipeline_CI.mp4')],{encoding:'utf8'});
-  if(result.status!==0)throw new Error(result.stderr);
+  if(result.error)throw result.error;
+  if(result.status!==0)throw new Error(result.stderr || 'FFmpeg failed without diagnostic output');
   fs.rmSync(frames,{recursive:true,force:true});
   fs.writeFileSync(path.join(out,'verificacion-video.json'),JSON.stringify({duration_seconds:seconds,resolution:'1600x1000',mode:'Reproducción gráfica de dos ejecuciones GitHub reales, acelerada',successful_run:37257224068,failed_run:37257039123,browser_errors:errors,mobile_horizontal_overflow:overflow},null,2));
   console.log('65-second video and QA screenshots produced.');
