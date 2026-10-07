@@ -13,6 +13,11 @@ async function main() {
   const errors=[]; page.on('pageerror', e=>errors.push(String(e)));
   await page.goto('http://127.0.0.1:8765/', { waitUntil: 'networkidle' });
   await page.waitForFunction(()=>window.SnackupAgent && window.SnackupAgent.getState()?.stages?.length===7);
+  const liveResponse=await page.request.get('http://127.0.0.1:8765/api/run?repo=Gabino-RG/SnackUP-core&id=37257224068');
+  const liveState=await liveResponse.json();
+  if(!liveResponse.ok() || liveState.mode!=='live' || liveState.conclusion!=='success')throw new Error('Live GitHub API validation: '+JSON.stringify(liveState));
+  const visibleStages=await page.evaluate(()=>{const list=document.getElementById('stageList');return {height:list.clientHeight,content:list.scrollHeight};});
+  if(visibleStages.content>visibleStages.height+2)throw new Error('Seven stages do not fit in desktop panel: '+JSON.stringify(visibleStages));
   await page.evaluate(()=>{
     const caption=document.createElement('div');caption.id='video-caption';
     caption.style.cssText='position:fixed;left:32px;right:32px;bottom:18px;padding:14px 24px;background:#292238;color:#fff;border-radius:14px;font:600 19px/1.5 system-ui;z-index:9999;text-align:center;box-shadow:0 3px 20px #0002;pointer-events:none';
@@ -38,12 +43,14 @@ async function main() {
     if(time>=34&&time<37)await page.evaluate(()=>window.SnackupAgent.selectStage(4));
     if(time>=37&&time<40)await page.evaluate(()=>window.SnackupAgent.selectStage(6));
     if(time>=58)await page.evaluate(()=>window.SnackupAgent.selectStage(5));
+    if(time>=34&&time<37)await page.evaluate(()=>{const log=document.getElementById('logPanel');log.scrollTop=log.scrollHeight;});
     await page.screenshot({path:path.join(frames,String(frame).padStart(5,'0')+'.png')});
   }
   // Screenshots for human layout inspection at key outcomes.
   await page.evaluate(()=>document.getElementById('video-caption').remove());
   await page.screenshot({path:path.join(out,'ci-fallido.png')});
   await page.evaluate(async()=>{await window.SnackupAgent.loadEvidence('success');window.SnackupAgent.stop();window.SnackupAgent.seekReplay(1000);window.SnackupAgent.selectStage(4);});
+  await page.evaluate(()=>{const log=document.getElementById('logPanel');log.scrollTop=log.scrollHeight;});
   await page.screenshot({path:path.join(out,'ci-aprobado.png')});
   await page.setViewportSize({width:390,height:844});
   await page.screenshot({path:path.join(out,'ci-mobile.png'),fullPage:true});
@@ -55,7 +62,7 @@ async function main() {
   if(result.error)throw result.error;
   if(result.status!==0)throw new Error(result.stderr || 'FFmpeg failed without diagnostic output');
   fs.rmSync(frames,{recursive:true,force:true});
-  fs.writeFileSync(path.join(out,'verificacion-video.json'),JSON.stringify({duration_seconds:seconds,resolution:'1600x1000',mode:'Reproducción gráfica de dos ejecuciones GitHub reales, acelerada',successful_run:37257224068,failed_run:37257039123,browser_errors:errors,mobile_horizontal_overflow:overflow},null,2));
+  fs.writeFileSync(path.join(out,'verificacion-video.json'),JSON.stringify({duration_seconds:seconds,resolution:'1600x1000',mode:'Reproducción gráfica de dos ejecuciones GitHub reales, acelerada',successful_run:37257224068,failed_run:37257039123,browser_errors:errors,mobile_horizontal_overflow:overflow,live_github_api_verified:true,seven_stages_fit:visibleStages},null,2));
   console.log('65-second video and QA screenshots produced.');
 }
 main().catch(e=>{console.error(e);process.exit(1)});

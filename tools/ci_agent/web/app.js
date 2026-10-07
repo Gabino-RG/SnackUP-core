@@ -9,6 +9,7 @@
   const clone = value => JSON.parse(JSON.stringify(value));
   const timestamp = value => value ? Date.parse(value) : NaN;
   const isTerminal = value => ['success','failure','skipped','blocked','cancelled'].includes(value);
+  const speedLabel = value => `${Math.round(Number(value) * 100) / 100}×`;
 
   function durationLabel(seconds) {
     if (!Number.isFinite(seconds) || seconds < 0) return '—';
@@ -142,12 +143,13 @@
     $('modeLabel').textContent = modeLabels[state.mode] || 'Evidencia de GitHub Actions';
     const dates = state.stages.map(s => timestamp(s.started_at)).filter(Number.isFinite);
     const recorded = dates.length ? new Date(Math.min(...dates)).toLocaleString('es-MX',{dateStyle:'short',timeStyle:'short'}) : '';
-    $('modeDescription').textContent = state.mode === 'replay' ? `${replay ? `${replay.speed}× · ` : ''}Registrada ${recorded || 'en GitHub Actions'}${replay?.paused ? ' · pausada' : ''}` : state.mode === 'demo' ? 'Comandos inocuos reales · entorno separado' : state.mode === 'local' ? 'Comandos Flutter del proyecto seleccionado' : 'Consulta del estado real en GitHub Actions';
+    $('modeDescription').textContent = state.mode === 'replay' ? `${replay ? `${speedLabel(replay.speed)} · ` : ''}Registrada ${recorded || 'en GitHub Actions'}${replay?.paused ? ' · pausada' : ''}` : state.mode === 'demo' ? 'Comandos inocuos reales · entorno separado' : state.mode === 'local' ? 'Comandos Flutter del proyecto seleccionado' : 'Consulta del estado real en GitHub Actions';
     $('modeIndicator').style.background = outcome === 'failure' ? 'var(--red)' : outcome === 'running' ? 'var(--purple)' : 'var(--green)';
     $('modeIndicator').style.boxShadow = `0 0 0 5px ${outcome === 'failure' ? 'var(--red-light)' : outcome === 'running' ? 'var(--purple-light)' : 'var(--green-light)'}`;
     $('modeType').textContent = state.mode === 'demo' ? 'DEMO' : 'CI';
-    $('runTitle').textContent = state.title || `${state.repository || 'SnackUP'}${state.run_id ? ` #${state.run_id}` : ''}`;
-    $('runTitle').title = state.title || '';
+    const runTitle = `${state.title || state.repository || 'SnackUP'}${state.run_id ? ` #${state.run_id}` : ''}`;
+    $('runTitle').textContent = runTitle;
+    $('runTitle').title = runTitle;
     $('branchLabel').textContent = state.branch || '—';
     $('shaLabel').textContent = state.sha ? state.sha.slice(0,8) : '—';
     $('shaLabel').title = state.sha || '';
@@ -161,7 +163,8 @@
     $('progressHeadline').textContent = outcome === 'success' ? 'Pipeline completado · validaciones aprobadas' : outcome === 'failure' ? 'Pipeline detenido · fallo detectado' : running ? `En ejecución: ${running.name}` : 'Listo para observar el pipeline';
     $('progressFill').style.width = `${state.stages.length ? terminal / state.stages.length * 100 : 0}%`;
     $('progressFill').className = outcome;
-    $('elapsedLabel').textContent = replay ? `${replay.paused ? 'Pausa' : outcome === 'pending' ? 'Evidencia real' : 'Reproducción'} · ${durationLabel(replay.elapsed)} de ${durationLabel(replay.duration)} registrados · velocidad ${replay.speed}×` : state.mode === 'demo' ? 'Demostración aislada: evidencia de comandos locales, sin modificar SnackUP.' : state.mode === 'local' ? 'Ejecución local del CI. Revisa los registros de cada comando.' : `${success} etapas aprobadas · consulta periódica del estado real.`;
+    $('elapsedLabel').textContent = replay ? `${replay.paused ? 'Pausa' : outcome === 'pending' ? 'Evidencia real' : 'Reproducción'} · ${durationLabel(replay.elapsed)} de ${durationLabel(replay.duration)} registrados · velocidad ${speedLabel(replay.speed)}` : state.mode === 'demo' ? 'Demostración aislada: evidencia de comandos locales, sin modificar SnackUP.' : state.mode === 'local' ? 'Ejecución local del CI. Revisa los registros de cada comando.' : `${success} etapas aprobadas · consulta periódica del estado real.`;
+    for (const option of Array.from($('speedSelect').options || [])) option.textContent = speedLabel(option.value);
     $('flowBadge').textContent = outcome === 'running' ? 'EN CURSO' : outcome === 'success' ? 'APROBADO' : outcome === 'failure' ? 'DETENIDO' : 'CI';
     $('flowBadge').className = `live-dot ${outcome}`;
     const artifact = state.artifacts[0];

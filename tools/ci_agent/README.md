@@ -53,7 +53,7 @@ Las ejecuciones anteriores son del 5 de octubre de 2026 en UTC. El Flutter CI ap
 
 El artefacto histórico se llama `snackup-integrated-web` y tiene SHA-256 `ad9d0a0eb2be0aeaa736b35d07bd50e522915aa5a8f0605039971b121c739a23`. [Abrir artefacto en GitHub](https://github.com/Gabino-RG/SnackUP-core/actions/runs/37257224068/artifacts/11322847580). Su disponibilidad para descarga depende de la retención de GitHub; el paquete conserva los registros que documentan su creación.
 
-La carpeta `evidence/` incluye los datos normalizados, los jobs y los registros originales. `web/evidence-data.js` permite reproducir los mismos datos sin conexión. Las 18 pruebas REST son evidencia adicional de otro workflow, no una etapa inventada dentro del Flutter CI histórico.
+El paquete descargable incluye los datos normalizados, los jobs y los registros originales en `evidence/`. La rama de código incluye los datos normalizados necesarios para reproducirlos. `web/evidence-data.js` permite reproducir los mismos datos sin conexión. Las 18 pruebas REST son evidencia adicional de otro workflow, no una etapa inventada dentro del Flutter CI histórico.
 
 ## Pipeline preparado para SnackUP
 
@@ -112,3 +112,7 @@ CI valida cambios, ejecuta pruebas, compila y conserva un artefacto. CD se ocupa
 | Sabina Pérez Olvera | Frontend |
 
 Consulta `GUION_VIDEO.txt` para la secuencia breve de evidencia y `ENTREGA_CLASSROOM.txt` para el texto de entrega.
+
+## Rama del agente
+
+El código del agente está en [feature/ci-visual-agent](https://github.com/Gabino-RG/SnackUP-core/tree/feature/ci-visual-agent/tools/ci_agent), separado de `main`. El workflow `SnackUP CI Agent - validacion y video` prueba el motor y registra la interfaz en un navegador; no sustituye la evidencia de la compilación Flutter histórica ni ejecuta la plantilla Flutter nueva.
