@@ -2,6 +2,7 @@
 // Artificial fixtures exercise refusal and timeline rules only. Never video evidence.
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const {spawnSync} = require('node:child_process');
 const {validateEvidence, projectState, redact, scene} = require('./record_part2.cjs');
 
 function fixture(failure = false) {
@@ -75,4 +76,34 @@ test('webhook URLs and Sonar credentials cannot enter screenshots or output mani
   assert(!JSON.stringify(sanitized).includes('https://hooks.slack.com'));
   assert(!JSON.stringify(sanitized).includes('https://discord.com'));
   assert(!JSON.stringify(sanitized).includes('squ_123abc'));
+});
+
+test('collector output contract resolves the actual send step, not notifier checkout or receipt upload', () => {
+  // Consume the collector's existing in-memory unit fixtures, never write them as
+  // deliverable evidence or pass them to record(). Its short mock Discord ID is
+  // expanded solely in this test to match the recorder's real snowflake guard.
+  const python = [
+    'import importlib.util, json',
+    'spec=importlib.util.spec_from_file_location("contract_fixture", "tests/test_collect_part2.py")',
+    'm=importlib.util.module_from_spec(spec); spec.loader.exec_module(m)',
+    'approved=m.ci.collect_run(m.FakeClient(m.fixture()), m.REPO, 100, True)',
+    'values=m.fixture(False); values[3]["message_id"]="1234567890123456789"',
+    'failed=m.ci.collect_run(m.FakeClient(values), m.REPO, 200, False)',
+    'print(json.dumps({"success":approved, "failure":failed}))'
+  ].join('\n');
+  const result = spawnSync('python3', ['-c', python], {cwd:__dirname, encoding:'utf8'});
+  assert.equal(result.status, 0, result.stderr);
+  const bundles = JSON.parse(result.stdout);
+  const approved = validateEvidence(bundles.success, 'success');
+  const failed = validateEvidence(bundles.failure, 'failure');
+  assert.equal(bundles.success.state.stages[approved.scanIndexes[0]].id, bundles.success.sonar.scan_stage_id);
+  assert.equal(bundles.success.state.stages[approved.gateIndexes[0]].id, bundles.success.sonar.gate_stage_id);
+  assert.equal(failed.notificationIndexes.length, 1);
+  assert.equal(bundles.failure.state.stages[failed.notificationIndexes[0]].name, 'Notificar fallo en Slack o Discord');
+  assert.equal(bundles.failure.state.stages[failed.notificationIndexes[0]].id, bundles.failure.notification.notification_stage_id);
+  // The full list still includes checkout and receipt preservation steps.
+  assert.equal(bundles.failure.state.stages.length, 6);
+  const forged = JSON.parse(JSON.stringify(bundles.failure));
+  forged.notification.notification_stage_id = 'gh-12-1';
+  assert.throws(() => validateEvidence(forged, 'failure'), /ID acreditado de notification/);
 });

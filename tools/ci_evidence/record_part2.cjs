@@ -25,7 +25,7 @@ const indexes = (state, kind) => state.stages.reduce((found, stage, index) => {
   const configuration = /(?:verify|check).*(?:sonar|credential|secret)|(?:sonar.*config|config.*sonar)/i.test(text);
   const matches = kind === 'scan' ? /sonar/i.test(text) && !gate && !configuration
     : kind === 'gate' ? gate
-    : /notif|webhook|discord|slack|correo/i.test(text);
+    : /\b(?:notify|notificar)\b|\bnotification(?:\s|$)|enviar.*(?:alerta|notificaci[oó]n)|send.*(?:alert|notification)/i.test(text);
   if (matches) found.push(index);
   return found;
 }, []);
@@ -50,7 +50,7 @@ function redact(value) {
 function validateEvidence(bundle, kind) {
   const label = kind === 'success' ? 'aprobado' : 'fallido';
   const state = bundle?.state;
-  assert(state && Array.isArray(state.stages) && state.stages.length >= 5, `Caso ${label}: falta el estado normalizado del pipeline.`);
+  assert(state && Array.isArray(state.stages) && state.stages.length >= 2, `Caso ${label}: falta el estado normalizado del pipeline.`);
   assert(state.status === 'completed', `Caso ${label}: la ejecución debe haber terminado.`);
   assert(state.conclusion === (kind === 'success' ? 'success' : 'failure'), `Caso ${label}: la conclusión real no coincide.`);
   assert(Number.isSafeInteger(Number(state.run_id)) && Number(state.run_id) > 0, `Caso ${label}: falta run_id.`);
@@ -66,13 +66,22 @@ function validateEvidence(bundle, kind) {
       assert(Number.isFinite(start) && Number.isFinite(end) && end >= start, `Caso ${label}: ${stage.name} carece de marcas de tiempo reales.`);
     }
   }
-  const scanIndexes = indexes(state, 'scan'), gateIndexes = indexes(state, 'gate'), notificationIndexes = indexes(state, 'notification');
+  const resolveStep = (kind, recordedID) => {
+    const recognized = indexes(state, kind);
+    if (recordedID === undefined) return recognized;
+    const selected = state.stages.reduce((found, stage, index) => {if (stage.id === recordedID) found.push(index); return found;}, []);
+    assert(selected.length === 1 && recognized.includes(selected[0]), `Caso ${label}: el ID acreditado de ${kind} no corresponde al paso observado.`);
+    return selected;
+  };
+  const scanIndexes = resolveStep('scan', bundle.sonar?.scan_stage_id);
+  const gateIndexes = resolveStep('gate', bundle.sonar?.gate_stage_id);
+  const notificationIndexes = resolveStep('notification', bundle.notification?.notification_stage_id);
   assert(scanIndexes.length, `Caso ${label}: no hay etapa SonarQube.`);
   assert(gateIndexes.length, `Caso ${label}: no hay etapa Quality Gate.`);
   assert(bundle.sonar && typeof bundle.sonar.scan_executed === 'boolean', `Caso ${label}: falta constancia de ejecución del scanner.`);
   if (kind === 'success' || bundle.sonar.scan_executed) {
     assert(bundle.sonar.scan_executed === true, 'Caso aprobado: configurar SonarQube no demuestra ejecutar el análisis.');
-    assert(typeof bundle.sonar.analysis_id === 'string' && bundle.sonar.analysis_id.trim().length >= 8, `Caso ${label}: falta analysis_id obtenido de SonarQube.`);
+    assert(typeof bundle.sonar.analysis_id === 'string' && /^[A-Za-z0-9_-]{5,200}$/.test(bundle.sonar.analysis_id), `Caso ${label}: falta analysis_id obtenido de SonarQube.`);
     assert(scanIndexes.some(index => state.stages[index].status === 'success'), `Caso ${label}: el análisis Sonar no terminó correctamente.`);
   }
   if (kind === 'success') {

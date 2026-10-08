@@ -35,7 +35,7 @@ El recolector debe producir este esquema con datos de GitHub Actions, la respues
 }
 ```
 
-Cada etapa tiene `id`, `name`, `status`, `logs` como arreglo y, si se ejecutó, `started_at` / `completed_at` originales. El video reconoce los pasos SonarQube, Quality Gate y notificación por sus nombres, IDs o comandos. No interpreta una comprobación de credenciales como ejecución del scanner.
+Cada etapa tiene `id`, `name`, `status`, `logs` como arreglo y, si se ejecutó, `started_at` / `completed_at` originales. El video usa los IDs acreditados `sonar.scan_stage_id`, `sonar.gate_stage_id` y `notification.notification_stage_id` del recolector; en datos sin esos campos, reconoce los nombres o comandos. Comprueba que el ID corresponda al paso correcto: descargar el código del notificador o guardar su comprobante no se interpreta como enviar el aviso. Tampoco interpreta una comprobación de credenciales como ejecución del scanner.
 
 La ejecución aprobada debe incluir un análisis SonarQube ejecutado, `analysis_id`, `gate_status: "OK"` y pasos de análisis / gate aprobados. La ejecución fallida debe incluir un fallo y una notificación posterior aprobada, recibo `status: "DELIVERED"`, proveedor Slack/Discord/correo y HTTP 2xx. Discord requiere el ID numérico del mensaje creado mediante `wait=true` y `acknowledgement: "discord_created_message"`. Slack requiere HTTP 200 y `acknowledgement: "slack_ok"`, asignado sólo después de comprobar el cuerpo `ok`. Cuando el recibo conserva repositorio, run ID y commit, deben coincidir con la ejecución. Un HTTP 2xx aislado, una etapa omitida o un envío simulado no cumplen estas condiciones. `DELIVERED` acredita aceptación por el servidor del proveedor; no demuestra que una persona leyó el aviso.
 
@@ -59,4 +59,4 @@ node --test tools/ci_evidence/test_record_part2.cjs
 node tools/ci_evidence/record_part2.cjs --success aprobado.json --failure fallido.json --validate-only
 ```
 
-Las fixtures de prueba son artificiales y sólo verifican rechazo, concordancia y cronología. No se usan como evidencia de la actividad ni como entrada para un video final.
+Las fixtures de prueba son artificiales y sólo verifican rechazo, concordancia, cronología y compatibilidad con `collect_part2.py`. La prueba de contrato consume en memoria sus fixtures existentes; no genera archivos de evidencia ni video. No se usan como evidencia de la actividad ni como entrada para un video final.

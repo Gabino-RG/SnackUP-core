@@ -1,0 +1,27 @@
+{
+  "repository": "Gabino-RG/SnackUP-core",
+  "branch": "feature/ci-sonar-notifications",
+  "observed_commit": "13e00a00e2b2ef8d93252c19d0732c16f1064930",
+  "observed_date_utc": "2026-10-08",
+  "implementation_checks": {
+    "run_id": 37862252929,
+    "url": "https://github.com/Gabino-RG/SnackUP-core/actions/runs/37862252929",
+    "conclusion": "success",
+    "tests_at_observed_commit": 43
+  },
+  "real_pipeline": {
+    "run_id": 37862252906,
+    "url": "https://github.com/Gabino-RG/SnackUP-core/actions/runs/37862252906",
+    "conclusion": "failure",
+    "failed_stage": "configuration",
+    "configuration_status": "BLOCKED",
+    "missing": ["SONAR_TOKEN", "SONAR_ORGANIZATION", "SONAR_PROJECT_KEY", "CI_FAILURE_WEBHOOK_URL"],
+    "sonar_analysis_executed": false,
+    "quality_gate_validated": false,
+    "notification_status": "MISSING_CONFIGURATION",
+    "notification_sent": false,
+    "controlled_failure": false
+  },
+  "submission_status": "PENDING_REAL_SERVICE_CONFIGURATION_AND_VIDEO",
+  "note": "Registro de una ejecución observada, no evidencia de requisitos completos. Repetir todos los jobs tras configurar secretos y variables."
+}

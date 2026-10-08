@@ -6,6 +6,15 @@ Esta implementación extiende `.github/workflows/flutter-ci.yml` del proyecto Fl
 
 **Estado inicial:** implementación disponible; la acreditación de SonarQube y de la alerta depende de configurar los servicios y ejecutar el pipeline. Los tests locales usan respuestas simuladas para probar el código: no son evidencia de un escaneo ni de un mensaje enviado.
 
+### Comprobación remota del 8 de octubre de 2026
+
+- [Verificación de la implementación](https://github.com/Gabino-RG/SnackUP-core/actions/runs/37862252929): aprobada; 43 pruebas en el commit `13e00a00e2b2ef8d93252c19d0732c16f1064930`.
+- [Ejecución del pipeline real](https://github.com/Gabino-RG/SnackUP-core/actions/runs/37862252906): bloqueada en configuración. GitHub confirmó que faltan los cuatro valores obligatorios de la tabla siguiente. El scanner, el Quality Gate y el build quedaron omitidos.
+- El job de alerta sí se activó ante ese fallo, pero conservó `MISSING_CONFIGURATION` porque aún no existe el webhook. No se envió ningún mensaje ni se presenta esta ejecución como evidencia de los dos requisitos cumplidos.
+- [Cambios revisables, PR #23](https://github.com/Gabino-RG/SnackUP-core/pull/23). La rama de entrega es [feature/ci-sonar-notifications](https://github.com/Gabino-RG/SnackUP-core/tree/feature/ci-sonar-notifications).
+
+La configuración debe completarse antes de generar el video definitivo. La comprobación posterior del contrato recolector/grabador añade una prueba más; la suite actual contiene 44 pruebas.
+
 ## 1. Qué hace el pipeline
 
 | Paso | Control y evidencia |
