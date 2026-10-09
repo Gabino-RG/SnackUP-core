@@ -50,6 +50,32 @@ class SonarTests(unittest.TestCase):
     def test_manual_failure_requires_explicit_true_input(self):
         self.assertFalse(requested({"GITHUB_EVENT_NAME": "workflow_dispatch"}, {"enabled": True}))
         self.assertTrue(requested({"GITHUB_EVENT_NAME": "workflow_dispatch", "EVIDENCE_FAILURE_INPUT": "true"}, {}))
+
+    def test_pr_marker_applies_to_evidence_branch_targeting_main_or_master(self):
+        env = {"GITHUB_EVENT_NAME": "pull_request", "GITHUB_HEAD_REF": "feature/ci-sonar-notifications",
+               "GITHUB_REF_NAME": "24/merge"}
+        for base in ("main", "master"):
+            with self.subTest(base=base):
+                self.assertTrue(requested({**env, "GITHUB_BASE_REF": base}, {"enabled": True}))
+                self.assertFalse(requested({**env, "GITHUB_BASE_REF": base}, {"enabled": False}))
+
+    def test_pr_marker_rejects_other_or_missing_head_and_base_branches(self):
+        env = {"GITHUB_EVENT_NAME": "pull_request", "GITHUB_HEAD_REF": "feature/ci-sonar-notifications",
+               "GITHUB_BASE_REF": "main"}
+        denied = (
+            {**env, "GITHUB_HEAD_REF": "main"},
+            {**env, "GITHUB_HEAD_REF": "feature/another-change"},
+            {**env, "GITHUB_HEAD_REF": ""},
+            {**env, "GITHUB_BASE_REF": "develop"},
+            {**env, "GITHUB_BASE_REF": "feature/ci-sonar-notifications"},
+            {**env, "GITHUB_BASE_REF": ""},
+            {"GITHUB_EVENT_NAME": "pull_request", "GITHUB_REF_NAME": "feature/ci-sonar-notifications"},
+            {**env, "GITHUB_EVENT_NAME": "pull_request_target"},
+        )
+        for candidate in denied:
+            with self.subTest(env=candidate):
+                self.assertFalse(requested(candidate, {"enabled": True}))
+
     def evaluate(self, api, **kwargs):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)

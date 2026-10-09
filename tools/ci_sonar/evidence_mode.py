@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Opt-in controlled failure, confined to the evidence branch for push events."""
+"""Opt-in controlled failure confined to evidence-branch push and PR events."""
 import json
 import os
 from pathlib import Path
@@ -8,9 +8,13 @@ from pathlib import Path
 def requested(env: dict, marker: dict) -> bool:
     if env.get("GITHUB_EVENT_NAME") == "workflow_dispatch":
         return env.get("EVIDENCE_FAILURE_INPUT", "false") == "true"
-    return (env.get("GITHUB_EVENT_NAME") == "push"
-            and env.get("GITHUB_REF_NAME") == "feature/ci-sonar-notifications"
-            and marker.get("enabled") is True)
+    if marker.get("enabled") is not True:
+        return False
+    if env.get("GITHUB_EVENT_NAME") == "push":
+        return env.get("GITHUB_REF_NAME") == "feature/ci-sonar-notifications"
+    return (env.get("GITHUB_EVENT_NAME") == "pull_request"
+            and env.get("GITHUB_HEAD_REF") == "feature/ci-sonar-notifications"
+            and env.get("GITHUB_BASE_REF") in {"main", "master"})
 
 
 def main() -> int:

@@ -1,27 +1,42 @@
 {
   "repository": "Gabino-RG/SnackUP-core",
   "branch": "feature/ci-sonar-notifications",
-  "observed_commit": "13e00a00e2b2ef8d93252c19d0732c16f1064930",
-  "observed_date_utc": "2026-10-08",
+  "observed_commit": "f303fc9838b713bf79a3397362c90172d9b30178",
+  "observed_date_utc": "2026-10-09",
   "implementation_checks": {
-    "run_id": 37862252929,
-    "url": "https://github.com/Gabino-RG/SnackUP-core/actions/runs/37862252929",
+    "run_id": 37867100023,
     "conclusion": "success",
-    "tests_at_observed_commit": 43
+    "tests_at_observed_commit": 46
   },
-  "real_pipeline": {
-    "run_id": 37862252906,
-    "url": "https://github.com/Gabino-RG/SnackUP-core/actions/runs/37862252906",
+  "real_branch_pipeline": {
+    "run_id": 37867098901,
     "conclusion": "failure",
-    "failed_stage": "configuration",
-    "configuration_status": "BLOCKED",
-    "missing": ["SONAR_TOKEN", "SONAR_ORGANIZATION", "SONAR_PROJECT_KEY", "CI_FAILURE_WEBHOOK_URL"],
-    "sonar_analysis_executed": false,
+    "failed_stage": "gate",
+    "configuration_status": "READY",
+    "sonar_analysis_executed": true,
+    "sonar_task_id": "AaEeKhdOuoMz_oCERAYZ",
+    "analysis_id": "29e565a5-d8a7-4ca0-b272-e3c8df0af3ca",
+    "task_status": "SUCCESS",
     "quality_gate_validated": false,
-    "notification_status": "MISSING_CONFIGURATION",
-    "notification_sent": false,
+    "quality_gate_status": "UNKNOWN",
+    "reason": "SONAR_API_HTTP_403",
+    "notification_status": "DELIVERED",
+    "notification_provider": "discord",
+    "notification_http_code": 200,
     "controlled_failure": false
   },
-  "submission_status": "PENDING_REAL_SERVICE_CONFIGURATION_AND_VIDEO",
-  "note": "Registro de una ejecución observada, no evidencia de requisitos completos. Repetir todos los jobs tras configurar secretos y variables."
+  "pr_pipeline": {
+    "pr_number": 24,
+    "draft": true,
+    "base": "main",
+    "run_id": 37867434898,
+    "conclusion": "failure",
+    "failed_stage": "sonar",
+    "scanner_error": "Could not find the pullrequest with key '24'",
+    "quality_gate_validated": false
+  },
+  "next_required_configuration": "Review SonarQube project repository binding and SonarQubeCloud GitHub app access to Gabino-RG/SnackUP-core pull requests.",
+  "submission_status": "PENDING_SONAR_PULL_REQUEST_ACCESS_AND_VIDEO",
+  "part2_video_generated": false,
+  "note": "Registro de resultados observados. Scanner exitoso y alerta confirmada no equivalen a un Quality Gate aprobado. No se presenta la evidencia incompleta como entrega final."
 }

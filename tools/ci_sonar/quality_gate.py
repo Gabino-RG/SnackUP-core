@@ -72,7 +72,7 @@ def evaluate(report: Path, host: str, key: str, token: str, output: Path,
              timeout: int = 300, opener=None, clock=time.monotonic, pause=time.sleep) -> dict:
     output.mkdir(parents=True, exist_ok=True)
     receipt = {"scan_executed": False, "analysis_id": None, "gate_status": "UNKNOWN",
-               "task_status": "UNKNOWN", "commit": os.environ.get("GITHUB_SHA", ""),
+               "task_status": "UNKNOWN", "commit": os.environ.get("CI_COMMIT_SHA") or os.environ.get("GITHUB_SHA", ""),
                "run_id": os.environ.get("GITHUB_RUN_ID", ""),
                "run_attempt": os.environ.get("GITHUB_RUN_ATTEMPT", "1"),
                "timestamp_utc": datetime.now(timezone.utc).isoformat(timespec="seconds")}

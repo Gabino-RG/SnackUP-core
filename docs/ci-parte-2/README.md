@@ -8,13 +8,14 @@ Esta implementación extiende `.github/workflows/flutter-ci.yml` del proyecto Fl
 
 ### Comprobación remota del 8 de octubre de 2026
 
-- [Verificación de la implementación](https://github.com/Gabino-RG/SnackUP-core/actions/runs/37862415211): aprobada; 44 pruebas en el commit `e0ef7ec47a4530c4ffeab4c3e5ea9c1696ac200a`.
-- [Ejecución del pipeline real](https://github.com/Gabino-RG/SnackUP-core/actions/runs/37862415214), intento 3: bloqueada en configuración de SonarQube. El scanner, el Quality Gate y el build quedaron omitidos.
-- La alerta de ese intento sí fue confirmada por Discord: `DELIVERED`, HTTP 200, mensaje `1557914181624266752`. La captura del canal confirma que el mensaje fue recibido. Esto acredita la notificación, pero todavía no el análisis SonarQube.
-- El equipo proporcionó las claves públicas exactas del proyecto existente: organización `jcoorp`, proyecto `JCoorp_SnackUP-core`. El workflow las usa por defecto; las variables de repositorio permiten sobrescribirlas. El token permanece exclusivamente en GitHub Secrets.
-- [Cambios revisables, PR #23](https://github.com/Gabino-RG/SnackUP-core/pull/23). La rama de entrega es [feature/ci-sonar-notifications](https://github.com/Gabino-RG/SnackUP-core/tree/feature/ci-sonar-notifications).
+- [Verificación de la implementación](https://github.com/Gabino-RG/SnackUP-core/actions/runs/37867100023): aprobada; 46 pruebas en el commit `f303fc9838b713bf79a3397362c90172d9b30178`. Las pruebas posteriores del contexto de pull request amplían la suite a 50.
+- [Análisis real de la rama](https://github.com/Gabino-RG/SnackUP-core/actions/runs/37867098901): pruebas y compilación aprobadas; SonarQube analizó Dart e importó `coverage/lcov.info`. Su tarea terminó `SUCCESS`, Analysis ID `29e565a5-d8a7-4ca0-b272-e3c8df0af3ca`. La consulta del Quality Gate devolvió HTTP 403; el artefacto validado quedó bloqueado.
+- Discord confirmó la alerta de esa ejecución: `DELIVERED`, HTTP 200. Esto acredita el envío real ante un fallo.
+- [PR #24 en borrador hacia main](https://github.com/Gabino-RG/SnackUP-core/pull/24): permite usar el análisis de PR que admite el plan Free sin integrar cambios. [Su primera ejecución](https://github.com/Gabino-RG/SnackUP-core/actions/runs/37867434898) alcanzó SonarQube, pero el scanner respondió `Could not find the pullrequest with key '24'`. Falta revisar el vínculo del proyecto y el acceso de la app SonarQubeCloud a los PR de este repositorio.
+- Las claves públicas verificadas son organización `jcoorp` y proyecto `JCoorp_SnackUP-core`. El token y webhook permanecen exclusivamente en GitHub Secrets.
+- [PR #23](https://github.com/Gabino-RG/SnackUP-core/pull/23) conserva la revisión incremental de la segunda parte. La rama de entrega es [feature/ci-sonar-notifications](https://github.com/Gabino-RG/SnackUP-core/tree/feature/ci-sonar-notifications).
 
-El análisis SonarQube y su Quality Gate deben comprobarse en una ejecución nueva antes de generar el video definitivo. El registro inicial de `ESTADO_VERIFICADO.json` conserva la primera comprobación, anterior a configurar Discord.
+**La entrega definitiva sigue pendiente:** no existe todavía una ejecución con Quality Gate aprobado ni el video de la parte 2. `ESTADO_VERIFICADO.json` registra las comprobaciones reales y el bloqueo restante.
 
 ## 1. Qué hace el pipeline
 
@@ -47,7 +48,11 @@ En el repositorio [Gabino-RG/SnackUP-core](https://github.com/Gabino-RG/SnackUP-
 
 Los dos secretos deben guardarse directamente en GitHub. **No incluirlos en código, capturas, grabaciones, issues ni mensajes.** Las claves de organización y proyecto son identificadores públicos y pueden quedar en el workflow. El conector usado para este cambio no administra secretos de GitHub, por lo que un administrador del repositorio debe guardar los tokens y el webhook.
 
-En SonarQube Cloud, importar el repositorio correcto, habilitar el análisis por CI y evitar el análisis automático simultáneo. Comprobar que el plan permite analizar la rama `feature/ci-sonar-notifications`: el plan Free tiene restricciones de ramas; OSS o un plan que incluya ramas puede ser adecuado para este repositorio público. No sobrescribir `sonar.branch.name=main` para presentar una rama distinta como principal. Si la rama no está permitida, resolver el plan o la estrategia de ramas antes de grabar.
+En SonarQube Cloud, importar el repositorio correcto, habilitar el análisis por CI y evitar el análisis automático simultáneo. El workflow analiza los pushes a `main`/`master` y los pull requests hacia esas ramas. Esta estrategia permite usar el plan Free cuando el destino coincide con la rama principal reconocida por SonarQube. El checkout y los comprobantes usan el SHA real de la rama fuente del PR; nunca se presenta la revisión de merge como si fuera ese commit. No sobrescribir `sonar.branch.name=main` para presentar una feature como principal.
+
+Si aparece `Could not find the pullrequest with key '24'`, revisar en el proyecto **Administration → General Settings → Repository binding**: debe estar vinculado realmente a `Gabino-RG/SnackUP-core`. El botón View on GitHub puede ser un enlace manual y no sustituye esa comprobación. Después, en la organización **Administration → Organization Settings → Organization binding → Repository Access settings**, comprobar que la app actual **SonarQubeCloud** tiene acceso al repositorio. No confundirla con la app heredada SonarCloud. Si el repositorio pertenece a otra organización de GitHub y no se ofrece como destino, importar el repositorio en una organización Sonar correspondiente y actualizar las claves públicas; no borrar el proyecto existente.
+
+Fuentes oficiales: [cambiar el vínculo](https://docs.sonarsource.com/sonarqube-cloud/managing-your-projects/administering-your-projects/changing-binding), [acceso de la app GitHub](https://docs.sonarsource.com/sonarqube-cloud/administering-sonarcloud/managing-organization/creating-organization/importing-github-organization) y [planes](https://docs.sonarsource.com/sonarqube-cloud/administering-sonarcloud/managing-subscription/subscription-plans).
 
 Esta implementación utiliza SonarQube Cloud, que dispone de análisis Dart oficial. No sustituirlo por un contenedor Community Build y afirmar que analizó Flutter: Community Build no incluye ese analizador nativo. Un servidor SonarQube con Dart requeriría adaptar el host y comprobar edición/licencia.
 
@@ -75,11 +80,11 @@ Se conservan dos artefactos de auditoría:
 
 Trabajar en **`feature/ci-sonar-notifications`**, sin mezclar estos cambios en `main` antes de revisión.
 
-1. Guardar los dos secretos y verificar los identificadores públicos efectivos (variables o valores por defecto). Volver a ejecutar **todos los jobs** de `Flutter CI - SonarQube y alertas`, o hacer un commit en esta rama. Mantener `docs/ci-parte-2/failure-test.json` con `"enabled": false`. Esperar a que SonarQube, Quality Gate y empaquetado aprueben. Conservar el ID de esta ejecución.
+1. Guardar los dos secretos y verificar los identificadores públicos efectivos (variables o valores por defecto). Abrir un PR desde esta rama hacia la principal reconocida por SonarQube (PR #24 existente) y hacer un commit para activar `Flutter CI - SonarQube y alertas`. Mantener `docs/ci-parte-2/failure-test.json` con `"enabled": false`. Esperar a que SonarQube, Quality Gate y empaquetado aprueben. Conservar el ID de esta ejecución.
 2. Para probar la alerta, cambiar exclusivamente `"enabled": true` en ese JSON y hacer un commit en la misma rama. Después de aprobar SonarQube, el step `Prueba controlada de fallo para evidencia` termina con código 1; el artefacto validado queda omitido y el job de notificación debe confirmar `DELIVERED`. Conservar el ID de esta segunda ejecución.
 3. Restaurar `"enabled": false` mediante un commit. Esta restauración deja la rama lista para validación normal. El aviso indica explícitamente que el fallo fue controlado, solo si ese step realmente falló.
 
-El marcador solo activa fallos por push en esta rama de evidencia. También existe el input manual `evidence_failure` cuando GitHub habilita `Run workflow`. Una configuración ausente, un Gate rechazado o un webhook fallido no equivalen a esta demostración aprobada.
+El marcador activa el fallo en el PR de esta rama de evidencia hacia main/master; no se activa en otras ramas ni destinos. La lógica conserva soporte para push propio, aunque el workflow completo se ejecuta mediante PR en este escenario Free. También existe el input manual `evidence_failure` cuando GitHub habilita `Run workflow`. Una configuración ausente, un Gate rechazado o un webhook fallido no equivalen a esta demostración aprobada.
 
 Los reintentos deben ejecutar todos los jobs para que auditoría, tarea Sonar y recibo correspondan al mismo `run_attempt`. No mezclar comprobantes de commits o intentos distintos.
 

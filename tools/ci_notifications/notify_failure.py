@@ -85,13 +85,15 @@ def run_context(env: Mapping[str, str], stage: str) -> dict:
     run_id = run_id if re.fullmatch(r"\d+", run_id) else ""
     attempt = env.get("GITHUB_RUN_ATTEMPT", "1")
     attempt = attempt if re.fullmatch(r"\d+", attempt) else "1"
-    sha = env.get("GITHUB_SHA", "")
+    # PR jobs may expose the synthetic merge SHA/ref. Prefer the actual source
+    # revision supplied by the workflow, so the alert identifies what was scanned.
+    sha = env.get("CI_COMMIT_SHA", "") or env.get("GITHUB_SHA", "")
     sha = sha.lower() if re.fullmatch(r"[a-fA-F0-9]{7,40}", sha) else "no-disponible"
     controlled = env.get("CI_EVIDENCE_CONTROLLED_FAILURE", "").lower() in {"true", "1", "yes"}
     return {
         "project": "SnackUP",
         "repository": repository,
-        "branch": public_text(env.get("GITHUB_REF_NAME", "no-disponible")),
+        "branch": public_text(env.get("CI_BRANCH_REF", "") or env.get("GITHUB_REF_NAME", "no-disponible")),
         "commit": sha,
         "run_id": run_id,
         "run_attempt": attempt,

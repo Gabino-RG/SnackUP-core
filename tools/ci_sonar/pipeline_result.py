@@ -12,7 +12,7 @@ record = {
     "repository": os.environ.get("GITHUB_REPOSITORY"),
     "run_id": os.environ.get("GITHUB_RUN_ID"),
     "run_attempt": os.environ.get("GITHUB_RUN_ATTEMPT", "1"),
-    "commit": os.environ.get("GITHUB_SHA"),
+    "commit": os.environ.get("CI_COMMIT_SHA") or os.environ.get("GITHUB_SHA"),
     "failed_stage": failures[0] if failures else "",
     "controlled_failure": "controlled_failure" in failures,
     "controlled_failure_requested": os.environ.get("CI_EVIDENCE_CONTROLLED_FAILURE") == "true",

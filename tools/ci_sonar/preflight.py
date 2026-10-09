@@ -45,7 +45,7 @@ def check(env: dict) -> dict:
         "missing": missing, "invalid": invalid,
         "sonar_host": host, "notification_provider": provider,
         "sonar_analysis_executed": False,
-        "commit": env.get("GITHUB_SHA", ""),
+        "commit": env.get("CI_COMMIT_SHA") or env.get("GITHUB_SHA", ""),
         "note": "READY confirma configuración local; no acredita análisis ni entrega de mensajes.",
     }
 

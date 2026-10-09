@@ -171,6 +171,39 @@ class NotificationTests(unittest.TestCase):
         self.assertNotIn("@", payload["text"])
         self.assertNotIn(SLACK_URL, json.dumps(receipt) + payload["text"])
 
+    def test_pr_alert_and_receipt_identify_source_head_instead_of_merge_revision(self):
+        source_sha = "b" * 40
+        merge_sha = "c" * 40
+        env = {
+            **self.env(DISCORD_URL),
+            "GITHUB_SHA": merge_sha,
+            "GITHUB_REF_NAME": "24/merge",
+            "CI_COMMIT_SHA": source_sha,
+            "CI_BRANCH_REF": "feature/ci-sonarqube-alerts",
+        }
+        opener = FakeOpener(Response(body=b'{"id":"987654321","channel_id":"123456789"}'))
+        receipt, code = notifier.notify("failure", "SonarQube Quality Gate", env, opener)
+        self.assertEqual((code, receipt["status"]), (0, "DELIVERED"))
+        self.assertEqual(receipt["commit"], source_sha)
+        self.assertEqual(receipt["branch"], "feature/ci-sonarqube-alerts")
+        message = json.loads(opener.requests[0][0].data)["content"]
+        self.assertIn(source_sha[:12], message)
+        self.assertIn("feature/ci-sonarqube-alerts", message)
+        self.assertNotIn(merge_sha[:12], message + json.dumps(receipt))
+        self.assertNotIn("24/merge", message + json.dumps(receipt))
+        self.assertNotIn("TEST_SECRET_NOT_REAL", message + json.dumps(receipt))
+
+    def test_empty_source_overrides_fall_back_to_standard_github_metadata(self):
+        env = {**self.env(SLACK_URL), "CI_COMMIT_SHA": "", "CI_BRANCH_REF": ""}
+        opener = FakeOpener()
+        receipt, code = notifier.notify("failure", "Build", env, opener)
+        self.assertEqual((code, receipt["status"]), (0, "DELIVERED"))
+        self.assertEqual(receipt["commit"], BASE_ENV["GITHUB_SHA"])
+        self.assertEqual(receipt["branch"], BASE_ENV["GITHUB_REF_NAME"])
+        message = json.loads(opener.requests[0][0].data)["text"]
+        self.assertIn(BASE_ENV["GITHUB_SHA"][:12], message)
+        self.assertIn(BASE_ENV["GITHUB_REF_NAME"], message)
+
 
 if __name__ == "__main__":
     unittest.main()
