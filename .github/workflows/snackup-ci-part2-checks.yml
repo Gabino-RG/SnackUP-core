@@ -1,0 +1,25 @@
+name: SnackUP CI parte 2 - verificar implementación
+on:
+  push:
+    branches: [feature/ci-sonar-notifications]
+    paths: ['tools/ci_sonar/**', 'tools/ci_notifications/**', 'tools/ci_evidence/**', '.github/workflows/flutter-ci.yml', '.github/workflows/snackup-ci-part2-*.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Descargar código
+        uses: actions/checkout@v7
+      - name: Probar entrega, rechazo y protección de secretos
+        run: python3 -m unittest discover -s tools/ci_notifications/tests -v
+      - name: Probar bloqueo por configuración y Quality Gate
+        run: python3 -m unittest discover -s tools/ci_sonar/tests -v
+      - name: Probar asociación de evidencia con ejecución y commit
+        run: python3 -m unittest discover -s tools/ci_evidence/tests -v
+      - name: Verificar sintaxis del grabador
+        run: node --check tools/ci_evidence/record_part2.cjs
+      - name: Probar que el grabador rechace evidencia incompleta
+        run: node --test tools/ci_evidence/test_record_part2.cjs

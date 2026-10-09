@@ -1,48 +1,176 @@
-name: Flutter CI
+name: Flutter CI - SonarQube y alertas
 
 on:
   push:
-    branches: [develop, test/api-aaa-sonarqube]
+    branches: [main, master]
   pull_request:
-    branches: [main, develop]
+    branches: [main, master]
+  workflow_dispatch:
+    inputs:
+      evidence_failure:
+        description: 'Provocar un fallo controlado DESPUÉS de aprobar SonarQube para demostrar la alerta'
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
+env:
+  CI_COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+  CI_BRANCH_REF: ${{ github.head_ref || github.ref_name }}
+
+concurrency:
+  group: snackup-flutter-ci-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   validate:
+    name: Flutter, SonarQube y Quality Gate
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: app
-
+    timeout-minutes: 25
+    outputs:
+      failed_stage: ${{ steps.result.outputs.failed_stage }}
+      controlled_failure: ${{ steps.result.outputs.controlled_failure }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Descargar código
+        id: checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ref: ${{ env.CI_COMMIT_SHA }}
 
-      - name: Setup Flutter
+      - name: Determinar prueba de fallo controlado
+        id: mode
+        env:
+          EVIDENCE_FAILURE_INPUT: ${{ inputs.evidence_failure && 'true' || 'false' }}
+        run: python3 tools/ci_sonar/evidence_mode.py
+
+      - name: Verificar configuración de SonarQube y alerta
+        id: configuration
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION || 'jcoorp' }}
+          SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY || 'JCoorp_SnackUP-core' }}
+          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL || 'https://sonarcloud.io' }}
+          CI_FAILURE_WEBHOOK_URL: ${{ secrets.CI_FAILURE_WEBHOOK_URL }}
+        run: python3 tools/ci_sonar/preflight.py
+
+      - name: Configurar Flutter
+        id: flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: 3.32.0
           channel: stable
           cache: true
 
-      - name: Dependencies
+      - name: Instalar dependencias
+        id: dependencies
+        working-directory: app
         run: flutter pub get
-        
-      - name: Static analysis
+
+      - name: Análisis estático Flutter
+        id: lint
+        working-directory: app
         run: flutter analyze --no-fatal-infos --no-fatal-warnings
 
-      - name: Unit and widget tests
-        run: flutter test --coverage
+      - name: Pruebas unitarias y widgets con cobertura
+        id: tests
+        working-directory: app
+        run: |
+          flutter test --coverage
+          test -s coverage/lcov.info
 
-      - name: Build integrated application
+      - name: Compilar aplicación integrada
+        id: build
+        working-directory: app
         run: flutter build web --no-web-resources-cdn --target lib/main.dart
 
-      - name: Preserve integrated web build
-        uses: actions/upload-artifact@v4
+      - name: Análisis SonarQube
+        id: sonar
+        uses: SonarSource/sonarqube-scan-action@d209202bc7d53ff1cc128f7f907dac145c9d6ae9 # v8.3.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL || 'https://sonarcloud.io' }}
+        with:
+          projectBaseDir: app
+          args: >-
+            -Dsonar.organization=${{ vars.SONAR_ORGANIZATION || 'jcoorp' }}
+            -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY || 'JCoorp_SnackUP-core' }}
+            -Dsonar.scm.revision=${{ env.CI_COMMIT_SHA }}
+            -Dsonar.qualitygate.wait=false
+
+      - name: Quality Gate SonarQube bloqueante
+        id: gate
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY || 'JCoorp_SnackUP-core' }}
+          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL || 'https://sonarcloud.io' }}
+        run: python3 tools/ci_sonar/quality_gate.py --timeout 300
+
+      - name: Prueba controlada de fallo para evidencia
+        id: controlled_failure
+        if: ${{ success() && steps.mode.outputs.enabled == 'true' }}
+        run: |
+          echo 'FALLO CONTROLADO: SonarQube ya aprobó. Se detiene el empaquetado para probar la alerta real.'
+          exit 1
+
+      - name: Empaquetar artefacto validado
+        id: artifact
+        uses: actions/upload-artifact@v7
         with:
           name: snackup-integrated-web
           path: app/build/web
           if-no-files-found: error
           retention-days: 14
+          overwrite: true
+
+      - name: Guardar resultados de etapas
+        id: result
+        if: always()
+        env:
+          CI_STEPS_JSON: ${{ toJSON(steps) }}
+          CI_EVIDENCE_CONTROLLED_FAILURE: ${{ steps.mode.outputs.enabled || 'false' }}
+        run: python3 tools/ci_sonar/pipeline_result.py
+
+      - name: Conservar auditoría de CI y SonarQube
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: snackup-ci-audit
+          path: |
+            sonar-evidence/
+            app/coverage/lcov.info
+          if-no-files-found: error
+          retention-days: 30
+          overwrite: true
+
+  notify:
+    name: Notificación de fallo
+    needs: validate
+    if: ${{ always() && needs.validate.result == 'failure' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Descargar código del notificador
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.CI_COMMIT_SHA }}
+
+      - name: Notificar fallo en Slack o Discord
+        id: notification
+        env:
+          CI_FAILURE_WEBHOOK_URL: ${{ secrets.CI_FAILURE_WEBHOOK_URL }}
+          CI_FAILED_STAGE: ${{ needs.validate.outputs.failed_stage || 'Consultar registro de CI' }}
+          CI_EVIDENCE_CONTROLLED_FAILURE: ${{ needs.validate.outputs.controlled_failure || 'false' }}
+        run: python3 tools/ci_notifications/notify_failure.py --status failure --receipt evidence/notification-receipt.json
+
+      - name: Conservar comprobante de notificación
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: snackup-ci-notification
+          path: evidence/notification-receipt.json
+          if-no-files-found: error
+          retention-days: 30
+          overwrite: true

@@ -1,0 +1,4 @@
+{
+  "enabled": false,
+  "purpose": "Prueba explícita de alerta tras aprobar SonarQube; solo aplica a push en feature/ci-sonar-notifications. Restaurar false después de grabar."
+}
