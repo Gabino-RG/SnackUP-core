@@ -3,7 +3,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
-from urllib.error import URLError
+from urllib.error import HTTPError, URLError
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from tools.ci_sonar.preflight import check
@@ -116,6 +116,22 @@ class SonarTests(unittest.TestCase):
         result = self.evaluate(Api(URLError("mock-token-not-real")))
         self.assertEqual(result["status"], "FAILED")
         self.assertNotIn("mock-token-not-real", json.dumps(result))
+
+    def test_forbidden_gate_reports_status_without_leaking_error_details(self):
+        api = Api(task(), HTTPError("https://sonarcloud.io/mock-token-not-real", 403,
+                                   "mock-token-not-real", {}, None))
+        result = self.evaluate(api)
+        self.assertEqual(result["reason"], "SONAR_API_HTTP_403")
+        self.assertEqual(result["status"], "FAILED")
+        self.assertEqual(result["analysis_id"], "analysis123")
+        self.assertNotIn("mock-token-not-real", json.dumps(result))
+
+    def test_unauthorized_task_cannot_be_reported_as_an_executed_scan(self):
+        result = self.evaluate(Api(HTTPError("https://sonarcloud.io/private", 401,
+                                             "sensitive-response", {}, None)))
+        self.assertEqual(result["reason"], "SONAR_API_HTTP_401")
+        self.assertFalse(result["scan_executed"])
+        self.assertNotIn("sensitive-response", json.dumps(result))
 
 
 if __name__ == "__main__":

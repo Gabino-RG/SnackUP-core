@@ -58,7 +58,12 @@ def api_get(host: str, route: str, query: dict, token: str, opener) -> dict:
         if not isinstance(result, dict):
             raise EvidenceError("SONAR_API_INVALID_RESPONSE")
         return result
-    except (HTTPError, URLError, OSError, HTTPException, UnicodeError, json.JSONDecodeError):
+    except HTTPError as error:
+        # Keep only the numeric status. URLs, headers and response bodies may
+        # contain credentials or attacker-controlled text and must stay private.
+        code = error.code if isinstance(error.code, int) and 100 <= error.code <= 599 else "UNKNOWN"
+        raise EvidenceError(f"SONAR_API_HTTP_{code}") from None
+    except (URLError, OSError, HTTPException, UnicodeError, json.JSONDecodeError):
         # Never print the response or an exception that may contain credentials.
         raise EvidenceError("SONAR_API_REQUEST_FAILED") from None
 
