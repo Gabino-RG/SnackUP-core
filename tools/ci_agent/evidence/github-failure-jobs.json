@@ -1,0 +1,121 @@
+{
+  "total_count": 1,
+  "jobs": [
+    {
+      "id": 111596250503,
+      "run_id": 37257039123,
+      "workflow_name": "Flutter CI",
+      "head_branch": "test/api-aaa-sonarqube",
+      "run_url": "https://api.github.com/repos/Gabino-RG/SnackUP-core/actions/runs/37257039123",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOR5VXGM8AAAAZ-6elhw",
+      "head_sha": "9b8cd9e53a12ed12083ced94cb43401b0d145956",
+      "url": "https://api.github.com/repos/Gabino-RG/SnackUP-core/actions/jobs/111596250503",
+      "html_url": "https://github.com/Gabino-RG/SnackUP-core/actions/runs/37257039123/job/111596250503",
+      "status": "completed",
+      "conclusion": "failure",
+      "created_at": "2026-10-05T02:51:36Z",
+      "started_at": "2026-10-05T02:51:37Z",
+      "completed_at": "2026-10-05T02:52:57Z",
+      "name": "validate",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-05T02:51:38Z",
+          "completed_at": "2026-10-05T02:51:40Z"
+        },
+        {
+          "name": "Checkout",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-05T02:51:40Z",
+          "completed_at": "2026-10-05T02:51:41Z"
+        },
+        {
+          "name": "Setup Flutter",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-05T02:51:41Z",
+          "completed_at": "2026-10-05T02:52:05Z"
+        },
+        {
+          "name": "Dependencies",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-05T02:52:05Z",
+          "completed_at": "2026-10-05T02:52:09Z"
+        },
+        {
+          "name": "Static analysis",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-10-05T02:52:09Z",
+          "completed_at": "2026-10-05T02:52:24Z"
+        },
+        {
+          "name": "Unit and widget tests",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-10-05T02:52:24Z",
+          "completed_at": "2026-10-05T02:52:45Z"
+        },
+        {
+          "name": "Build integrated application",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 7,
+          "started_at": "2026-10-05T02:52:45Z",
+          "completed_at": "2026-10-05T02:52:55Z"
+        },
+        {
+          "name": "Preserve integrated web build",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 8,
+          "started_at": "2026-10-05T02:52:55Z",
+          "completed_at": "2026-10-05T02:52:55Z"
+        },
+        {
+          "name": "Post Setup Flutter",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-10-05T02:52:55Z",
+          "completed_at": "2026-10-05T02:52:55Z"
+        },
+        {
+          "name": "Post Checkout",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 16,
+          "started_at": "2026-10-05T02:52:55Z",
+          "completed_at": "2026-10-05T02:52:55Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 17,
+          "started_at": "2026-10-05T02:52:55Z",
+          "completed_at": "2026-10-05T02:52:55Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/Gabino-RG/SnackUP-core/check-runs/111596250503",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": 1000000073,
+      "runner_name": "GitHub Actions 1000000073",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    }
+  ]
+}

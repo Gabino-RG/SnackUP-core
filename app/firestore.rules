@@ -1,0 +1,221 @@
+// Versioned deployment input; not deployed by adding this file.
+// Review and validate in an approved test environment before production release.
+// See docs/security/CONTRATO.md. Never replace live rules without that review.
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isAdmin() { return signedIn() && request.auth.token.get('admin', false) == true; }
+    function ownsBusiness(id) {
+      return signedIn() &&
+        get(/databases/$(database)/documents/businesses/$(id)).data.ownerId == request.auth.uid;
+    }
+    function text(value, max) { return value is string && value.size() <= max; }
+    function id(value) { return value is string && value.size() > 0 && value.size() <= 128 && !value.matches('.*[/].*'); }
+    function rating(value) { return value is int && value >= 1 && value <= 5; }
+    function money(value) { return value is int && value > 0 && value <= 1000000; }
+    function catalogCents(product) { return product.get('priceCents', math.round(product.price * 100)); }
+
+    match /users/{userId} {
+      function self() { return signedIn() && request.auth.uid == userId; }
+      function profileFields(data) {
+        return text(data.displayName, 120) && data.displayName.size() > 0 &&
+          data.numeroDeControl is string && data.numeroDeControl.matches('^[0-9]{8,20}$') &&
+          text(data.get('career', ''), 120) && text(data.get('group', ''), 40);
+      }
+      allow read: if self();
+      allow create: if self() &&
+        request.resource.data.keys().hasAll(['role','email','displayName','numeroDeControl','createdAt','privacyAcceptedAt','privacyVersion']) &&
+        request.resource.data.keys().hasOnly(['role','email','displayName','numeroDeControl','createdAt','privacyAcceptedAt','privacyVersion','career','group']) &&
+        request.resource.data.role == 'user' && profileFields(request.resource.data) &&
+        request.resource.data.email is string &&
+        request.resource.data.email == request.auth.token.get('email', '').lower() &&
+        request.resource.data.email.matches('^[^@ ]+@utsjr[.]edu[.]mx$') &&
+        request.resource.data.createdAt == request.time &&
+        request.resource.data.privacyAcceptedAt == request.time &&
+        request.resource.data.privacyVersion == '2';
+      // A browser cannot promote a profile, grant claims, or transfer ownership.
+      allow update: if self() && profileFields(request.resource.data) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(
+          ['displayName','numeroDeControl','career','group','privacyAcceptedAt','privacyVersion']) &&
+        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['privacyAcceptedAt','privacyVersion']) ||
+          (request.resource.data.privacyAcceptedAt == request.time && request.resource.data.privacyVersion == '2'));
+      allow delete: if false;
+      // Draft cart/favorites are private convenience data; their prices confer no
+      // authority. Order creation revalidates every item against the catalog.
+      match /cart/{productId} { allow read, write: if self(); }
+      match /favorites/{productId} { allow read, write: if self(); }
+    }
+
+    match /businesses/{businessId} {
+      allow read: if true;
+      // Provisioning is a trusted Admin SDK operation, not a public registration.
+      allow create, delete: if false;
+      allow update: if ownsBusiness(businessId) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isOpen']) &&
+        request.resource.data.isOpen is bool;
+    }
+
+    match /products/{productId} {
+      function validProduct(data) {
+        return id(data.businessId) && text(data.name, 160) && data.name.size() > 0 &&
+          text(data.get('description', ''), 2000) &&
+          text(data.get('name_searchable', ''), 160) &&
+          text(data.category, 120) &&
+          (data.get('imageUrl', '') == null || text(data.get('imageUrl', ''), 2048)) &&
+          data.price is number && data.price > 0 && data.price <= 10000 &&
+          money(catalogCents(data)) && data.price == catalogCents(data) / 100.0 &&
+          data.stock is int && data.stock >= 0 && data.stock <= 1000000 &&
+          data.isAvailable is bool && data.isFeatured is bool;
+      }
+      allow read: if true;
+      allow create: if ownsBusiness(request.resource.data.businessId) &&
+        request.resource.data.keys().hasAll(['businessId','name','price','priceCents','stock','category','isAvailable','isFeatured','createdAt','updatedAt']) &&
+        request.resource.data.keys().hasOnly(['businessId','name','description','name_searchable','price','priceCents','stock','category','isAvailable','isFeatured','imageUrl','createdAt','updatedAt']) &&
+        validProduct(request.resource.data) && money(request.resource.data.priceCents) &&
+        request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time;
+      allow update: if ownsBusiness(resource.data.businessId) &&
+        request.resource.data.businessId == resource.data.businessId &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(
+          ['name','description','name_searchable','price','priceCents','stock','category','isAvailable','isFeatured','imageUrl','updatedAt']) &&
+        validProduct(request.resource.data) && request.resource.data.updatedAt == request.time &&
+        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['price','priceCents']) ||
+          money(request.resource.data.priceCents));
+      allow delete: if ownsBusiness(resource.data.businessId);
+    }
+
+    function validItem(item, businessId) {
+      let product = get(/databases/$(database)/documents/products/$(item.productId)).data;
+      return item is map &&
+        item.keys().hasAll(['productId','name','quantity','price','unitPriceCents','notes']) &&
+        item.keys().hasOnly(['productId','name','quantity','price','unitPriceCents','notes']) &&
+        id(item.productId) && item.name == product.name && text(item.name, 160) &&
+        item.quantity is int && item.quantity >= 1 && item.quantity <= 99 &&
+        text(item.notes, 500) && product.businessId == businessId &&
+        product.isAvailable == true && product.stock is int && product.stock >= item.quantity &&
+        product.price is number && product.price > 0 && product.price <= 10000 &&
+        money(item.unitPriceCents) && item.unitPriceCents == catalogCents(product) &&
+        product.price == item.unitPriceCents / 100.0 &&
+        item.price is number && item.price == item.unitPriceCents / 100.0;
+    }
+    function itemAt(items, index, businessId) {
+      return items.size() <= index || validItem(items[index], businessId);
+    }
+    function itemId(items, index) { return items.size() <= index ? null : items[index].productId; }
+    function itemTotal(items, index) {
+      return items.size() <= index ? 0 : items[index].unitPriceCents * items[index].quantity;
+    }
+    function distinctItems(items) {
+      let ids = [itemId(items,0),itemId(items,1),itemId(items,2),itemId(items,3),
+        itemId(items,4),itemId(items,5),itemId(items,6),itemId(items,7)].removeAll([null]);
+      return ids.toSet().size() == items.size();
+    }
+    function validItems(items, businessId) {
+      return items is list && items.size() >= 1 && items.size() <= 8 && distinctItems(items) &&
+        itemAt(items,0,businessId) && itemAt(items,1,businessId) &&
+        itemAt(items,2,businessId) && itemAt(items,3,businessId) &&
+        itemAt(items,4,businessId) && itemAt(items,5,businessId) &&
+        itemAt(items,6,businessId) && itemAt(items,7,businessId);
+    }
+    function totalCents(items) {
+      return itemTotal(items,0) + itemTotal(items,1) + itemTotal(items,2) + itemTotal(items,3) +
+        itemTotal(items,4) + itemTotal(items,5) + itemTotal(items,6) + itemTotal(items,7);
+    }
+
+    match /orders/{orderId} {
+      function newOrder(data) {
+        return data.keys().hasAll(['businessId','userId','userDisplayName','userNumeroDeControl','status',
+          'totalPrice','totalCents','paymentMethod','createdAt','scheduledPickupTime','items','pickupCode','schemaVersion']) &&
+          data.keys().hasOnly(['businessId','userId','userDisplayName','userNumeroDeControl','status',
+          'totalPrice','totalCents','paymentMethod','createdAt','scheduledPickupTime','items','pickupCode','schemaVersion']) &&
+          data.userId == request.auth.uid && id(data.businessId) &&
+          data.status == 'pending' && data.schemaVersion == 2 &&
+          text(data.userDisplayName, 120) && text(data.userNumeroDeControl, 40) &&
+          data.createdAt == request.time &&
+          data.paymentMethod in ['Efectivo','Tarjeta','Vale'] &&
+          data.pickupCode is string && data.pickupCode.matches('^[0-9a-f]{32}$') &&
+          (data.scheduledPickupTime == null ||
+            (data.scheduledPickupTime is timestamp && data.scheduledPickupTime > request.time &&
+             data.scheduledPickupTime <= request.time + duration.value(24, 'h'))) &&
+          get(/databases/$(database)/documents/businesses/$(data.businessId)).data.isOpen == true &&
+          validItems(data.items, data.businessId) &&
+          data.totalCents is int && data.totalCents == totalCents(data.items) &&
+          data.totalPrice is number && data.totalPrice == data.totalCents / 100.0;
+      }
+      function validTransition() {
+        let changed = request.resource.data.diff(resource.data).affectedKeys();
+        let next = request.resource.data;
+        return next.updatedAt == request.time && (
+          (resource.data.status == 'pending' && next.status == 'preparing' &&
+            next.stockReserved == true && changed.hasOnly(['status','updatedAt','stockReserved'])) ||
+          (resource.data.status == 'preparing' && next.status == 'ready' &&
+            changed.hasOnly(['status','updatedAt'])) ||
+          (resource.data.status == 'ready' && next.status == 'completed' &&
+            next.completedAt == request.time && changed.hasOnly(['status','updatedAt','completedAt'])) ||
+          (resource.data.status in ['pending','preparing'] && next.status == 'cancelled' &&
+            next.cancelledAt == request.time && changed.hasOnly(['status','updatedAt','cancelledAt'])));
+      }
+      // At most 8 unique product lookups plus 1 business lookup per create.
+      allow create: if signedIn() && newOrder(request.resource.data);
+      allow read: if signedIn() &&
+        (resource.data.userId == request.auth.uid || ownsBusiness(resource.data.businessId));
+      allow update: if ownsBusiness(resource.data.businessId) && validTransition();
+      allow delete: if false;
+    }
+
+    match /reviews/{reviewId} {
+      function validReview() {
+        let data = request.resource.data;
+        let order = get(/databases/$(database)/documents/orders/$(reviewId)).data;
+        return data.keys().hasAll(['businessId','userId','orderId','rating','serviceRating',
+            'foodRating','career','group','comment','createdAt','schemaVersion']) &&
+          data.keys().hasOnly(['businessId','userId','orderId','rating','serviceRating',
+            'foodRating','career','group','comment','createdAt','schemaVersion']) &&
+          data.schemaVersion == 2 && data.orderId == reviewId &&
+          data.userId == request.auth.uid && order.userId == request.auth.uid &&
+          order.businessId == data.businessId && order.status == 'completed' &&
+          rating(data.rating) && rating(data.serviceRating) && rating(data.foodRating) &&
+          text(data.career, 120) && text(data.group, 40) && text(data.comment, 1500) &&
+          data.createdAt == request.time;
+      }
+      allow get: if isAdmin() || (signedIn() && (
+        (exists(/databases/$(database)/documents/reviews/$(reviewId)) && resource.data.userId == request.auth.uid) ||
+        (!exists(/databases/$(database)/documents/reviews/$(reviewId)) &&
+          get(/databases/$(database)/documents/orders/$(reviewId)).data.userId == request.auth.uid)));
+      allow list: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid);
+      allow create: if signedIn() && validReview();
+      allow update, delete: if false;
+    }
+
+    match /admin_followups/{reviewId} {
+      function validFollowup() {
+        let data = request.resource.data;
+        let review = get(/databases/$(database)/documents/reviews/$(reviewId)).data;
+        return data.keys().hasAll(['reviewId','businessId','status','assignee','note','updatedAt','updatedBy','eventId']) &&
+          data.keys().hasOnly(['reviewId','businessId','status','assignee','note','updatedAt','updatedBy','eventId']) &&
+          data.reviewId == reviewId && data.businessId == review.businessId && id(data.eventId) &&
+          data.status in ['pending','in_review','resolved'] &&
+          text(data.assignee, 120) && data.assignee.size() > 0 &&
+          text(data.note, 2000) && data.note.size() > 0 &&
+          data.updatedAt == request.time && data.updatedBy == request.auth.uid;
+      }
+      function newHistoryMatches() {
+        let event = request.resource.data.eventId;
+        return !exists(/databases/$(database)/documents/admin_followups/$(reviewId)/history/$(event)) &&
+          getAfter(/databases/$(database)/documents/admin_followups/$(reviewId)/history/$(event)).data == request.resource.data;
+      }
+      allow read: if isAdmin();
+      allow create, update: if isAdmin() && validFollowup() && newHistoryMatches();
+      allow delete: if false;
+      match /history/{eventId} {
+        allow read: if isAdmin();
+        allow create: if isAdmin() && validFollowup() && request.resource.data.eventId == eventId &&
+          request.resource.data == getAfter(/databases/$(database)/documents/admin_followups/$(reviewId)).data;
+        allow update, delete: if false;
+      }
+    }
+    // Chat has no implemented participant contract in this app; deny it rather
+    // than exposing all conversations to any authenticated account.
+    match /{document=**} { allow read, write: if false; }
+  }
+}

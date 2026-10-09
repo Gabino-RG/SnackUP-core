@@ -1,0 +1,68 @@
+name: SnackUP CI parte 2 - video de evidencia real
+on:
+  push:
+    branches: [feature/ci-sonar-notifications]
+    paths: ['docs/ci-parte-2/evidence-runs.json']
+  workflow_dispatch:
+    inputs:
+      success_run:
+        description: 'ID de ejecución aprobada con SonarQube y Quality Gate'
+        required: true
+        type: string
+      failure_run:
+        description: 'ID de ejecución fallida con alerta confirmada por Slack o Discord'
+        required: true
+        type: string
+permissions:
+  contents: read
+  actions: read
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Descargar código
+        uses: actions/checkout@v7
+      - name: Leer IDs de ejecuciones para evidencia
+        id: runs
+        env:
+          EVIDENCE_SUCCESS_RUN: ${{ inputs.success_run }}
+          EVIDENCE_FAILURE_RUN: ${{ inputs.failure_run }}
+        run: python3 tools/ci_evidence/evidence_inputs.py
+      - name: Obtener evidencias reales y comprobar procedencia
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          EVIDENCE_SUCCESS_RUN: ${{ steps.runs.outputs.success_run }}
+          EVIDENCE_FAILURE_RUN: ${{ steps.runs.outputs.failure_run }}
+        run: |
+          python3 tools/ci_evidence/collect_part2.py \
+            --repo "$GITHUB_REPOSITORY" \
+            --success-run "$EVIDENCE_SUCCESS_RUN" \
+            --failure-run "$EVIDENCE_FAILURE_RUN" \
+            --outdir ci-part2-video
+
+      - name: Preparar grabación
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          npm install --prefix .ci-video --no-package-lock --no-save playwright@1.58.2
+          .ci-video/node_modules/.bin/playwright install --with-deps chromium
+
+      - name: Grabar pasos del pipeline, SonarQube y alerta
+        env:
+          NODE_PATH: ${{ github.workspace }}/.ci-video/node_modules
+        run: |
+          node tools/ci_evidence/record_part2.cjs \
+            --success ci-part2-video/success.json \
+            --failure ci-part2-video/failure.json \
+            --agent-root tools/ci_agent \
+            --outdir ci-part2-video
+
+      - name: Conservar video y evidencia
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: snackup-ci-part2-video
+          path: ci-part2-video/
+          if-no-files-found: error
+          retention-days: 30

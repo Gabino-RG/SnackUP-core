@@ -1,0 +1,16 @@
+Entregamos el agente gráfico de Integración Continua de SnackUP. El agente utiliza reglas para observar estados, mostrar registros, identificar fallos y explicar las etapas que se detienen bajo el principio fail fast.
+
+Se adjunta un video corto con una reproducción acelerada de dos ejecuciones reales de GitHub Actions: una ejecución que aprobó 59 pruebas, compiló SnackUP Web y conservó el artefacto, y una ejecución histórica que falló al compilar y omitió el artefacto. El video identifica que se trata de evidencia registrada y muestra el origen de los resultados.
+
+El análisis de la ejecución aprobada toleró 124 avisos/informaciones. Como evidencia adicional, 18 pruebas REST aprobaron en un workflow separado del mismo commit; ese workflow falló en Sonar, por lo que no se declara aprobado en su conjunto. La configuración nueva de pipeline está incluida para su integración y requiere una ejecución propia para acreditar sus resultados. CI concluye con el artefacto; el despliegue corresponde a CD.
+
+Repositorio: https://github.com/Gabino-RG/SnackUP-core
+CI aprobado: https://github.com/Gabino-RG/SnackUP-core/actions/runs/37257224068
+CI fallido: https://github.com/Gabino-RG/SnackUP-core/actions/runs/37257039123
+Pruebas REST: https://github.com/Gabino-RG/SnackUP-core/actions/runs/37257224010
+
+Equipo:
+Francisco Arturo Munguía López — Project Manager
+Juan Carlos Jaimes Meneses — Product Owner
+Gabino Reyes García — QA
+Sabina Pérez Olvera — Frontend

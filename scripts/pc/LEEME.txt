@@ -1,0 +1,53 @@
+SNACKUP - APLICACION COMPLETA PARA PC
+
+1. Descarga el ZIP y selecciona "Extraer todo".
+2. Abre la carpeta SnackUP-PC y ejecuta INICIAR_SNACKUP.cmd.
+3. El navegador abrira http://localhost:8790/.
+4. Inicia sesion con una cuenta de SnackUP. La pantalla disponible depende de
+   los permisos de alumno, negocio o administracion de tu cuenta.
+
+Mantén abierta la consola mientras usas la aplicacion. Para cerrar el servidor,
+pulsa Ctrl+C en la consola o cierra esa ventana.
+
+REQUISITOS
+Windows 10/11 de 64 bits y un navegador compatible con Flutter web.
+No necesitas instalar Flutter ni Python: el iniciador incluye el runtime.
+La aplicacion completa requiere Internet y acceso al proyecto Firebase
+configurado en el codigo. Este paquete no contiene cuentas ni contrasenas.
+
+DATOS REALES Y PERMISOS
+Este paquete compila app/lib/main.dart. No ejecuta main_admin_demo.dart ni
+inyecta los datos ficticios de la demo. Las operaciones permitidas por las
+reglas del servidor (pedidos, resenas, menu y seguimiento) se guardan en Firebase.
+Los cambios NO se reinician al recargar la pagina.
+
+El modulo administrativo exige el custom claim booleano admin: true. Cambiar
+un campo de perfil no concede administracion. Un administrador del proyecto
+debe configurar los permisos y aprobar las reglas correspondientes.
+Empaquetar la aplicacion no despliega reglas ni asigna privilegios.
+
+ACTIVACION Y VALIDACION PENDIENTES
+La conexion completa entre cuentas y servicios reales necesita la activacion
+y validacion descritas en documentos/PC.md y documentos/admin/README.md.
+No se afirma que el entorno Firebase este activado ni que todos los flujos
+esten validados con cuentas reales. La ejecucion nativa del iniciador en
+Windows tambien esta pendiente de comprobar en el equipo de destino.
+
+SI NO ABRE
+- Extrae todo el ZIP: no ejecutes el iniciador dentro del archivo comprimido.
+- Si el puerto 8790 esta ocupado, cierra el otro servidor de SnackUP y vuelve
+  a iniciar. El programa no abrira un servicio ajeno ni cambiara el puerto.
+- Si no abre automaticamente, escribe http://localhost:8790/ en el navegador.
+- Si Firebase muestra un error de conexion, comprueba Internet y consulta
+  documentos/PC.md. Los errores de permisos requieren revision del proyecto;
+  volver a descargar el ZIP no concede acceso.
+- Para conservar la sesion, usa el mismo navegador, perfil y direccion.
+  El modo privado, borrar datos del navegador o cambiar el puerto puede exigir
+  iniciar sesion otra vez. En una computadora compartida cierra sesion al salir.
+
+CODIGO Y TRAZABILIDAD
+codigo_fuente.zip contiene los archivos versionados del commit indicado en
+VERSION.json. runtime/LICENSE.txt contiene la licencia del runtime incluido.
+documentos/PC.md explica como volver a compilar el paquete desde el repositorio.
+El servidor solo sirve la carpeta web en la propia computadora (127.0.0.1).
+No permite descargar el codigo fuente ni el runtime a traves del navegador.

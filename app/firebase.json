@@ -1,0 +1,47 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "snackup-8fe96",
+          "appId": "1:685155856831:android:2df64bce8711eb6ef5b10a",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "snackup-8fe96",
+          "configurations": {
+            "android": "1:685155856831:android:2df64bce8711eb6ef5b10a"
+          }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "storage": {
+    "rules": "storage.rules"
+  },
+  "hosting": {
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "headers": [
+      {"source": "/index.html", "headers": [{"key": "Cache-Control", "value": "no-cache"}]},
+      {"source": "/flutter_bootstrap.js", "headers": [{"key": "Cache-Control", "value": "no-cache"}]},
+      {"source": "/main.dart.js", "headers": [{"key": "Cache-Control", "value": "no-cache"}]}
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}
