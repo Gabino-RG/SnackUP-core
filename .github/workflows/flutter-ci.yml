@@ -45,8 +45,8 @@ jobs:
         id: configuration
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
-          SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
+          SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION || 'jcoorp' }}
+          SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY || 'JCoorp_SnackUP-core' }}
           SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL || 'https://sonarcloud.io' }}
           CI_FAILURE_WEBHOOK_URL: ${{ secrets.CI_FAILURE_WEBHOOK_URL }}
         run: python3 tools/ci_sonar/preflight.py
@@ -90,15 +90,15 @@ jobs:
         with:
           projectBaseDir: app
           args: >-
-            -Dsonar.organization=${{ vars.SONAR_ORGANIZATION }}
-            -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY }}
+            -Dsonar.organization=${{ vars.SONAR_ORGANIZATION || 'jcoorp' }}
+            -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY || 'JCoorp_SnackUP-core' }}
             -Dsonar.qualitygate.wait=false
 
       - name: Quality Gate SonarQube bloqueante
         id: gate
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
+          SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY || 'JCoorp_SnackUP-core' }}
           SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL || 'https://sonarcloud.io' }}
         run: python3 tools/ci_sonar/quality_gate.py --timeout 300
 

@@ -8,12 +8,13 @@ Esta implementación extiende `.github/workflows/flutter-ci.yml` del proyecto Fl
 
 ### Comprobación remota del 8 de octubre de 2026
 
-- [Verificación de la implementación](https://github.com/Gabino-RG/SnackUP-core/actions/runs/37862252929): aprobada; 43 pruebas en el commit `13e00a00e2b2ef8d93252c19d0732c16f1064930`.
-- [Ejecución del pipeline real](https://github.com/Gabino-RG/SnackUP-core/actions/runs/37862252906): bloqueada en configuración. GitHub confirmó que faltan los cuatro valores obligatorios de la tabla siguiente. El scanner, el Quality Gate y el build quedaron omitidos.
-- El job de alerta sí se activó ante ese fallo, pero conservó `MISSING_CONFIGURATION` porque aún no existe el webhook. No se envió ningún mensaje ni se presenta esta ejecución como evidencia de los dos requisitos cumplidos.
+- [Verificación de la implementación](https://github.com/Gabino-RG/SnackUP-core/actions/runs/37862415211): aprobada; 44 pruebas en el commit `e0ef7ec47a4530c4ffeab4c3e5ea9c1696ac200a`.
+- [Ejecución del pipeline real](https://github.com/Gabino-RG/SnackUP-core/actions/runs/37862415214), intento 3: bloqueada en configuración de SonarQube. El scanner, el Quality Gate y el build quedaron omitidos.
+- La alerta de ese intento sí fue confirmada por Discord: `DELIVERED`, HTTP 200, mensaje `1557914181624266752`. La captura del canal confirma que el mensaje fue recibido. Esto acredita la notificación, pero todavía no el análisis SonarQube.
+- El equipo proporcionó las claves públicas exactas del proyecto existente: organización `jcoorp`, proyecto `JCoorp_SnackUP-core`. El workflow las usa por defecto; las variables de repositorio permiten sobrescribirlas. El token permanece exclusivamente en GitHub Secrets.
 - [Cambios revisables, PR #23](https://github.com/Gabino-RG/SnackUP-core/pull/23). La rama de entrega es [feature/ci-sonar-notifications](https://github.com/Gabino-RG/SnackUP-core/tree/feature/ci-sonar-notifications).
 
-La configuración debe completarse antes de generar el video definitivo. La comprobación posterior del contrato recolector/grabador añade una prueba más; la suite actual contiene 44 pruebas.
+El análisis SonarQube y su Quality Gate deben comprobarse en una ejecución nueva antes de generar el video definitivo. El registro inicial de `ESTADO_VERIFICADO.json` conserva la primera comprobación, anterior a configurar Discord.
 
 ## 1. Qué hace el pipeline
 
@@ -40,11 +41,11 @@ En el repositorio [Gabino-RG/SnackUP-core](https://github.com/Gabino-RG/SnackUP-
 | --- | --- | --- |
 | Repository secret | `SONAR_TOKEN` | Token real de SonarQube Cloud con permiso para analizar y consultar el proyecto. |
 | Repository secret | `CI_FAILURE_WEBHOOK_URL` | Webhook real del canal Slack o Discord del equipo. |
-| Repository variable | `SONAR_ORGANIZATION` | Clave exacta de la organización SonarQube Cloud. |
-| Repository variable | `SONAR_PROJECT_KEY` | Clave exacta del proyecto importado. |
+| Repository variable, opcional | `SONAR_ORGANIZATION` | Por defecto `jcoorp`, verificada en el enlace de la organización. Permite configurar otra organización explícitamente. |
+| Repository variable, opcional | `SONAR_PROJECT_KEY` | Por defecto `JCoorp_SnackUP-core`, verificada en el enlace del proyecto. Permite configurar otro proyecto explícitamente. |
 | Repository variable, opcional | `SONAR_HOST_URL` | `https://sonarcloud.io` para EU; `https://sonarqube.us` para US. Por defecto usa EU. |
 
-Los secretos deben guardarse directamente en GitHub. **No incluirlos en código, capturas, grabaciones, issues ni mensajes.** El conector usado para este cambio no administra secretos de GitHub, por lo que un administrador del repositorio debe completar esta configuración.
+Los dos secretos deben guardarse directamente en GitHub. **No incluirlos en código, capturas, grabaciones, issues ni mensajes.** Las claves de organización y proyecto son identificadores públicos y pueden quedar en el workflow. El conector usado para este cambio no administra secretos de GitHub, por lo que un administrador del repositorio debe guardar los tokens y el webhook.
 
 En SonarQube Cloud, importar el repositorio correcto, habilitar el análisis por CI y evitar el análisis automático simultáneo. Comprobar que el plan permite analizar la rama `feature/ci-sonar-notifications`: el plan Free tiene restricciones de ramas; OSS o un plan que incluya ramas puede ser adecuado para este repositorio público. No sobrescribir `sonar.branch.name=main` para presentar una rama distinta como principal. Si la rama no está permitida, resolver el plan o la estrategia de ramas antes de grabar.
 
@@ -74,7 +75,7 @@ Se conservan dos artefactos de auditoría:
 
 Trabajar en **`feature/ci-sonar-notifications`**, sin mezclar estos cambios en `main` antes de revisión.
 
-1. Configurar los cuatro valores obligatorios y volver a ejecutar **todos los jobs** de `Flutter CI - SonarQube y alertas`, o hacer un commit en esta rama. Mantener `docs/ci-parte-2/failure-test.json` con `"enabled": false`. Esperar a que SonarQube, Quality Gate y empaquetado aprueben. Conservar el ID de esta ejecución.
+1. Guardar los dos secretos y verificar los identificadores públicos efectivos (variables o valores por defecto). Volver a ejecutar **todos los jobs** de `Flutter CI - SonarQube y alertas`, o hacer un commit en esta rama. Mantener `docs/ci-parte-2/failure-test.json` con `"enabled": false`. Esperar a que SonarQube, Quality Gate y empaquetado aprueben. Conservar el ID de esta ejecución.
 2. Para probar la alerta, cambiar exclusivamente `"enabled": true` en ese JSON y hacer un commit en la misma rama. Después de aprobar SonarQube, el step `Prueba controlada de fallo para evidencia` termina con código 1; el artefacto validado queda omitido y el job de notificación debe confirmar `DELIVERED`. Conservar el ID de esta segunda ejecución.
 3. Restaurar `"enabled": false` mediante un commit. Esta restauración deja la rama lista para validación normal. El aviso indica explícitamente que el fallo fue controlado, solo si ese step realmente falló.
 
