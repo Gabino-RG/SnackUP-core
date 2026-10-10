@@ -1,0 +1,9 @@
+{
+  "name": "SnackUP · Administración editable",
+  "id": "REEMPLAZAR_CON_ID_GENERADO_POR_FIGMA",
+  "api": "1.0.0",
+  "main": "code.js",
+  "editorType": ["figma"],
+  "documentAccess": "dynamic-page",
+  "networkAccess": { "allowedDomains": ["none"] }
+}

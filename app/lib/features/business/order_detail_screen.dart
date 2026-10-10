@@ -1,196 +1,173 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import '../auth/auth_gate.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'business_order_workflow.dart';
 import 'package:snackup/theme/app_colors.dart';
 import 'package:snackup/theme/app_text.dart';
 
 class OrderDetailScreen extends StatefulWidget {
   final String orderId;
-  const OrderDetailScreen({super.key, required this.orderId});
+  final String businessId;
+  const OrderDetailScreen({
+    super.key,
+    required this.orderId,
+    required this.businessId,
+  });
 
   @override
   State<OrderDetailScreen> createState() => _OrderDetailScreenState();
 }
 
 class _OrderDetailScreenState extends State<OrderDetailScreen> {
-  DocumentReference get _orderRef =>
+  bool _updating = false;
+  DocumentReference<Map<String, dynamic>> get _orderRef =>
       FirebaseFirestore.instance.collection('orders').doc(widget.orderId);
 
-  Future<void> _updateOrderStatus(String newStatus) async {
-    try {
-      await _orderRef.update({'status': newStatus});
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Pedido marcado como "$newStatus"'),
-            backgroundColor: AppColors.success,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-        );
-        if (newStatus == 'completed' || newStatus == 'cancelled') {
-          await Future.delayed(const Duration(milliseconds: 500));
-          if (mounted && Navigator.of(context).canPop()) {
-            Navigator.of(context).pop();
-          }
-        }
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al actualizar: ${e.toString()}'),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-      );
-    }
-  }
-
-  void _startScanner(BuildContext context, String numeroDeControlCorrecto) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (scannerContext) => Scaffold(
-          appBar: AppBar(
-            title: const Text('Escanear QR de Entrega'),
-            backgroundColor: AppColors.background,
-            foregroundColor: AppColors.textPrimary,
-          ),
-          body: Column(
-            children: [
-              Expanded(
-                child: MobileScanner(
-                  controller: MobileScannerController(
-                    formats: [BarcodeFormat.qrCode],
-                    detectionSpeed: DetectionSpeed.normal,
-                  ),
-                  onDetect: (capture) {
-                    final List<Barcode> barcodes = capture.barcodes;
-                    if (barcodes.isNotEmpty) {
-                      final String qrValue = barcodes.first.rawValue ?? '';
-                      
-                      if (qrValue == numeroDeControlCorrecto) {
-                        _updateOrderStatus('completed');
-                        if (Navigator.of(scannerContext).canPop()) {
-                          Navigator.of(scannerContext).pop();
-                        }
-                      } else {
-                        if (Navigator.of(scannerContext).canPop()){
-                          Navigator.of(scannerContext).pop();
-                        }
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: const Text('QR incorrecto. Este no es el pedido.'),
-                            backgroundColor: AppColors.error,
-                            behavior: SnackBarBehavior.floating,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                        );
-                      }
-                    }
-                  },
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.all(20),
-                color: AppColors.background,
-                child: Text(
-                  'Escanea el código QR del estudiante para confirmar la entrega',
-                  style: AppText.body.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ],
-          ),
-        ),
+  void _showMessage(String message, {bool error = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: error ? AppColors.error : AppColors.success,
+        behavior: SnackBarBehavior.floating,
       ),
     );
   }
 
-  void _showManualInputDialog(String numeroDeControlCorrecto) {
-    final TextEditingController manualInputController = TextEditingController();
-    showDialog(
+  Future<void> _updateOrderStatus(
+    String newStatus, {
+    String? deliveryCode,
+  }) async {
+    if (_updating) return;
+    setState(() => _updating = true);
+    try {
+      final firestore = FirebaseFirestore.instance;
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) throw StateError('Inicia sesión de nuevo.');
+      await firestore.runTransaction((transaction) async {
+        final snapshot = await transaction.get(_orderRef);
+        final order = snapshot.data();
+        if (order == null || order['businessId'] != widget.businessId) {
+          throw StateError('El pedido no pertenece a este negocio.');
+        }
+        final business = await transaction.get(
+          firestore.collection('businesses').doc(widget.businessId),
+        );
+        if (business.data()?['ownerId'] != uid) {
+          throw StateError('Tu cuenta no administra este negocio.');
+        }
+        validateBusinessOrderTransition(
+          orderId: widget.orderId,
+          order: order,
+          newStatus: newStatus,
+          deliveryCode: deliveryCode,
+        );
+        if (newStatus == 'preparing') {
+          final quantities = stockQuantitiesForOrder(order);
+          final remainingStock =
+              <DocumentReference<Map<String, dynamic>>, int>{};
+          for (final entry in quantities.entries) {
+            final reference = firestore.collection('products').doc(entry.key);
+            final snapshot = await transaction.get(reference);
+            final product = snapshot.data();
+            final stock = product?['stock'];
+            if (product == null ||
+                product['businessId'] != widget.businessId ||
+                product['isAvailable'] != true ||
+                stock is! int ||
+                stock < entry.value) {
+              throw StateError(
+                'No hay stock disponible para todos los productos. Ajusta el menú o cancela este pedido.',
+              );
+            }
+            remainingStock[reference] = stock - entry.value;
+          }
+          // Firestore transactions require every read before the first write.
+          for (final entry in remainingStock.entries) {
+            transaction.update(entry.key, {
+              'stock': entry.value,
+              'updatedAt': FieldValue.serverTimestamp(),
+            });
+          }
+        }
+        transaction.update(_orderRef, {
+          'status': newStatus,
+          if (newStatus == 'preparing') 'stockReserved': true,
+          'updatedAt': FieldValue.serverTimestamp(),
+          if (newStatus == 'completed')
+            'completedAt': FieldValue.serverTimestamp(),
+          if (newStatus == 'cancelled')
+            'cancelledAt': FieldValue.serverTimestamp(),
+        });
+      });
+      if (!mounted) return;
+      _showMessage('Pedido ${_getStatusText(newStatus).toLowerCase()}.');
+      if ((newStatus == 'completed' || newStatus == 'cancelled') &&
+          Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+    } catch (error) {
+      _showMessage(
+        error is StateError
+            ? error.message.toString()
+            : 'No se pudo actualizar el pedido. Revisa tu conexión y permisos.',
+        error: true,
+      );
+    } finally {
+      if (mounted) setState(() => _updating = false);
+    }
+  }
+
+  Future<void> _confirmCancellation() async {
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: Text(
-          'Confirmar Entrega Manual',
-          style: AppText.h3.copyWith(
-            color: AppColors.textPrimary,
-          ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Ingresa el número de control del estudiante:',
-              style: AppText.body.copyWith(
-                color: AppColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: manualInputController,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                labelText: 'Número de Control',
-                hintText: 'Ej. 2023143096',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                filled: true,
-                fillColor: AppColors.componentBase,
-              ),
-              style: AppText.body,
-            ),
-          ],
+        title: const Text('Cancelar pedido'),
+        content: const Text(
+          'El alumno verá el pedido como cancelado. El inventario reservado no se repone automáticamente: ajusta el stock si los alimentos aún pueden venderse. Si ya hubo un cobro, gestiona la devolución con el alumno.',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: Text(
-              'Cancelar',
-              style: AppText.body.copyWith(
-                color: AppColors.textSecondary,
-              ),
-            ),
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Volver'),
           ),
-          ElevatedButton(
-            onPressed: () {
-              final enteredNumber = manualInputController.text.trim();
-              if (enteredNumber == numeroDeControlCorrecto) {
-                Navigator.of(dialogContext).pop();
-                _updateOrderStatus('completed');
-              } else {
-                Navigator.of(dialogContext).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: const Text('Número de Control incorrecto'),
-                    backgroundColor: AppColors.error,
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-            ),
-            child: Text(
-              'Confirmar Entrega',
-              style: AppText.body.copyWith(
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
-              ),
-            ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Cancelar pedido'),
           ),
         ],
       ),
     );
+    if (confirmed == true && mounted) await _updateOrderStatus('cancelled');
+  }
+
+  Future<void> _startScanner(BuildContext context, String expectedCode) async {
+    final captured = await Navigator.of(context).push<String>(
+      MaterialPageRoute(builder: (_) => const _DeliveryScannerScreen()),
+    );
+    if (!mounted || captured == null) return;
+    if (captured.trim() != expectedCode) {
+      _showMessage(
+        'QR incorrecto. Abre el código de este pedido en la app del alumno.',
+        error: true,
+      );
+      return;
+    }
+    await _updateOrderStatus('completed', deliveryCode: captured.trim());
+  }
+
+  Future<void> _showManualInputDialog(String expectedCode) async {
+    final entered = await showDialog<String>(
+      context: context,
+      builder: (_) => const _DeliveryCodeDialog(),
+    );
+    if (!mounted || entered == null) return;
+    if (entered.isEmpty || entered != expectedCode) {
+      _showMessage('Código de entrega incorrecto.', error: true);
+      return;
+    }
+    await _updateOrderStatus('completed', deliveryCode: entered);
   }
 
   @override
@@ -213,8 +190,13 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
-              child: CircularProgressIndicator(
-                color: AppColors.primary,
+              child: CircularProgressIndicator(color: AppColors.primary),
+            );
+          }
+          if (snapshot.hasError) {
+            return const Center(
+              child: Text(
+                'No se pudo cargar el pedido. Revisa tu conexión y permisos.',
               ),
             );
           }
@@ -231,9 +213,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   const SizedBox(height: 16),
                   Text(
                     'Pedido no encontrado',
-                    style: AppText.h3.copyWith(
-                      color: AppColors.textPrimary,
-                    ),
+                    style: AppText.h3.copyWith(color: AppColors.textPrimary),
                   ),
                 ],
               ),
@@ -241,8 +221,14 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           }
 
           final order = snapshot.data!.data() as Map<String, dynamic>;
+          if (order['businessId'] != widget.businessId) {
+            return const Center(
+              child: Text('Este pedido no pertenece a tu negocio.'),
+            );
+          }
           final String status = order['status'] ?? 'pending';
-          final String numeroDeControl = order['userNumeroDeControl'] ?? '000000';
+          final String numeroDeControl =
+              order['userNumeroDeControl'] ?? 'Sin registrar';
           final List<dynamic> items = order['items'] ?? [];
           final Timestamp? timestamp = order['createdAt'];
           final DateTime? orderTime = timestamp?.toDate();
@@ -256,10 +242,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 decoration: BoxDecoration(
                   color: _getStatusColor(status).withOpacity(0.1),
                   border: Border(
-                    bottom: BorderSide(
-                      color: AppColors.borders,
-                      width: 1,
-                    ),
+                    bottom: BorderSide(color: AppColors.borders, width: 1),
                   ),
                 ),
                 child: Column(
@@ -340,7 +323,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                       _buildInfoSection(
                         title: 'Productos',
                         children: [
-                          ...items.map((item) => _buildProductItem(item)).toList(),
+                          ...items
+                              .map((item) => _buildProductItem(item))
+                              .toList(),
                         ],
                       ),
 
@@ -376,7 +361,11 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                       const SizedBox(height: 32),
 
                       // BOTONES DE ACCIÓN
-                      _buildActionButtons(status, numeroDeControl),
+                      _buildActionButtons(
+                        status,
+                        deliveryCodeForOrder(widget.orderId, order),
+                        deliveryQrForOrder(widget.orderId, order),
+                      ),
                     ],
                   ),
                 ),
@@ -388,7 +377,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     );
   }
 
-  Widget _buildInfoSection({required String title, required List<Widget> children}) {
+  Widget _buildInfoSection({
+    required String title,
+    required List<Widget> children,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -406,24 +398,22 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             color: AppColors.componentBase,
             borderRadius: BorderRadius.circular(16),
           ),
-          child: Column(
-            children: children,
-          ),
+          child: Column(children: children),
         ),
       ],
     );
   }
 
-  Widget _buildInfoRow({required IconData icon, required String label, required String value}) {
+  Widget _buildInfoRow({
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
-          Icon(
-            icon,
-            size: 20,
-            color: AppColors.textSecondary,
-          ),
+          Icon(icon, size: 20, color: AppColors.textSecondary),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
@@ -438,9 +428,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             flex: 2,
             child: Text(
               value,
-              style: AppText.body.copyWith(
-                color: AppColors.textSecondary,
-              ),
+              style: AppText.body.copyWith(color: AppColors.textSecondary),
               textAlign: TextAlign.right,
             ),
           ),
@@ -457,9 +445,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       decoration: BoxDecoration(
         color: AppColors.background,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: AppColors.borders,
-        ),
+        border: Border.all(color: AppColors.borders),
       ),
       child: Row(
         children: [
@@ -514,12 +500,16 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     );
   }
 
-  Widget _buildActionButtons(String status, String numeroDeControl) {
+  Widget _buildActionButtons(
+    String status,
+    String numeroDeControl,
+    String qrPayload,
+  ) {
     if (status == 'pending') {
       return Column(
         children: [
           ElevatedButton(
-            onPressed: () => _updateOrderStatus('preparing'),
+            onPressed: _updating ? null : () => _updateOrderStatus('preparing'),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
@@ -546,7 +536,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           ),
           const SizedBox(height: 12),
           TextButton(
-            onPressed: () => _updateOrderStatus('cancelled'),
+            onPressed: _updating ? null : _confirmCancellation,
             child: Text(
               'Cancelar Pedido',
               style: AppText.body.copyWith(
@@ -563,7 +553,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       return Column(
         children: [
           ElevatedButton(
-            onPressed: () => _updateOrderStatus('ready'),
+            onPressed: _updating ? null : () => _updateOrderStatus('ready'),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.warning,
               foregroundColor: Colors.white,
@@ -590,7 +580,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           ),
           const SizedBox(height: 12),
           TextButton(
-            onPressed: () => _updateOrderStatus('cancelled'),
+            onPressed: _updating ? null : _confirmCancellation,
             child: Text(
               'Cancelar Pedido',
               style: AppText.body.copyWith(
@@ -607,7 +597,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       return Column(
         children: [
           ElevatedButton(
-            onPressed: () => _startScanner(context, numeroDeControl),
+            onPressed: _updating
+                ? null
+                : () => _startScanner(context, qrPayload),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.success,
               foregroundColor: Colors.white,
@@ -634,7 +626,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           ),
           const SizedBox(height: 12),
           OutlinedButton(
-            onPressed: () => _showManualInputDialog(numeroDeControl),
+            onPressed: _updating
+                ? null
+                : () => _showManualInputDialog(numeroDeControl),
             style: OutlinedButton.styleFrom(
               foregroundColor: AppColors.textSecondary,
               minimumSize: const Size(double.infinity, 56),
@@ -670,19 +664,14 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       ),
       child: Row(
         children: [
-          Icon(
-            Icons.info_outline_rounded,
-            color: AppColors.tertiary,
-          ),
+          Icon(Icons.info_outline_rounded, color: AppColors.tertiary),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              status == 'completed' 
+              status == 'completed'
                   ? 'Pedido completado y entregado'
                   : 'Pedido cancelado',
-              style: AppText.body.copyWith(
-                color: AppColors.textSecondary,
-              ),
+              style: AppText.body.copyWith(color: AppColors.textSecondary),
             ),
           ),
         ],
@@ -692,23 +681,132 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
   Color _getStatusColor(String status) {
     switch (status) {
-      case 'pending': return AppColors.warning;
-      case 'preparing': return AppColors.tertiary;
-      case 'ready': return AppColors.primary;
-      case 'completed': return AppColors.success;
-      case 'cancelled': return AppColors.error;
-      default: return AppColors.textSecondary;
+      case 'pending':
+        return AppColors.warning;
+      case 'preparing':
+        return AppColors.tertiary;
+      case 'ready':
+        return AppColors.primary;
+      case 'completed':
+        return AppColors.success;
+      case 'cancelled':
+        return AppColors.error;
+      default:
+        return AppColors.textSecondary;
     }
   }
 
   String _getStatusText(String status) {
     switch (status) {
-      case 'pending': return 'PENDIENTE';
-      case 'preparing': return 'PREPARANDO';
-      case 'ready': return 'LISTO';
-      case 'completed': return 'COMPLETADO';
-      case 'cancelled': return 'CANCELADO';
-      default: return status.toUpperCase();
+      case 'pending':
+        return 'PENDIENTE';
+      case 'preparing':
+        return 'PREPARANDO';
+      case 'ready':
+        return 'LISTO';
+      case 'completed':
+        return 'COMPLETADO';
+      case 'cancelled':
+        return 'CANCELADO';
+      default:
+        return status.toUpperCase();
     }
   }
+}
+
+class _DeliveryScannerScreen extends StatefulWidget {
+  const _DeliveryScannerScreen();
+
+  @override
+  State<_DeliveryScannerScreen> createState() => _DeliveryScannerScreenState();
+}
+
+class _DeliveryScannerScreenState extends State<_DeliveryScannerScreen> {
+  final _controller = MobileScannerController(
+    formats: [BarcodeFormat.qrCode],
+    detectionSpeed: DetectionSpeed.noDuplicates,
+  );
+  bool _captured = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('Escanear QR de entrega')),
+    body: Column(
+      children: [
+        Expanded(
+          child: MobileScanner(
+            controller: _controller,
+            errorBuilder: (context, error) => const Center(
+              child: Padding(
+                padding: EdgeInsets.all(24),
+                child: Text(
+                  'No se pudo acceder a la cámara. Habilita su permiso o vuelve y usa Entrega Manual.',
+                ),
+              ),
+            ),
+            onDetect: (capture) {
+              if (_captured || !mounted) return;
+              for (final barcode in capture.barcodes) {
+                final value = barcode.rawValue;
+                if (value == null || value.trim().isEmpty) continue;
+                _captured = true;
+                Navigator.of(context).pop(value);
+                break;
+              }
+            },
+          ),
+        ),
+        const Padding(
+          padding: EdgeInsets.all(20),
+          child: Text('Escanea el QR de este pedido en la app del alumno.'),
+        ),
+      ],
+    ),
+  );
+}
+
+class _DeliveryCodeDialog extends StatefulWidget {
+  const _DeliveryCodeDialog();
+  @override
+  State<_DeliveryCodeDialog> createState() => _DeliveryCodeDialogState();
+}
+
+class _DeliveryCodeDialogState extends State<_DeliveryCodeDialog> {
+  final _controller = TextEditingController();
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: const Text('Confirmar entrega'),
+    content: TextField(
+      controller: _controller,
+      autofocus: true,
+      decoration: const InputDecoration(
+        labelText: 'Código de entrega del pedido',
+        helperText: 'Pide al alumno el código que aparece junto a su QR.',
+        helperMaxLines: 3,
+      ),
+      onSubmitted: (value) => Navigator.pop(context, value.trim()),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('Cancelar'),
+      ),
+      FilledButton(
+        onPressed: () => Navigator.pop(context, _controller.text.trim()),
+        child: const Text('Confirmar'),
+      ),
+    ],
+  );
 }

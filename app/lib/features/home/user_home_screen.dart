@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../user/menu_screen.dart';
+import '../user/product_detail_screen.dart';
 import 'package:snackup/theme/app_colors.dart';
 import 'package:snackup/theme/app_text.dart';
 
@@ -18,7 +19,7 @@ class UserHomeScreen extends StatelessWidget {
           children: [
             // HEADER DE BIENVENIDA
             _buildWelcomeHeader(),
-            
+
             const SizedBox(height: 8),
 
             // CARRUSEL DE PROMOCIONES
@@ -36,7 +37,8 @@ class UserHomeScreen extends StatelessWidget {
 
   Widget _buildWelcomeHeader() {
     final user = FirebaseAuth.instance.currentUser;
-    String displayName = user?.displayName ?? user?.email?.split('@').first ?? 'Estudiante';
+    String displayName =
+        user?.displayName ?? user?.email?.split('@').first ?? 'Estudiante';
 
     return Container(
       width: double.infinity,
@@ -72,7 +74,8 @@ class UserHomeScreen extends StatelessWidget {
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
-                  Icons.school_rounded, // <-- Corregido (era .school en tu código)
+                  Icons
+                      .school_rounded, // <-- Corregido (era .school en tu código)
                   color: Colors.white,
                   size: 24,
                 ),
@@ -148,9 +151,7 @@ class UserHomeScreen extends StatelessWidget {
               const SizedBox(width: 8),
               Text(
                 'Promociones Destacadas',
-                style: AppText.h3.copyWith(
-                  color: AppColors.textPrimary,
-                ),
+                style: AppText.h3.copyWith(color: AppColors.textPrimary),
               ),
             ],
           ),
@@ -177,21 +178,21 @@ class UserHomeScreen extends StatelessWidget {
           if (snapshot.hasError) {
             return _buildErrorState('Error al cargar promociones');
           }
-          
+
           if (snapshot.connectionState == ConnectionState.waiting) {
             return _buildLoadingCarousel();
           }
-          
+
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
             return _buildEmptyPromotions();
           }
 
           final docs = snapshot.data!.docs;
-          
+
           return PageView.builder(
             itemCount: docs.length,
             // Añadimos viewportFraction para que se vea un poco de la siguiente tarjeta
-            controller: PageController(viewportFraction: 0.9), 
+            controller: PageController(viewportFraction: 0.9),
             itemBuilder: (context, index) {
               final promo = docs[index].data() as Map<String, dynamic>;
               // Pasamos un padding diferente al último item
@@ -199,10 +200,19 @@ class UserHomeScreen extends StatelessWidget {
 
               return _buildPromotionCard(
                 title: promo['name'] ?? 'Promoción',
-                price: '\$${(promo['price'] ?? 0.0).toStringAsFixed(2)}',
+                price:
+                    '\$${(promo['price'] is num ? promo['price'] as num : 0).toStringAsFixed(2)}',
                 imageUrl: promo['imageUrl'] ?? '',
                 description: promo['description'] ?? '',
                 isLastItem: isLastItem,
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => ProductDetailScreen(
+                      productId: docs[index].id,
+                      product: promo,
+                    ),
+                  ),
+                ),
               );
             },
           );
@@ -216,135 +226,148 @@ class UserHomeScreen extends StatelessWidget {
     required String price,
     required String imageUrl,
     required String description,
+    required VoidCallback onTap,
     bool isLastItem = false,
   }) {
-    return Container(
-      // Ajustamos el margen para el PageView
-      margin: EdgeInsets.only(left: 20, right: isLastItem ? 20 : 8),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: Stack(
-          children: [
-            // IMAGEN DE FONDO
-            Container(
-              width: double.infinity,
-              height: double.infinity,
-              child: Image.network(
-                imageUrl.isNotEmpty ? imageUrl : 'https://via.placeholder.com/400x200',
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    color: AppColors.componentBase,
-                    child: Icon(
-                      Icons.local_offer_rounded,
-                      size: 50,
-                      color: AppColors.textSecondary.withOpacity(0.4),
-                    ),
-                  );
-                },
-              ),
-            ),
-            
-            // --- ¡CORRECCIÓN AQUÍ! ---
-            // Gradiente modificado para mejor legibilidad
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.topCenter,
-                  colors: [
-                    Colors.black.withOpacity(0.8), // 80% oscuro abajo
-                    Colors.black.withOpacity(0.2), // 20% oscuro arriba
-                  ],
-                  // El gradiente se aplica desde el 0% (abajo) hasta el 70% de la altura
-                  stops: const [0.0, 0.7], 
-                ),
-              ),
-            ),
-            // --- FIN DE LA CORRECCIÓN ---
-            
-            // CONTENIDO
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: AppColors.accent,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      'PROMOCIÓN',
-                      style: AppText.notes.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 10,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    title,
-                    style: AppText.h3.copyWith(
-                      color: Colors.white,
-                      fontSize: 18,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (description.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      description,
-                      style: AppText.notes.copyWith(
-                        color: Colors.white.withOpacity(0.8),
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          price,
-                          style: AppText.body.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                      const Spacer(),
-                      Icon(
-                        Icons.arrow_forward_rounded,
-                        color: Colors.white.withOpacity(0.8),
-                        size: 20,
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        // Ajustamos el margen para el PageView
+        margin: EdgeInsets.only(left: 20, right: isLastItem ? 20 : 8),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
           ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: Stack(
+            children: [
+              // IMAGEN DE FONDO
+              Container(
+                width: double.infinity,
+                height: double.infinity,
+                child: imageUrl.isEmpty
+                    ? const Icon(Icons.local_offer_rounded, size: 50)
+                    : Image.network(
+                        imageUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            color: AppColors.componentBase,
+                            child: Icon(
+                              Icons.local_offer_rounded,
+                              size: 50,
+                              color: AppColors.textSecondary.withOpacity(0.4),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+
+              // --- ¡CORRECCIÓN AQUÍ! ---
+              // Gradiente modificado para mejor legibilidad
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.bottomCenter,
+                    end: Alignment.topCenter,
+                    colors: [
+                      Colors.black.withOpacity(0.8), // 80% oscuro abajo
+                      Colors.black.withOpacity(0.2), // 20% oscuro arriba
+                    ],
+                    // El gradiente se aplica desde el 0% (abajo) hasta el 70% de la altura
+                    stops: const [0.0, 0.7],
+                  ),
+                ),
+              ),
+              // --- FIN DE LA CORRECCIÓN ---
+
+              // CONTENIDO
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.accent,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        'PROMOCIÓN',
+                        style: AppText.notes.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      title,
+                      style: AppText.h3.copyWith(
+                        color: Colors.white,
+                        fontSize: 18,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (description.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        description,
+                        style: AppText.notes.copyWith(
+                          color: Colors.white.withOpacity(0.8),
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            price,
+                            style: AppText.body.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        const Spacer(),
+                        Icon(
+                          Icons.arrow_forward_rounded,
+                          color: Colors.white.withOpacity(0.8),
+                          size: 20,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -366,9 +389,7 @@ class UserHomeScreen extends StatelessWidget {
               const SizedBox(width: 8),
               Text(
                 'Tiendas Abiertas',
-                style: AppText.h3.copyWith(
-                  color: AppColors.textPrimary,
-                ),
+                style: AppText.h3.copyWith(color: AppColors.textPrimary),
               ),
             ],
           ),
@@ -391,17 +412,17 @@ class UserHomeScreen extends StatelessWidget {
         if (snapshot.hasError) {
           return _buildErrorState('Error al cargar tiendas');
         }
-        
+
         if (snapshot.connectionState == ConnectionState.waiting) {
           return _buildLoadingBusinesses();
         }
-        
+
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
           return _buildEmptyBusinesses();
         }
 
         final docs = snapshot.data!.docs;
-        
+
         return ListView.separated(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -410,7 +431,8 @@ class UserHomeScreen extends StatelessWidget {
           separatorBuilder: (context, index) => const SizedBox(height: 12),
           itemBuilder: (context, index) {
             final document = docs[index];
-            Map<String, dynamic> data = document.data()! as Map<String, dynamic>;
+            Map<String, dynamic> data =
+                document.data()! as Map<String, dynamic>;
             return BusinessCard(
               businessId: document.id,
               name: data['name'] ?? 'Cafetería',
@@ -467,11 +489,7 @@ class UserHomeScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.error_outline_rounded,
-              color: AppColors.error,
-              size: 32,
-            ),
+            Icon(Icons.error_outline_rounded, color: AppColors.error, size: 32),
             const SizedBox(height: 8),
             Text(
               message,
@@ -566,7 +584,8 @@ class BusinessCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppColors.background, // Cambiado a fondo blanco para que resalte la sombra
+      color: AppColors
+          .background, // Cambiado a fondo blanco para que resalte la sombra
       borderRadius: BorderRadius.circular(16),
       elevation: 2, // Elevación sutil
       shadowColor: Colors.black.withOpacity(0.1), // Sombra suave
@@ -574,10 +593,8 @@ class BusinessCard extends StatelessWidget {
         onTap: () {
           Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (context) => MenuScreen(
-                businessId: businessId, 
-                businessName: name
-              ),
+              builder: (context) =>
+                  MenuScreen(businessId: businessId, businessName: name),
             ),
           );
         },
@@ -596,25 +613,27 @@ class BusinessCard extends StatelessWidget {
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: Image.network(
-                    imageUrl.isNotEmpty ? imageUrl : 'https://via.placeholder.com/300',
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        color: AppColors.componentBase,
-                        child: Icon(
-                          Icons.storefront_rounded,
-                          size: 30,
-                          color: AppColors.textSecondary.withOpacity(0.4),
+                  child: imageUrl.isEmpty
+                      ? const Icon(Icons.storefront_rounded, size: 30)
+                      : Image.network(
+                          imageUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              color: AppColors.componentBase,
+                              child: Icon(
+                                Icons.storefront_rounded,
+                                size: 30,
+                                color: AppColors.textSecondary.withOpacity(0.4),
+                              ),
+                            );
+                          },
                         ),
-                      );
-                    },
-                  ),
                 ),
               ),
-              
+
               const SizedBox(width: 16),
-              
+
               // INFORMACIÓN
               Expanded(
                 child: Column(
@@ -622,7 +641,8 @@ class BusinessCard extends StatelessWidget {
                   children: [
                     Text(
                       name,
-                      style: AppText.body.copyWith( // Usamos 'body' pero más grueso
+                      style: AppText.body.copyWith(
+                        // Usamos 'body' pero más grueso
                         fontWeight: FontWeight.w700,
                         color: AppColors.textPrimary,
                       ),
@@ -631,7 +651,10 @@ class BusinessCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.primary.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(6),
@@ -666,9 +689,9 @@ class BusinessCard extends StatelessWidget {
                   ],
                 ),
               ),
-              
+
               const SizedBox(width: 12),
-              
+
               // INDICADOR DE NAVEGACIÓN
               Icon(
                 Icons.chevron_right_rounded,

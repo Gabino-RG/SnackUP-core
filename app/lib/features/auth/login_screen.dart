@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'auth_repository.dart';
 import 'business_login_screen.dart';
 import 'register_screen.dart';
 import 'package:snackup/theme/app_colors.dart';
 import 'package:snackup/theme/app_text.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({super.key, this.repository});
+  final SnackAuthRepository? repository;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -18,32 +19,62 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
   bool _obscurePassword = true;
   String _errorMessage = '';
+  late final SnackAuthRepository _repository;
+  @override
+  void initState() {
+    super.initState();
+    _repository = widget.repository ?? FirebaseSnackAuthRepository();
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   Future<void> _signIn() async {
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+    if (_isLoading) return;
+    if (_emailController.text.trim().isEmpty ||
+        _passwordController.text.isEmpty) {
       setState(() => _errorMessage = 'Por favor, llena ambos campos');
       return;
     }
-    
     setState(() {
       _isLoading = true;
       _errorMessage = '';
     });
-
     try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-      );
-    } on FirebaseAuthException catch (e) {
-      setState(() {
-        _isLoading = false;
-        if (e.code == 'user-not-found' || e.code == 'wrong-password' || e.code == 'invalid-credential') {
-          _errorMessage = 'Correo o contraseña incorrectos';
-        } else {
-          _errorMessage = 'Ocurrió un error. Intenta de nuevo.';
-        }
-      });
+      await _repository.signIn(_emailController.text, _passwordController.text);
+      if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
+    } catch (error) {
+      if (mounted) setState(() => _errorMessage = authErrorMessage(error));
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _resetPassword() async {
+    if (_isLoading) return;
+    setState(() {
+      _isLoading = true;
+      _errorMessage = '';
+    });
+    try {
+      await _repository.sendPasswordReset(_emailController.text);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Si el correo tiene una cuenta, recibirás instrucciones para restablecer tu contraseña.',
+            ),
+          ),
+        );
+      }
+    } catch (error) {
+      if (mounted) setState(() => _errorMessage = authErrorMessage(error));
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -206,9 +237,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
-                    onPressed: () {
-                      // TODO: Implementar recuperación de contraseña
-                    },
+                    onPressed: _isLoading ? null : _resetPassword,
                     child: Text(
                       '¿Olvidaste tu contraseña?',
                       style: AppText.notes.copyWith(
@@ -235,7 +264,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         height: 24,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.white,
+                          ),
                         ),
                       ),
                     ),
@@ -311,21 +342,23 @@ class _LoginScreenState extends State<LoginScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   decoration: BoxDecoration(
                     border: Border(
-                      top: BorderSide(
-                        color: AppColors.borders,
-                        width: 1,
-                      ),
+                      top: BorderSide(color: AppColors.borders, width: 1),
                     ),
                   ),
                   child: Column(
                     children: [
                       // BOTÓN DE REGISTRO
                       FilledButton.tonal(
-                        onPressed: () {
-                          Navigator.of(context).push(MaterialPageRoute(
-                            builder: (context) => const RegisterScreen(),
-                          ));
-                        },
+                        onPressed: _isLoading
+                            ? null
+                            : () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        RegisterScreen(repository: _repository),
+                                  ),
+                                );
+                              },
                         style: FilledButton.styleFrom(
                           backgroundColor: AppColors.accent.withOpacity(0.1),
                           foregroundColor: AppColors.accent,
@@ -352,20 +385,24 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 12),
                       // BOTÓN PARA NEGOCIOS
                       OutlinedButton(
-                        onPressed: () {
-                          Navigator.of(context).push(MaterialPageRoute(
-                            builder: (context) => const BusinessLoginScreen(),
-                          ));
-                        },
+                        onPressed: _isLoading
+                            ? null
+                            : () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) => BusinessLoginScreen(
+                                      repository: _repository,
+                                    ),
+                                  ),
+                                );
+                              },
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.textSecondary,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          side: BorderSide(
-                            color: AppColors.borders,
-                          ),
+                          side: BorderSide(color: AppColors.borders),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,

@@ -17,10 +17,7 @@ import 'package:flutter/foundation.dart'
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
-      throw UnsupportedError(
-        'DefaultFirebaseOptions have not been configured for web - '
-        'you can reconfigure this by running the FlutterFire CLI again.',
-      );
+      return web;
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
@@ -52,6 +49,17 @@ class DefaultFirebaseOptions {
     }
   }
 
+  // Existing SnackUP web registration, shared by the integrated entrypoint.
+  static const FirebaseOptions web = FirebaseOptions(
+    apiKey: 'AIzaSyDK5N-TA3bA7VKv5TJQqUXICA617wOywzU',
+    authDomain: 'snackup-8fe96.firebaseapp.com',
+    projectId: 'snackup-8fe96',
+    storageBucket: 'snackup-8fe96.firebasestorage.app',
+    messagingSenderId: '685155856831',
+    appId: '1:685155856831:web:8047d0df9ed1522ff5b10a',
+    measurementId: 'G-PE33SNB39W',
+  );
+
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyAdNKrdRBFXOW0rOei9AddO7joTayLRB8o',
     appId: '1:685155856831:android:2df64bce8711eb6ef5b10a',
@@ -59,5 +67,4 @@ class DefaultFirebaseOptions {
     projectId: 'snackup-8fe96',
     storageBucket: 'snackup-8fe96.firebasestorage.app',
   );
-
 }

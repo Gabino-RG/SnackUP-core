@@ -1,0 +1,16 @@
+{
+  "name": "snackup-trusted-access",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test provision_access.test.mjs",
+    "check": "node --check provision_access.mjs"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.0.0"
+  }
+}
+
