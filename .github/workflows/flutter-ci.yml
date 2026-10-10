@@ -46,3 +46,14 @@ jobs:
           path: app/build/web
           if-no-files-found: error
           retention-days: 14
+
+      - name: Build local editable catalog
+        run: flutter build web --no-web-resources-cdn --target lib/main_catalog_local.dart --output build/catalog-local
+
+      - name: Preserve editable catalog
+        uses: actions/upload-artifact@v4
+        with:
+          name: snackup-catalogo-local
+          path: app/build/catalog-local
+          if-no-files-found: error
+          retention-days: 14

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'app_bootstrap.dart';
+import 'catalog/catalog.dart';
+import 'catalog/firebase_catalog_repository.dart';
 import 'utils/reload_stub.dart'
     if (dart.library.js_interop) 'utils/reload_web.dart';
 
@@ -16,7 +18,10 @@ void main() {
   runApp(
     AppBootstrap(
       initialize: _initializeFirebase,
-      appBuilder: () => const SnackUpApp(),
+      appBuilder: () => CatalogScope(
+        repository: FirebaseCatalogRepository(),
+        child: const SnackUpApp(),
+      ),
       onReload: kIsWeb ? () => reloadApplication() : null,
     ),
   );
