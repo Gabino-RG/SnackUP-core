@@ -408,8 +408,10 @@ class _CatalogEditorScreenState extends State<CatalogEditorScreen> {
             ]))
           : Align(alignment: Alignment.topCenter, child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 780),
-              child: Form(key: _form, child: ListView(
+              child: Form(key: _form, child: SingleChildScrollView(
                 padding: const EdgeInsets.all(20),
+                // Keep every field mounted so validation includes offscreen fields.
+                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   if (widget.repository.isLocal) const Padding(
                     padding: EdgeInsets.only(bottom: 16),
@@ -489,7 +491,7 @@ class _CatalogEditorScreenState extends State<CatalogEditorScreen> {
                     )),
                   const SizedBox(height: 32),
                 ],
-              )),
+              ))),
             )),
     ),
   );
