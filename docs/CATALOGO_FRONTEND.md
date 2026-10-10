@@ -128,7 +128,10 @@ consultas e índices adecuados y transacciones para precios/stock/pedidos.
 Prueba de aceptación a acordar con el equipo:
 
 - Ambiente local de pruebas con datos ficticios y hardware/red equivalentes.
-- Subir por etapas a 50, 100, 250 y 500 sesiones durante un pico representativo.
+- Subir por etapas a 50, 100, 250 y 500 sesiones y sostener 500 durante un
+  periodo representativo de servicio. Como 500 es la media esperada, acordar
+  además una prueba de pico; 1,000 sesiones es una hipótesis inicial de margen,
+  pendiente de confirmar con el equipo, no una capacidad garantizada.
 - Predominio de consulta de menú y seguimiento; pocos operadores cambian
   productos, estados y precios. Usar un ritmo de creación de pedidos acordado
   con los locales, sin equiparar sesiones con pedidos por segundo.
