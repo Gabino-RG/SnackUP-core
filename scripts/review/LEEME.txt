@@ -12,14 +12,23 @@ Contrasena de prueba: SnackUP-Prueba-2026
 La instalacion nueva no crea locales, productos, pedidos, opiniones ni
 cuentas de operadores. Ustedes crean los datos desde los paneles.
 
-ENTRAR AL PANEL DEL LOCAL CON LA CUENTA MAESTRA:
-1. Entra con admin@snackup.test y SnackUP-Prueba-2026.
-2. Pulsa Entrar al panel del local y elige tu local.
-3. Si no hay locales, pulsa Agregar local y escribe sus datos. Al guardar
-   entraras directamente a Cocina, Productos, Historial, Resumen y Mi local.
-4. La flecha Volver a Administracion regresa sin cerrar sesion.
-No necesitas crear otra cuenta para revisar y operar el local como maestro.
-Los cambios realizados en este panel se guardan en el local elegido.
+DOS PANELES CON CUENTAS SEPARADAS:
+- Administracion (incluida la cuenta maestra): locales, cuentas y reportes.
+  No puede entrar a Cocina ni operar productos o pedidos.
+- Cuenta de local: Cocina, Productos, Historial, Resumen y Mi local.
+  No puede entrar a Administracion ni a otro local.
+El acceso abre automaticamente el panel correspondiente a la cuenta.
+La API tambien rechaza los accesos cruzados.
+
+CREAR TU ACCESO AL PANEL DEL LOCAL:
+1. Entra con la cuenta maestra.
+2. En Gestionar locales y cuentas, pulsa Agregar local si aun no existe.
+3. Vuelve a Administracion y pulsa Crear cuenta. Elige Local de cafeteria,
+   asigna el local y escribe
+   el nombre, correo y contrasena que ustedes decidan. Guarda la cuenta.
+4. Cierra sesion e inicia con esa cuenta del local: se abrira Cocina.
+La cuenta maestra solo autoriza accesos; no sustituye a un operador.
+No se crean cuentas ni locales automaticamente.
 
 PARA DAR ACCESO:
 - La persona pulsa Crea tu cuenta en el acceso y envia su solicitud.
@@ -32,7 +41,7 @@ PARA DAR ACCESO:
   de revision. Requiere configurar OAuth y la validacion del backend real.
 
 PRIMERA PRUEBA DE COCINA:
-Abre el panel del local como maestro o con su cuenta autorizada, agrega un producto,
+Entra con la cuenta autorizada del local, agrega un producto,
 abre la recepcion de pedidos y pulsa Recibir pedido de prueba si quieres
 simular un cliente. Ningun pedido aparece por si solo. Acepta el pedido,
 inicia preparacion, marcalo listo y verifica su codigo para entregarlo.

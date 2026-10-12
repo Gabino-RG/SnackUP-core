@@ -96,11 +96,18 @@ El tablero vuelve a consultar configuración, catálogo académico, locales, opi
 
 El login con contraseña correcta de una cuenta pendiente devuelve `403 ACCESS_PENDING`, rechazada `403 ACCESS_REJECTED`; suspendida `403 ACCESS_REVOKED`. No genera sesiones. Sin contraseña correcta, respuesta genérica401. La marca de autorización debe comprobarse también en refresh y en cada recurso. Las rutas tradicionales `admin/users` aceptan únicamente cuentas aprobadas; no pueden saltarse el flujo de revisión cambiando un pendiente por PATCH.
 
-## Operación de locales desde la cuenta maestra
+## Separación obligatoria entre Administración y Local
 
-El portal permite al maestro seleccionar un local activo y abrir el mismo panel de negocio sin cambiar su sesión, rol o asignación. Reutiliza las rutas existentes `businesses/{id}`, catálogo, pedidos, historial, estadísticas y `media`; no existe un token de suplantación ni una cuenta de operador creada para este acceso.
+El portal utiliza el rol y la asignación verificados por `GET users/me` para mostrar un único panel. `role=admin`, incluido `isMaster=true`, abre exclusivamente Administración. `role=business` con `businessId` abre exclusivamente el local asignado. No existe un botón de cambio de panel ni una sesión de suplantación. La cuenta maestra crea o autoriza cuentas propias de los locales; para operar se debe cerrar sesión e iniciar con la cuenta autorizada del local.
 
-El backend debe autorizar cada recurso a un operador asignado a ese local **o** a un usuario activo con `role=admin,isMaster=true`. Un administrador ordinario no obtiene permisos de operación. Resolver siempre el local del producto/pedido en el servidor y comprobar que sigue activo. `POST media` permite al maestro cargar imágenes; los operadores siguen sujetos al estado de su local. Comprobar revocación y versión de sesión en todas las peticiones, y atribuir la auditoría al usuario maestro real. La API local de revisión implementa estos controles; el backend definitivo debe incluirlos antes de activar esta función en producción.
+El backend debe comprobar estos permisos en **cada petición**, incluso si se envía fuera del frontend:
+
+- `admin/*`: exige `role=admin`. Cuentas y solicitudes exigen además `isMaster=true`. Un operador recibe `403 FORBIDDEN`.
+- `businesses/{id}`, sus productos, pedidos, historial y estadísticas: exige `role=business`, asignación al mismo local y cuenta/local activos. Tanto el maestro como los demás administradores reciben `403 FORBIDDEN`.
+- `products/{id}` y `orders/{id}`: resolver el local desde el registro del servidor y aplicar el mismo control, para lecturas, ediciones, borrados y transiciones. No confiar en un `businessId` enviado por el cliente.
+- `POST media` y `POST review/orders` (solo revisión): exigen cuenta de negocio y local activo; no admiten excepciones para el maestro.
+
+Comprobar revocación y versión de sesión en todos los recursos. La gestión administrativa de la ficha/activación de un local mediante `admin/businesses` no concede acceso a su operación. La API local de revisión aplica esta separación; el backend definitivo debe implementar el mismo contrato antes de producción.
 
 ## Google: identidad externa, permisos internos
 

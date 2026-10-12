@@ -14,11 +14,10 @@ class AdminManagement extends StatefulWidget {
     required this.currentUserId,
     this.canManageAccounts = false,
     this.createAccountOnOpen = false,
-    this.selectBusiness = false,
   });
   final OperationsRepository repository;
   final String currentUserId;
-  final bool canManageAccounts, createAccountOnOpen, selectBusiness;
+  final bool canManageAccounts, createAccountOnOpen;
   @override
   State<AdminManagement> createState() => _AdminManagementState();
 }
@@ -32,18 +31,13 @@ class _AdminManagementState extends State<AdminManagement> {
   final _search = TextEditingController();
   Timer? _debounce;
   PortalConfiguration? _configuration;
-  bool get _selecting => widget.selectBusiness && widget.canManageAccounts;
   @override
   void initState() {
     super.initState();
-    _section =
-        !_selecting && widget.createAccountOnOpen && widget.canManageAccounts
-        ? 1
-        : 0;
+    _section = widget.createAccountOnOpen && widget.canManageAccounts ? 1 : 0;
     _load().then((_) {
       if (mounted &&
           _error == null &&
-          !_selecting &&
           widget.createAccountOnOpen &&
           widget.canManageAccounts)
         _user();
@@ -91,7 +85,6 @@ class _AdminManagementState extends State<AdminManagement> {
 
   Future<void> _business([BusinessRecord? b]) async {
     if (_configuration == null || _error != null) return;
-    BusinessRecord? saved;
     final result = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -122,7 +115,7 @@ class _AdminManagementState extends State<AdminManagement> {
           'isActive': '${b?.isActive ?? true}',
         },
         save: (d) async {
-          saved = await widget.repository.saveBusiness({
+          await widget.repository.saveBusiness({
             ...d,
             'cafeteriaId': _configuration!.cafeteriaId,
             'isActive': d['isActive'] == 'true',
@@ -131,14 +124,6 @@ class _AdminManagementState extends State<AdminManagement> {
         },
       ),
     );
-    if (mounted &&
-        result == true &&
-        b == null &&
-        _selecting &&
-        saved?.isActive == true) {
-      Navigator.of(context).pop(saved);
-      return;
-    }
     if (result != null && mounted) _load();
   }
 
@@ -254,22 +239,14 @@ class _AdminManagementState extends State<AdminManagement> {
         ? _businesses?.totalPages
         : _users?.totalPages;
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          _selecting ? 'Entrar al panel del local' : 'Gestión administrativa',
-        ),
-      ),
+      appBar: AppBar(title: const Text('Gestión administrativa')),
       body: Column(
         children: [
           Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                if (_selecting)
-                  const Text(
-                    'Elige un local para abrir su cocina, productos e historial con tu cuenta maestra.',
-                  ),
-                if (widget.canManageAccounts && !_selecting)
+                if (widget.canManageAccounts)
                   SegmentedButton<int>(
                     segments: const [
                       ButtonSegment(
@@ -414,52 +391,24 @@ class _AdminManagementState extends State<AdminManagement> {
   Widget _businessList() {
     final rows = _businesses?.items ?? [];
     if (rows.isEmpty)
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Text(
-            _selecting && _search.text.isEmpty
-                ? 'Todavía no hay locales. Pulsa Agregar local; al guardarlo entrarás directamente a su panel.'
-                : 'No hay locales para esta búsqueda.',
-            textAlign: TextAlign.center,
-          ),
-        ),
-      );
+      return const Center(child: Text('No hay locales para esta búsqueda.'));
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       itemCount: rows.length,
       itemBuilder: (_, i) {
         final b = rows[i];
         return Card(
-          child: Column(
-            children: [
-              ListTile(
-                leading: const Icon(Icons.storefront),
-                title: Text(b.name),
-                subtitle: Text(
-                  '${b.category} · ${b.isActive ? (b.isOpen ? 'Abierto' : 'Cerrado') : 'Inactivo'}',
-                ),
-                trailing: IconButton(
-                  tooltip: 'Editar ${b.name}',
-                  onPressed: () => _business(b),
-                  icon: const Icon(Icons.edit_outlined),
-                ),
-              ),
-              if (_selecting)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: _busy || !b.isActive
-                          ? null
-                          : () => Navigator.of(context).pop(b),
-                      icon: const Icon(Icons.login),
-                      label: Text('Entrar a ${b.name}'),
-                    ),
-                  ),
-                ),
-            ],
+          child: ListTile(
+            leading: const Icon(Icons.storefront),
+            title: Text(b.name),
+            subtitle: Text(
+              '${b.category} · ${b.isActive ? (b.isOpen ? 'Abierto' : 'Cerrado') : 'Inactivo'}',
+            ),
+            trailing: IconButton(
+              tooltip: 'Editar ${b.name}',
+              onPressed: () => _business(b),
+              icon: const Icon(Icons.edit_outlined),
+            ),
           ),
         );
       },

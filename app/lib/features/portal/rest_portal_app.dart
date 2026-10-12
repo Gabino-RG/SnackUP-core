@@ -9,7 +9,6 @@ import '../../api/reset_location.dart';
 import 'reset_access_screen.dart';
 import '../../catalog/rest_catalog_repository.dart';
 import '../../operations/operations_repository.dart';
-import '../../operations/models.dart';
 import '../operations/business_portal.dart';
 import '../operations/admin_management.dart';
 import '../admin/admin_dashboard_screen.dart';
@@ -122,38 +121,6 @@ class _RestPortalAppState extends State<RestPortalApp> {
               onSignOut: session.signOut,
               isMaster: account.canManageAccounts,
               autoRefresh: true,
-              onOpenBusiness: !account.canManageAccounts
-                  ? null
-                  : (context) async {
-                      final selected = await Navigator.of(context)
-                          .push<BusinessRecord>(
-                            MaterialPageRoute(
-                              builder: (_) => AdminManagement(
-                                repository: _operations!,
-                                currentUserId: account.id,
-                                canManageAccounts: true,
-                                selectBusiness: true,
-                              ),
-                            ),
-                          );
-                      if (!context.mounted ||
-                          selected == null ||
-                          session.account?.canManageAccounts != true)
-                        return;
-                      await Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (localContext) => BusinessPortal(
-                            businessId: selected.id,
-                            catalog: _catalog!,
-                            repository: _operations!,
-                            token: session.accessToken,
-                            onSignOut: session.signOut,
-                            onReturnToAdmin: () =>
-                                Navigator.of(localContext).pop(),
-                          ),
-                        ),
-                      );
-                    },
               onAccessRequests: !account.canManageAccounts
                   ? null
                   : (context) async {
@@ -562,13 +529,13 @@ class _PortalLoginState extends State<_PortalLogin> {
                         const Padding(
                           padding: EdgeInsets.only(bottom: 12),
                           child: SelectableText(
-                            'Cuenta maestra: admin@snackup.test\nContraseña de prueba: SnackUP-Prueba-2026',
+                            'Cuenta maestra (Administración): admin@snackup.test\nContraseña de prueba: SnackUP-Prueba-2026',
                             textAlign: TextAlign.center,
                             style: TextStyle(fontSize: 12),
                           ),
                         ),
                       const Text(
-                        'Solo las cuentas autorizadas por la cuenta maestra pueden entrar. Puedes solicitar acceso o pedirle que cree tu cuenta.',
+                        'Cada cuenta entra únicamente a su panel: Administración o su local. Para acceder a un local, solicita tu cuenta o pide a la cuenta maestra que la cree y autorice.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 12,

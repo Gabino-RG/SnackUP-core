@@ -8,11 +8,17 @@ Extrae todo `SnackUP-Paneles-PC.zip` y ejecuta `INICIAR_SNACKUP.cmd`. Se abre `h
 
 La **única cuenta inicial** es `admin@snackup.test`, contraseña `SnackUP-Prueba-2026`. Es la cuenta maestra de revisión. Una instalación nueva no crea locales, operadores, productos, pedidos, opiniones ni grupos. La universidad y su cafetería son la configuración institucional; sus locales los crea el equipo.
 
-## Abrir el panel del local con la cuenta maestra
+## Dos paneles separados
 
-Después de entrar con el maestro, pulsa **Entrar al panel del local** y elige un local activo. Abre las mismas pantallas de Cocina, Productos, Historial, Resumen y Mi local que utilizan sus operadores. Si aún no existe ninguno, **Agregar local** permite registrar sus datos y entrar directamente al guardar. No se crea una cuenta de operador ni se inventa un local al arrancar.
+El correo y la contraseña identifican una cuenta; el servidor determina su panel. **Administración, incluida la cuenta maestra, no puede entrar a Cocina ni operar productos o pedidos. Las cuentas de los locales no pueden entrar a Administración ni operar otro local.** La separación se aplica en las pantallas y en cada petición de la API; no hay cambio de panel ni suplantación de operadores.
 
-La flecha **Volver a Administración** regresa sin cerrar sesión. El encabezado indica **Cuenta maestra**; las acciones guardan cambios reales sobre el local elegido. La identidad autenticada sigue siendo la del maestro. Los administradores ordinarios no reciben este acceso y los operadores conservan acceso únicamente a su local. Los locales inactivos permanecen bloqueados.
+Para probar el panel del local:
+
+1. Entra con la cuenta maestra. En **Gestionar locales y cuentas**, pulsa **Agregar local** si todavía no existe.
+2. Vuelve a Administración y pulsa **Crear cuenta**. Selecciona **Local de cafetería**, asigna ese local e introduce el nombre, correo y contraseña que ustedes decidan. Guarda.
+3. **Cierra sesión** y entra con la nueva cuenta del local. Verás Cocina, Productos, Historial, Resumen y Mi local.
+
+La cuenta maestra conserva la gestión de accesos. No se crean cuentas de operadores automáticamente. Los locales inactivos permanecen bloqueados.
 
 ## Solicitar y autorizar acceso
 
