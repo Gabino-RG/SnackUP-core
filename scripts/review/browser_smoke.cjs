@@ -19,6 +19,9 @@ fs.mkdirSync(output, { recursive: true });
     await page.keyboard.type(value,{delay:15});
     await page.keyboard.press('Tab');
   }
+  function label(text){
+    return page.getByText(text,{exact:true}).or(page.getByLabel(text,{exact:true})).first();
+  }
   page.on('pageerror',e=>errors.push(e.message));
   page.setDefaultTimeout(20000);
   try {
@@ -53,8 +56,8 @@ fs.mkdirSync(output, { recursive: true });
     await page.getByRole('switch',{name:/Producto de revisión UI.*\$54\.00/s}).waitFor();
     await page.screenshot({path:path.join(output,'03-productos-desktop.png')});
     await page.setViewportSize({width:390,height:844});
-    await page.getByRole('button',{name:/Cocina/}).click();
-    await page.getByRole('button',{name:'Nuevos (3)',exact:true}).waitFor();
+    await page.getByRole('tab',{name:/Cocina/}).click();
+    await label('Nuevos (3)').waitFor();
     await page.screenshot({path:path.join(output,'04-cocina-movil.png')});
     await page.getByRole('button',{name:'Cerrar sesión',exact:true}).click();
     await login('admin@snackup.test');
@@ -68,12 +71,12 @@ fs.mkdirSync(output, { recursive: true });
     await page.getByRole('button',{name:'Guardar',exact:true}).click();
     await page.getByRole('button',{name:'Editar Local de revisión UI',exact:true}).waitFor();
     await page.screenshot({path:path.join(output,'06-gestion-locales.png')});
-    await page.getByRole('button',{name:'Cuentas',exact:true}).click();
+    await label('Cuentas').click();
     await page.getByRole('button',{name:'Crear cuenta',exact:true}).click();
     await typeField('Nombre','Operador de revisión UI');
     await typeField('Correo electrónico','operador-ui@snackup.test');
     await typeField('Contraseña inicial','Clave-Prueba-123');
-    await page.getByRole('button',{name:/Sin local/}).click();
+    await page.getByRole('button',{name:/Sin local/}).or(page.getByRole('combobox',{name:/Local asignado/})).or(label('Sin local')).first().click();
     await page.getByText('Local de revisión UI',{exact:true}).or(page.getByLabel('Local de revisión UI',{exact:true})).last().click();
     await page.getByRole('button',{name:'Guardar',exact:true}).click();
     await page.getByRole('button',{name:'Editar Operador de revisión UI',exact:true}).waitFor();
