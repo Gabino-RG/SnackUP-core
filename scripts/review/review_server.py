@@ -148,7 +148,7 @@ class Store:
 class ReviewHandler(http.server.SimpleHTTPRequestHandler):
     extensions_map={**http.server.SimpleHTTPRequestHandler.extensions_map,'.wasm':'application/wasm','.js':'application/javascript','.json':'application/json'}
     def __init__(self,*args,**kwargs):
-        super().__init__(*args,directory=str(self.server.web_root),**kwargs)
+        super().__init__(*args,directory=str(args[2].web_root),**kwargs)
     def log_message(self,*args):
         pass
     def end_headers(self):
@@ -159,6 +159,8 @@ class ReviewHandler(http.server.SimpleHTTPRequestHandler):
     def list_directory(self,path):
         self.send_error(404)
     def reply(self,data=None,status=200,cookie=None):
+        if getattr(self,'_deferring',False):
+            self._response=(data,status,cookie);return
         raw=b'' if data is None else json.dumps(data,ensure_ascii=False).encode()
         self.send_response(status)
         self.send_header('Content-Type','application/json; charset=utf-8')
@@ -218,8 +220,12 @@ class ReviewHandler(http.server.SimpleHTTPRequestHandler):
             query=urllib.parse.parse_qs(parsed.query)
             data={} if method=='GET' else self.body()
             parts=path[len('/api/v1/'):].strip('/').split('/')
-            with self.server.store.lock, self.server.store.db:
-                self.route(method,parts,query,data)
+            self._deferring=True
+            try:
+                with self.server.store.lock, self.server.store.db:
+                    self.route(method,parts,query,data)
+            finally:self._deferring=False
+            self.reply(*self._response)
         except Problem as e:self.reply({'error':{'code':e.code,'message':e.message}},e.status)
         except (ValueError,TypeError,KeyError):self.reply({'error':{'code':'INVALID_INPUT','message':'Revisa los datos de la solicitud.'}},400)
         except (BrokenPipeError,ConnectionResetError):pass

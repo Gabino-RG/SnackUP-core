@@ -1,0 +1,29 @@
+SNACKUP - PANELES INTEGRADOS PARA REVISION
+
+1. Extrae todo el ZIP.
+2. Abre INICIAR_SNACKUP.cmd.
+3. Se abrira http://localhost:8791/ en tu navegador.
+4. Manten la consola abierta mientras usas SnackUP.
+
+NEGOCIO: negocio@snackup.test
+ADMINISTRACION: admin@snackup.test
+SEGUNDO NEGOCIO: antojitos@snackup.test
+CONTRASENA DE LAS CUENTAS: SnackUP-Prueba-2026
+
+Pedidos iniciales: codigo de recogida 4821.
+Recibir pedido de prueba crea un pedido y muestra su codigo y QR.
+Los productos, precios, pedidos y seguimientos se guardan en datos/.
+Para comenzar otra vez, cierra SnackUP y renombra datos/ a datos-respaldo/.
+
+Lee documentos/PANELES_ENTREGA.md para el recorrido de prueba y
+CONTRATO_PANELES.md para conectar el backend definitivo.
+
+La franja amarilla identifica datos de prueba. Este servidor es solo
+para esta PC. No envia correos ni certifica 500 usuarios simultaneos.
+El frontend esta preparado para la API real; el servidor de revision
+no debe publicarse ni utilizarse como backend de produccion.
+
+Windows 10/11 de 64 bits. Incluye Python con su licencia.
+No necesitas instalar Flutter, Python o Git ni ejecutar como administrador.
+Si el puerto esta ocupado, cierra la instancia anterior antes de abrir otra.
+Para terminar, pulsa Ctrl+C o cierra la consola.

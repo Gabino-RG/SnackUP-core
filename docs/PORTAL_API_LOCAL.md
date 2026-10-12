@@ -1,4 +1,6 @@
-# SnackUP · Acceso y administración mediante API local
+# SnackUP · Paneles mediante API local
+
+Actualización de alcance: [entrega para PC](PANELES_ENTREGA.md) y [contrato completo de paneles](CONTRATO_PANELES.md).
 
 Actualización: 11 de octubre de 2026, hora de México.
 
@@ -8,8 +10,8 @@ Actualización: 11 de octubre de 2026, hora de México.
 | --- | --- | --- |
 | Acceso web | Login, recuperación, restauración con cookie, renovación coordinada, cierre, rutas por perfil del servidor | Servidor de autenticación, cookie HTTPS y cuentas autorizadas |
 | Negocios | Catálogo completo con REST, imágenes, precio, stock, versión y paginación | Confirmar las rutas CRUD y probar contra SQL |
-| Administración | Monitor existente conectado a REST: locales, opiniones, filtros sobre datos cargados, seguimiento e historial | Aprobar rol/rutas administrativas y agregados oficiales del servidor |
-| Pedidos y cocina | Flujo anterior disponible en la entrada Firebase | Migrar a acciones v3, verificación de entrega y tiempo real |
+| Administración | Monitor REST, seguimiento, historial y gestión de locales/cuentas | Aprobar extensiones de gestión, permisos y agregados oficiales |
+| Pedidos y cocina | Acciones v3, tablero, entrega QR/manual, cancelación, historial, resumen y WebSocket con consulta de respaldo | Validar contra backend definitivo y dispositivos reales |
 | Capacidad local | Arquitectura y plan de 500 sesiones sostenidas documentados | Medir backend, SQL, servidor y red con carga representativa |
 
 Este portal no crea una API ni instala una base SQL. El acceso REST de negocios

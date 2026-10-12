@@ -38,6 +38,9 @@ jobs:
           if-no-files-found: error
           retention-days: 14
         
+      - name: Test local review server
+        run: python3 -m unittest discover -s ../scripts/review -p 'test_*.py' -v
+
       - name: Static analysis
         run: flutter analyze --no-fatal-infos --no-fatal-warnings
 

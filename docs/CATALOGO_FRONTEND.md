@@ -1,3 +1,5 @@
+> Panel integrado y entrega actual: [PANELES_ENTREGA.md](PANELES_ENTREGA.md). Cocina, historial y gestión ya están incorporados al portal REST.
+
 # SnackUP · Catálogo editable y conexión a API local
 
 Actualización: 10 de octubre de 2026. Alcance: frontend de negocios.

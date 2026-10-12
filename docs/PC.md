@@ -1,3 +1,5 @@
+> Este documento describe el paquete anterior conectado a Firebase. Para la entrega de negocios y administración con revisión local, consulta [PANELES_ENTREGA.md](PANELES_ENTREGA.md).
+
 # SnackUP completo en Windows
 
 El paquete `SnackUP-PC.zip` compila **`app/lib/main.dart`**, el mismo punto de entrada de la aplicación conectada a Firebase. Incluye el acceso de alumnos, negocios y administración según la cuenta autenticada. No usa el punto de entrada `main_admin_demo.dart` ni sus datos ficticios.
