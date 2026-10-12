@@ -28,6 +28,7 @@ from datetime import datetime, timedelta, timezone
 PASSWORD = 'SnackUP-Prueba-2026'
 REVIEW_LOCAL_EMAIL = 'negocio@snackup.test'
 REVIEW_LOCAL_ID = 'review-local'
+REVIEW_DEMO_BATCH = 'charts-demo-v6'
 ACTIVE = {'pending', 'accepted', 'preparing', 'ready'}
 REASONS = {'product_unavailable', 'cannot_prepare', 'store_issue', 'store_closing', 'other'}
 UTC = timezone.utc
@@ -123,6 +124,7 @@ class Store:
         # Apply once. A later password/assignment/suspension by the master is preserved.
         with self.lock,self.db:
             if any(r['id']=='ready-local-v5' for r in self.rows('migrations')):return
+            migration={'id':'ready-local-v5','appliedAt':now()}
             users=self.rows('users')
             if not any(u['email']==REVIEW_LOCAL_EMAIL or u['id']=='review-operator' for u in users):
                 cafeteria=self.configuration()['cafeteria']
@@ -135,7 +137,100 @@ class Store:
                 self.put('users',{'id':'review-operator','email':REVIEW_LOCAL_EMAIL,'displayName':'Operador de prueba',
                     'role':'business','businessId':bid,'isActive':True,'isMaster':False,'approvalStatus':'approved',
                     'provider':'local','version':1,'passwordHash':hash_password(PASSWORD),'createdAt':now(),'updatedAt':now()})
-            self.put('migrations',{'id':'ready-local-v5','appliedAt':now()})
+                migration['businessId']=bid
+            self.put('migrations',migration)
+    def ensure_demo_data(self, clock=None):
+        # Review server only. One atomic, additive batch; restarting must never reset
+        # prices, stock, dates, user edits or deleted examples. No extra accounts.
+        with self.lock,self.db:
+            if any(r['id']==REVIEW_DEMO_BATCH for r in self.rows('migrations')):return
+            migration=next((r for r in self.rows('migrations') if r['id']=='ready-local-v5'),{})
+            bid=migration.get('businessId',REVIEW_LOCAL_ID)  # Existing v5 installations.
+            operator=next((u for u in self.rows('users') if u['id']=='review-operator'),None)
+            if not operator or operator.get('businessId')!=bid:return
+            if not any(b['id']==bid for b in self.rows('businesses')):return
+            clock=(clock or datetime.now(UTC)).astimezone(CAMPUS)
+            iso=lambda date:date.astimezone(UTC).isoformat().replace('+00:00','Z')
+            stamp=iso(clock)
+            tags={'isDemo':True,'demoBatch':REVIEW_DEMO_BATCH}
+            products=[]
+            for name,price,category in [('Torta de pollo',55,'Comida'),('Quesadillas',40,'Comida'),
+                    ('Ensalada fresca',65,'Comida'),('Agua de limón',25,'Bebidas'),
+                    ('Café americano',30,'Bebidas'),('Galleta de avena',20,'Postres')]:
+                products.append(self.put('products',{'id':new_id(),'businessId':bid,'name':name+' · ejemplo',
+                    'price':price,'category':category,'description':'Producto ficticio para probar el catálogo y las ventas. Puedes editarlo o eliminarlo.',
+                    'stock':40,'isAvailable':True,'isFeatured':False,'imageUrl':None,'version':1,
+                    'createdAt':stamp,'updatedAt':stamp,**tags}))
+            academics=[]
+            for name,prefix in [('Desarrollo de Software','DSM'),('Administración','ADM'),('Mecatrónica','MEC')]:
+                # Reuse an existing catalogue entry with the same name; never alter it.
+                career=next((a for a in self.rows('academic_catalog') if a.get('kind')=='career' and a['name']==name),None)
+                if career is None:career=self.put('academic_catalog',{'id':new_id(),'kind':'career','name':name,**tags})
+                groups=[]
+                for n in (1,2):
+                    group_name=f'{prefix}-{n}'
+                    group=next((a for a in self.rows('academic_catalog') if a.get('kind')=='group' and a.get('careerId')==career['id'] and a['name']==group_name),None)
+                    if group is None:group=self.put('academic_catalog',{'id':new_id(),'kind':'group','name':group_name,'careerId':career['id'],**tags})
+                    groups.append(group)
+                academics.append((career,groups))
+            number=max([o['orderNumber'] for o in self.rows('orders') if o['businessId']==bid],default=1000)
+            ratings=[5,4,3,5,2,4,5,3,1,4,5,4,2,5,4,5,3]
+            comments={1:'El pedido tardó más de lo esperado.',2:'La bebida llegó equivocada; falta revisar la entrega.',
+                3:'La comida estuvo bien, pero la atención puede mejorar.',4:'Buena comida y atención amable.',5:'Todo estuvo excelente; la entrega fue rápida.'}
+            review_count=0
+            for day in range(30):
+                midnight=clock.replace(hour=0,minute=0,second=0,microsecond=0)-timedelta(days=29-day)
+                end=min(midnight+timedelta(hours=19),clock)
+                start=midnight+timedelta(hours=8) if end.hour>=8 else midnight
+                count=6+day%5
+                slot=(end-start)/(count+1)
+                delivered=[]
+                for j in range(count):
+                    number+=1
+                    created=start+slot*j
+                    duration=min(timedelta(minutes=16+j%4*3),slot*.7)
+                    finished=created+duration
+                    cancelled=j==count-1 or (day%7==0 and j==count-2)
+                    items=[]
+                    for k in range(1+(day+j)%2):
+                        p=products[(day+j+k*3)%len(products)]
+                        items.append({'id':new_id(),'productId':p['id'],'name':p['name'],'price':p['price'],
+                            'quantity':1+(1 if k==0 and j%3==0 else 0),'notes':'Pedido de demostración'})
+                    total=round(sum(i['price']*i['quantity'] for i in items),2)
+                    order=self.put('orders',{'id':new_id(),'businessId':bid,'orderNumber':number,
+                        'userId':f'demo-student-{day}-{j}','customerName':f'Cliente de ejemplo {j+1:02}',
+                        'customerNumeroDeControl':'DEMO','items':items,'subtotal':total,'total':total,
+                        'paymentMethod':'Efectivo','status':'cancelled' if cancelled else 'completed',
+                        'createdAt':iso(created),'updatedAt':iso(finished),'version':1,'pickupCode':'4821',
+                        'scheduledPickupTime':None,'acceptedAt':None if cancelled else iso(created+duration*.15),
+                        'preparingAt':None if cancelled else iso(created+duration*.3),'readyAt':None if cancelled else iso(created+duration*.8),
+                        'completedAt':None if cancelled else iso(finished),'cancelledAt':iso(finished) if cancelled else None,
+                        'cancelReason':'product_unavailable' if cancelled else None,
+                        'cancelNotes':'Ejemplo: producto agotado.' if cancelled else None,'cancelledBy':'business' if cancelled else None,
+                        'verification':None if cancelled else {'method':'manual','verifiedAt':iso(finished)},**tags})
+                    if not cancelled:delivered.append((order,finished))
+                # Three reviews each day, tied only to completed orders. Historical
+                # snapshots do not reserve/decrement today's product stock.
+                for n in range(3):
+                    order,finished=delivered[n*(len(delivered)-1)//2]
+                    career,groups=academics[(day+n)%3];group=groups[(day//3+n)%2]
+                    rating=ratings[(day*7+n*3)%len(ratings)]
+                    date=iso(finished+min(timedelta(minutes=2),slot*.1))
+                    rid=new_id()
+                    self.put('reviews',{'id':rid,'orderId':order['id'],'businessId':bid,'rating':rating,
+                        'foodRating':min(5,rating+(day+n)%2),'serviceRating':max(1,rating-(day+n)%2),
+                        'career':career['name'],'group':group['name'],'careerId':career['id'],'groupId':group['id'],
+                        'comment':'Ejemplo: '+comments[rating],'createdAt':date,**tags})
+                    if rating<=2:
+                        status=['pending','in_review','resolved'][review_count%3]
+                        followup={'reviewId':rid,'businessId':bid,'status':status,'assignee':'Responsable de ejemplo',
+                            'note':'Ejemplo de atención a una opinión; no corresponde a un caso real.',
+                            'version':1,'updatedAt':date,**tags}
+                        self.put('followups',followup,rid)
+                        self.put('followup_history',{'id':new_id(),**followup})
+                    review_count+=1
+            self.put('migrations',{'id':REVIEW_DEMO_BATCH,'businessId':bid,'appliedAt':stamp,
+                'periodFrom':(clock.date()-timedelta(days=29)).isoformat(),'periodTo':clock.date().isoformat()})
     def migrate_institution(self):
         # Additive and idempotent: never reset passwords, products or reviewed data.
         if any(r['id']=='institution-v2' for r in self.rows('migrations')):return
@@ -573,7 +668,9 @@ class ReviewServer(http.server.ThreadingHTTPServer):
     daemon_threads=True
     def __init__(self,address,web_root,data_dir,*,ready_local=True):
         self.web_root=Path(web_root).resolve();self.data_dir=Path(data_dir).resolve();self.store=Store(self.data_dir/'revision.sqlite3')
-        if ready_local:self.store.ensure_review_local()
+        if ready_local:
+            self.store.ensure_review_local()
+            self.store.ensure_demo_data()
         super().__init__(address,ReviewHandler)
     def server_bind(self):
         if sys.platform=='win32' and hasattr(socket,'SO_EXCLUSIVEADDRUSE'):self.socket.setsockopt(socket.SOL_SOCKET,socket.SO_EXCLUSIVEADDRUSE,1)

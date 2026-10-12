@@ -6,9 +6,10 @@ from pathlib import Path
 import tempfile
 import threading
 import unittest
+from datetime import datetime, timedelta
 import urllib.error
 import urllib.request
-from review_server import ReviewServer, Store, PASSWORD, REVIEW_LOCAL_EMAIL, REVIEW_LOCAL_ID, hash_password
+from review_server import ReviewServer, Store, PASSWORD, REVIEW_LOCAL_EMAIL, REVIEW_LOCAL_ID, REVIEW_DEMO_BATCH, CAMPUS, hash_password
 
 class Client:
     def __init__(self,url):
@@ -306,7 +307,7 @@ class ReadyLocalTests(unittest.TestCase):
         for path in ('businesses/'+REVIEW_LOCAL_ID,'businesses/'+REVIEW_LOCAL_ID+'/products','businesses/'+REVIEW_LOCAL_ID+'/orders/active'):
             self.assertEqual(self.client.call('GET',path)[0],200)
             self.assertEqual(self.master.call('GET',path)[0],403)
-        for kind in ('products','orders','reviews','academic_catalog'):self.assertEqual(store.rows(kind),[])
+        self.assertEqual(self.client.call('GET','businesses/'+REVIEW_LOCAL_ID+'/orders/active')[1]['data'],[])
         status,p=self.client.call('POST','businesses/'+REVIEW_LOCAL_ID+'/products',{'name':'Producto propio','category':'Comida','price':40,'isAvailable':True,'isFeatured':False})
         self.assertEqual(status,201)
         self.assertEqual(self.client.call('PATCH','products/'+p['id'],{**p,'price':45,'expectedVersion':p['version']})[0],200)
@@ -347,8 +348,92 @@ class ReadyLocalTests(unittest.TestCase):
             with s.db:
                 s.put('users',{'id':'custom','email':REVIEW_LOCAL_EMAIL,'role':'business','businessId':'custom-local',
                     'isActive':False,'isMaster':False,'passwordHash':hash_password('Clave-Del-Equipo-123'),'version':4})
-            before=s.rows('users');s.ensure_review_local()
+            before=s.rows('users');s.ensure_review_local();s.ensure_demo_data()
             self.assertEqual(s.rows('users'),before);self.assertEqual(s.rows('businesses'),[])
+            for kind in ('products','orders','reviews','academic_catalog'):self.assertEqual(s.rows(kind),[])
         finally:s.db.close()
+    def test_demo_reports_reach_both_panels_through_the_api(self):
+        store=self.server.store;orders=store.rows('orders')
+        today=datetime.now(CAMPUS).date();start=today-timedelta(days=29)
+        def summary(rows):
+            completed=[o for o in rows if o['status']=='completed']
+            return {'completed':len(completed),'cancelled':sum(o['status']=='cancelled' for o in rows),
+                'totalSold':sum(o['total'] for o in completed)}
+        status,month=self.client.call('GET',f'businesses/{REVIEW_LOCAL_ID}/stats?from={start}&to={today}')
+        self.assertEqual(status,200);self.assertEqual(month,summary(orders));self.assertGreater(month['cancelled'],0)
+        week_start=today-timedelta(days=6)
+        week_orders=[o for o in orders if datetime.fromisoformat(o['updatedAt']).astimezone(CAMPUS).date()>=week_start]
+        _,week=self.client.call('GET',f'businesses/{REVIEW_LOCAL_ID}/stats?from={week_start}&to={today}')
+        self.assertEqual(week,summary(week_orders));self.assertLess(week['totalSold'],month['totalSold'])
+        _,history=self.client.call('GET',f'businesses/{REVIEW_LOCAL_ID}/orders/history?date={today}')
+        self.assertEqual(history['summary'],summary(history['data']));self.assertGreater(history['summary']['completed'],0)
+        self.assertTrue(all('pickupCode' not in o for o in history['data']))
+        _,reviews=self.master.call('GET','admin/reviews?limit=200')
+        self.assertEqual(len(reviews['data']),90)
+        _,catalog=self.master.call('GET','admin/academic-catalog?limit=200')
+        self.assertEqual(len(catalog['data']),9)
+        _,followups=self.master.call('GET','admin/followups?limit=200')
+        self.assertEqual({f['status'] for f in followups['data']},{'pending','in_review','resolved'})
+
+class DemoDataTests(unittest.TestCase):
+    def test_historical_data_is_coherent_even_at_local_midnight(self):
+        for clock in (datetime(2026,10,12,0,0,tzinfo=CAMPUS),datetime(2026,10,12,13,25,tzinfo=CAMPUS)):
+            with self.subTest(clock=clock),tempfile.TemporaryDirectory() as temp:
+                s=Store(Path(temp)/'revision.sqlite3')
+                try:
+                    s.ensure_review_local();s.ensure_demo_data(clock)
+                    products={p['id']:p for p in s.rows('products')};orders={o['id']:o for o in s.rows('orders')}
+                    self.assertEqual(len(products),6);self.assertEqual(len(orders),240)
+                    self.assertTrue(all(p['stock']==40 for p in products.values()))
+                    self.assertEqual(len({o['orderNumber'] for o in orders.values()}),len(orders))
+                    for order in orders.values():
+                        self.assertIn(order['status'],{'completed','cancelled'})
+                        self.assertEqual(order['businessId'],REVIEW_LOCAL_ID)
+                        self.assertEqual(order['total'],sum(i['price']*i['quantity'] for i in order['items']))
+                        self.assertTrue(all(i['productId'] in products for i in order['items']))
+                        fields=['createdAt','acceptedAt','preparingAt','readyAt','completedAt','cancelledAt','updatedAt']
+                        dates=[datetime.fromisoformat(order[k]) for k in fields if order[k]]
+                        self.assertEqual(dates,sorted(dates));self.assertLessEqual(dates[-1],clock)
+                    reviews=s.rows('reviews');catalog={a['id']:a for a in s.rows('academic_catalog')}
+                    self.assertEqual(len(reviews),90);self.assertEqual({r['rating'] for r in reviews},{1,2,3,4,5})
+                    self.assertEqual(len({r['orderId'] for r in reviews}),90)
+                    self.assertEqual(len({datetime.fromisoformat(r['createdAt']).astimezone(CAMPUS).date() for r in reviews}),30)
+                    for r in reviews:
+                        order=orders[r['orderId']];self.assertEqual(order['status'],'completed')
+                        self.assertLessEqual(datetime.fromisoformat(order['completedAt']),datetime.fromisoformat(r['createdAt']))
+                        self.assertLessEqual(datetime.fromisoformat(r['createdAt']),clock)
+                        self.assertEqual(catalog[r['groupId']]['careerId'],r['careerId'])
+                        for key in ('rating','foodRating','serviceRating'):self.assertIn(r[key],range(1,6))
+                    for kind in ('products','orders','reviews','followups','followup_history','academic_catalog'):
+                        self.assertTrue(all(r['isDemo'] and r['demoBatch']==REVIEW_DEMO_BATCH for r in s.rows(kind)))
+                finally:s.db.close()
+    def test_upgrade_and_restart_preserve_user_work_and_do_not_reseed_deleted_examples(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path=Path(temp)/'revision.sqlite3';s=Store(path)
+            try:
+                s.ensure_review_local()
+                with s.db:
+                    s.put('products',{'id':'own-product','businessId':REVIEW_LOCAL_ID,'price':123.45,'stock':7,'version':9})
+                    s.put('academic_catalog',{'id':'own-career','kind':'career','name':'Desarrollo de Software'})
+                    s.put('orders',{'id':'own-order','businessId':REVIEW_LOCAL_ID,'orderNumber':8000,'total':123.45,'status':'pending'})
+                own={k:s.rows(k) for k in ('users','businesses','products','academic_catalog','orders')}
+                s.ensure_demo_data()
+                for kind,rows in own.items():
+                    for row in rows:self.assertEqual(s.get(kind,row['id']),row)
+                examples=[o for o in s.rows('orders') if o.get('isDemo')]
+                self.assertTrue(all(o['orderNumber']>8000 for o in examples))
+                self.assertEqual(len(s.rows('users')),2);self.assertEqual(len(s.rows('businesses')),1)
+                p=next(p for p in s.rows('products') if p.get('isDemo'))
+                with s.db:
+                    s.bump('products',p,{'price':99.5,'stock':3})
+                    s.db.execute('DELETE FROM records WHERE kind=? AND id=?',('reviews',s.rows('reviews')[0]['id']))
+                kinds=('users','businesses','products','academic_catalog','orders','reviews','followups','followup_history','migrations')
+                before={k:s.rows(k) for k in kinds}
+            finally:s.db.close()
+            s=Store(path)
+            try:
+                s.ensure_review_local();s.ensure_demo_data();s.ensure_demo_data()
+                self.assertEqual({k:s.rows(k) for k in kinds},before)
+            finally:s.db.close()
 
 if __name__=='__main__':unittest.main()

@@ -8,7 +8,17 @@ Extrae todo `SnackUP-Paneles-PC.zip` y ejecuta `INICIAR_SNACKUP.cmd`. Se abre `h
 
 **El panel del local ya está listo para entrar.** Pulsa **Entrar al local de prueba** o usa `negocio@snackup.test` con contraseña `SnackUP-Prueba-2026`. No requiere crear primero un local ni pasar por Administración.
 
-El paquete de revisión incluye exactamente un **Local de prueba** con una cuenta operadora propia y la cuenta maestra `admin@snackup.test` (misma contraseña de prueba). No se crean los cuatro locales reales ni productos, pedidos, opiniones o grupos. El equipo conserva el alta de sus locales reales y cuentas adicionales.
+El paquete de revisión incluye exactamente un **Local de prueba** con una cuenta operadora propia y la cuenta maestra `admin@snackup.test` (misma contraseña de prueba). El equipo conserva el alta de sus locales reales y cuentas adicionales.
+
+## Datos de demostración y gráficas
+
+Al iniciar esta versión se añaden **6 productos, 240 pedidos finalizados y 90 opiniones ficticias** al Local de prueba. Cubren los últimos 30 días en horario de la universidad, incluyendo el día de la primera apertura. Las opiniones corresponden a pedidos entregados y tienen calificaciones de 1 a 5 estrellas, tres carreras y dos grupos por carrera. Hay ejemplos de atención pendiente, en revisión y resuelta.
+
+- **Administración → Resumen general:** evolución diaria, distribución de estrellas, promedios por carrera y dimensiones de alimentos/servicio. Prueba los filtros de periodo, carrera → grupo y opiniones negativas; las cifras se recalculan desde los datos de la API.
+- **Local → Resumen:** ventas, entregas y cancelaciones del periodo. **Historial:** pedidos finalizados de la fecha seleccionada. Las cancelaciones no suman ventas.
+- **Productos:** los artículos con “ejemplo” se pueden editar o eliminar. Los pedidos históricos conservan sus precios originales; no descuentan existencias del catálogo actual.
+
+El aviso superior identifica la versión con datos ficticios, y los comentarios/clientes/productos de ejemplo están identificados. La carga es única, aditiva y transaccional: reiniciar no duplica ni refecha los registros, ni repone ejemplos eliminados o modifica datos existentes. Si revisas el paquete más adelante, selecciona fechas del periodo original. El catálogo académico reutiliza carreras/grupos coincidentes sin alterarlos. No se crean más cuentas ni locales para estas gráficas. Estos registros pertenecen exclusivamente al servidor de revisión; no se insertan en el backend definitivo.
 
 ## Dos paneles separados
 
@@ -42,7 +52,7 @@ La cuenta maestra también puede dar altas directamente mediante **Crear cuenta*
 |---|---|
 | Productos | Crear, editar, subir imagen, cambiar precio, stock, disponibilidad y eliminar con confirmación. |
 | Cocina | Abrir recepción. Un pedido nuevo debe aceptarse explícitamente; después iniciar preparación, marcar listo y verificar el código para entregar. |
-| Pedido de revisión | El botón voluntario **Recibir pedido de prueba** crea un pedido con un producto disponible y muestra su QR/código. No se generan pedidos al iniciar. |
+| Pedido de revisión | El botón voluntario **Recibir pedido de prueba** crea un pedido con un producto disponible y muestra su QR/código. El historial de ejemplo ya está finalizado; no hay pedidos activos automáticos. |
 | Cancelación | Motivo obligatorio; “Otro” requiere detalle. No cancela pedidos listos y devuelve existencias una sola vez. |
 | Historial y resumen | Fechas de la universidad e importes confirmados por el servidor. |
 | Administración | Locales dinámicos, opiniones, gráficas, carrera → grupo y atención de opiniones. Sin valoraciones no inventa promedios. |
@@ -53,13 +63,13 @@ Web adaptable a celular, tablet y PC. Se comprueban anchos de 320, 360, 768 y 14
 
 El canal WebSocket agrupa avisos y recarga REST; sin conexión en vivo consulta cada 10 segundos. Ocultar la aplicación detiene temporizadores/conexiones; regresar actualiza los datos. El tablero administrativo actualiza cada minuto mientras está visible. No se han certificado 500 usuarios simultáneos: esa prueba requiere el backend, SQL y el servidor definitivos.
 
-## Conservar o comenzar vacío
+## Conservar o comenzar de nuevo
 
 Cierra SnackUP y respalda la carpeta `datos/` completa antes de actualizar. Extrae el ZIP en otra carpeta y copia allí `datos/`. La actualización retira a un archivo interno las cuentas automáticas conocidas (`owner`, `owner2`, `owner3`, `owner4` con sus correos originales) y revoca sus renovaciones. Conserva el maestro, cuentas creadas por ustedes, precios, productos, pedidos y demás trabajo. Si modificaste el correo de una cuenta antigua se conserva para no retirar por error una cuenta personalizada.
 
 El acceso al Local de prueba se agrega una sola vez al actualizar y no modifica locales, precios ni cuentas existentes. Los cambios posteriores a su contraseña, asignación o estado también se conservan. Si el correo `negocio@snackup.test` ya pertenece a una cuenta creada manualmente, se respeta esa cuenta y su contraseña; no se reemplaza ni se le conceden privilegios nuevos.
 
-Los datos anteriores no se borran automáticamente. Para comenzar de nuevo, renombra `datos/` como respaldo con la consola cerrada; al reiniciar aparecen el maestro y el Local de prueba. No hay base de datos prellenada dentro del ZIP.
+Los datos anteriores no se borran automáticamente. Para comenzar de nuevo, renombra `datos/` como respaldo con la consola cerrada; al reiniciar aparecen el maestro, el Local de prueba y sus ejemplos. No hay una base de datos personal dentro del ZIP; el servidor genera los datos ficticios en la PC al iniciar. La carga de ejemplos se omite si el operador preparado fue reasignado o si ese correo pertenece a una cuenta manual, para no insertar datos en un local ajeno.
 
 ## Integración
 

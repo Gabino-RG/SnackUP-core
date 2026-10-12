@@ -188,7 +188,7 @@ class _RestPortalAppState extends State<RestPortalApp> {
                           vertical: 6,
                         ),
                         child: Text(
-                          'VERSIÓN DE REVISIÓN · Datos de prueba guardados en esta PC',
+                          'VERSIÓN DE REVISIÓN · Incluye datos ficticios',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 11,

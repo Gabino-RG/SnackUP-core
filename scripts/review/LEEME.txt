@@ -19,7 +19,18 @@ Contrasena de prueba: SnackUP-Prueba-2026
 
 Este paquete de revision incluye un Local de prueba con su cuenta propia.
 Los locales reales y sus cuentas los crea el equipo. No se crean cuatro
-negocios ni productos, pedidos, opiniones o grupos automaticamente.
+negocios ni cuentas adicionales.
+
+DATOS PARA PROBAR LAS GRAFICAS:
+El Local de prueba incluye 6 productos, 240 pedidos historicos finalizados
+y 90 opiniones ficticias de los ultimos 30 dias al iniciar esta version.
+Incluye cancelaciones, valoraciones de 1 a 5 estrellas, 3 carreras y 6 grupos.
+- Administracion: Resumen general muestra las graficas. Cambia periodo,
+  carrera y grupo, o activa Solo 1-2 estrellas para ver como se recalculan.
+- Local: Resumen muestra ventas; Historial permite consultar cada fecha.
+Los importes salen de los pedidos entregados; no suman cancelaciones.
+Los ejemplos se guardan una sola vez. No se duplican ni cambian de fecha
+al reiniciar. Si los consultas despues, elige el periodo correspondiente.
 
 DOS PANELES CON CUENTAS SEPARADAS:
 - Administracion (incluida la cuenta maestra): locales, cuentas y reportes.
@@ -50,9 +61,9 @@ PARA DAR ACCESO:
   de revision. Requiere configurar OAuth y la validacion del backend real.
 
 PRIMERA PRUEBA DE COCINA:
-Entra con la cuenta autorizada del local, agrega un producto,
+Entra con la cuenta autorizada del local, usa un producto de ejemplo o agrega uno,
 abre la recepcion de pedidos y pulsa Recibir pedido de prueba si quieres
-simular un cliente. Ningun pedido aparece por si solo. Acepta el pedido,
+simular un cliente. No llegan pedidos activos por si solos. Acepta el pedido,
 inicia preparacion, marcalo listo y verifica su codigo para entregarlo.
 
 ACTUALIZAR CONSERVANDO TU TRABAJO:
@@ -61,11 +72,13 @@ alli tu carpeta datos/ completa. Abre el iniciador e inicia sesion de nuevo.
 Se retiran las cuentas automaticas conocidas de los cuatro locales de la
 version anterior. Se conservan tus datos y cuentas creadas manualmente.
 Los locales y productos existentes se conservan para no perder tu trabajo.
-Para empezar vacio, con el programa cerrado renombra datos/ como respaldo;
-el proximo inicio creara la cuenta maestra y el acceso al Local de prueba.
+Para empezar de nuevo, con el programa cerrado renombra datos/ como respaldo;
+el proximo inicio creara el maestro, el acceso al Local de prueba y los ejemplos.
 La actualizacion agrega ese acceso una sola vez y no cambia tus precios,
 contrasenas o cuentas existentes. Si ya creaste manualmente el correo
 negocio@snackup.test, se conservan sus datos y su contrasena.
+Los ejemplos se agregan solo al Local de prueba preparado por el paquete;
+no se sobrescriben productos, precios ni datos creados por ustedes.
 
 Lee documentos/PANELES_ENTREGA.md y CONTRATO_PANELES.md.
 La revision guarda datos en SQLite y escucha solo en esta PC. No envia
