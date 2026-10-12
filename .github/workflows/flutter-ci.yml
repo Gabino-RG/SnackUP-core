@@ -47,6 +47,37 @@ jobs:
       - name: Unit and widget tests
         run: flutter test --coverage
 
+      - name: Build integrated review package frontend
+        run: flutter build web --no-web-resources-cdn --target lib/main.dart --dart-define=BACKEND=rest --dart-define=REVIEW_MODE=true --output build/portal-review
+
+      - name: Preserve review frontend
+        uses: actions/upload-artifact@v4
+        with:
+          name: snackup-paneles-revision
+          path: app/build/portal-review
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Install browser for integrated review
+        run: |
+          npm install --prefix "$RUNNER_TEMP/snackup-ui" --no-package-lock --no-audit --no-fund playwright@1.51.1
+          "$RUNNER_TEMP/snackup-ui/node_modules/.bin/playwright" install --with-deps chromium
+
+      - name: Review compiled panels in browser
+        run: |
+          python3 ../scripts/review/review_server.py --no-browser --web build/portal-review --data "$RUNNER_TEMP/snackup-review-data" > "$RUNNER_TEMP/snackup-review.log" 2>&1 &
+          export SNACKUP_PLAYWRIGHT="$RUNNER_TEMP/snackup-ui/node_modules/playwright"
+          node ../scripts/review/browser_smoke.cjs
+
+      - name: Preserve integrated review evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: snackup-paneles-capturas
+          path: app/build/review-screenshots
+          if-no-files-found: ignore
+          retention-days: 14
+
       - name: Build integrated application
         run: flutter build web --no-web-resources-cdn --target lib/main.dart
 
@@ -80,33 +111,3 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-      - name: Build integrated review package frontend
-        run: flutter build web --no-web-resources-cdn --target lib/main.dart --dart-define=BACKEND=rest --dart-define=REVIEW_MODE=true --output build/portal-review
-
-      - name: Preserve review frontend
-        uses: actions/upload-artifact@v4
-        with:
-          name: snackup-paneles-revision
-          path: app/build/portal-review
-          if-no-files-found: error
-          retention-days: 14
-
-      - name: Install browser for integrated review
-        run: |
-          npm install --prefix "$RUNNER_TEMP/snackup-ui" --no-package-lock --no-audit --no-fund playwright@1.51.1
-          "$RUNNER_TEMP/snackup-ui/node_modules/.bin/playwright" install --with-deps chromium
-
-      - name: Review compiled panels in browser
-        run: |
-          python3 ../scripts/review/review_server.py --no-browser --web build/portal-review --data "$RUNNER_TEMP/snackup-review-data" > "$RUNNER_TEMP/snackup-review.log" 2>&1 &
-          export SNACKUP_PLAYWRIGHT="$RUNNER_TEMP/snackup-ui/node_modules/playwright"
-          node ../scripts/review/browser_smoke.cjs
-
-      - name: Preserve integrated review evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: snackup-paneles-capturas
-          path: app/build/review-screenshots
-          if-no-files-found: ignore
-          retention-days: 14
