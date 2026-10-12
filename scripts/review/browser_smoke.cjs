@@ -9,6 +9,15 @@ fs.mkdirSync(output, { recursive: true });
   const context = await browser.newContext({viewport:{width:1440,height:1050}});
   const page = await context.newPage();
   const errors=[];
+  const apiFailures=[];
+  page.on('response',r=>{if(r.url().includes('/api/v1/') && r.status()>=400 && !r.url().includes('/auth/refresh'))apiFailures.push(r.status()+' '+new URL(r.url()).pathname);});
+  async function typeField(label,value){
+    const field=page.getByRole('textbox',{name:label,exact:true});
+    await field.click();
+    await page.keyboard.press('Control+A');
+    await page.keyboard.type(value,{delay:15});
+    await page.keyboard.press('Tab');
+  }
   page.on('pageerror',e=>errors.push(e.message));
   page.setDefaultTimeout(20000);
   try {
@@ -17,8 +26,8 @@ fs.mkdirSync(output, { recursive: true });
     const accessibility=page.locator('flt-semantics-placeholder');
     if(await accessibility.count()) await accessibility.evaluate(node=>node.click());
     async function login(email){
-      await page.getByRole('textbox',{name:'Correo electrónico',exact:true}).fill(email);
-      await page.getByRole('textbox',{name:'Contraseña',exact:true}).fill('SnackUP-Prueba-2026');
+      await typeField('Correo electrónico',email);
+      await typeField('Contraseña','SnackUP-Prueba-2026');
       await page.getByRole('button',{name:'Entrar',exact:true}).click();
     }
     await login('negocio@snackup.test');
@@ -31,13 +40,13 @@ fs.mkdirSync(output, { recursive: true });
     await page.getByRole('button',{name:'Ir a cocina',exact:true}).click();
     await page.getByText('Productos',{exact:true}).first().click();
     await page.getByRole('button',{name:'Agregar',exact:true}).click();
-    await page.getByRole('textbox',{name:'Nombre del producto',exact:true}).fill('Producto de revisión UI');
-    await page.getByRole('textbox',{name:'Categoría',exact:true}).fill('Comida');
-    await page.getByRole('textbox',{name:'Precio (MXN)',exact:true}).fill('49.50');
+    await typeField('Nombre del producto','Producto de revisión UI');
+    await typeField('Categoría','Comida');
+    await typeField('Precio (MXN)','49.50');
     await page.getByRole('button',{name:'Guardar producto',exact:true}).click();
     await page.getByText('Producto de revisión UI',{exact:true}).waitFor();
     await page.getByRole('button',{name:'Cambiar precio de Producto de revisión UI',exact:true}).click();
-    await page.getByRole('textbox',{name:'Nuevo precio (MXN)',exact:true}).fill('54.00');
+    await typeField('Nuevo precio (MXN)','54.00');
     await page.getByRole('button',{name:'Guardar precio',exact:true}).click();
     await page.getByText('$54.00',{exact:true}).waitFor();
     await page.screenshot({path:path.join(output,'03-productos-desktop.png')});
@@ -52,16 +61,16 @@ fs.mkdirSync(output, { recursive: true });
     await page.screenshot({path:path.join(output,'05-administracion-desktop.png')});
     await page.getByRole('button',{name:'Gestionar locales y cuentas',exact:true}).click();
     await page.getByRole('button',{name:'Agregar local',exact:true}).click();
-    await page.getByRole('textbox',{name:'Nombre del local',exact:true}).fill('Local de revisión UI');
-    await page.getByRole('textbox',{name:'Categoría',exact:true}).fill('Cafetería');
+    await typeField('Nombre del local','Local de revisión UI');
+    await typeField('Categoría','Cafetería');
     await page.getByRole('button',{name:'Guardar',exact:true}).click();
     await page.getByText('Local de revisión UI',{exact:true}).waitFor();
     await page.screenshot({path:path.join(output,'06-gestion-locales.png')});
     await page.getByText('Cuentas',{exact:true}).click();
     await page.getByRole('button',{name:'Crear cuenta',exact:true}).click();
-    await page.getByRole('textbox',{name:'Nombre',exact:true}).fill('Operador de revisión UI');
-    await page.getByRole('textbox',{name:'Correo electrónico',exact:true}).fill('operador-ui@snackup.test');
-    await page.getByRole('textbox',{name:'Contraseña inicial',exact:true}).fill('Clave-Prueba-123');
+    await typeField('Nombre','Operador de revisión UI');
+    await typeField('Correo electrónico','operador-ui@snackup.test');
+    await typeField('Contraseña inicial','Clave-Prueba-123');
     await page.getByText('Sin local',{exact:true}).click();
     await page.getByText('Local de revisión UI',{exact:true}).last().click();
     await page.getByRole('button',{name:'Guardar',exact:true}).click();
@@ -73,7 +82,7 @@ fs.mkdirSync(output, { recursive: true });
     console.log('Integrated browser review passed');
   } catch(error) {
     await page.screenshot({path:path.join(output,'failure.png')}).catch(()=>{});
-    fs.writeFileSync(path.join(output,'failure.txt'),String(error)+'\n'+await page.locator('body').innerText());
+    fs.writeFileSync(path.join(output,'failure.txt'),String(error)+'\nAPI: '+apiFailures.join(', ')+'\n'+await page.locator('body').innerText());
     console.error(error.message);
     process.exitCode=1;
   } finally { await browser.close(); }

@@ -5,7 +5,6 @@ licensed embedded Python runtime. No deploy, account creation or SDK download.
 """
 import argparse
 import hashlib
-import io
 import json
 from pathlib import Path
 import zipfile
@@ -27,10 +26,7 @@ def build(args):
         files[path]=data
     # Git tree identity comes from the exact commit, not a moving branch name.
     if tree['sha']!=args.tree_sha:raise ValueError('Unexpected tree')
-    source_zip=io.BytesIO()
-    with zipfile.ZipFile(source_zip,'w',zipfile.ZIP_DEFLATED,compresslevel=9) as z:
-        for name,data in sorted(files.items()):z.writestr('SnackUP-core/'+name,data)
-    payload={'codigo_fuente.zip':source_zip.getvalue()}
+    payload={'FUENTE.txt':('Código versionado y documentación del commit:\nhttps://github.com/Gabino-RG/SnackUP-core/tree/'+args.commit+'\n').encode()}
     with zipfile.ZipFile(args.build) as z:
         require_files={'index.html','main.dart.js','flutter_bootstrap.js','vendor/zxing-0.21.3.min.js'}
         if not require_files.issubset(z.namelist()):raise ValueError('Missing web build files')

@@ -143,6 +143,7 @@ class _RestPortalAppState extends State<RestPortalApp> {
         home: home,
         builder: (context, child) => const bool.fromEnvironment('REVIEW_MODE')
             ? Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Material(
                     color: const Color(0xFFFFEDBA),

@@ -348,7 +348,7 @@ class ReviewHandler(http.server.SimpleHTTPRequestHandler):
         require(stock is None or (type(stock)is int and 0<=stock<=1000000))
         require(type(d.get('isAvailable')) is bool and type(d.get('isFeatured')) is bool)
         image=d.get('imageUrl');require(image is None or (isinstance(image,str) and (image.startswith('/media/') or image.startswith('http://localhost:') or image.startswith('http://127.0.0.1:'))))
-        return {'id':old['id'] if old else new_id(),'businessId':bid,'name':text_field(d,'name',100),'description':text_field(d,'description',2000,False),'category':text_field(d,'category',120),'price':round(price,2),'stock':stock,'isAvailable':d['isAvailable'] and stock!=0,'isFeatured':d['isFeatured'],'imageUrl':image,
+        return {'id':old['id'] if old else new_id(),'businessId':bid,'name':text_field(d,'name',160),'description':text_field(d,'description',2000,False),'category':text_field(d,'category',120),'price':round(price,2),'stock':stock,'isAvailable':d['isAvailable'] and stock!=0,'isFeatured':d['isFeatured'],'imageUrl':image,
             'version':old['version'] if old else 1,'createdAt':old['createdAt'] if old else now(),'updatedAt':now()}
     def transition(self,o,action,d,user):
         s=self.server.store;s.version(d,o)
@@ -391,8 +391,8 @@ class ReviewHandler(http.server.SimpleHTTPRequestHandler):
         require(role in {'admin','business','user'} and type(active)is bool and re.fullmatch(r'[^\s@]+@[^\s@]+\.[^\s@]+',email))
         require(not any(u['email']==email and (old is None or u['id']!=old['id']) for u in s.rows('users')),409,'EMAIL_EXISTS')
         if role=='business':
-            require(isinstance(bid,str) and bid,422,'BUSINESS_REQUIRED');b=s.get('businesses',bid);require(b['isActive'])
-            require(not any(u['role']=='business' and u['isActive'] and u.get('businessId')==bid and (old is None or u['id']!=old['id']) for u in s.rows('users')),409,'BUSINESS_ALREADY_ASSIGNED')
+            require(isinstance(bid,str) and bid,422,'BUSINESS_REQUIRED');b=s.get('businesses',bid);require(b['isActive'] or not active)
+            require(not active or not any(u['role']=='business' and u['isActive'] and u.get('businessId')==bid and (old is None or u['id']!=old['id']) for u in s.rows('users')),409,'BUSINESS_ALREADY_ASSIGNED')
         else:bid=None
         if old and old['id']==actor['id']:require(role==actor['role'] and active,403,'SELF_ACCESS_CHANGE')
         if old and old['role']=='admin' and (role!='admin' or not active):require(any(u['id']!=old['id'] and u['role']=='admin' and u['isActive'] for u in s.rows('users')),409,'LAST_ADMIN')
