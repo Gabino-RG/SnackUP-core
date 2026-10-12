@@ -14,9 +14,9 @@ Actualización: 11 de octubre de 2026, hora de México.
 | Pedidos y cocina | Acciones v3, tablero, entrega QR/manual, cancelación, historial, resumen y WebSocket con consulta de respaldo | Validar contra backend definitivo y dispositivos reales |
 | Capacidad local | Arquitectura y plan de 500 sesiones sostenidas documentados | Medir backend, SQL, servidor y red con carga representativa |
 
-Este portal no crea una API ni instala una base SQL. El acceso REST de negocios
-abre el catálogo; los pedidos de la aplicación anterior aún no están incluidos
-en ese acceso. No se presenta la compilación como una aplicación SQL completa.
+La compilación REST abre el panel integrado de negocios o administración.
+La versión de revisión incluye una API local de prueba con SQLite; la
+compilación destinada al servicio real requiere el backend del otro equipo.
 
 ## Compilar y ejecutar
 
@@ -95,7 +95,7 @@ credenciales. Estas opciones no se cambian desde el frontend.
 ## Contrato administrativo provisional
 
 Las rutas están centralizadas en `AdminApiRoutes`. No están definidas en v3
-y no se han añadido a un backend desde este trabajo.
+y requieren acuerdo con el backend definitivo. La API de revisión las implementa con datos ficticios.
 
 | Operación | Ruta debajo de `/api/v1/` | Respuesta |
 | --- | --- | --- |
@@ -148,7 +148,7 @@ transacciones de un servidor real. La prueba manual de conexión debe cubrir
 login, recarga, renovación, pérdida de acceso, logout, catálogo, imágenes,
 seguimiento concurrente e historial con las cuentas autorizadas del backend.
 
-Flutter CI conserva tres compilaciones: aplicación anterior integrada,
-catálogo local con ejemplos y portal REST. Ver el resultado del commit para
+Flutter CI conserva cuatro compilaciones: aplicación anterior integrada,
+catálogo local con ejemplos, portal REST y portal de revisión integrado. Ver el resultado del commit para
 conocer las pruebas efectivamente ejecutadas. La prueba de 500 sesiones y la
 aprobación de las rutas administrativas siguen pendientes.

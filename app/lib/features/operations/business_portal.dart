@@ -561,9 +561,11 @@ class _BusinessPortalState extends State<BusinessPortal>
                 color: AdminColors.navy,
               ),
               const SizedBox(width: 8),
-              Text(
-                '${['Nuevos', 'Preparando', 'Listos para entregar'][index]} · ${orders.length}',
-                style: const TextStyle(fontWeight: FontWeight.w700),
+              Expanded(
+                child: Text(
+                  '${['Nuevos', 'Preparando', 'Listos para entregar'][index]} · ${orders.length}',
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
               ),
             ],
           ),

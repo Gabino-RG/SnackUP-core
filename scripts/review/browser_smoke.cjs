@@ -1,0 +1,80 @@
+// Real compiled frontend + persistent local REST fixture. CI only.
+const fs = require('node:fs');
+const path = require('node:path');
+const { chromium } = require(process.env.SNACKUP_PLAYWRIGHT || 'playwright');
+const output = process.env.SNACKUP_SCREENSHOTS || 'build/review-screenshots';
+fs.mkdirSync(output, { recursive: true });
+(async () => {
+  const browser = await chromium.launch({headless:true,args:['--no-sandbox']});
+  const context = await browser.newContext({viewport:{width:1440,height:1050}});
+  const page = await context.newPage();
+  const errors=[];
+  page.on('pageerror',e=>errors.push(e.message));
+  page.setDefaultTimeout(20000);
+  try {
+    await page.goto('http://localhost:8791/');
+    await page.locator('flutter-view').waitFor({timeout:60000});
+    const accessibility=page.locator('flt-semantics-placeholder');
+    if(await accessibility.count()) await accessibility.evaluate(node=>node.click());
+    async function login(email){
+      await page.getByRole('textbox',{name:'Correo electrónico',exact:true}).fill(email);
+      await page.getByRole('textbox',{name:'Contraseña',exact:true}).fill('SnackUP-Prueba-2026');
+      await page.getByRole('button',{name:'Entrar',exact:true}).click();
+    }
+    await login('negocio@snackup.test');
+    await page.getByText('Cafetería Central',{exact:true}).first().waitFor();
+    await page.getByRole('button',{name:'Aceptar pedido',exact:true}).first().waitFor();
+    await page.screenshot({path:path.join(output,'01-cocina-desktop.png')});
+    await page.getByRole('button',{name:'Recibir pedido de prueba',exact:true}).click();
+    await page.getByText(/Pedido de prueba #/).waitFor();
+    await page.screenshot({path:path.join(output,'02-comprobante-prueba.png')});
+    await page.getByRole('button',{name:'Ir a cocina',exact:true}).click();
+    await page.getByText('Productos',{exact:true}).first().click();
+    await page.getByRole('button',{name:'Agregar',exact:true}).click();
+    await page.getByRole('textbox',{name:'Nombre del producto',exact:true}).fill('Producto de revisión UI');
+    await page.getByRole('textbox',{name:'Categoría',exact:true}).fill('Comida');
+    await page.getByRole('textbox',{name:'Precio (MXN)',exact:true}).fill('49.50');
+    await page.getByRole('button',{name:'Guardar producto',exact:true}).click();
+    await page.getByText('Producto de revisión UI',{exact:true}).waitFor();
+    await page.getByRole('button',{name:'Cambiar precio de Producto de revisión UI',exact:true}).click();
+    await page.getByRole('textbox',{name:'Nuevo precio (MXN)',exact:true}).fill('54.00');
+    await page.getByRole('button',{name:'Guardar precio',exact:true}).click();
+    await page.getByText('$54.00',{exact:true}).waitFor();
+    await page.screenshot({path:path.join(output,'03-productos-desktop.png')});
+    await page.setViewportSize({width:390,height:844});
+    await page.getByText('Cocina',{exact:true}).first().click();
+    await page.getByText('Nuevos (3)',{exact:true}).waitFor();
+    await page.screenshot({path:path.join(output,'04-cocina-movil.png')});
+    await page.getByRole('button',{name:'Cerrar sesión',exact:true}).click();
+    await login('admin@snackup.test');
+    await page.getByText('Gestionar locales y cuentas',{exact:true}).waitFor();
+    await page.setViewportSize({width:1440,height:1050});
+    await page.screenshot({path:path.join(output,'05-administracion-desktop.png')});
+    await page.getByRole('button',{name:'Gestionar locales y cuentas',exact:true}).click();
+    await page.getByRole('button',{name:'Agregar local',exact:true}).click();
+    await page.getByRole('textbox',{name:'Nombre del local',exact:true}).fill('Local de revisión UI');
+    await page.getByRole('textbox',{name:'Categoría',exact:true}).fill('Cafetería');
+    await page.getByRole('button',{name:'Guardar',exact:true}).click();
+    await page.getByText('Local de revisión UI',{exact:true}).waitFor();
+    await page.screenshot({path:path.join(output,'06-gestion-locales.png')});
+    await page.getByText('Cuentas',{exact:true}).click();
+    await page.getByRole('button',{name:'Crear cuenta',exact:true}).click();
+    await page.getByRole('textbox',{name:'Nombre',exact:true}).fill('Operador de revisión UI');
+    await page.getByRole('textbox',{name:'Correo electrónico',exact:true}).fill('operador-ui@snackup.test');
+    await page.getByRole('textbox',{name:'Contraseña inicial',exact:true}).fill('Clave-Prueba-123');
+    await page.getByText('Sin local',{exact:true}).click();
+    await page.getByText('Local de revisión UI',{exact:true}).last().click();
+    await page.getByRole('button',{name:'Guardar',exact:true}).click();
+    await page.getByText('Operador de revisión UI',{exact:true}).waitFor();
+    await page.setViewportSize({width:390,height:844});
+    await page.screenshot({path:path.join(output,'07-cuentas-movil.png')});
+    if(errors.length) throw new Error('Browser errors: '+errors.join('\n'));
+    fs.writeFileSync(path.join(output,'result.json'),JSON.stringify({passed:true,flows:['login','kitchen','review order','catalog create','price edit','mobile kitchen','admin login','business create','account create'],errors},null,2));
+    console.log('Integrated browser review passed');
+  } catch(error) {
+    await page.screenshot({path:path.join(output,'failure.png')}).catch(()=>{});
+    fs.writeFileSync(path.join(output,'failure.txt'),String(error)+'\n'+await page.locator('body').innerText());
+    console.error(error.message);
+    process.exitCode=1;
+  } finally { await browser.close(); }
+})();

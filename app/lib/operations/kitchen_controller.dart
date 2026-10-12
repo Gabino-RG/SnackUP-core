@@ -15,11 +15,15 @@ class KitchenController extends ChangeNotifier {
   bool loading = false, closed = false, stale = true, updatingBusiness = false;
   final busy = <String>{};
   final _seen = <String>{};
-  bool _initialized = false;
+  bool _initialized = false, _refreshAgain = false;
   int newCount = 0, _revision = 0;
   VoidCallback? onNewOrders;
   Future<void> refresh() async {
-    if (loading || closed) return;
+    if (closed) return;
+    if (loading) {
+      _refreshAgain = true;
+      return;
+    }
     final revision = _revision;
     loading = true;
     notifyListeners();
@@ -59,6 +63,10 @@ class KitchenController extends ChangeNotifier {
       if (!closed) {
         loading = false;
         notifyListeners();
+        if (_refreshAgain) {
+          _refreshAgain = false;
+          unawaited(refresh());
+        }
       }
     }
   }
@@ -118,6 +126,7 @@ class KitchenController extends ChangeNotifier {
         ]..sort((a, b) => a.createdAt!.compareTo(b.createdAt!));
       }
     } on ApiException catch (e) {
+      if (!closed && e.code != 'VERIFICATION_FAILED') stale = true;
       if ([
         'VERSION_CONFLICT',
         'INVALID_STATUS_TRANSITION',
