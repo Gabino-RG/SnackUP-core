@@ -7,7 +7,7 @@ import 'package:snackup/features/admin/data/admin_repository.dart';
 import 'package:snackup/features/admin/data/rest_admin_repository.dart';
 import 'package:snackup/features/admin/domain/admin_models.dart';
 
-http.Response reply(Object data, [int status = 200]) => http.Response(jsonEncode(data), status, encoding: utf8, headers: {'content-type': 'application/json; charset=utf-8'});
+http.Response reply(Object data, [int status = 200]) => http.Response(jsonEncode(data), status, headers: {'content-type': 'application/json; charset=utf-8'});
 Map<String, dynamic> page(List<Object> rows, {int number = 1, int pages = 1}) =>
   {'data': rows, 'pagination': {'page': number, 'totalPages': pages}};
 Map<String, dynamic> followup({int version = 1}) => {

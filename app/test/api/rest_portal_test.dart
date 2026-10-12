@@ -10,7 +10,7 @@ import 'package:snackup/features/admin/admin_dashboard_screen.dart';
 import 'package:snackup/features/catalog/catalog_screen.dart';
 
 http.Response jsonReply(String body, int status) => http.Response(body, status,
-  encoding: utf8, headers: {'content-type': 'application/json; charset=utf-8'});
+  headers: {'content-type': 'application/json; charset=utf-8'});
 
 void main() {
   testWidgets('mobile login blocks duplicate submits and uses the assigned business', (tester) async {
