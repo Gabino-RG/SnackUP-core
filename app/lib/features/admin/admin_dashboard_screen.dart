@@ -1,21 +1,34 @@
 import 'dart:math' as math;
+import 'dart:async';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'admin_theme.dart';
 import 'data/admin_repository.dart';
 import 'domain/admin_models.dart';
 import 'followup_dialog.dart';
+import 'academic_picker.dart';
+import 'domain/academic_directory.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
-  const AdminDashboardScreen({super.key, required this.repository, this.onSignOut, this.onManage});
+  const AdminDashboardScreen({
+    super.key,
+    required this.repository,
+    this.onSignOut,
+    this.onManage,
+    this.onCreateAccount,
+    this.isMaster = false,
+    this.autoRefresh = false,
+  });
   final AdminRepository repository;
   final VoidCallback? onSignOut;
-  final void Function(BuildContext)? onManage;
+  final Future<void> Function(BuildContext)? onManage, onCreateAccount;
+  final bool isMaster, autoRefresh;
   @override
   State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
 }
 
-class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
+class _AdminDashboardScreenState extends State<AdminDashboardScreen>
+    with WidgetsBindingObserver {
   late final AdminRepository _repository;
   final _businesses = <String, AdminBusiness>{};
   final _reviews = <String, AdminReview>{};
@@ -27,26 +40,56 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   AdminPeriod _period = AdminPeriod.month;
   CampusTimeOfDay _timeOfDay = CampusTimeOfDay.all;
   FollowupStatus? _statusFilter;
+  AdminReferenceData? _references;
+  AcademicDirectory _academics = AcademicDirectory(const []);
+  Timer? _refreshTimer;
+  bool _fetching = false, _visible = true;
+  int _loadedPages = 0;
+  DateTime? _updatedAt;
   @override
   void initState() {
     super.initState();
     _repository = widget.repository;
+    WidgetsBinding.instance.addObserver(this);
+    if (widget.autoRefresh)
+      _refreshTimer = Timer.periodic(const Duration(seconds: 60), (_) {
+        if (_visible && mounted && (ModalRoute.of(context)?.isCurrent ?? true))
+          _load(reset: true);
+      });
     _load(reset: true);
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _refreshTimer?.cancel();
     _searchController.dispose();
     super.dispose();
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _visible = state == AppLifecycleState.resumed;
+    if (_visible && widget.autoRefresh && mounted) _load(reset: true);
+  }
+
   Future<void> _load({bool reset = false}) async {
+    if (_fetching || (!reset && _error != null)) return;
+    _fetching = true;
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
-      final page = await _repository.loadNextPage(reset: reset);
+      final references = reset && _repository is AdminReferenceSource
+          ? await (_repository as AdminReferenceSource).loadReferences()
+          : _references;
+      final pages = [await _repository.loadNextPage(reset: reset)];
+      if (reset) {
+        for (var i = 1; i < _loadedPages && pages.last.hasMore; i++) {
+          pages.add(await _repository.loadNextPage());
+        }
+      }
       if (!mounted) return;
       setState(() {
         if (reset) {
@@ -54,16 +97,28 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           _reviews.clear();
           _followups.clear();
         }
-        for (final item in page.businesses) {
+        for (final item in pages.expand((p) => p.businesses)) {
           _businesses[item.id] = item;
         }
-        for (final item in page.reviews) {
+        for (final item in pages.expand((p) => p.reviews)) {
           _reviews[item.id] = item;
         }
-        for (final item in page.followups) {
+        for (final item in pages.expand((p) => p.followups)) {
           _followups[item.reviewId] = item;
         }
-        _hasMore = page.hasMore;
+        _references = references;
+        _academics =
+            references?.academics ??
+            AcademicDirectory.fromReviews(_reviews.values);
+        if (!_academics.careers.containsKey(_career)) {
+          _career = null;
+          _group = null;
+        }
+        if (!_academics.groups(_career).containsKey(_group)) _group = null;
+        if (!_businesses.containsKey(_businessId)) _businessId = null;
+        _loadedPages = reset ? pages.length : _loadedPages + pages.length;
+        _hasMore = pages.last.hasMore;
+        _updatedAt = DateTime.now();
         _loading = false;
       });
     } catch (_) {
@@ -73,14 +128,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           _error = 'No se pudieron cargar los datos';
         });
       }
+    } finally {
+      _fetching = false;
     }
   }
 
   List<AdminReview> get _filtered {
     final filter = AdminFilter(
       businessId: _businessId,
-      career: _career,
-      group: _group,
+      career: _academics.name(_career),
+      group: _academics.name(_group),
+      careerId: _career,
+      groupId: _group,
       period: _period,
       timeOfDay: _timeOfDay,
       negativeOnly: _negativeOnly,
@@ -200,7 +259,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   width: 38,
                   height: 38,
                   decoration: BoxDecoration(
-                    color: AdminColors.lime,
+                    color: AdminColors.teal,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(
@@ -228,7 +287,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             const Padding(
               padding: EdgeInsets.only(top: 12, bottom: 38),
               child: Text(
-                'OBSERVATORIO DEL CAMPUS',
+                'CAFETERÍA UNIVERSITARIA',
                 style: TextStyle(
                   fontSize: 9,
                   fontWeight: FontWeight.w600,
@@ -269,7 +328,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             ][i],
                             size: 19,
                             color: _section == i
-                                ? AdminColors.lime
+                                ? AdminColors.teal
                                 : const Color(0xFFB8C8DE),
                           ),
                           const SizedBox(width: 12),
@@ -279,7 +338,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                 'Resumen general',
                                 'Locales',
                                 'Opiniones',
-                                'Seguimiento',
+                                'Atención',
                               ][i],
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -310,7 +369,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 children: [
                   Icon(
                     Icons.school_outlined,
-                    color: AdminColors.lime,
+                    color: AdminColors.teal,
                     size: 22,
                   ),
                   SizedBox(height: 10),
@@ -355,7 +414,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     child: Row(
       children: [
         const Text(
-          'CAMPUS  /  ',
+          'UNIVERSIDAD  /  ',
           style: TextStyle(
             fontSize: 10,
             color: AdminColors.muted,
@@ -363,7 +422,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           ),
         ),
         const Text(
-          'Supervisión de cafeterías',
+          'Supervisión de la cafetería',
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
@@ -374,7 +433,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         _badge(
           _repository.isDemo
               ? 'DEMO · DATOS SIMULADOS'
-              : 'ACCESO ADMINISTRATIVO',
+              : (widget.isMaster ? 'CUENTA MAESTRA' : 'ADMINISTRACIÓN'),
           AdminColors.cyan,
         ),
         const SizedBox(width: 16),
@@ -412,7 +471,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     'Resumen general',
                     'Nuestros locales',
                     'Opiniones del alumnado',
-                    'Seguimiento y acuerdos',
+                    'Atención de opiniones',
                   ][_section],
                   style: Theme.of(context).textTheme.headlineLarge,
                 ),
@@ -453,12 +512,64 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             Icons.info_outline,
             AdminColors.red,
             action: TextButton(
-              onPressed: _loading ? null : () => _load(),
+              onPressed: _loading || _error != null ? null : () => _load(),
               child: const Text('Cargar 200 más'),
             ),
           ),
-        if (widget.onManage != null) Padding(padding: const EdgeInsets.only(bottom:16),child: OutlinedButton.icon(
-          onPressed: () => widget.onManage!(context), icon: const Icon(Icons.manage_accounts), label: const Text('Gestionar locales y cuentas'))),
+        if (widget.onManage != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: Wrap(
+              spacing: 12,
+              runSpacing: 10,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    await widget.onManage!(context);
+                    if (mounted) _load(reset: true);
+                  },
+                  icon: const Icon(Icons.storefront),
+                  label: Text(
+                    widget.isMaster
+                        ? 'Gestionar locales y cuentas'
+                        : 'Gestionar locales',
+                  ),
+                ),
+                if (widget.onCreateAccount != null)
+                  FilledButton.icon(
+                    onPressed: () async {
+                      await widget.onCreateAccount!(context);
+                      if (mounted) _load(reset: true);
+                    },
+                    icon: const Icon(Icons.person_add_outlined),
+                    label: const Text('Crear cuenta'),
+                  ),
+              ],
+            ),
+          ),
+        Text(
+          '${_references?.configuration.cafeteriaName ?? 'Cafetería universitaria'} · ${_businesses.length} locales registrados',
+          style: const TextStyle(color: AdminColors.muted),
+        ),
+        if (_references != null)
+          Text(
+            _references!.configuration.universityName,
+            style: const TextStyle(color: AdminColors.muted, fontSize: 12),
+          ),
+        if (_updatedAt != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 4, bottom: 14),
+            child: Text(
+              'Datos actualizados: ${_updatedAt!.hour.toString().padLeft(2, '0')}:${_updatedAt!.minute.toString().padLeft(2, '0')}${widget.autoRefresh ? ' · Actualización automática cada minuto' : ''}',
+              style: const TextStyle(fontSize: 11, color: AdminColors.muted),
+            ),
+          ),
+        if (_section == 3)
+          _notice(
+            'Registra cómo se atiende una opinión o queja: responsable, acción acordada y estado de resolución.',
+            Icons.help_outline,
+            AdminColors.cyan,
+          ),
         _filters(),
         const SizedBox(height: 22),
         if (_section == 0) ...[
@@ -467,7 +578,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           _kpis(stats),
           const SizedBox(height: 26),
           _sectionTitle(
-            'Un campus, distintas experiencias',
+            'Una cafetería, distintos locales',
             'Calificación y dimensiones de cada local',
           ),
           const SizedBox(height: 14),
@@ -558,7 +669,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         ],
         const SizedBox(height: 22),
         Text(
-          '${reviews.length} opiniones en la vista · ${_reviews.length} cargadas${_hasMore ? ' · Muestra incompleta' : ''}. Hora del campus: UTC−6. Los promedios excluyen valores no registrados.',
+          '${reviews.length} opiniones en la vista · ${_reviews.length} cargadas${_hasMore ? ' · Muestra incompleta' : ''}. Hora de la universidad: UTC−6. Los promedios excluyen valores no registrados.',
           style: const TextStyle(fontSize: 10, color: AdminColors.muted),
         ),
         const SizedBox(height: 16),
@@ -627,36 +738,24 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               (v) => setState(() => _businessId = v),
               all: 'Todos los locales',
             ),
-            _select<String>(
-              'Carrera',
-              _career,
-              {
-                for (final c
-                    in (_reviews.values.map((r) => r.career).toSet().toList()
-                      ..sort()))
-                  c: c,
-              },
-              (v) => setState(() {
+            AcademicPicker(
+              label: 'Carrera',
+              value: _career,
+              options: _academics.careers,
+              allLabel: 'Todas las carreras',
+              onChanged: (v) => setState(() {
                 _career = v;
                 _group = null;
               }),
-              all: 'Todas las carreras',
             ),
-            _select<String>(
-              'Grupo',
-              _group,
-              {
-                for (final g
-                    in (_reviews.values
-                        .where((r) => _career == null || r.career == _career)
-                        .map((r) => r.group)
-                        .toSet()
-                        .toList()
-                      ..sort()))
-                  g: g,
-              },
-              (v) => setState(() => _group = v),
-              all: 'Todos los grupos',
+            AcademicPicker(
+              label: 'Grupo',
+              value: _group,
+              options: _academics.groups(_career),
+              allLabel: 'Todos los grupos',
+              enabled: _career != null,
+              disabledHint: 'Primero elige una carrera',
+              onChanged: (v) => setState(() => _group = v),
             ),
             _select<AdminPeriod>(
               'Periodo',
@@ -773,7 +872,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 const Text(
                   'MEJORAR EMPIEZA POR ESCUCHAR',
                   style: TextStyle(
-                    color: AdminColors.lime,
+                    color: AdminColors.teal,
                     letterSpacing: 1.4,
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
@@ -781,7 +880,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 ),
                 const SizedBox(height: 12),
                 const Text(
-                  'La experiencia del campus,\nen un solo lugar.',
+                  'La experiencia de la universidad,\nen un solo lugar.',
                   style: TextStyle(
                     fontSize: 25,
                     fontWeight: FontWeight.w700,
@@ -814,7 +913,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 children: [
                   const Icon(
                     Icons.star_rounded,
-                    color: AdminColors.lime,
+                    color: AdminColors.teal,
                     size: 28,
                   ),
                   const SizedBox(height: 8),
@@ -1020,7 +1119,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             padding: EdgeInsets.only(left: 6, bottom: 7),
                             child: Icon(
                               Icons.star_rounded,
-                              color: Color(0xFF9EAB00),
+                              color: Color(0xFF007C66),
                               size: 19,
                             ),
                           ),
@@ -1043,7 +1142,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       _dimension(
                         'Alimentos',
                         stats.food,
-                        const Color(0xFF8C9900),
+                        const Color(0xFF007C66),
                       ),
                       const SizedBox(height: 14),
                       Text(
@@ -1136,7 +1235,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   const SizedBox(height: 8),
                   _dimension('Servicio', stats.service, AdminColors.cyan),
                   const SizedBox(height: 8),
-                  _dimension('Alimentos', stats.food, const Color(0xFF8C9900)),
+                  _dimension('Alimentos', stats.food, const Color(0xFF007C66)),
                 ],
               ),
             );
@@ -1196,7 +1295,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                     ? const Color(0xFFEA8A76)
                                     : star == 3
                                     ? AdminColors.cyan
-                                    : const Color(0xFFB1C000),
+                                    : const Color(0xFF00A788),
                               ),
                             ),
                           ),
@@ -1536,7 +1635,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     fontWeight: FontWeight.w700,
                     color: review.isNegative
                         ? AdminColors.red
-                        : const Color(0xFF788300),
+                        : const Color(0xFF007C66),
                   ),
                 ),
                 if (review.isNegative || followup != null)

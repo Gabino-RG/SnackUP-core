@@ -30,6 +30,8 @@ class AdminReview {
     this.foodRating,
     this.career = unknownAcademicValue,
     this.group = unknownAcademicValue,
+    this.careerId,
+    this.groupId,
     this.comment = '',
     this.createdAt,
   });
@@ -40,6 +42,7 @@ class AdminReview {
   final int? foodRating;
   final String career;
   final String group;
+  final String? careerId, groupId;
   final String comment;
   final DateTime? createdAt;
   bool get isNegative => rating != null && rating! >= 1 && rating! <= 2;
@@ -103,6 +106,8 @@ class AdminFilter {
     this.businessId,
     this.career,
     this.group,
+    this.careerId,
+    this.groupId,
     this.period = AdminPeriod.month,
     this.timeOfDay = CampusTimeOfDay.all,
     this.negativeOnly = false,
@@ -111,6 +116,7 @@ class AdminFilter {
   final String? businessId;
   final String? career;
   final String? group;
+  final String? careerId, groupId;
   final AdminPeriod period;
   final CampusTimeOfDay timeOfDay;
   final bool negativeOnly;
@@ -118,8 +124,14 @@ class AdminFilter {
 
   bool matches(AdminReview review, DateTime now) {
     if (businessId != null && review.businessId != businessId) return false;
-    if (career != null && review.career != career) return false;
-    if (group != null && review.group != group) return false;
+    if (careerId != null && review.careerId != null) {
+      if (review.careerId != careerId) return false;
+    } else if (career != null && review.career != career)
+      return false;
+    if (groupId != null && review.groupId != null) {
+      if (review.groupId != groupId) return false;
+    } else if (group != null && review.group != group)
+      return false;
     if (negativeOnly && !review.isNegative) return false;
     if (search.trim().isNotEmpty &&
         !review.comment.toLowerCase().contains(search.trim().toLowerCase())) {

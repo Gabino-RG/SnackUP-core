@@ -35,7 +35,7 @@ fs.mkdirSync(output, { recursive: true });
       await page.getByRole('button',{name:'Entrar',exact:true}).click();
     }
     await login('negocio@snackup.test');
-    await page.getByText('Cafetería Central',{exact:true}).first().waitFor();
+    await label('Local 1 · Central').waitFor();
     await page.getByRole('button',{name:'Aceptar pedido',exact:true}).first().waitFor();
     await page.screenshot({path:path.join(output,'01-cocina-desktop.png')});
     await page.getByRole('button',{name:'Recibir pedido de prueba',exact:true}).click();
@@ -63,6 +63,7 @@ fs.mkdirSync(output, { recursive: true });
     await login('admin@snackup.test');
     await page.getByRole('button',{name:'Gestionar locales y cuentas',exact:true}).waitFor();
     await page.setViewportSize({width:1440,height:1050});
+    await page.getByRole('button',{name:'Crear cuenta',exact:true}).waitFor();
     await page.screenshot({path:path.join(output,'05-administracion-desktop.png')});
     await page.getByRole('button',{name:'Gestionar locales y cuentas',exact:true}).click();
     await page.getByRole('button',{name:'Agregar local',exact:true}).click();

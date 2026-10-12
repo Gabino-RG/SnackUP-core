@@ -155,7 +155,7 @@ class _FollowupDialogState extends State<FollowupDialog> {
               const Divider(),
               const SizedBox(height: 14),
               const Text(
-                'Seguimiento del caso',
+                'Atención de esta opinión',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
@@ -166,7 +166,7 @@ class _FollowupDialogState extends State<FollowupDialog> {
               Text(
                 widget.repository.isDemo
                     ? 'Demostración: estos cambios solo viven en esta sesión.'
-                    : 'Registra una acción acordada. Cada actualización conserva una entrada en el historial.',
+                    : 'Indica quién atenderá esta opinión o queja, qué acción se realizará y si ya quedó resuelta. Cada cambio se guarda en el historial.',
                 style: const TextStyle(fontSize: 11, color: AdminColors.muted),
               ),
               const SizedBox(height: 20),

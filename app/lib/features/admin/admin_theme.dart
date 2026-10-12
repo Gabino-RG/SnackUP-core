@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
 class AdminColors {
-  static const navy = Color(0xFF002654);
-  static const lime = Color(0xFFC4D600);
-  static const cyan = Color(0xFF008BBE);
+  static const navy = Color(0xFF002855);
+  static const teal = Color(0xFF00A788);
+  static const cyan = Color(0xFF007C66);
   static const background = Color(0xFFF8F9FA);
   static const muted = Color(0xFF64748B);
   static const border = Color(0xFFE5EAF0);
@@ -16,10 +16,27 @@ ThemeData adminTheme() => ThemeData(
   colorScheme: ColorScheme.fromSeed(
     seedColor: AdminColors.navy,
     primary: AdminColors.navy,
-    secondary: AdminColors.lime,
+    secondary: AdminColors.teal,
     surface: Colors.white,
+    surfaceContainerLowest: Colors.white,
+    surfaceContainerLow: Colors.white,
+    surfaceContainer: const Color(0xFFF3F6F8),
+    surfaceContainerHigh: const Color(0xFFEBF0F4),
+    surfaceContainerHighest: const Color(0xFFE2EAEE),
+    surfaceTint: Colors.transparent,
+    secondaryContainer: const Color(0xFFDDF3ED),
+    onSecondaryContainer: AdminColors.navy,
   ),
   scaffoldBackgroundColor: AdminColors.background,
+  cardColor: Colors.white,
+  navigationBarTheme: const NavigationBarThemeData(
+    backgroundColor: Colors.white,
+    indicatorColor: Color(0xFFDDF3ED),
+  ),
+  navigationRailTheme: const NavigationRailThemeData(
+    backgroundColor: Colors.white,
+    indicatorColor: Color(0xFFDDF3ED),
+  ),
   textTheme: const TextTheme(
     headlineLarge: TextStyle(
       fontSize: 30,

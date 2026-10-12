@@ -212,11 +212,11 @@ class _BusinessPortalState extends State<BusinessPortal>
       final b = _kitchen.business;
       return Scaffold(
         appBar: AppBar(
-          title: Text(
-            b?.name ?? 'SnackUP · Negocio',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
+          title: Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+            Text(b?.name ?? 'SnackUP · Local',maxLines:1,overflow:TextOverflow.ellipsis),
+            Text(b?.cafeteriaName ?? 'Cafetería universitaria',maxLines:1,overflow:TextOverflow.ellipsis,
+              style:const TextStyle(fontSize:11,color:AdminColors.muted)),
+          ]),
           backgroundColor: Colors.white,
           actions: [
             IconButton(
@@ -262,7 +262,7 @@ class _BusinessPortalState extends State<BusinessPortal>
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.circle, size: 9, color: AdminColors.lime),
+                    const Icon(Icons.circle, size: 9, color: AdminColors.teal),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -286,7 +286,7 @@ class _BusinessPortalState extends State<BusinessPortal>
                                 !b.isActive
                             ? null
                             : _open,
-                        activeColor: AdminColors.lime,
+                        activeColor: AdminColors.teal,
                       ),
                   ],
                 ),

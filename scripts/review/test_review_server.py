@@ -19,8 +19,8 @@ class Client:
         try:res=self.opener.open(req,timeout=10)
         except urllib.error.HTTPError as e:res=e
         body=res.read();return res.status,json.loads(body) if body else None
-    def login(self,email='negocio@snackup.test'):
-        status,body=self.call('POST','auth/login',{'email':email,'password':PASSWORD});assert status==200,body;self.token=body['tokens']['accessToken'];return body
+    def login(self,email='negocio@snackup.test',password=PASSWORD):
+        status,body=self.call('POST','auth/login',{'email':email,'password':password});assert status==200,body;self.token=body['tokens']['accessToken'];return body
 
 class ReviewTests(unittest.TestCase):
     def setUp(self):
@@ -84,4 +84,70 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual(status,201);self.assertEqual(urllib.request.urlopen(media['url']).read(),image)
         self.assertEqual(self.client.call('POST','review/orders',{'businessId':'central'},headers={'Origin':'https://external.example'})[0],403)
         self.assertEqual(self.client.call('GET','users/me',headers={'Host':'external.example'})[0],403)
+    def test_master_and_four_independent_local_accounts(self):
+        master=Client(self.client.url);master.login('admin@snackup.test')
+        _,profile=master.call('GET','users/me');self.assertTrue(profile['isMaster'])
+        _,institution=master.call('GET','institution')
+        _,locales=master.call('GET','admin/businesses')
+        self.assertEqual(len(locales['data']),4)
+        self.assertEqual({b['cafeteriaId'] for b in locales['data']},{institution['cafeteria']['id']})
+        for email,bid in [('negocio','central'),('antojitos','antojitos'),('verde','verde'),('dulce','dulce')]:
+            operator=Client(self.client.url);operator.login(email+'@snackup.test')
+            _,profile=operator.call('GET','users/me');self.assertFalse(profile['isMaster'])
+            self.assertEqual(profile['businessId'],bid)
+            self.assertEqual(operator.call('GET','businesses/'+bid+'/orders/active')[0],200)
+            other='central' if bid!='central' else 'verde'
+            self.assertEqual(operator.call('GET','businesses/'+other+'/orders/active')[0],403)
+
+    def test_master_enforces_institutional_email_and_cannot_be_promoted_or_disabled(self):
+        master=Client(self.client.url);master.login('admin@snackup.test')
+        payload={'displayName':'Administración académica','email':'persona@gmail.com','role':'admin','isActive':True,'password':'Clave-Prueba-123'}
+        for email in ('persona@gmail.com','persona@utsjr.edu.mx.evil.example'):
+            status,body=master.call('POST','admin/users',{**payload,'email':email})
+            self.assertEqual((status,body['error']['code']),(422,'INSTITUTIONAL_EMAIL_REQUIRED'))
+        self.assertEqual(master.call('POST','admin/users',{**payload,'email':'persona@utsjr.edu.mx','isMaster':True})[0],403)
+        status,user=master.call('POST','admin/users',{**payload,'email':'persona@utsjr.edu.mx'})
+        self.assertEqual(status,201);self.assertFalse(user['isMaster'])
+        admin=Client(self.client.url);admin.login('persona@utsjr.edu.mx','Clave-Prueba-123')
+        for path in ('admin/businesses','admin/reviews','admin/academic-catalog'):
+            self.assertEqual(admin.call('GET',path)[0],200)
+        self.assertEqual(admin.call('GET','admin/users')[0],403)
+        self.assertEqual(admin.call('POST','admin/users',payload)[0],403)
+        self.assertEqual(admin.call('PATCH','admin/users/'+user['id'],{**user,'isMaster':True,'expectedVersion':user['version']})[0],403)
+        _,owner=master.call('GET','users/me')
+        for changes in ({'isActive':False},{'role':'user'},{'isMaster':False}):
+            self.assertEqual(master.call('PATCH','admin/users/admin',{**owner,**changes,'expectedVersion':owner['version']})[0],403)
+
+    def test_academic_catalog_is_paged_and_independent_from_opinions(self):
+        admin=Client(self.client.url);admin.login('admin@snackup.test')
+        self.assertEqual(self.client.call('GET','admin/academic-catalog')[0],403)
+        _,page=admin.call('GET','admin/academic-catalog?limit=4&page=1');entries=page['data']
+        for number in range(2,page['pagination']['totalPages']+1):
+            _,page=admin.call('GET',f'admin/academic-catalog?limit=4&page={number}');entries+=page['data']
+        self.assertEqual(len(entries),21)
+        self.assertEqual(len({e['id'] for e in entries}),21)
+        self.assertIn('software-6',{e['id'] for e in entries if e.get('careerId')=='software'})
+        _,reviews=admin.call('GET','admin/reviews')
+        self.assertNotIn('software-6',{r['groupId'] for r in reviews['data']})
+        with self.server.store.lock,self.server.store.db:
+            self.server.store.put('academic_catalog',{'id':'software-100','kind':'group','name':'DSM-100','careerId':'software'})
+        _,updated=admin.call('GET','admin/academic-catalog')
+        self.assertIn('software-100',{e['id'] for e in updated['data']})
+
+    def test_additive_migration_preserves_user_work_and_is_idempotent(self):
+        store=self.server.store
+        with store.lock,store.db:
+            store.db.execute("DELETE FROM records WHERE kind='migrations'")
+            business=store.get('businesses','central');store.put('businesses',{**business,'name':'Mi local editado'})
+            product=store.get('products','central-p1');store.put('products',{**product,'price':123.45})
+            password=store.get('users','admin')['passwordHash']
+        store.migrate_institution()
+        versions={u['id']:u['version'] for u in store.rows('users')}
+        store.migrate_institution()
+        self.assertEqual(versions,{u['id']:u['version'] for u in store.rows('users')})
+        self.assertEqual(store.get('businesses','central')['name'],'Mi local editado')
+        self.assertEqual(store.get('products','central-p1')['price'],123.45)
+        self.assertEqual(store.get('users','admin')['passwordHash'],password)
+        self.assertEqual(len(store.rows('users')),5)
+
 if __name__=='__main__':unittest.main()

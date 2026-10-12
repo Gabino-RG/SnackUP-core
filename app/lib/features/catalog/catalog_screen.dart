@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../catalog/catalog.dart';
 
-const catalogNavy = Color(0xFF002654);
+const catalogNavy = Color(0xFF002855);
 const catalogBackground = Color(0xFFF8F9FA);
 
 String catalogMessage(Object error) => error is CatalogException
@@ -153,7 +153,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
       Padding(padding: const EdgeInsets.all(16), child: Column(children: [
         Row(children: [
           Expanded(child: Text(
-            _data == null ? 'Productos de tu local' : '${_data!.total} productos encontrados',
+            _data == null ? 'Productos de tu local' : '${_data!.total} ${_data!.total == 1 ? 'producto encontrado' : 'productos encontrados'}',
             style: const TextStyle(fontWeight: FontWeight.w600))),
           FilledButton.icon(
             key: const ValueKey('add-product'), onPressed: () => _edit(),

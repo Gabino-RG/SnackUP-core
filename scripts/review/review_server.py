@@ -78,6 +78,7 @@ class Store:
         self.login_attempts = {}
         if not self.rows('users'):
             self.seed()
+        self.migrate_institution()
     def rows(self, kind):
         return [json.loads(r[0]) for r in self.db.execute('SELECT payload FROM records WHERE kind=? ORDER BY id', (kind,))]
     def get(self, kind, id):
@@ -92,6 +93,45 @@ class Store:
         return self.put(kind,{**old,**changes,'version':old['version']+1,'updatedAt':now()})
     def version(self, body, record):
         require(type(body.get('expectedVersion')) is int and body['expectedVersion']==record['version'],409,'VERSION_CONFLICT')
+    def configuration(self):
+        return self.get('configuration','institution')
+    def migrate_institution(self):
+        # Additive and idempotent: never reset passwords, products or reviewed data.
+        if any(r['id']=='institution-v2' for r in self.rows('migrations')):return
+        with self.db:
+            if not any(r['id']=='institution' for r in self.rows('configuration')):
+                self.put('configuration',{'id':'institution','university':{'id':'utsjr','name':'Universidad Tecnológica de San Juan del Río'},
+                    'cafeteria':{'id':'cafeteria-utsjr','name':'Cafetería universitaria'},'adminEmailDomains':['utsjr.edu.mx']})
+            config=self.configuration();cafeteria=config['cafeteria']
+            replacements={'central':('Cafetería Central','Local 1 · Central'),'antojitos':('Antojitos del Campus','Local 2 · Antojitos'),
+                'verde':('Rincón Verde','Local 3 · Rincón Verde'),'dulce':('Pausa Dulce','Local 4 · Pausa Dulce')}
+            for b in self.rows('businesses'):
+                changes={'cafeteriaId':cafeteria['id'],'cafeteriaName':cafeteria['name']}
+                if b['id'] in replacements and b['name']==replacements[b['id']][0]:changes['name']=replacements[b['id']][1]
+                if b.get('description')=='Preparado al momento para la comunidad del campus.':changes['description']='Local de la cafetería de la universidad.'
+                self.bump('businesses',b,changes)
+            for u in self.rows('users'):
+                master=u['id']=='admin' and u['role']=='admin'
+                changes={'isMaster':master}
+                if master and u['displayName']=='Administración SnackUP':changes['displayName']='Cuenta maestra SnackUP'
+                self.bump('users',u,changes)
+            for uid,email,bid,name in [('owner3','verde@snackup.test','verde','Operador Local 3'),('owner4','dulce@snackup.test','dulce','Operador Local 4')]:
+                users=self.rows('users')
+                if not any(u.get('businessId')==bid and u['role']=='business' and u['isActive'] for u in users) and not any(u['email']==email or u['id']==uid for u in users):
+                    self.put('users',{'id':uid,'email':email,'displayName':name,'role':'business','businessId':bid,'isActive':True,'isMaster':False,
+                        'version':1,'passwordHash':hash_password(PASSWORD),'createdAt':now(),'updatedAt':now()})
+            careers=[('software','Desarrollo de Software','DSM'),('administracion','Administración','ADM'),('mecatronica','Mecatrónica','MEC')]
+            if not self.rows('academic_catalog'):
+                for cid,name,prefix in careers:
+                    self.put('academic_catalog',{'id':cid,'name':name,'kind':'career'})
+                    for number in range(1,7):
+                        self.put('academic_catalog',{'id':f'{cid}-{number}','name':f'{prefix}-{number}','kind':'group','careerId':cid})
+            # Existing opinions retain their wording. Add IDs only for known examples.
+            for r in self.rows('reviews'):
+                for cid,name,prefix in careers:
+                    if r.get('career')==name and re.fullmatch(prefix+r'-[1-6]',r.get('group','')):
+                        self.put('reviews',{**r,'careerId':cid,'groupId':f'{cid}-{r["group"].split("-")[-1]}'})
+            self.put('migrations',{'id':'institution-v2','appliedAt':now()})
     def seed(self):
         with self.db:
             for i,(id,name,category) in enumerate([('central','Cafetería Central','Cafetería'),('antojitos','Antojitos del Campus','Comida mexicana'),('verde','Rincón Verde','Saludable'),('dulce','Pausa Dulce','Postres')]):
@@ -237,6 +277,8 @@ class ReviewHandler(http.server.SimpleHTTPRequestHandler):
         require(number>=1 and 1<=limit<=200,400)
         return {'data':rows[(number-1)*limit:number*limit],'pagination':{'page':number,'limit':limit,'total':len(rows),'totalPages':math.ceil(len(rows)/limit)}}
     def admin(self,user):require(user['role']=='admin',403,'FORBIDDEN')
+    def master(self,user):
+        self.admin(user);require(user.get('isMaster') is True,403,'MASTER_REQUIRED','Solo la cuenta maestra puede administrar accesos.')
     def business_access(self,user,bid):
         require(user['role']=='business' and user.get('businessId')==bid,403,'FORBIDDEN')
         require(self.server.store.get('businesses',bid)['isActive'],403,'ACCESS_REVOKED')
@@ -269,6 +311,7 @@ class ReviewHandler(http.server.SimpleHTTPRequestHandler):
         if p==['auth','reset-password'] and m=='POST':raise Problem(422,'RESET_TOKEN_INVALID','La recuperación real requiere el servicio de correo del backend.')
         user=s.authenticate(self.headers.get('Authorization',''))
         if p==['users','me'] and m=='GET':self.reply(public_user(user));return
+        if p==['institution'] and m=='GET':self.reply(s.configuration());return
         if p==['review','orders'] and m=='POST':
             bid=text_field(d,'businessId');self.business_access(user,bid);order=s.new_order(bid)
             self.reply({'orderNumber':order['orderNumber'],'pickupCode':order['pickupCode']},201);return
@@ -311,11 +354,14 @@ class ReviewHandler(http.server.SimpleHTTPRequestHandler):
             if len(p)==3 and m=='POST':self.transition(order,p[2],d,user);return
         if p and p[0]=='admin':
             self.admin(user)
+            if p[1:]==['academic-catalog'] and m=='GET':self.reply(self.page(s.rows('academic_catalog'),q));return
             if p[1:]==['businesses']:
                 if m=='GET':
                     query=q.get('q',[''])[0].casefold();self.reply(self.page([b for b in s.rows('businesses') if query in (b['name']+' '+b['category']).casefold()],q));return
                 if m=='POST':
                     b={'id':new_id(),'name':text_field(d,'name',100),'category':text_field(d,'category',60),'description':text_field(d,'description',600,False),'isOpen':False,'isActive':d.get('isActive',True),'timezone':'America/Mexico_City','version':1,'createdAt':now(),'updatedAt':now()}
+                    cafeteria=s.configuration()['cafeteria'];require(d.get('cafeteriaId',cafeteria['id'])==cafeteria['id'])
+                    b.update({'cafeteriaId':cafeteria['id'],'cafeteriaName':cafeteria['name']})
                     require(type(b['isActive']) is bool);self.reply(s.put('businesses',b),201);return
             if len(p)==3 and p[1]=='businesses' and m=='PATCH':
                 b=s.get('businesses',p[2]);s.version(d,b);active=d.get('isActive');require(type(active) is bool)
@@ -324,8 +370,10 @@ class ReviewHandler(http.server.SimpleHTTPRequestHandler):
                 if not active:changes['isOpen']=False
                 self.reply(s.bump('businesses',b,changes));return
             if p[1:]==['users'] and m=='GET':
+                self.master(user)
                 query=q.get('q',[''])[0].casefold();self.reply(self.page([public_user(u) for u in s.rows('users') if query in (u['displayName']+' '+u['email']).casefold()],q));return
             if (p[1:]==['users'] and m=='POST') or (len(p)==3 and p[1]=='users' and m=='PATCH'):
+                self.master(user)
                 self.save_user(d,user,None if m=='POST' else s.get('users',p[2]));return
             if p[1:]==['reviews'] and m=='GET':self.reply(self.page(s.rows('reviews'),q));return
             if p[1:]==['followups'] and m=='GET':self.reply(self.page(s.rows('followups'),q));return
@@ -386,10 +434,15 @@ class ReviewHandler(http.server.SimpleHTTPRequestHandler):
         return {'completed':len(done),'cancelled':sum(r['status']=='cancelled' for r in rows),'totalSold':round(sum(r['total'] for r in done),2)}
     def save_user(self,d,actor,old):
         s=self.server.store
+        require('isMaster' not in d or d['isMaster']==bool(old and old.get('isMaster')),403,'MASTER_PROTECTED')
         if old:s.version(d,old)
         role=d.get('role');active=d.get('isActive');bid=d.get('businessId');email=text_field(d,'email',160).lower()
         require(role in {'admin','business','user'} and type(active)is bool and re.fullmatch(r'[^\s@]+@[^\s@]+\.[^\s@]+',email))
         require(not any(u['email']==email and (old is None or u['id']!=old['id']) for u in s.rows('users')),409,'EMAIL_EXISTS')
+        if old and old.get('isMaster'):
+            require(role=='admin' and active,403,'MASTER_PROTECTED','La cuenta maestra debe permanecer activa.')
+        if role=='admin' and not (old and old.get('isMaster') and email==old['email']):
+            require(email.rsplit('@',1)[-1] in s.configuration()['adminEmailDomains'],422,'INSTITUTIONAL_EMAIL_REQUIRED','Utiliza un correo institucional autorizado.')
         if role=='business':
             require(isinstance(bid,str) and bid,422,'BUSINESS_REQUIRED');b=s.get('businesses',bid);require(b['isActive'] or not active)
             require(not active or not any(u['role']=='business' and u['isActive'] and u.get('businessId')==bid and (old is None or u['id']!=old['id']) for u in s.rows('users')),409,'BUSINESS_ALREADY_ASSIGNED')
@@ -401,7 +454,7 @@ class ReviewHandler(http.server.SimpleHTTPRequestHandler):
             changed=s.bump('users',old,changes);s.db.execute('DELETE FROM refresh WHERE user_id=?',(old['id'],))
         else:
             password=d.get('password');require(isinstance(password,str) and 12<=len(password)<=128)
-            changed=s.put('users',{'id':new_id(),**changes,'passwordHash':hash_password(password),'version':1,'createdAt':now(),'updatedAt':now()})
+            changed=s.put('users',{'id':new_id(),**changes,'isMaster':False,'passwordHash':hash_password(password),'version':1,'createdAt':now(),'updatedAt':now()})
         self.reply(public_user(changed),200 if old else 201)
     def upload(self,raw):
         content_type=self.headers.get('Content-Type','')

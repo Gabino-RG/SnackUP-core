@@ -161,6 +161,12 @@ String operationsMessage(Object e) {
         'El pedido ya cambió de estado. Revisa el tablero actualizado.',
       'LAST_ADMIN' => 'Debe quedar al menos una cuenta administrativa activa.',
       'EMAIL_EXISTS' => 'Ya existe una cuenta con ese correo.',
+      'MASTER_REQUIRED' => 'Solo la cuenta maestra puede administrar accesos.',
+      'MASTER_PROTECTED' => 'La cuenta maestra debe conservar su acceso.',
+      'INSTITUTIONAL_EMAIL_REQUIRED' =>
+        'Usa un correo institucional autorizado por la universidad.',
+      'BUSINESS_ALREADY_ASSIGNED' =>
+        'Este local ya tiene una cuenta activa. Edita esa cuenta o suspéndela antes de asignar otra.',
       'BUSINESS_HAS_ACTIVE_ORDERS' =>
         'Termina los pedidos activos antes de desactivar el local.',
       _ => e.message,

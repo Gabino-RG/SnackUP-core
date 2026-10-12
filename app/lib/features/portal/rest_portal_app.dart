@@ -115,14 +115,33 @@ class _RestPortalAppState extends State<RestPortalApp> {
             AdminDashboardScreen(
               repository: _admin!,
               onSignOut: session.signOut,
-              onManage: (context) => Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => AdminManagement(
-                    repository: _operations!,
-                    currentUserId: account.id,
+              isMaster: account.canManageAccounts,
+              autoRefresh: true,
+              onCreateAccount: !account.canManageAccounts
+                  ? null
+                  : (context) async {
+                      await Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => AdminManagement(
+                            repository: _operations!,
+                            currentUserId: account.id,
+                            canManageAccounts: true,
+                            createAccountOnOpen: true,
+                          ),
+                        ),
+                      );
+                    },
+              onManage: (context) async {
+                await Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => AdminManagement(
+                      repository: _operations!,
+                      currentUserId: account.id,
+                      canManageAccounts: account.canManageAccounts,
+                    ),
                   ),
-                ),
-              ),
+                );
+              },
             );
       } else if (authenticated) {
         home = _AccessNotice(
@@ -284,10 +303,24 @@ class _PortalLoginState extends State<_PortalLogin> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(
-                        Icons.restaurant_rounded,
-                        size: 42,
-                        color: AdminColors.navy,
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: AdminColors.navy,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Image.asset(
+                          'assets/institution/utsjr-cintillo-2026.png',
+                          height: 52,
+                          fit: BoxFit.contain,
+                          semanticLabel:
+                              'Universidad Tecnológica de San Juan del Río',
+                          errorBuilder: (_, __, ___) => const Text(
+                            'Universidad Tecnológica de San Juan del Río',
+                            style: TextStyle(color: Colors.white),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 16),
                       const Text(
@@ -301,7 +334,7 @@ class _PortalLoginState extends State<_PortalLogin> {
                       ),
                       const SizedBox(height: 8),
                       const Text(
-                        'Negocios y administración',
+                        'Cafetería universitaria · Locales y administración',
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 30),
@@ -397,13 +430,13 @@ class _PortalLoginState extends State<_PortalLogin> {
                         const Padding(
                           padding: EdgeInsets.only(bottom: 12),
                           child: SelectableText(
-                            'Negocio: negocio@snackup.test\nAdministración: admin@snackup.test\nContraseña de prueba: SnackUP-Prueba-2026',
+                            'Cuenta maestra: admin@snackup.test\nLocal 1: negocio@snackup.test\nLocal 2: antojitos@snackup.test\nLocal 3: verde@snackup.test\nLocal 4: dulce@snackup.test\nContraseña de prueba: SnackUP-Prueba-2026',
                             textAlign: TextAlign.center,
                             style: TextStyle(fontSize: 12),
                           ),
                         ),
                       const Text(
-                        'Utiliza la cuenta que te asignó administración.',
+                        '¿Necesitas acceso? La cuenta maestra puede darte de alta con Crear cuenta. Los administradores utilizan su correo institucional.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 12,

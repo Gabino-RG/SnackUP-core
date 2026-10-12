@@ -1,10 +1,13 @@
 import '../api/api_client.dart';
 import 'models.dart';
+import 'portal_configuration.dart';
 
 /// Orders/status routes follow API v3. Admin CRUD and statistics shape are proposed extensions.
 class OperationsRepository {
   OperationsRepository(this.api);
   final ApiClient api;
+  Future<PortalConfiguration> configuration() async =>
+      PortalConfiguration.fromJson(await api.json('GET', 'institution'));
   String segment(String id) => Uri.encodeComponent(id);
   OperationsPage<T> page<T>(dynamic value, T Function(dynamic) parse) {
     final d = object(value), p = object(object(value)['pagination']);

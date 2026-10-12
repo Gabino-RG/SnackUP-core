@@ -98,7 +98,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
         style: Theme.of(context).textTheme.headlineLarge,
       ),
       const SizedBox(height: 8),
-      const Text('Fechas del campus · America/Mexico_City · Importes en MXN'),
+      const Text('Fechas de la universidad · America/Mexico_City · Importes en MXN'),
       const SizedBox(height: 18),
       Wrap(
         spacing: 12,

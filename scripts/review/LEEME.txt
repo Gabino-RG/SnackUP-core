@@ -5,9 +5,11 @@ SNACKUP - PANELES INTEGRADOS PARA REVISION
 3. Se abrira http://localhost:8791/ en tu navegador.
 4. Manten la consola abierta mientras usas SnackUP.
 
-NEGOCIO: negocio@snackup.test
-ADMINISTRACION: admin@snackup.test
-SEGUNDO NEGOCIO: antojitos@snackup.test
+CUENTA MAESTRA: admin@snackup.test
+LOCAL 1 - CENTRAL: negocio@snackup.test
+LOCAL 2 - ANTOJITOS: antojitos@snackup.test
+LOCAL 3 - RINCON VERDE: verde@snackup.test
+LOCAL 4 - PAUSA DULCE: dulce@snackup.test
 CONTRASENA DE LAS CUENTAS: SnackUP-Prueba-2026
 
 Pedidos iniciales: codigo de recogida 4821.
@@ -27,3 +29,15 @@ Windows 10/11 de 64 bits. Incluye Python con su licencia.
 No necesitas instalar Flutter, Python o Git ni ejecutar como administrador.
 Si el puerto esta ocupado, cierra la instancia anterior antes de abrir otra.
 Para terminar, pulsa Ctrl+C o cierra la consola.
+
+CUENTA MAESTRA: entra y pulsa Crear cuenta para dar acceso a otras personas.
+Administradores nuevos: correo institucional autorizado (@utsjr.edu.mx).
+Cuentas de local: selecciona su local. Cada local tiene su propio acceso.
+Carreras y grupos: primero elige carrera; despues busca su grupo.
+Atencion de opiniones: responsable, accion y resolucion de una opinion o queja.
+
+PARA ACTUALIZAR SIN PERDER CAMBIOS:
+Cierra SnackUP, respalda datos/, extrae este ZIP en otra carpeta y copia
+alli tu carpeta datos/ completa. Abre el iniciador e inicia sesion de nuevo.
+Se conservan tus productos, precios, pedidos y contrasenas anteriores.
+Las cuentas y grupos de esta version son ejemplos; no son el padron oficial.

@@ -4,6 +4,7 @@ import '../../api/api_client.dart';
 import '../../operations/models.dart';
 import '../../operations/operations_repository.dart';
 import '../../operations/kitchen_controller.dart';
+import '../../operations/portal_configuration.dart';
 import 'record_editor.dart';
 
 class AdminManagement extends StatefulWidget {
@@ -11,9 +12,12 @@ class AdminManagement extends StatefulWidget {
     super.key,
     required this.repository,
     required this.currentUserId,
+    this.canManageAccounts = false,
+    this.createAccountOnOpen = false,
   });
   final OperationsRepository repository;
   final String currentUserId;
+  final bool canManageAccounts, createAccountOnOpen;
   @override
   State<AdminManagement> createState() => _AdminManagementState();
 }
@@ -26,10 +30,18 @@ class _AdminManagementState extends State<AdminManagement> {
   String? _error;
   final _search = TextEditingController();
   Timer? _debounce;
+  PortalConfiguration? _configuration;
   @override
   void initState() {
     super.initState();
-    _load();
+    _section = widget.createAccountOnOpen && widget.canManageAccounts ? 1 : 0;
+    _load().then((_) {
+      if (mounted &&
+          _error == null &&
+          widget.createAccountOnOpen &&
+          widget.canManageAccounts)
+        _user();
+    });
   }
 
   @override
@@ -46,6 +58,9 @@ class _AdminManagementState extends State<AdminManagement> {
       _error = null;
     });
     try {
+      final configuration = await widget.repository.configuration();
+      if (!mounted || revision != _revision) return;
+      _configuration = configuration;
       if (_section == 0) {
         final data = await widget.repository.businesses(
           number: _page,
@@ -101,6 +116,7 @@ class _AdminManagementState extends State<AdminManagement> {
         save: (d) async {
           await widget.repository.saveBusiness({
             ...d,
+            'cafeteriaId': _configuration!.cafeteriaId,
             'isActive': d['isActive'] == 'true',
             if (b == null) 'timezone': 'America/Mexico_City',
           }, previous: b);
@@ -111,6 +127,7 @@ class _AdminManagementState extends State<AdminManagement> {
   }
 
   Future<void> _user([PortalUser? user]) async {
+    if (!widget.canManageAccounts || _configuration == null) return;
     setState(() => _busy = true);
     final options = <String, String>{'': 'Sin local'};
     try {
@@ -136,7 +153,7 @@ class _AdminManagementState extends State<AdminManagement> {
           title: user == null ? 'Crear cuenta' : 'Editar cuenta',
           notice: self
               ? 'Tu rol y estado se conservan al editar tu propia cuenta.'
-              : 'Las cuentas de negocio necesitan un local. Los cambios de rol o estado deben revocar las sesiones anteriores.',
+              : 'Crea un acceso para un local o para administración. Los administradores deben usar ${_configuration!.adminEmailDomains.map((d) => '@$d').join(', ')}. Cada local conserva su propia cuenta.',
           fields: [
             const RecordField('displayName', 'Nombre', maxLength: 100),
             const RecordField('email', 'Correo electrónico', maxLength: 160),
@@ -153,9 +170,8 @@ class _AdminManagementState extends State<AdminManagement> {
                 'role',
                 'Rol',
                 options: {
-                  'business': 'Negocio',
-                  'admin': 'Administración',
-                  'user': 'Alumno',
+                  'business': 'Local de cafetería',
+                  'admin': 'Administración institucional',
                 },
               ),
             RecordField(
@@ -180,6 +196,16 @@ class _AdminManagementState extends State<AdminManagement> {
           },
           save: (d) async {
             final role = self ? user!.role : d['role'];
+            final email = (d['email'] as String).trim().toLowerCase();
+            final unchangedMasterEmail =
+                user?.isMaster == true && email == user?.email;
+            if (role == 'admin' &&
+                !unchangedMasterEmail &&
+                !_configuration!.acceptsAdminEmail(email)) {
+              throw ApiException(
+                'Usa un correo institucional: ${_configuration!.adminEmailDomains.map((d) => '@$d').join(', ')}.',
+              );
+            }
             if (role == 'business' &&
                 (d['businessId'] == null || d['businessId'] == ''))
               throw const ApiException(
@@ -188,7 +214,7 @@ class _AdminManagementState extends State<AdminManagement> {
             await widget.repository.saveUser({
               ...d,
               'role': role,
-              'email': (d['email'] as String).trim().toLowerCase(),
+              'email': email,
               'businessId': role == 'business' ? d['businessId'] : null,
               'isActive': self ? user!.isActive : d['isActive'] == 'true',
             }, previous: user);
@@ -219,30 +245,43 @@ class _AdminManagementState extends State<AdminManagement> {
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                SegmentedButton<int>(
-                  segments: const [
-                    ButtonSegment(
-                      value: 0,
-                      label: Text('Locales'),
-                      icon: Icon(Icons.storefront),
+                if (widget.canManageAccounts)
+                  SegmentedButton<int>(
+                    segments: const [
+                      ButtonSegment(
+                        value: 0,
+                        label: Text('Locales'),
+                        icon: Icon(Icons.storefront),
+                      ),
+                      ButtonSegment(
+                        value: 1,
+                        label: Text('Cuentas'),
+                        icon: Icon(Icons.manage_accounts),
+                      ),
+                    ],
+                    selected: {_section},
+                    onSelectionChanged: (v) {
+                      _debounce?.cancel();
+                      setState(() {
+                        _section = v.first;
+                        _page = 1;
+                        _search.clear();
+                      });
+                      _load();
+                    },
+                  ),
+                if (!widget.canManageAccounts)
+                  const Text(
+                    'La cuenta maestra administra los accesos de otras personas.',
+                  ),
+                if (_configuration != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Text(
+                      _configuration!.cafeteriaName,
+                      style: Theme.of(context).textTheme.titleMedium,
                     ),
-                    ButtonSegment(
-                      value: 1,
-                      label: Text('Cuentas'),
-                      icon: Icon(Icons.manage_accounts),
-                    ),
-                  ],
-                  selected: {_section},
-                  onSelectionChanged: (v) {
-                    _debounce?.cancel();
-                    setState(() {
-                      _section = v.first;
-                      _page = 1;
-                      _search.clear();
-                    });
-                    _load();
-                  },
-                ),
+                  ),
                 const SizedBox(height: 16),
                 Row(
                   children: [
@@ -389,7 +428,7 @@ class _AdminManagementState extends State<AdminManagement> {
             leading: const Icon(Icons.person_outline),
             title: Text(u.name),
             subtitle: Text(
-              '${u.email}\n${{'admin': 'Administración', 'business': 'Negocio', 'user': 'Alumno'}[u.role] ?? u.role} · ${u.isActive ? 'Activo' : 'Suspendido'}',
+              '${u.email}\n${u.isMaster ? 'Cuenta maestra' : ({'admin': 'Administración', 'business': 'Local de cafetería', 'user': 'Alumno'}[u.role] ?? u.role)} · ${u.isActive ? 'Activo' : 'Suspendido'}',
             ),
             isThreeLine: true,
             trailing: IconButton(

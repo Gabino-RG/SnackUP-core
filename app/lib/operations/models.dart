@@ -56,6 +56,8 @@ class BusinessRecord {
     category = d['category'] as String? ?? '';
     description = d['description'] as String? ?? '';
     timezone = d['timezone'] as String? ?? 'America/Mexico_City';
+    cafeteriaName = d['cafeteriaName'] as String? ?? 'Cafetería universitaria';
+    cafeteriaId = d['cafeteriaId'] as String?;
     version = integer(d, 'version', minimum: 1);
     if (d['isOpen'] is! bool)
       throw const ApiException(
@@ -66,6 +68,8 @@ class BusinessRecord {
     isActive = d['isActive'] != false;
   }
   late final String id, name, category, description, timezone;
+  late final String cafeteriaName;
+  late final String? cafeteriaId;
   late final int version;
   late final bool isOpen, isActive;
 }
@@ -205,10 +209,11 @@ class PortalUser {
     role = requiredText(d, 'role');
     businessId = d['businessId'] as String?;
     isActive = d['isActive'] != false;
+    isMaster = d['isMaster'] == true;
     version = integer(d, 'version', minimum: 1);
   }
   late final String id, email, name, role;
   late final String? businessId;
-  late final bool isActive;
+  late final bool isActive, isMaster;
   late final int version;
 }
