@@ -1,0 +1,57 @@
+[
+  {
+    "id": 37257224068,
+    "name": "Flutter CI",
+    "status": "completed",
+    "conclusion": "success",
+    "branch": "test/api-aaa-sonarqube",
+    "sha": "ddf0d461b07c407510bca28ef2cd5026aa4a624f",
+    "url": "https://github.com/Gabino-RG/SnackUP-core/actions/runs/37257224068",
+    "path": ".github/workflows/flutter-ci.yml",
+    "created": "2026-10-05T02:54:20Z"
+  },
+  {
+    "id": 37257224030,
+    "name": "SnackUP documented Rules diagnostic",
+    "status": "completed",
+    "conclusion": "failure",
+    "branch": "test/api-aaa-sonarqube",
+    "sha": "ddf0d461b07c407510bca28ef2cd5026aa4a624f",
+    "url": "https://github.com/Gabino-RG/SnackUP-core/actions/runs/37257224030",
+    "path": ".github/workflows/snackup-baseline.yml",
+    "created": "2026-10-05T02:54:20Z"
+  },
+  {
+    "id": 37257224010,
+    "name": "SnackUP QA and SonarQube Cloud",
+    "status": "completed",
+    "conclusion": "failure",
+    "branch": "test/api-aaa-sonarqube",
+    "sha": "ddf0d461b07c407510bca28ef2cd5026aa4a624f",
+    "url": "https://github.com/Gabino-RG/SnackUP-core/actions/runs/37257224010",
+    "path": ".github/workflows/snackup-quality.yml",
+    "created": "2026-10-05T02:54:20Z"
+  },
+  {
+    "id": 37257220689,
+    "name": "Flutter CI",
+    "status": "completed",
+    "conclusion": "success",
+    "branch": "test/api-aaa-sonarqube",
+    "sha": "ddf0d461b07c407510bca28ef2cd5026aa4a624f",
+    "url": "https://github.com/Gabino-RG/SnackUP-core/actions/runs/37257220689",
+    "path": ".github/workflows/flutter-ci.yml",
+    "created": "2026-10-05T02:54:18Z"
+  },
+  {
+    "id": 37257039123,
+    "name": "Flutter CI",
+    "status": "completed",
+    "conclusion": "failure",
+    "branch": "test/api-aaa-sonarqube",
+    "sha": "9b8cd9e53a12ed12083ced94cb43401b0d145956",
+    "url": "https://github.com/Gabino-RG/SnackUP-core/actions/runs/37257039123",
+    "path": ".github/workflows/flutter-ci.yml",
+    "created": "2026-10-05T02:51:35Z"
+  }
+]

@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#faf7f2">
+  <title>SnackUP · Agente de integración continua</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="./" aria-label="SnackUP inicio"><span class="brand-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8h10l1 12H6L7 8Zm2 0V6a3 3 0 0 1 6 0v2"/><path d="M9 12c1.6 2 4.4 2 6 0"/></svg></span><span>Snack<span class="brand-up">UP</span><small>CAFETERÍA UNIVERSITARIA</small></span></a>
+      <nav aria-label="Vista actual"><span class="nav-active">Pipeline CI</span><span class="nav-note">Agente basado en reglas</span></nav>
+      <div class="project-label"><span class="flutter-mark">F</span> Flutter Web <span class="separator">/</span> UTSJR</div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div><div class="eyebrow"><span></span> INTEGRACIÓN CONTINUA · SNACKUP</div><h1>Del commit al artefacto<span>.</span></h1><p>Observa cada etapa. Detecta fallos. Integra con confianza.</p></div>
+        <div class="mode-card"><span class="mode-indicator" id="modeIndicator"></span><div><strong id="modeLabel">Evidencia de GitHub Actions</strong><small id="modeDescription">Ejecución registrada · resultados verificables</small></div><span class="mode-type" id="modeType">CI</span></div>
+      </section>
+
+      <section class="toolbar" aria-label="Controles del agente">
+        <div class="replay-controls"><select id="evidenceCase" aria-label="Elegir evidencia"><option value="success">CI aprobado real</option><option value="failure">CI fallido real</option></select><button class="button primary" id="replayButton"><span class="play-icon">▶</span> Reproducir evidencia real</button><button class="button icon-button" id="pauseButton" title="Pausar reproducción" aria-label="Pausar reproducción" disabled>Ⅱ</button><select id="speedSelect" aria-label="Velocidad de reproducción"><option value="1">1×</option><option value="3" selected>3×</option><option value="10">10×</option><option value="20">20×</option></select></div>
+        <div class="additional-controls"><button class="button secondary" id="githubToggle">Consultar GitHub <span>↗</span></button><button class="button subtle" id="demoButton">Demo: falla rápido</button><button class="button icon-button settings-button" id="localToggle" title="Ejecutar CI local" aria-label="Mostrar ejecución de CI local">⌘</button></div>
+      </section>
+
+      <section id="githubPanel" class="settings-panel" hidden><div class="field"><label for="repoInput">Repositorio público de GitHub</label><input id="repoInput" value="Gabino-RG/SnackUP-core" placeholder="propietario/repositorio"></div><button class="button secondary" id="runsButton">Buscar ejecuciones</button><div class="field run-field"><label for="runSelect">Ejecución</label><select id="runSelect"><option value="">Selecciona una ejecución</option></select></div><button class="button primary" id="liveButton">Monitorear</button></section>
+      <section id="localPanel" class="settings-panel" hidden><div class="field local-field"><label for="localPath">Carpeta local de SnackUP (proyecto Flutter)</label><input id="localPath" placeholder="C:\Proyectos\SnackUP-core"></div><button class="button primary" id="localButton">Ejecutar CI local</button><small>Ejecuta comandos fijos del pipeline en el proyecto indicado.</small></section>
+      <div id="notice" class="notice" role="status" hidden></div>
+
+      <section class="run-strip" aria-label="Información de la ejecución">
+        <div class="run-identity"><span class="run-icon">⌥</span><div><span class="label">EJECUCIÓN</span><strong id="runTitle">Cargando evidencia…</strong></div></div>
+        <div><span class="label">RAMA</span><span class="mono" id="branchLabel">—</span></div>
+        <div><span class="label">COMMIT</span><span class="mono" id="shaLabel">—</span></div>
+        <div><span class="label">ESTADO</span><span class="status-pill" id="runStatus">En espera</span></div>
+        <a id="sourceLink" class="source-link" target="_blank" rel="noopener noreferrer" hidden>Ver en GitHub ↗</a>
+      </section>
+
+      <section class="progress-overview" aria-label="Progreso general">
+        <div class="progress-text"><span id="progressHeadline">Listo para observar el pipeline</span><span class="progress-count" id="progressCount">0 / 0 etapas</span></div><div class="progress-track"><div id="progressFill"></div></div><div class="progress-meta"><span id="elapsedLabel">Resultados registrados, sin despliegue a producción.</span><span id="artifactSummary">Artefacto de CI</span></div>
+      </section>
+
+      <div class="workspace">
+        <section class="panel pipeline-panel"><div class="panel-heading"><div><span class="section-kicker">01 / FLUJO</span><h2>Etapas del pipeline</h2></div><span class="live-dot" id="flowBadge">CI</span></div><div class="stage-list" id="stageList" aria-label="Etapas"></div><div class="panel-footer"><span class="legend-dot success"></span> Aprobada <span class="legend-dot running"></span> En curso <span class="legend-dot failure"></span> Fallida <span class="legend-dot pending"></span> Pendiente</div></section>
+
+        <section class="panel detail-panel"><div class="panel-heading"><div><span class="section-kicker">02 / INSPECCIÓN</span><h2 id="detailTitle">Detalle de etapa</h2></div><span class="detail-number" id="detailNumber">—</span></div><div class="detail-summary"><span class="status-pill" id="detailStatus">En espera</span><span id="detailDuration">—</span><p id="detailDescription">Selecciona una etapa para consultar su evidencia.</p></div><div class="terminal"><div class="terminal-bar"><div class="terminal-dots"><i></i><i></i><i></i></div><span>REGISTRO DE EJECUCIÓN</span><span id="logSource">Actions</span></div><pre id="logPanel" tabindex="0">Preparando el registro de la ejecución…</pre></div><div class="artifact-box"><span class="artifact-icon">⬡</span><div><span class="label">SALIDA DE CI</span><strong id="artifactName">Artefacto pendiente</strong><small id="artifactNote">Validar y empaquetar. El despliegue pertenece a CD.</small></div><a id="artifactLink" target="_blank" rel="noopener noreferrer" hidden>↗</a></div></section>
+
+        <aside class="panel agent-panel"><div class="panel-heading"><div><span class="section-kicker">03 / AGENTE</span><h2>Observa y decide</h2></div><span class="agent-icon">✦</span></div><div class="agent-intro"><div class="agent-avatar">S<span>✦</span></div><div><strong>SnackUP CI Agent</strong><small>Reglas explicables · estados reales</small></div></div><div id="agentDecisions" class="decisions"></div><div class="failfast-card"><span class="shield-icon">✓</span><div><strong>Principio fail fast</strong><p>Un fallo detiene el flujo. Las etapas posteriores quedan sin ejecutar.</p></div></div><details class="source-notes"><summary>Origen de la evidencia</summary><ul id="sourceNotes"></ul></details></aside>
+      </div>
+      <footer class="page-footer"><span>SnackUP <b>·</b> Desarrollo de software <b>·</b> Integración continua</span><span>CI termina con un artefacto validado <span class="footer-arrow">→</span> CD gestiona el despliegue</span></footer>
+    </main>
+  </div>
+  <script src="evidence-data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

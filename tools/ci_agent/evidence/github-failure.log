@@ -1,0 +1,594 @@
+2026-10-05T02:51:38.8357393Z Current runner version: '2.337.0'
+2026-10-05T02:51:38.8380229Z ##[group]Runner Image Provisioner
+2026-10-05T02:51:38.8381099Z Hosted Compute Agent
+2026-10-05T02:51:38.8381645Z Version: 20260901.588
+2026-10-05T02:51:38.8382269Z Commit: f88ec8081b781fac6c440065ac7ff9e710ce3d0b
+2026-10-05T02:51:38.8383217Z Build Date: 2026-09-01T19:56:44Z
+2026-10-05T02:51:38.8383870Z Worker ID: {c9af3216-37e5-4897-bbd2-1b6592ac5e68}
+2026-10-05T02:51:38.8384641Z Azure Region: westcentralus
+2026-10-05T02:51:38.8385238Z ##[endgroup]
+2026-10-05T02:51:38.8386845Z ##[group]Operating System
+2026-10-05T02:51:38.8387451Z Ubuntu
+2026-10-05T02:51:38.8387966Z 24.04.5
+2026-10-05T02:51:38.8388506Z LTS
+2026-10-05T02:51:38.8388985Z ##[endgroup]
+2026-10-05T02:51:38.8389502Z ##[group]Runner Image
+2026-10-05T02:51:38.8390048Z Image: ubuntu-24.04
+2026-10-05T02:51:38.8390572Z Version: 20260927.320.1
+2026-10-05T02:51:38.8391783Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260927.320/images/ubuntu/Ubuntu2404-Readme.md
+2026-10-05T02:51:38.8393479Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260927.320
+2026-10-05T02:51:38.8394389Z ##[endgroup]
+2026-10-05T02:51:38.8395451Z ##[group]GITHUB_TOKEN Permissions
+2026-10-05T02:51:38.8397456Z Contents: read
+2026-10-05T02:51:38.8397991Z Metadata: read
+2026-10-05T02:51:38.8398529Z ##[endgroup]
+2026-10-05T02:51:38.8400394Z Secret source: Actions
+2026-10-05T02:51:38.8401360Z Cache mode: write
+2026-10-05T02:51:38.8401988Z Prepare workflow directory
+2026-10-05T02:51:38.8772123Z Prepare all required actions
+2026-10-05T02:51:38.8819573Z Getting action download info
+2026-10-05T02:51:39.1911949Z Download action repository 'actions/checkout@v4' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+2026-10-05T02:51:39.2833335Z Download action repository 'subosito/flutter-action@v2' (SHA:1a449444c387b1966244ae4d4f8c696479add0b2)
+2026-10-05T02:51:39.6801150Z Download action repository 'actions/upload-artifact@v4' (SHA:ea165f8d65b6e75b540449e92b4886f43607fa02)
+2026-10-05T02:51:39.9314753Z Getting action download info
+2026-10-05T02:51:40.0601233Z Download action repository 'actions/cache@v5' (SHA:caa296126883cff596d87d8935842f9db880ef25)
+2026-10-05T02:51:40.3893839Z Complete job name: validate
+2026-10-05T02:51:40.4705845Z ##[group]Run actions/checkout@v4
+2026-10-05T02:51:40.4707380Z with:
+2026-10-05T02:51:40.4708271Z   repository: Gabino-RG/SnackUP-core
+2026-10-05T02:51:40.4717386Z   token: ***
+2026-10-05T02:51:40.4718356Z   ssh-strict: true
+2026-10-05T02:51:40.4719372Z   ssh-user: git
+2026-10-05T02:51:40.4720291Z   persist-credentials: true
+2026-10-05T02:51:40.4721368Z   clean: true
+2026-10-05T02:51:40.4722297Z   sparse-checkout-cone-mode: true
+2026-10-05T02:51:40.4723602Z   fetch-depth: 1
+2026-10-05T02:51:40.4724497Z   fetch-tags: false
+2026-10-05T02:51:40.4725433Z   show-progress: true
+2026-10-05T02:51:40.4726380Z   lfs: false
+2026-10-05T02:51:40.4727258Z   submodules: false
+2026-10-05T02:51:40.4728229Z   set-safe-directory: true
+2026-10-05T02:51:40.4729323Z   allow-unsafe-pr-checkout: false
+2026-10-05T02:51:40.4730662Z ##[endgroup]
+2026-10-05T02:51:40.5699675Z Syncing repository: Gabino-RG/SnackUP-core
+2026-10-05T02:51:40.5703086Z ##[group]Getting Git version info
+2026-10-05T02:51:40.5704840Z Working directory is '/home/runner/work/SnackUP-core/SnackUP-core'
+2026-10-05T02:51:40.5707198Z [command]/usr/bin/git version
+2026-10-05T02:51:40.5743134Z git version 2.55.0
+2026-10-05T02:51:40.5760901Z ##[endgroup]
+2026-10-05T02:51:40.5773410Z Temporarily overriding HOME='/home/runner/work/_temp/82f0f54a-0be2-4ac0-8fb9-f6d3266a454a' before making global git config changes
+2026-10-05T02:51:40.5776097Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-05T02:51:40.5779418Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/SnackUP-core/SnackUP-core
+2026-10-05T02:51:40.5825619Z Deleting the contents of '/home/runner/work/SnackUP-core/SnackUP-core'
+2026-10-05T02:51:40.5830134Z ##[group]Initializing the repository
+2026-10-05T02:51:40.5833832Z [command]/usr/bin/git init /home/runner/work/SnackUP-core/SnackUP-core
+2026-10-05T02:51:40.5918052Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-10-05T02:51:40.5921050Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-10-05T02:51:40.5923878Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-10-05T02:51:40.5926274Z hint: call:
+2026-10-05T02:51:40.5927400Z hint:
+2026-10-05T02:51:40.5928714Z hint: 	git config --global init.defaultBranch <name>
+2026-10-05T02:51:40.5930509Z hint:
+2026-10-05T02:51:40.5932052Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-10-05T02:51:40.5934987Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-10-05T02:51:40.5936867Z hint:
+2026-10-05T02:51:40.5937711Z hint: 	git branch -m <name>
+2026-10-05T02:51:40.5938701Z hint:
+2026-10-05T02:51:40.5939903Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-10-05T02:51:40.5942973Z Initialized empty Git repository in /home/runner/work/SnackUP-core/SnackUP-core/.git/
+2026-10-05T02:51:40.5946500Z [command]/usr/bin/git remote add origin https://github.com/Gabino-RG/SnackUP-core
+2026-10-05T02:51:40.5976721Z ##[endgroup]
+2026-10-05T02:51:40.5979062Z ##[group]Disabling automatic garbage collection
+2026-10-05T02:51:40.5980585Z [command]/usr/bin/git config --local gc.auto 0
+2026-10-05T02:51:40.6010855Z ##[endgroup]
+2026-10-05T02:51:40.6013308Z ##[group]Setting up auth
+2026-10-05T02:51:40.6017558Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-05T02:51:40.6045793Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-05T02:51:40.6334143Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-05T02:51:40.6360986Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-05T02:51:40.6539141Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-05T02:51:40.6564164Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-05T02:51:40.6741272Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-10-05T02:51:40.6778009Z ##[endgroup]
+2026-10-05T02:51:40.6780317Z ##[group]Fetching the repository
+2026-10-05T02:51:40.6788899Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +7fce2fe6a6d524d9bcee27d9baf5145d8acf8c8d:refs/remotes/pull/21/merge
+2026-10-05T02:51:41.7909798Z From https://github.com/Gabino-RG/SnackUP-core
+2026-10-05T02:51:41.7911608Z  * [new ref]         7fce2fe6a6d524d9bcee27d9baf5145d8acf8c8d -> pull/21/merge
+2026-10-05T02:51:41.7914921Z ##[endgroup]
+2026-10-05T02:51:41.7915661Z ##[group]Determining the checkout info
+2026-10-05T02:51:41.7916943Z ##[endgroup]
+2026-10-05T02:51:41.7921836Z [command]/usr/bin/git sparse-checkout disable
+2026-10-05T02:51:41.7971511Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-10-05T02:51:41.8001841Z ##[group]Checking out the ref
+2026-10-05T02:51:41.8005128Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/21/merge
+2026-10-05T02:51:41.8440774Z Note: switching to 'refs/remotes/pull/21/merge'.
+2026-10-05T02:51:41.8441289Z 
+2026-10-05T02:51:41.8441807Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-10-05T02:51:41.8442627Z changes and commit them, and you can discard any commits you make in this
+2026-10-05T02:51:41.8443761Z state without impacting any branches by switching back to a branch.
+2026-10-05T02:51:41.8444779Z 
+2026-10-05T02:51:41.8445460Z If you want to create a new branch to retain commits you create, you may
+2026-10-05T02:51:41.8446877Z do so (now or later) by using -c with the switch command. Example:
+2026-10-05T02:51:41.8447696Z 
+2026-10-05T02:51:41.8448245Z   git switch -c <new-branch-name>
+2026-10-05T02:51:41.8448782Z 
+2026-10-05T02:51:41.8449205Z Or undo this operation with:
+2026-10-05T02:51:41.8449701Z 
+2026-10-05T02:51:41.8450101Z   git switch -
+2026-10-05T02:51:41.8450529Z 
+2026-10-05T02:51:41.8451342Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-10-05T02:51:41.8452180Z 
+2026-10-05T02:51:41.8453228Z HEAD is now at 7fce2fe Merge 9b8cd9e53a12ed12083ced94cb43401b0d145956 into bda6cdad7712fd1ba8c1f2894d76ed6cbfbfeb03
+2026-10-05T02:51:41.8456511Z ##[endgroup]
+2026-10-05T02:51:41.8489608Z [command]/usr/bin/git log -1 --format=%H
+2026-10-05T02:51:41.8510322Z 7fce2fe6a6d524d9bcee27d9baf5145d8acf8c8d
+2026-10-05T02:51:41.8890323Z ##[group]Run subosito/flutter-action@v2
+2026-10-05T02:51:41.8890943Z with:
+2026-10-05T02:51:41.8891444Z   flutter-version: 3.32.0
+2026-10-05T02:51:41.8891935Z   channel: stable
+2026-10-05T02:51:41.8892515Z   cache: true
+2026-10-05T02:51:41.8893192Z   architecture: X64
+2026-10-05T02:51:41.8893716Z   pub-cache-path: default
+2026-10-05T02:51:41.8894230Z   dry-run: false
+2026-10-05T02:51:41.8894768Z   git-source: https://github.com/flutter/flutter.git
+2026-10-05T02:51:41.8895389Z ##[endgroup]
+2026-10-05T02:51:41.8961788Z ##[start-action display=Make yq tool available on Windows runners;id=__subosito_flutter-action.__run]
+2026-10-05T02:51:41.8986316Z ##[end-action id=__subosito_flutter-action.__run;outcome=skipped;conclusion=skipped;duration_ms=0]
+2026-10-05T02:51:41.8990100Z ##[start-action display=Make setup script executable;id=__subosito_flutter-action.__run_2]
+2026-10-05T02:51:41.9048093Z ##[group]Run chmod +x "$GITHUB_ACTION_PATH/setup.sh"
+2026-10-05T02:51:41.9049082Z [36;1mchmod +x "$GITHUB_ACTION_PATH/setup.sh"[0m
+2026-10-05T02:51:41.9250162Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-10-05T02:51:41.9250901Z ##[endgroup]
+2026-10-05T02:51:41.9371053Z ##[end-action id=__subosito_flutter-action.__run_2;outcome=success;conclusion=success;duration_ms=37]
+2026-10-05T02:51:41.9375368Z ##[start-action display=Set action inputs;id=__subosito_flutter-action.flutter-action]
+2026-10-05T02:51:41.9435297Z ##[group]Run $GITHUB_ACTION_PATH/setup.sh -p \
+2026-10-05T02:51:41.9436013Z [36;1m$GITHUB_ACTION_PATH/setup.sh -p \[0m
+2026-10-05T02:51:41.9436639Z [36;1m  -n '3.32.0' \[0m
+2026-10-05T02:51:41.9437157Z [36;1m  -f '' \[0m
+2026-10-05T02:51:41.9437648Z [36;1m  -a 'X64' \[0m
+2026-10-05T02:51:41.9438166Z [36;1m  -k '' \[0m
+2026-10-05T02:51:41.9438648Z [36;1m  -c '' \[0m
+2026-10-05T02:51:41.9439110Z [36;1m  -l '' \[0m
+2026-10-05T02:51:41.9439666Z [36;1m  -d 'default' \[0m
+2026-10-05T02:51:41.9440264Z [36;1m  -g 'https://github.com/flutter/flutter.git' \[0m
+2026-10-05T02:51:41.9440916Z [36;1m  stable[0m
+2026-10-05T02:51:41.9484499Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-10-05T02:51:41.9485259Z ##[endgroup]
+2026-10-05T02:51:42.1536978Z ##[end-action id=__subosito_flutter-action.flutter-action;outcome=success;conclusion=success;duration_ms=215]
+2026-10-05T02:51:42.1544440Z ##[start-action display=Cache Flutter;id=__subosito_flutter-action.cache-flutter]
+2026-10-05T02:51:42.1629601Z ##[group]Run actions/cache@v5
+2026-10-05T02:51:42.1630161Z with:
+2026-10-05T02:51:42.1630754Z   path: /opt/hostedtoolcache/flutter/stable-3.32.0-x64
+2026-10-05T02:51:42.1631577Z   key: flutter-linux-stable-3.32.0-x64-be698c48a6750c8cb8e61c740ca9991bb947aba2
+2026-10-05T02:51:42.1632358Z   enableCrossOsArchive: false
+2026-10-05T02:51:42.1633033Z   fail-on-cache-miss: false
+2026-10-05T02:51:42.1633573Z   lookup-only: false
+2026-10-05T02:51:42.1634121Z   save-always: false
+2026-10-05T02:51:42.1634646Z ##[endgroup]
+2026-10-05T02:51:42.4462417Z Cache hit for: flutter-linux-stable-3.32.0-x64-be698c48a6750c8cb8e61c740ca9991bb947aba2
+2026-10-05T02:51:43.6897342Z Received 50331648 of 1500086628 (3.4%), 48.0 MBs/sec
+2026-10-05T02:51:44.6900824Z Received 247463936 of 1500086628 (16.5%), 118.0 MBs/sec
+2026-10-05T02:51:45.6955106Z Received 423624704 of 1500086628 (28.2%), 134.5 MBs/sec
+2026-10-05T02:51:46.6938169Z Received 624951296 of 1500086628 (41.7%), 148.9 MBs/sec
+2026-10-05T02:51:47.6941975Z Received 805306368 of 1500086628 (53.7%), 153.5 MBs/sec
+2026-10-05T02:51:48.6956594Z Received 1019215872 of 1500086628 (67.9%), 161.9 MBs/sec
+2026-10-05T02:51:49.6976727Z Received 1207959552 of 1500086628 (80.5%), 164.4 MBs/sec
+2026-10-05T02:51:50.6983740Z Received 1363148800 of 1500086628 (90.9%), 162.3 MBs/sec
+2026-10-05T02:51:51.4929895Z Received 1500086628 of 1500086628 (100.0%), 162.5 MBs/sec
+2026-10-05T02:51:51.4931639Z Cache Size: ~1431 MB (1500086628 B)
+2026-10-05T02:51:51.5059859Z [command]/usr/bin/tar -xf /home/runner/work/_temp/b4cc7a37-c6d0-4788-9dfb-c560b40af28b/cache.tzst -P -C /home/runner/work/SnackUP-core/SnackUP-core --use-compress-program unzstd
+2026-10-05T02:52:02.9963300Z Cache restored successfully
+2026-10-05T02:52:03.0596439Z Cache restored from key: flutter-linux-stable-3.32.0-x64-be698c48a6750c8cb8e61c740ca9991bb947aba2
+2026-10-05T02:52:03.0675552Z ##[end-action id=__subosito_flutter-action.cache-flutter;outcome=success;conclusion=success;duration_ms=20913]
+2026-10-05T02:52:03.0678665Z ##[start-action display=Cache pub dependencies;id=__subosito_flutter-action.cache-pub]
+2026-10-05T02:52:03.1626874Z ##[group]Run actions/cache@v5
+2026-10-05T02:52:03.1627252Z with:
+2026-10-05T02:52:03.1627595Z   path: /home/runner/.pub-cache
+2026-10-05T02:52:03.1628390Z   key: flutter-pub-linux-stable-3.32.0-x64-be698c48a6750c8cb8e61c740ca9991bb947aba2-8b48a65804a4f38e932858d1734026bd8ca3a56aedb30b9a95c3b107e562905f
+2026-10-05T02:52:03.1629151Z   enableCrossOsArchive: false
+2026-10-05T02:52:03.1629537Z   fail-on-cache-miss: false
+2026-10-05T02:52:03.1629863Z   lookup-only: false
+2026-10-05T02:52:03.1630188Z   save-always: false
+2026-10-05T02:52:03.1630550Z ##[endgroup]
+2026-10-05T02:52:03.4665059Z Cache hit for: flutter-pub-linux-stable-3.32.0-x64-be698c48a6750c8cb8e61c740ca9991bb947aba2-8b48a65804a4f38e932858d1734026bd8ca3a56aedb30b9a95c3b107e562905f
+2026-10-05T02:52:04.6814667Z Received 33554432 of 82537140 (40.7%), 31.9 MBs/sec
+2026-10-05T02:52:04.9527208Z Received 82537140 of 82537140 (100.0%), 61.8 MBs/sec
+2026-10-05T02:52:04.9529569Z Cache Size: ~79 MB (82537140 B)
+2026-10-05T02:52:04.9648312Z [command]/usr/bin/tar -xf /home/runner/work/_temp/af675aca-0b15-4177-9ef0-445e0ce99a33/cache.tzst -P -C /home/runner/work/SnackUP-core/SnackUP-core --use-compress-program unzstd
+2026-10-05T02:52:05.6336093Z Cache restored successfully
+2026-10-05T02:52:05.6444326Z Cache restored from key: flutter-pub-linux-stable-3.32.0-x64-be698c48a6750c8cb8e61c740ca9991bb947aba2-8b48a65804a4f38e932858d1734026bd8ca3a56aedb30b9a95c3b107e562905f
+2026-10-05T02:52:05.6499866Z ##[end-action id=__subosito_flutter-action.cache-pub;outcome=success;conclusion=success;duration_ms=2582]
+2026-10-05T02:52:05.6503341Z ##[start-action display=Run setup script;id=__subosito_flutter-action.__run_3]
+2026-10-05T02:52:05.6911622Z ##[group]Run $GITHUB_ACTION_PATH/setup.sh \
+2026-10-05T02:52:05.6912046Z [36;1m$GITHUB_ACTION_PATH/setup.sh \[0m
+2026-10-05T02:52:05.6912482Z [36;1m  -n '3.32.0' \[0m
+2026-10-05T02:52:05.6912941Z [36;1m  -a 'x64' \[0m
+2026-10-05T02:52:05.6913390Z [36;1m  -c '/opt/hostedtoolcache/flutter/stable-3.32.0-x64' \[0m
+2026-10-05T02:52:05.6913866Z [36;1m  -d '/home/runner/.pub-cache' \[0m
+2026-10-05T02:52:05.6914222Z [36;1m  stable[0m
+2026-10-05T02:52:05.6955108Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-10-05T02:52:05.6955568Z ##[endgroup]
+2026-10-05T02:52:05.8806950Z ##[end-action id=__subosito_flutter-action.__run_3;outcome=success;conclusion=success;duration_ms=230]
+2026-10-05T02:52:05.8862646Z ##[group]Run flutter pub get
+2026-10-05T02:52:05.8863477Z [36;1mflutter pub get[0m
+2026-10-05T02:52:05.8905018Z shell: /usr/bin/bash -e {0}
+2026-10-05T02:52:05.8905613Z env:
+2026-10-05T02:52:05.8906065Z   FLUTTER_ROOT: /opt/hostedtoolcache/flutter/stable-3.32.0-x64/flutter
+2026-10-05T02:52:05.8906558Z   PUB_CACHE: /home/runner/.pub-cache
+2026-10-05T02:52:05.8906936Z ##[endgroup]
+2026-10-05T02:52:06.8114036Z Resolving dependencies...
+2026-10-05T02:52:08.1741694Z Downloading packages...
+2026-10-05T02:52:08.1927482Z   _flutterfire_internals 1.3.35 (1.3.77 available)
+2026-10-05T02:52:08.1928572Z   another_stepper 1.2.2 (discontinued)
+2026-10-05T02:52:08.1929164Z   archive 4.0.7 (4.3.0 available)
+2026-10-05T02:52:08.1929830Z   async 2.13.0 (2.13.1 available)
+2026-10-05T02:52:08.1930477Z   audioplayers 6.5.1 (6.8.1 available)
+2026-10-05T02:52:08.1931098Z   audioplayers_android 5.2.1 (5.3.0 available)
+2026-10-05T02:52:08.1931769Z   audioplayers_darwin 6.3.0 (6.5.0 available)
+2026-10-05T02:52:08.1932522Z   audioplayers_linux 4.2.1 (4.3.0 available)
+2026-10-05T02:52:08.1933501Z   audioplayers_platform_interface 7.1.1 (7.2.0 available)
+2026-10-05T02:52:08.1934054Z   audioplayers_web 5.1.1 (5.3.0 available)
+2026-10-05T02:52:08.1934748Z   audioplayers_windows 4.2.1 (4.4.1 available)
+2026-10-05T02:52:08.1935287Z   characters 1.4.0 (1.4.1 available)
+2026-10-05T02:52:08.1935812Z   cli_util 0.4.2 (0.6.0 available)
+2026-10-05T02:52:08.1936372Z   clock 1.1.2 (1.1.3 available)
+2026-10-05T02:52:08.1936836Z   cloud_firestore 4.17.5 (6.10.0 available)
+2026-10-05T02:52:08.1937470Z   cloud_firestore_platform_interface 6.2.5 (8.0.7 available)
+2026-10-05T02:52:08.1938076Z   cloud_firestore_web 3.12.5 (5.7.3 available)
+2026-10-05T02:52:08.1938692Z   cross_file 0.3.4+2 (0.4.0 available)
+2026-10-05T02:52:08.1939241Z   crypto 3.0.6 (3.0.7 available)
+2026-10-05T02:52:08.1939738Z   cupertino_icons 1.0.8 (2.0.0 available)
+2026-10-05T02:52:08.1940294Z   equatable 2.0.7 (3.0.0 available)
+2026-10-05T02:52:08.1940829Z   ffi 2.1.4 (2.2.0 available)
+2026-10-05T02:52:08.1941378Z   file_selector_linux 0.9.3+2 (0.9.4+1 available)
+2026-10-05T02:52:08.1941971Z   file_selector_macos 0.9.4+4 (0.9.5+1 available)
+2026-10-05T02:52:08.1942632Z   file_selector_platform_interface 2.6.2 (2.7.0 available)
+2026-10-05T02:52:08.1943455Z   file_selector_windows 0.9.3+4 (0.9.3+6 available)
+2026-10-05T02:52:08.1944104Z   firebase_auth 4.20.0 (6.7.0 available)
+2026-10-05T02:52:08.1944707Z   firebase_auth_platform_interface 7.3.0 (9.1.0 available)
+2026-10-05T02:52:08.1945391Z   firebase_auth_web 5.12.0 (6.3.0 available)
+2026-10-05T02:52:08.1945942Z   firebase_core 2.32.0 (4.15.0 available)
+2026-10-05T02:52:08.1946505Z   firebase_core_platform_interface 5.4.2 (8.1.1 available)
+2026-10-05T02:52:08.1947204Z   firebase_core_web 2.17.5 (3.12.0 available)
+2026-10-05T02:52:08.1947753Z   firebase_messaging 14.9.4 (16.7.0 available)
+2026-10-05T02:52:08.1948398Z   firebase_messaging_platform_interface 4.5.37 (4.10.0 available)
+2026-10-05T02:52:08.1948988Z   firebase_messaging_web 3.8.7 (4.2.5 available)
+2026-10-05T02:52:08.1949633Z   firebase_storage 11.7.7 (13.6.0 available)
+2026-10-05T02:52:08.1950287Z   firebase_storage_platform_interface 5.1.22 (6.0.7 available)
+2026-10-05T02:52:08.1950908Z   firebase_storage_web 3.9.7 (3.11.13 available)
+2026-10-05T02:52:08.1951476Z   fl_chart 0.68.0 (1.2.0 available)
+2026-10-05T02:52:08.1951983Z   flutter_launcher_icons 0.13.1 (0.14.4 available)
+2026-10-05T02:52:08.1952642Z   flutter_lints 5.0.0 (6.0.0 available)
+2026-10-05T02:52:08.1963823Z   flutter_native_splash 2.4.7 (2.4.8 available)
+2026-10-05T02:52:08.1964486Z   flutter_plugin_android_lifecycle 2.0.31 (2.0.35 available)
+2026-10-05T02:52:08.1965265Z   html 0.15.6 (0.15.7 available)
+2026-10-05T02:52:08.1965753Z   http 1.5.0 (1.6.0 available)
+2026-10-05T02:52:08.1966271Z   image 4.5.4 (4.10.1 available)
+2026-10-05T02:52:08.1966738Z   image_picker 1.2.0 (1.2.3 available)
+2026-10-05T02:52:08.1967263Z   image_picker_android 0.8.13+1 (0.8.13+25 available)
+2026-10-05T02:52:08.1968217Z   image_picker_for_web 3.1.0 (3.1.1 available)
+2026-10-05T02:52:08.1968780Z   image_picker_ios 0.8.13 (0.8.13+9 available)
+2026-10-05T02:52:08.1969409Z   image_picker_macos 0.2.2 (0.2.2+1 available)
+2026-10-05T02:52:08.1970042Z   json_annotation 4.9.0 (4.12.0 available)
+2026-10-05T02:52:08.1970536Z   leak_tracker 10.0.9 (11.0.2 available)
+2026-10-05T02:52:08.1971157Z   leak_tracker_flutter_testing 3.0.9 (3.0.10 available)
+2026-10-05T02:52:08.1971728Z   leak_tracker_testing 3.0.1 (3.0.2 available)
+2026-10-05T02:52:08.1972218Z   lints 5.1.1 (6.1.0 available)
+2026-10-05T02:52:08.1972597Z   matcher 0.12.17 (0.12.20 available)
+2026-10-05T02:52:08.1973283Z   material_color_utilities 0.11.1 (0.13.1 available)
+2026-10-05T02:52:08.1973889Z   meta 1.16.0 (1.19.0 available)
+2026-10-05T02:52:08.1974378Z   mime 2.0.0 (2.1.0 available)
+2026-10-05T02:52:08.1974865Z   mobile_scanner 7.1.3 (7.4.2 available)
+2026-10-05T02:52:08.1975383Z   path_provider 2.1.5 (2.1.6 available)
+2026-10-05T02:52:08.1976004Z   path_provider_android 2.2.19 (2.3.1 available)
+2026-10-05T02:52:08.1976605Z   path_provider_foundation 2.4.2 (2.6.0 available)
+2026-10-05T02:52:08.1977358Z   path_provider_linux 2.2.1 (2.2.2 available)
+2026-10-05T02:52:08.1978110Z   path_provider_platform_interface 2.1.2 (2.1.3 available)
+2026-10-05T02:52:08.1978736Z   permission_handler 11.4.0 (13.0.2 available)
+2026-10-05T02:52:08.1979404Z   permission_handler_android 12.1.0 (14.1.0 available)
+2026-10-05T02:52:08.1980029Z   permission_handler_apple 9.4.7 (9.6.2 available)
+2026-10-05T02:52:08.1980655Z   permission_handler_html 0.1.3+5 (0.1.4+1 available)
+2026-10-05T02:52:08.1981336Z   permission_handler_platform_interface 4.3.0 (4.4.1 available)
+2026-10-05T02:52:08.1982083Z   permission_handler_windows 0.2.1 (0.2.2 available)
+2026-10-05T02:52:08.1982696Z   petitparser 7.0.1 (7.1.0 available)
+2026-10-05T02:52:08.1983486Z   platform 3.1.6 (3.2.0 available)
+2026-10-05T02:52:08.1984038Z   posix 6.0.3 (6.5.2 available)
+2026-10-05T02:52:08.1984599Z   qr 3.0.2 (4.0.0 available)
+2026-10-05T02:52:08.1985120Z   source_span 1.10.1 (1.10.2 available)
+2026-10-05T02:52:08.1985659Z   stack_trace 1.12.1 (1.12.2 available)
+2026-10-05T02:52:08.1986219Z   synchronized 3.4.0 (3.4.2 available)
+2026-10-05T02:52:08.1986755Z   test_api 0.7.4 (0.7.14 available)
+2026-10-05T02:52:08.1987351Z   uuid 4.5.1 (4.6.0 available)
+2026-10-05T02:52:08.1987837Z   vector_math 2.1.4 (2.4.3 available)
+2026-10-05T02:52:08.1988413Z   vm_service 15.0.0 (15.3.0 available)
+2026-10-05T02:52:08.1988929Z   web 0.5.1 (1.1.1 available)
+2026-10-05T02:52:08.1989390Z   xml 6.6.1 (7.1.0 available)
+2026-10-05T02:52:08.1989958Z   yaml 3.1.3 (3.1.4 available)
+2026-10-05T02:52:08.1990441Z Got dependencies!
+2026-10-05T02:52:08.1990891Z 1 package is discontinued.
+2026-10-05T02:52:08.1991598Z 85 packages have newer versions incompatible with dependency constraints.
+2026-10-05T02:52:08.1992332Z Try `flutter pub outdated` for more information.
+2026-10-05T02:52:09.5922364Z ##[group]Run flutter analyze --no-fatal-infos --no-fatal-warnings
+2026-10-05T02:52:09.5923197Z [36;1mflutter analyze --no-fatal-infos --no-fatal-warnings[0m
+2026-10-05T02:52:09.5962481Z shell: /usr/bin/bash -e {0}
+2026-10-05T02:52:09.5962992Z env:
+2026-10-05T02:52:09.5963500Z   FLUTTER_ROOT: /opt/hostedtoolcache/flutter/stable-3.32.0-x64/flutter
+2026-10-05T02:52:09.5964008Z   PUB_CACHE: /home/runner/.pub-cache
+2026-10-05T02:52:09.5964367Z ##[endgroup]
+2026-10-05T02:52:24.0449329Z Analyzing app...                                                
+2026-10-05T02:52:24.0453461Z 
+2026-10-05T02:52:24.0486051Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/auth/business_login_screen.dart:107:41 • deprecated_member_use
+2026-10-05T02:52:24.0488759Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/auth/business_login_screen.dart:108:40 • deprecated_member_use
+2026-10-05T02:52:24.0500591Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/auth/business_login_screen.dart:130:54 • deprecated_member_use
+2026-10-05T02:52:24.0514520Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/auth/business_login_screen.dart:184:56 • deprecated_member_use
+2026-10-05T02:52:24.0517060Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/auth/business_login_screen.dart:188:56 • deprecated_member_use
+2026-10-05T02:52:24.0519246Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/auth/business_login_screen.dart:216:56 • deprecated_member_use
+2026-10-05T02:52:24.0530501Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/auth/business_login_screen.dart:220:56 • deprecated_member_use
+2026-10-05T02:52:24.0532676Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/auth/business_login_screen.dart:227:58 • deprecated_member_use
+2026-10-05T02:52:24.0535198Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/auth/business_login_screen.dart:261:46 • deprecated_member_use
+2026-10-05T02:52:24.0537237Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/auth/business_login_screen.dart:286:52 • deprecated_member_use
+2026-10-05T02:52:24.0542700Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/auth/business_login_screen.dart:311:44 • deprecated_member_use
+2026-10-05T02:52:24.0545018Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/auth/business_login_screen.dart:313:63 • deprecated_member_use
+2026-10-05T02:52:24.0547133Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/auth/business_login_screen.dart:343:45 • deprecated_member_use
+2026-10-05T02:52:24.0549207Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/auth/login_screen.dart:104:43 • deprecated_member_use
+2026-10-05T02:52:24.0551143Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/auth/login_screen.dart:105:42 • deprecated_member_use
+2026-10-05T02:52:24.0553221Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/auth/login_screen.dart:127:56 • deprecated_member_use
+2026-10-05T02:52:24.0555374Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/auth/login_screen.dart:181:58 • deprecated_member_use
+2026-10-05T02:52:24.0557466Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/auth/login_screen.dart:185:58 • deprecated_member_use
+2026-10-05T02:52:24.0559425Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/auth/login_screen.dart:213:58 • deprecated_member_use
+2026-10-05T02:52:24.0561553Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/auth/login_screen.dart:217:58 • deprecated_member_use
+2026-10-05T02:52:24.0563582Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/auth/login_screen.dart:224:60 • deprecated_member_use
+2026-10-05T02:52:24.0565606Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/auth/login_screen.dart:258:48 • deprecated_member_use
+2026-10-05T02:52:24.0567508Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/auth/login_screen.dart:285:54 • deprecated_member_use
+2026-10-05T02:52:24.0569480Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/auth/login_screen.dart:310:46 • deprecated_member_use
+2026-10-05T02:52:24.0571598Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/auth/login_screen.dart:313:48 • deprecated_member_use
+2026-10-05T02:52:24.0573725Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/auth/login_screen.dart:363:61 • deprecated_member_use
+2026-10-05T02:52:24.0575708Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/auth/login_screen.dart:432:47 • deprecated_member_use
+2026-10-05T02:52:24.0577524Z    info • Parameter 'key' could be a super parameter • lib/features/auth/privacy_terms_widget.dart:6:9 • use_super_parameters
+2026-10-05T02:52:24.0579552Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/auth/register_screen.dart:102:44 • deprecated_member_use
+2026-10-05T02:52:24.0581594Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/auth/register_screen.dart:103:45 • deprecated_member_use
+2026-10-05T02:52:24.0583808Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/auth/register_screen.dart:125:57 • deprecated_member_use
+2026-10-05T02:52:24.0585800Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/auth/register_screen.dart:179:60 • deprecated_member_use
+2026-10-05T02:52:24.0587811Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/auth/register_screen.dart:183:60 • deprecated_member_use
+2026-10-05T02:52:24.0589912Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/auth/register_screen.dart:221:60 • deprecated_member_use
+2026-10-05T02:52:24.0591974Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/auth/register_screen.dart:225:60 • deprecated_member_use
+2026-10-05T02:52:24.0594017Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/auth/register_screen.dart:261:60 • deprecated_member_use
+2026-10-05T02:52:24.0595978Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/auth/register_screen.dart:265:60 • deprecated_member_use
+2026-10-05T02:52:24.0598045Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/auth/register_screen.dart:301:60 • deprecated_member_use
+2026-10-05T02:52:24.0599998Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/auth/register_screen.dart:305:60 • deprecated_member_use
+2026-10-05T02:52:24.0602026Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/auth/register_screen.dart:312:62 • deprecated_member_use
+2026-10-05T02:52:24.0604169Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/auth/register_screen.dart:347:60 • deprecated_member_use
+2026-10-05T02:52:24.0606192Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/auth/register_screen.dart:351:60 • deprecated_member_use
+2026-10-05T02:52:24.0608302Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/auth/register_screen.dart:358:62 • deprecated_member_use
+2026-10-05T02:52:24.0610229Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/auth/register_screen.dart:392:49 • deprecated_member_use
+2026-10-05T02:52:24.0612440Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/auth/register_screen.dart:420:55 • deprecated_member_use
+2026-10-05T02:52:24.0614379Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/auth/register_screen.dart:445:48 • deprecated_member_use
+2026-10-05T02:52:24.0616264Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/auth/register_screen.dart:448:50 • deprecated_member_use
+2026-10-05T02:52:24.0618007Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/auth/register_screen.dart:479:49 • deprecated_member_use
+2026-10-05T02:52:24.0619903Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/business/add_edit_product_screen.dart:359:51 • deprecated_member_use
+2026-10-05T02:52:24.0621840Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/business/add_edit_product_screen.dart:362:53 • deprecated_member_use
+2026-10-05T02:52:24.0623917Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/business/add_edit_product_screen.dart:466:43 • deprecated_member_use
+2026-10-05T02:52:24.0626007Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/business/add_edit_product_screen.dart:473:47 • deprecated_member_use
+2026-10-05T02:52:24.0628041Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/business/add_edit_product_screen.dart:533:42 • deprecated_member_use
+2026-10-05T02:52:24.0630111Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/business/add_edit_product_screen.dart:691:46 • deprecated_member_use
+2026-10-05T02:52:24.0632103Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/business/add_edit_product_screen.dart:759:14 • deprecated_member_use
+2026-10-05T02:52:24.0634313Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/business/manage_menu_screen.dart:89:38 • deprecated_member_use
+2026-10-05T02:52:24.0636354Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/business/manage_menu_screen.dart:101:48 • deprecated_member_use
+2026-10-05T02:52:24.0638388Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/business/manage_menu_screen.dart:143:46 • deprecated_member_use
+2026-10-05T02:52:24.0640300Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/business/manage_menu_screen.dart:208:41 • deprecated_member_use
+2026-10-05T02:52:24.0642301Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/business/manage_menu_screen.dart:210:60 • deprecated_member_use
+2026-10-05T02:52:24.0645386Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/business/manage_menu_screen.dart:260:54 • deprecated_member_use
+2026-10-05T02:52:24.0647663Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/business/manage_menu_screen.dart:398:56 • deprecated_member_use
+2026-10-05T02:52:24.0649985Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/business/manage_menu_screen.dart:417:60 • deprecated_member_use
+2026-10-05T02:52:24.0652617Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/business/manage_menu_screen.dart:454:54 • deprecated_member_use
+2026-10-05T02:52:24.0654948Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/business/manage_menu_screen.dart:476:42 • deprecated_member_use
+2026-10-05T02:52:24.0657134Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/business/order_detail_screen.dart:211:44 • deprecated_member_use
+2026-10-05T02:52:24.0659301Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/business/order_detail_screen.dart:243:50 • deprecated_member_use
+2026-10-05T02:52:24.0661275Z    info • Unnecessary use of 'toList' in a spread • lib/features/business/order_detail_screen.dart:328:32 • unnecessary_to_list_in_spreads
+2026-10-05T02:52:24.0663424Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/business/order_detail_screen.dart:455:40 • deprecated_member_use
+2026-10-05T02:52:24.0665673Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/business/order_list_tab.dart:123:38 • deprecated_member_use
+2026-10-05T02:52:24.0667746Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/business/order_list_tab.dart:176:48 • deprecated_member_use
+2026-10-05T02:52:24.0669698Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/business/order_list_tab.dart:256:54 • deprecated_member_use
+2026-10-05T02:52:24.0671488Z    info • The parameter name 'count' matches a visible type name • lib/features/business/order_list_tab.dart:347:8 • avoid_types_as_parameter_names
+2026-10-05T02:52:24.0673565Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/business/order_list_tab.dart:386:51 • deprecated_member_use
+2026-10-05T02:52:24.0675608Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/business/statistics_screen.dart:132:38 • deprecated_member_use
+2026-10-05T02:52:24.0677648Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/business/statistics_screen.dart:185:48 • deprecated_member_use
+2026-10-05T02:52:24.0680050Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/business/statistics_screen.dart:218:38 • deprecated_member_use
+2026-10-05T02:52:24.0682190Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/business/statistics_screen.dart:235:43 • deprecated_member_use
+2026-10-05T02:52:24.0684468Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/business/statistics_screen.dart:253:39 • deprecated_member_use
+2026-10-05T02:52:24.0686426Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/business/statistics_screen.dart:268:35 • deprecated_member_use
+2026-10-05T02:52:24.0688422Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/business/statistics_screen.dart:277:41 • deprecated_member_use
+2026-10-05T02:52:24.0690481Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/business/statistics_screen.dart:448:40 • deprecated_member_use
+2026-10-05T02:52:24.0692618Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/business/statistics_screen.dart:581:40 • deprecated_member_use
+2026-10-05T02:52:24.0694851Z    info • Function literals shouldn't be passed to 'forEach' • lib/features/business/statistics_screen.dart:624:28 • avoid_function_literals_in_foreach_calls
+2026-10-05T02:52:24.0696650Z    info • Unnecessary braces in a string interpolation • lib/features/business/statistics_screen.dart:629:19 • unnecessary_brace_in_string_interps
+2026-10-05T02:52:24.0698605Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/business/statistics_screen.dart:714:46 • deprecated_member_use
+2026-10-05T02:52:24.0700686Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/business/statistics_screen.dart:729:37 • deprecated_member_use
+2026-10-05T02:52:24.0702983Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/business/view_orders_screen.dart:166:52 • deprecated_member_use
+2026-10-05T02:52:24.0705091Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/business/view_orders_screen.dart:210:46 • deprecated_member_use
+2026-10-05T02:52:24.0706946Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/business/view_orders_screen.dart:213:48 • deprecated_member_use
+2026-10-05T02:52:24.0708963Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/home/business_home_screen.dart:171:44 • deprecated_member_use
+2026-10-05T02:52:24.0710942Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/home/business_home_screen.dart:376:49 • deprecated_member_use
+2026-10-05T02:52:24.0713172Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/home/business_home_screen.dart:377:49 • deprecated_member_use
+2026-10-05T02:52:24.0715067Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/home/business_home_screen.dart:515:40 • deprecated_member_use
+2026-10-05T02:52:24.0717174Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/home/user_dashboard_screen.dart:82:35 • deprecated_member_use
+2026-10-05T02:52:24.0719198Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/home/user_dashboard_screen.dart:96:43 • deprecated_member_use
+2026-10-05T02:52:24.0721668Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/home/user_dashboard_screen.dart:111:44 • deprecated_member_use
+2026-10-05T02:52:24.0723802Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/home/user_dashboard_screen.dart:128:42 • deprecated_member_use
+2026-10-05T02:52:24.0725810Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/home/user_dashboard_screen.dart:143:43 • deprecated_member_use
+2026-10-05T02:52:24.0727901Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/home/user_dashboard_screen.dart:160:44 • deprecated_member_use
+2026-10-05T02:52:24.0730316Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/home/user_dashboard_screen.dart:175:45 • deprecated_member_use
+2026-10-05T02:52:24.0732369Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/home/user_dashboard_screen.dart:192:43 • deprecated_member_use
+2026-10-05T02:52:24.0734477Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/home/user_dashboard_screen.dart:207:44 • deprecated_member_use
+2026-10-05T02:52:24.0737008Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/home/user_home_screen.dart:49:31 • deprecated_member_use
+2026-10-05T02:52:24.0739143Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/home/user_home_screen.dart:50:30 • deprecated_member_use
+2026-10-05T02:52:24.0741065Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/home/user_home_screen.dart:242:35 • deprecated_member_use
+2026-10-05T02:52:24.0743099Z    info • Use a 'SizedBox' to add whitespace to a layout • lib/features/home/user_home_screen.dart:253:15 • sized_box_for_whitespace
+2026-10-05T02:52:24.0744886Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/home/user_home_screen.dart:267:62 • deprecated_member_use
+2026-10-05T02:52:24.0747560Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/home/user_home_screen.dart:282:36 • deprecated_member_use
+2026-10-05T02:52:24.0749534Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/home/user_home_screen.dart:283:36 • deprecated_member_use
+2026-10-05T02:52:24.0751585Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/home/user_home_screen.dart:332:47 • deprecated_member_use
+2026-10-05T02:52:24.0754227Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/home/user_home_screen.dart:361:47 • deprecated_member_use
+2026-10-05T02:52:24.0756267Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/home/user_home_screen.dart:519:46 • deprecated_member_use
+2026-10-05T02:52:24.0758148Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/home/user_home_screen.dart:546:44 • deprecated_member_use
+2026-10-05T02:52:24.0760106Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/home/user_home_screen.dart:591:33 • deprecated_member_use
+2026-10-05T02:52:24.0762106Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/home/user_home_screen.dart:627:64 • deprecated_member_use
+2026-10-05T02:52:24.0764523Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/home/user_home_screen.dart:659:50 • deprecated_member_use
+2026-10-05T02:52:24.0766064Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/home/user_home_screen.dart:698:48 • deprecated_member_use
+2026-10-05T02:52:24.0767763Z    info • 'background' is deprecated and shouldn't be used. Use surface instead. This feature was deprecated after v3.18.0-0.1.pre • lib/main.dart:63:11 • deprecated_member_use
+2026-10-05T02:52:24.0769696Z    info • 'onBackground' is deprecated and shouldn't be used. Use onSurface instead. This feature was deprecated after v3.18.0-0.1.pre • lib/main.dart:64:11 • deprecated_member_use
+2026-10-05T02:52:24.0771872Z    info • 'surfaceVariant' is deprecated and shouldn't be used. Use surfaceContainerHighest instead. This feature was deprecated after v3.18.0-0.1.pre • lib/main.dart:69:11 • deprecated_member_use
+2026-10-05T02:52:24.0774125Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/main.dart:69:51 • deprecated_member_use
+2026-10-05T02:52:24.0775241Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/main.dart:136:44 • deprecated_member_use
+2026-10-05T02:52:24.0776416Z    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/main.dart:204:44 • deprecated_member_use
+2026-10-05T02:52:24.0776964Z 
+2026-10-05T02:52:24.0777166Z 124 issues found. (ran in 12.8s)
+2026-10-05T02:52:24.0843916Z ##[group]Run flutter test --coverage
+2026-10-05T02:52:24.0844429Z [36;1mflutter test --coverage[0m
+2026-10-05T02:52:24.0884476Z shell: /usr/bin/bash -e {0}
+2026-10-05T02:52:24.0884898Z env:
+2026-10-05T02:52:24.0885404Z   FLUTTER_ROOT: /opt/hostedtoolcache/flutter/stable-3.32.0-x64/flutter
+2026-10-05T02:52:24.0885968Z   PUB_CACHE: /home/runner/.pub-cache
+2026-10-05T02:52:24.0886357Z ##[endgroup]
+2026-10-05T02:52:26.1774100Z 
+2026-10-05T02:52:32.8356054Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/widget_test.dart: Email Validator acepta un correo electrónico válido
+2026-10-05T02:52:32.8398916Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/widget_test.dart: Email Validator rechaza un correo sin arroba
+2026-10-05T02:52:32.8434506Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/widget_test.dart: Email Validator rechaza un correo vacío
+2026-10-05T02:52:32.8481827Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/widget_test.dart: Email Validator rechaza un correo sin dominio válido
+2026-10-05T02:52:33.7764283Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/user/order_checkout_test.dart: ignora precio, nombre y negocio alterados del carrito
+2026-10-05T02:52:33.7804030Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/user/order_checkout_test.dart: suma exactamente centavos para cantidades y precios fraccionarios
+2026-10-05T02:52:33.7846016Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/user/order_checkout_test.dart: un cambio de catálogo o cantidad invalida la confirmación anterior
+2026-10-05T02:52:33.7886724Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/user/order_checkout_test.dart: bloquea local cerrado, mezcla de locales y producto eliminado
+2026-10-05T02:52:33.7922141Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/user/order_checkout_test.dart: rechaza stock insuficiente, agotado o producto deshabilitado
+2026-10-05T02:52:33.7994868Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/user/order_checkout_test.dart: acepta exactamente 8 productos distintos y rechaza 9 y duplicados
+2026-10-05T02:52:33.8050081Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/user/order_checkout_test.dart: solo cantidades enteras 1 a 99 y notas hasta 500 caracteres
+2026-10-05T02:52:33.8125514Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/user/order_checkout_test.dart: catálogo legado redondea centavos y rechaza precios no finitos o excesivos
+2026-10-05T02:52:33.8156786Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/user/order_checkout_test.dart: horario futuro como máximo 24 horas, sin aceptar horas ya pasadas
+2026-10-05T02:52:33.8196766Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/user/order_checkout_test.dart: QR pertenece al pedido y nunca utiliza la matrícula como credencial
+2026-10-05T02:52:36.2943802Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/auth/auth_flow_test.dart: public profile payload is student-only, records acceptance and normalizes identity
+2026-10-05T02:52:36.2979972Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/auth/auth_flow_test.dart: claims and profile roles fail closed for malformed/self-assigned admin values
+2026-10-05T02:52:37.2775532Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/auth/auth_flow_test.dart: registration account waits for profile instead of signing out, then enters student home
+2026-10-05T02:52:37.3295087Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/auth/auth_flow_test.dart: boolean admin claim grants admin route without student profile
+2026-10-05T02:52:37.3960042Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/auth/auth_flow_test.dart: profile role admin never grants administration
+2026-10-05T02:52:37.5181181Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/auth/auth_flow_test.dart: business role requires an assigned business and retry works
+2026-10-05T02:52:37.5750970Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/auth/auth_flow_test.dart: claim failure is retryable without discarding account
+2026-10-05T02:52:37.8585114Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/auth/auth_flow_test.dart: signout removes protected routes above the root
+2026-10-05T02:52:37.9105353Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/app_bootstrap_test.dart: permite recargar web si el cargador del SDK queda suspendido
+2026-10-05T02:52:37.9616555Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/auth/auth_flow_test.dart: claim revocation removes an already open protected dialog
+2026-10-05T02:52:37.9664435Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/app_bootstrap_test.dart: espera a Firebase y después muestra la aplicación
+2026-10-05T02:52:38.0396675Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/app_bootstrap_test.dart: un fallo permite reintentar sin dejar una pantalla vacía
+2026-10-05T02:52:38.1154299Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/app_bootstrap_test.dart: un timeout no inicializa dos veces el SDK que sigue cargando
+2026-10-05T02:52:38.2245595Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/auth/auth_flow_test.dart: login preserves password spaces, blocks concurrent submissions and survives disposal
+2026-10-05T02:52:38.4535230Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/auth/auth_flow_test.dart: business login returns to gate, never directly pushes business home
+2026-10-05T02:52:38.6095809Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/auth/auth_flow_test.dart: password recovery is actionable from login
+2026-10-05T02:52:40.3863431Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/admin/admin_models_test.dart: global mean weights each individual opinion, not each business
+2026-10-05T02:52:40.3917784Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/admin/admin_models_test.dart: legacy missing dimensions are excluded rather than treated as zero
+2026-10-05T02:52:40.3944398Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/admin/admin_models_test.dart: invalid and empty ratings do not produce fabricated percentages
+2026-10-05T02:52:40.3988286Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/admin/admin_models_test.dart: all filters intersect including career, group, negative, text and campus hours
+2026-10-05T02:52:40.4012382Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/admin/admin_models_test.dart: period uses campus midnight, excludes future and undated opinions
+2026-10-05T02:52:40.4048261Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/admin/admin_models_test.dart: trend is chronological and maps UTC dates to campus day
+2026-10-05T02:52:40.4104840Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/admin/admin_models_test.dart: demo followup saves immutable history entries independently
+2026-10-05T02:52:41.2523407Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/admin/admin_dashboard_test.dart: demo renders four stores, filtering and explicit demo state
+2026-10-05T02:52:41.5708434Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/admin/admin_dashboard_test.dart: mobile empty view is usable without overflow and exposes logout
+2026-10-05T02:52:41.8621099Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/review_submission_test.dart: Opinión del alumno normaliza variantes sin eliminar acentos ni el comentario
+2026-10-05T02:52:41.8647277Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/review_submission_test.dart: Opinión del alumno acepta una opinión sin perfil académico para cuentas anteriores
+2026-10-05T02:52:41.8688573Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/review_submission_test.dart: Opinión del alumno no envía calificaciones parciales ni fuera de la escala
+2026-10-05T02:52:41.8750664Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/review_submission_test.dart: Opinión del alumno rechaza textos demasiado largos en vez de truncar la opinión
+2026-10-05T02:52:41.8766260Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/review_submission_test.dart: Opinión del alumno no incluye nombre, correo ni matrícula en una reseña nueva
+2026-10-05T02:52:41.8805387Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/review_submission_test.dart: Pedido elegible para reseña permite el pedido completado del alumno y local correctos
+2026-10-05T02:52:41.8840489Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/review_submission_test.dart: Pedido elegible para reseña rechaza un pedido inexistente o perteneciente a otra cuenta o local
+2026-10-05T02:52:41.8874636Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/review_submission_test.dart: Pedido elegible para reseña no permite calificar pedidos pendientes, en curso o cancelados
+2026-10-05T02:52:42.0685043Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/admin/admin_dashboard_test.dart: partial data are explicitly labeled until next page is loaded
+2026-10-05T02:52:42.2274363Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/admin/admin_dashboard_test.dart: live load failure never falls back to demo records
+2026-10-05T02:52:42.8923020Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/admin/admin_dashboard_test.dart: populated mobile dashboard and navigation fit 360px
+2026-10-05T02:52:43.2435596Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/admin/admin_dashboard_test.dart: followup dialog validates, saves a note and displays history
+2026-10-05T02:52:43.2484592Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/admin/admin_dashboard_test.dart: unknown status remains pending
+2026-10-05T02:52:43.4024042Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/business/business_order_workflow_test.dart: only allowed state edges can change an order
+2026-10-05T02:52:43.4094087Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/business/business_order_workflow_test.dart: QR ties code to this order and rejects student number or another order
+2026-10-05T02:52:43.4103103Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/business/business_order_workflow_test.dart: legacy order uses its own ID and cannot complete twice
+2026-10-05T02:52:43.4135085Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/business/business_order_workflow_test.dart: stock reservation rejects invalid or repeated lines and double reservation
+2026-10-05T02:52:44.7407668Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/business/business_metrics_test.dart: totals include only delivered orders and tolerate legacy fields
+2026-10-05T02:52:44.7444160Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/business/business_metrics_test.dart: seven calendar days includes boundary, uses completedAt and excludes future
+2026-10-05T02:52:44.7467044Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/business/business_metrics_test.dart: non-finite and negative values cannot break chart axes
+2026-10-05T02:52:45.1552282Z 
+2026-10-05T02:52:45.1558246Z 🎉 59 tests passed.
+2026-10-05T02:52:45.2310737Z ##[group]Run flutter build web --no-web-resources-cdn --target lib/main.dart
+2026-10-05T02:52:45.2311377Z [36;1mflutter build web --no-web-resources-cdn --target lib/main.dart[0m
+2026-10-05T02:52:45.2350546Z shell: /usr/bin/bash -e {0}
+2026-10-05T02:52:45.2351019Z env:
+2026-10-05T02:52:45.2351451Z   FLUTTER_ROOT: /opt/hostedtoolcache/flutter/stable-3.32.0-x64/flutter
+2026-10-05T02:52:45.2352027Z   PUB_CACHE: /home/runner/.pub-cache
+2026-10-05T02:52:45.2352402Z ##[endgroup]
+2026-10-05T02:52:55.2185359Z Compiling lib/main.dart for the Web...                          
+2026-10-05T02:52:55.2192675Z Target dart2js failed: ProcessException: Process exited abnormally with exit code 1:
+2026-10-05T02:52:55.2193424Z lib/main.dart:20:26:
+2026-10-05T02:52:55.2194429Z Error: Tear-offs of external top-level member 'reloadApplication' are disallowed.
+2026-10-05T02:52:55.2195199Z       onReload: kIsWeb ? reloadApplication : null,
+2026-10-05T02:52:55.2196052Z                          ^
+2026-10-05T02:52:55.2196709Z Error: Compilation failed.
+2026-10-05T02:52:55.2200135Z   Command: /opt/hostedtoolcache/flutter/stable-3.32.0-x64/flutter/bin/cache/dart-sdk/bin/dart compile js --platform-binaries=/opt/hostedtoolcache/flutter/stable-3.32.0-x64/flutter/bin/cache/flutter_web_sdk/kernel --invoker=flutter_tool -Ddart.vm.product=true -DFLUTTER_VERSION=3.32.0 -DFLUTTER_CHANNEL=stable -DFLUTTER_GIT_URL=https://github.com/flutter/flutter.git -DFLUTTER_FRAMEWORK_REVISION=be698c48a6 -DFLUTTER_ENGINE_REVISION=1881800949 -DFLUTTER_DART_VERSION=3.8.0 -DFLUTTER_WEB_USE_SKIA=true -DFLUTTER_WEB_USE_SKWASM=false --native-null-assertions --no-source-maps -o /home/runner/work/SnackUP-core/SnackUP-core/app/.dart_tool/flutter_build/f9b6132770583db98bc7eda13d0c0d69/app.dill --packages=/home/runner/work/SnackUP-core/SnackUP-core/app/.dart_tool/package_config.json --cfe-only /home/runner/work/SnackUP-core/SnackUP-core/app/.dart_tool/flutter_build/f9b6132770583db98bc7eda13d0c0d69/main.dart
+2026-10-05T02:52:55.2203582Z #0      RunResult.throwException (package:flutter_tools/src/base/process.dart:118:5)
+2026-10-05T02:52:55.2204249Z #1      _DefaultProcessUtils.run (package:flutter_tools/src/base/process.dart:344:19)
+2026-10-05T02:52:55.2204783Z <asynchronous suspension>
+2026-10-05T02:52:55.2205303Z #2      Dart2JSTarget.build (package:flutter_tools/src/build_system/targets/web.dart:201:5)
+2026-10-05T02:52:55.2205815Z <asynchronous suspension>
+2026-10-05T02:52:55.2206369Z #3      _BuildInstance._invokeInternal (package:flutter_tools/src/build_system/build_system.dart:873:9)
+2026-10-05T02:52:55.2206915Z <asynchronous suspension>
+2026-10-05T02:52:55.2207388Z #4      Future.wait.<anonymous closure> (dart:async/future.dart:525:21)
+2026-10-05T02:52:55.2207849Z <asynchronous suspension>
+2026-10-05T02:52:55.2208349Z #5      _BuildInstance.invokeTarget (package:flutter_tools/src/build_system/build_system.dart:811:32)
+2026-10-05T02:52:55.2208936Z <asynchronous suspension>
+2026-10-05T02:52:55.2209346Z #6      Future.wait.<anonymous closure> (dart:async/future.dart:525:21)
+2026-10-05T02:52:55.2210326Z <asynchronous suspension>
+2026-10-05T02:52:55.2210871Z #7      _BuildInstance.invokeTarget (package:flutter_tools/src/build_system/build_system.dart:811:32)
+2026-10-05T02:52:55.2211417Z <asynchronous suspension>
+2026-10-05T02:52:55.2211934Z #8      FlutterBuildSystem.build (package:flutter_tools/src/build_system/build_system.dart:629:16)
+2026-10-05T02:52:55.2212487Z <asynchronous suspension>
+2026-10-05T02:52:55.2213151Z #9      WebBuilder.buildWeb (package:flutter_tools/src/web/compile.dart:91:34)
+2026-10-05T02:52:55.2213626Z <asynchronous suspension>
+2026-10-05T02:52:55.2214145Z #10     BuildWebCommand.runCommand (package:flutter_tools/src/commands/build_web.dart:246:5)
+2026-10-05T02:52:55.2214674Z <asynchronous suspension>
+2026-10-05T02:52:55.2215261Z #11     FlutterCommand.run.<anonymous closure> (package:flutter_tools/src/runner/flutter_command.dart:1551:27)
+2026-10-05T02:52:55.2215868Z <asynchronous suspension>
+2026-10-05T02:52:55.2216529Z #12     AppContext.run.<anonymous closure> (package:flutter_tools/src/base/context.dart:154:19)
+2026-10-05T02:52:55.2217104Z <asynchronous suspension>
+2026-10-05T02:52:55.2217558Z #13     CommandRunner.runCommand (package:args/command_runner.dart:212:13)
+2026-10-05T02:52:55.2217997Z <asynchronous suspension>
+2026-10-05T02:52:55.2218651Z #14     FlutterCommandRunner.runCommand.<anonymous closure> (package:flutter_tools/src/runner/flutter_command_runner.dart:494:9)
+2026-10-05T02:52:55.2219270Z <asynchronous suspension>
+2026-10-05T02:52:55.2219831Z #15     AppContext.run.<anonymous closure> (package:flutter_tools/src/base/context.dart:154:19)
+2026-10-05T02:52:55.2220341Z <asynchronous suspension>
+2026-10-05T02:52:55.2220869Z #16     FlutterCommandRunner.runCommand (package:flutter_tools/src/runner/flutter_command_runner.dart:431:5)
+2026-10-05T02:52:55.2221481Z <asynchronous suspension>
+2026-10-05T02:52:55.2221932Z #17     run.<anonymous closure>.<anonymous closure> (package:flutter_tools/runner.dart:98:11)
+2026-10-05T02:52:55.2222611Z <asynchronous suspension>
+2026-10-05T02:52:55.2223239Z #18     AppContext.run.<anonymous closure> (package:flutter_tools/src/base/context.dart:154:19)
+2026-10-05T02:52:55.2223818Z <asynchronous suspension>
+2026-10-05T02:52:55.2224201Z #19     main (package:flutter_tools/executable.dart:102:3)
+2026-10-05T02:52:55.2224608Z <asynchronous suspension>
+2026-10-05T02:52:55.2224863Z 
+2026-10-05T02:52:55.2257286Z Compiling lib/main.dart for the Web...                              8.1s
+2026-10-05T02:52:55.2330890Z Error: Failed to compile application for the Web.
+2026-10-05T02:52:55.2386417Z ##[error]Process completed with exit code 1.
+2026-10-05T02:52:55.2568019Z Post job cleanup.
+2026-10-05T02:52:55.2574818Z ##[start-action display=Cache pub dependencies;id=__c1ec16da-af0b-4c7e-8101-5daf64fa07f4.cache-pub]
+2026-10-05T02:52:55.2577766Z ##[end-action id=__c1ec16da-af0b-4c7e-8101-5daf64fa07f4.cache-pub;outcome=skipped;conclusion=skipped;duration_ms=0]
+2026-10-05T02:52:55.2580039Z ##[start-action display=Cache Flutter;id=__c1ec16da-af0b-4c7e-8101-5daf64fa07f4.cache-flutter]
+2026-10-05T02:52:55.2582313Z ##[end-action id=__c1ec16da-af0b-4c7e-8101-5daf64fa07f4.cache-flutter;outcome=skipped;conclusion=skipped;duration_ms=0]
+2026-10-05T02:52:55.2659533Z Post job cleanup.
+2026-10-05T02:52:55.3597014Z [command]/usr/bin/git version
+2026-10-05T02:52:55.3631162Z git version 2.55.0
+2026-10-05T02:52:55.3662067Z Temporarily overriding HOME='/home/runner/work/_temp/e6f4eaf2-011c-4e42-9d9c-cabcb159d237' before making global git config changes
+2026-10-05T02:52:55.3663408Z Adding repository directory to the temporary git global config as a safe directory
+2026-10-05T02:52:55.3667205Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/SnackUP-core/SnackUP-core
+2026-10-05T02:52:55.3703452Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-10-05T02:52:55.3732709Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-10-05T02:52:55.3922061Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-10-05T02:52:55.3946608Z http.https://github.com/.extraheader
+2026-10-05T02:52:55.3955117Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-10-05T02:52:55.3985122Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-10-05T02:52:55.4163991Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-10-05T02:52:55.4190050Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-10-05T02:52:55.4507631Z Cleaning up orphan processes
+2026-10-05T02:52:55.4752549Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+

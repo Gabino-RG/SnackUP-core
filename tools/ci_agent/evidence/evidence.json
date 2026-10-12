@@ -1,0 +1,162 @@
+{
+  "mode": "replay",
+  "repository": "Gabino-RG/SnackUP-core",
+  "run_id": 37257224068,
+  "sha": "ddf0d461b07c407510bca28ef2cd5026aa4a624f",
+  "branch": "test/api-aaa-sonarqube",
+  "url": "https://github.com/Gabino-RG/SnackUP-core/actions/runs/37257224068",
+  "title": "Flutter CI · SnackUP",
+  "status": "completed",
+  "conclusion": "success",
+  "started_at": "2026-10-05T02:54:25Z",
+  "completed_at": "2026-10-05T02:56:16Z",
+  "stages": [
+    {
+      "id": "checkout",
+      "name": "Commit / descarga",
+      "original_name": "Checkout",
+      "status": "success",
+      "command": "actions/checkout@v4",
+      "description": "Descarga el commit de la rama que disparó el CI.",
+      "started_at": "2026-10-05T02:54:25Z",
+      "completed_at": "2026-10-05T02:54:27Z",
+      "logs": [
+        "GitHub Actions: Checkout → success"
+      ]
+    },
+    {
+      "id": "setup",
+      "name": "Entorno Flutter",
+      "original_name": "Setup Flutter",
+      "status": "success",
+      "command": "Flutter 3.32.0 stable",
+      "description": "Configura el SDK y la caché.",
+      "started_at": "2026-10-05T02:54:27Z",
+      "completed_at": "2026-10-05T02:54:53Z",
+      "logs": [
+        "GitHub Actions: Setup Flutter → success"
+      ]
+    },
+    {
+      "id": "dependencies",
+      "name": "Dependencias",
+      "original_name": "Dependencies",
+      "status": "success",
+      "command": "flutter pub get",
+      "description": "Resuelve las dependencias de SnackUP.",
+      "started_at": "2026-10-05T02:54:53Z",
+      "completed_at": "2026-10-05T02:54:58Z",
+      "logs": [
+        "2026-10-05T02:54:54.7254285Z Resolving dependencies...",
+        "2026-10-05T02:54:56.1560786Z Got dependencies!"
+      ]
+    },
+    {
+      "id": "analyze",
+      "name": "Análisis estático",
+      "original_name": "Static analysis",
+      "status": "success",
+      "command": "flutter analyze --no-fatal-infos --no-fatal-warnings",
+      "description": "Detecta errores Dart; esta ejecución toleró avisos e información.",
+      "started_at": "2026-10-05T02:54:58Z",
+      "completed_at": "2026-10-05T02:55:14Z",
+      "logs": [
+        "2026-10-05T02:55:14.1147641Z 124 issues found. (ran in 13.5s)"
+      ]
+    },
+    {
+      "id": "unit",
+      "name": "Pruebas unitarias y widgets",
+      "original_name": "Unit and widget tests",
+      "status": "success",
+      "command": "flutter test --coverage",
+      "description": "Verifica carrito, autenticación, pedidos, reseñas y monitoreo.",
+      "started_at": "2026-10-05T02:55:14Z",
+      "completed_at": "2026-10-05T02:55:37Z",
+      "logs": [
+        "2026-10-05T02:55:34.2979300Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/review_submission_test.dart: Opinión del alumno no incluye nombre, correo ni matrícula en una reseña nueva",
+        "2026-10-05T02:55:34.3034335Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/review_submission_test.dart: Pedido elegible para reseña permite el pedido completado del alumno y local correctos",
+        "2026-10-05T02:55:34.3085451Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/review_submission_test.dart: Pedido elegible para reseña rechaza un pedido inexistente o perteneciente a otra cuenta o local",
+        "2026-10-05T02:55:34.3140964Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/review_submission_test.dart: Pedido elegible para reseña no permite calificar pedidos pendientes, en curso o cancelados",
+        "2026-10-05T02:55:34.4979388Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/admin/admin_dashboard_test.dart: live load failure never falls back to demo records",
+        "2026-10-05T02:55:35.2025787Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/admin/admin_dashboard_test.dart: populated mobile dashboard and navigation fit 360px",
+        "2026-10-05T02:55:35.5763025Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/admin/admin_dashboard_test.dart: followup dialog validates, saves a note and displays history",
+        "2026-10-05T02:55:35.5795136Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/admin/admin_dashboard_test.dart: unknown status remains pending",
+        "2026-10-05T02:55:36.2717711Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/business/business_order_workflow_test.dart: only allowed state edges can change an order",
+        "2026-10-05T02:55:36.2774445Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/business/business_order_workflow_test.dart: QR ties code to this order and rejects student number or another order",
+        "2026-10-05T02:55:36.2800023Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/business/business_order_workflow_test.dart: legacy order uses its own ID and cannot complete twice",
+        "2026-10-05T02:55:36.2838501Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/business/business_order_workflow_test.dart: stock reservation rejects invalid or repeated lines and double reservation",
+        "2026-10-05T02:55:37.3279169Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/business/business_metrics_test.dart: totals include only delivered orders and tolerate legacy fields",
+        "2026-10-05T02:55:37.3324499Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/business/business_metrics_test.dart: seven calendar days includes boundary, uses completedAt and excludes future",
+        "2026-10-05T02:55:37.3352459Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/business/business_metrics_test.dart: non-finite and negative values cannot break chart axes",
+        "2026-10-05T02:55:37.8488038Z 🎉 59 tests passed."
+      ]
+    },
+    {
+      "id": "build",
+      "name": "Compilación Web",
+      "original_name": "Build integrated application",
+      "status": "success",
+      "command": "flutter build web --no-web-resources-cdn --target lib/main.dart",
+      "description": "Compila la aplicación integrada de SnackUP.",
+      "started_at": "2026-10-05T02:55:37Z",
+      "completed_at": "2026-10-05T02:56:13Z",
+      "logs": [
+        "2026-10-05T02:55:37.3279169Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/business/business_metrics_test.dart: totals include only delivered orders and tolerate legacy fields",
+        "2026-10-05T02:55:37.3324499Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/business/business_metrics_test.dart: seven calendar days includes boundary, uses completedAt and excludes future",
+        "2026-10-05T02:55:37.3352459Z ✅ /home/runner/work/SnackUP-core/SnackUP-core/app/test/business/business_metrics_test.dart: non-finite and negative values cannot break chart axes",
+        "2026-10-05T02:55:37.8488038Z 🎉 59 tests passed.",
+        "2026-10-05T02:56:13.0448861Z Compiling lib/main.dart for the Web...                          ",
+        "2026-10-05T02:56:13.5976477Z Compiling lib/main.dart for the Web...                             33.5s",
+        "2026-10-05T02:56:13.5985877Z ✓ Built build/web"
+      ]
+    },
+    {
+      "id": "artifact",
+      "name": "Artefacto versionado",
+      "original_name": "Preserve integrated web build",
+      "status": "success",
+      "command": "actions/upload-artifact@v4",
+      "description": "Conserva app/build/web como artefacto de CI. No despliega.",
+      "started_at": "2026-10-05T02:56:13Z",
+      "completed_at": "2026-10-05T02:56:16Z",
+      "logs": [
+        "2026-10-05T02:56:13.0448861Z Compiling lib/main.dart for the Web...                          ",
+        "2026-10-05T02:56:13.5976477Z Compiling lib/main.dart for the Web...                             33.5s",
+        "2026-10-05T02:56:13.5985877Z ✓ Built build/web",
+        "2026-10-05T02:56:16.1266769Z SHA256 digest of uploaded artifact zip is ad9d0a0eb2be0aeaa736b35d07bd50e522915aa5a8f0605039971b121c739a23",
+        "2026-10-05T02:56:16.3946850Z Artifact snackup-integrated-web.zip successfully finalized. Artifact ID 11322847580"
+      ]
+    }
+  ],
+  "decisions": [
+    {
+      "level": "success",
+      "title": "CI aprobado: artefacto disponible",
+      "detail": "59 pruebas aprobadas y aplicación Web compilada. GitHub conservó el artefacto.",
+      "recommendation": "Revisar los 124 avisos del análisis estático antes de endurecer el gate."
+    }
+  ],
+  "artifacts": [
+    {
+      "name": "snackup-integrated-web",
+      "url": "https://github.com/Gabino-RG/SnackUP-core/actions/runs/37257224068/artifacts/11322847580",
+      "sha256": "sha256:ad9d0a0eb2be0aeaa736b35d07bd50e522915aa5a8f0605039971b121c739a23",
+      "size_bytes": 10477085
+    }
+  ],
+  "source_notes": "Reproducción de ejecución real del 5 de octubre de 2026 (UTC), acelerada. Los tiempos y resultados proceden de GitHub Actions. Este workflow no incluye una etapa REST ni SonarQube; sus resultados se documentan por separado. El análisis toleró 124 avisos.",
+  "metrics": {
+    "tests_passed": 59,
+    "analysis_issues": 124
+  },
+  "integration_evidence": {
+    "run_id": 37257224010,
+    "job": "api-rest",
+    "status": "success",
+    "tests_passed": 18,
+    "sha": "ddf0d461b07c407510bca28ef2cd5026aa4a624f",
+    "url": "https://github.com/Gabino-RG/SnackUP-core/actions/runs/37257224010",
+    "note": "Pruebas REST del mismo commit, en un workflow separado. El job Sonar de ese workflow falló; el workflow completo no se declara aprobado."
+  }
+}

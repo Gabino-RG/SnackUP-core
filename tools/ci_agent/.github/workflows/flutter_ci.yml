@@ -1,0 +1,127 @@
+name: SnackUP Flutter CI - pipeline secuencial
+
+on:
+  push:
+    branches: [develop, 'feature/**', 'test/**']
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: snackup-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: 01 Commit y descarga
+        uses: actions/checkout@v7
+
+      - name: 02 Configurar Flutter 3.32.0
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.32.0'
+          channel: stable
+          cache: true
+
+      - name: Preparar Node para pruebas REST
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      - name: Preparar Java para emuladores Firebase
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: 03 Resolver dependencias Flutter
+        working-directory: app
+        run: flutter pub get
+
+      - name: 04 Verificar formato
+        working-directory: app
+        run: dart format --output=none --set-exit-if-changed lib test
+
+      - name: 05 Analisis estatico - baseline existente
+        working-directory: app
+        # Errores bloquean. Infos y warnings heredados se reportan; no bloquean.
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+
+      - name: 06 Pruebas unitarias y widgets
+        working-directory: app
+        run: flutter test --coverage
+
+      - name: 07 Compilacion Web
+        working-directory: app
+        run: flutter build web --release --no-web-resources-cdn --target lib/main.dart
+
+      - name: 08 Pruebas de integracion REST - emuladores
+        working-directory: tests/api
+        run: |
+          npm ci
+          mkdir -p reports
+          npm run test:ci
+
+      - name: 09 Paquete inmutable y manifiesto
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+          SOURCE_RUN_ID: ${{ github.run_id }}
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib, zipfile
+          build = pathlib.Path('app/build/web')
+          if not (build / 'index.html').is_file():
+              raise SystemExit('No existe index.html; el build no es publicable')
+          output = pathlib.Path('ci-artifacts')
+          output.mkdir(exist_ok=True)
+          sha = os.environ['SOURCE_SHA']
+          package = output / f'snackup-web-{sha[:12]}.zip'
+          with zipfile.ZipFile(package, 'w', zipfile.ZIP_DEFLATED) as archive:
+              for path in sorted(build.rglob('*')):
+                  if path.is_file():
+                      archive.write(path, path.relative_to(build))
+          digest = hashlib.sha256(package.read_bytes()).hexdigest()
+          manifest = {'project': 'SnackUP', 'commit': sha,
+                      'run_id': os.environ['SOURCE_RUN_ID'],
+                      'artifact': package.name, 'sha256': digest,
+                      'deployment_executed': False}
+          (output / 'manifest.json').write_text(json.dumps(manifest, indent=2))
+          print(json.dumps(manifest, indent=2))
+          PY
+
+      - name: 10 Conservar artefacto validado
+        uses: actions/upload-artifact@v7
+        with:
+          name: snackup-web-${{ github.sha }}
+          path: ci-artifacts/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Conservar diagnosticos aun si falla
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: snackup-ci-diagnostics-${{ github.run_id }}
+          path: |
+            app/coverage/
+            tests/api/reports/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Resumen de resultado
+        if: always()
+        env:
+          RESULT: ${{ job.status }}
+        run: |
+          echo "SnackUP CI: $RESULT" >> "$GITHUB_STEP_SUMMARY"
+          echo 'Las fases normales son secuenciales. Un fallo omite las siguientes.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Solo los diagnosticos se conservan con always(). No hay despliegue CD.' >> "$GITHUB_STEP_SUMMARY"

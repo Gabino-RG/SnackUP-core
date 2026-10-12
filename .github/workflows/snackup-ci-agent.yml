@@ -1,0 +1,44 @@
+name: SnackUP CI Agent - validacion y video
+on:
+  push:
+    branches: [feature/ci-visual-agent]
+    paths: ['tools/ci_agent/**', '.github/workflows/snackup-ci-agent.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  validate-and-record:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Descargar codigo
+        uses: actions/checkout@v7
+      - name: Validar motor Fail Fast y estados
+        working-directory: tools/ci_agent
+        run: python3 -m unittest discover -s tests -v
+      - name: Preparar navegador de verificacion
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          npm install --prefix .ci-video --no-package-lock --no-save playwright@1.58.2
+          .ci-video/node_modules/.bin/playwright install --with-deps chromium
+      - name: Grabar interfaz del agente y verificar layout
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          NODE_PATH: ${{ github.workspace }}/.ci-video/node_modules
+          VIDEO_OUTPUT: ${{ github.workspace }}/agent-video
+        run: |
+          python3 tools/ci_agent/server.py --no-browser > /tmp/snackup-ci-server.log 2>&1 &
+          node tools/ci_agent/record_video.cjs
+      - name: Conservar video y capturas
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: snackup-ci-agent-video
+          path: agent-video/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Logs de diagnostico
+        if: failure()
+        run: cat /tmp/snackup-ci-server.log || true

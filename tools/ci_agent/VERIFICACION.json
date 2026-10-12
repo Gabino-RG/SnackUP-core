@@ -1,0 +1,20 @@
+{
+  "duration_seconds": 65,
+  "resolution": "1600x1000",
+  "mode": "Reproducción gráfica de dos ejecuciones GitHub reales, acelerada",
+  "successful_run": 37257224068,
+  "failed_run": 37257039123,
+  "browser_errors": [],
+  "mobile_horizontal_overflow": false,
+  "live_github_api_verified": true,
+  "seven_stages_fit": {
+    "height": 450,
+    "content": 450
+  },
+  "agent_source_commit": "679dcbe46d437898968a5caebd7ce46b7bf803fa",
+  "agent_validation_url": "https://github.com/Gabino-RG/SnackUP-core/actions/runs/37553648787",
+  "draft_pr": "https://github.com/Gabino-RG/SnackUP-core/pull/22",
+  "engine_tests_passed": 5,
+  "full_flutter_template_executed": false,
+  "video_sha256": "3a8af043510e201e75fdc5346a540d3574aafc1f41ec19a85d9333d210056595"
+}
