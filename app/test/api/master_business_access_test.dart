@@ -110,10 +110,11 @@ void main() {
           await tester.ensureVisible(entry);
           await tester.tap(entry);
           await tester.pumpAndSettle();
-          final inactive = find.widgetWithText(
-            FilledButton,
-            'Entrar a Local inactivo',
+          final inactive = find.ancestor(
+            of: find.text('Entrar a Local inactivo'),
+            matching: find.byWidgetPredicate((widget) => widget is FilledButton),
           );
+          expect(inactive, findsOneWidget);
           expect(tester.widget<FilledButton>(inactive).onPressed, isNull);
           await tester.tap(find.text('Entrar a Local propio'));
           await tester.pumpAndSettle();
