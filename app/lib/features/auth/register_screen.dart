@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'auth_repository.dart';
 import 'package:snackup/theme/app_colors.dart';
 import 'package:snackup/theme/app_text.dart';
-import 'privacy_terms_widget.dart'; 
+import 'privacy_terms_widget.dart';
 
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+  const RegisterScreen({super.key, this.repository});
+  final SnackAuthRepository? repository;
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -24,66 +24,41 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   String _errorMessage = '';
-  
+  late final SnackAuthRepository _repository;
+  @override
+  void initState() {
+    super.initState();
+    _repository = widget.repository ?? FirebaseSnackAuthRepository();
+  }
+
   // NUEVA VARIABLE DE ESTADO PARA LOS TÉRMINOS
   bool _terminosAceptados = false;
 
   Future<void> _register() async {
-    if (!_formKey.currentState!.validate()) {
+    if (_isLoading ||
+        !_terminosAceptados ||
+        !_formKey.currentState!.validate()) {
       return;
     }
-
     setState(() {
       _isLoading = true;
       _errorMessage = '';
     });
-
     try {
-      UserCredential userCredential =
-          await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
+      await _repository.registerStudent(
+        _emailController.text,
+        _passwordController.text,
+        StudentProfileInput(
+          name: _nameController.text,
+          controlNumber: _numeroControlController.text,
+          acceptedTerms: _terminosAceptados,
+        ),
       );
-
-      if (userCredential.user != null) {
-        String uid = userCredential.user!.uid;
-        String email = _emailController.text.trim();
-        String numeroControl = _numeroControlController.text.trim();
-        String name = _nameController.text.trim();
-
-        // Guardar en Firestore
-        await FirebaseFirestore.instance.collection('users').doc(uid).set({
-          'email': email,
-          'numeroDeControl': numeroControl,
-          'role': 'user',
-          'displayName': name,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
-
-        // Actualizar perfil de Firebase Auth
-        await userCredential.user!.updateDisplayName(name);
-      }
-
-      if (mounted) {
-        Navigator.of(context).pop();
-      }
-
-    } on FirebaseAuthException catch (e) {
-      setState(() {
-        _isLoading = false;
-        if (e.code == 'weak-password') {
-          _errorMessage = 'La contraseña es muy débil (mínimo 6 caracteres)';
-        } else if (e.code == 'email-already-in-use') {
-          _errorMessage = 'Este correo ya está registrado';
-        } else {
-          _errorMessage = 'Ocurrió un error: ${e.message}';
-        }
-      });
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-        _errorMessage = 'Ocurrió un error inesperado';
-      });
+      if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
+    } catch (error) {
+      if (mounted) setState(() => _errorMessage = authErrorMessage(error));
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -214,7 +189,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           if (value == null || value.trim().isEmpty) {
                             return 'Por favor, ingresa tu nombre';
                           }
-                          if (value.trim().split(' ').length < 2) {
+                          if (value.trim().split(RegExp(r'\s+')).length < 2 ||
+                              value.trim().length > 120) {
                             return 'Ingresa al menos nombre y apellido';
                           }
                           return null;
@@ -254,7 +230,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           if (value == null || value.isEmpty) {
                             return 'Por favor, ingresa tu correo';
                           }
-                          if (!value.endsWith('@utsjr.edu.mx')) {
+                          if (!isStudentEmail(value)) {
                             return 'Debe ser un correo @utsjr.edu.mx';
                           }
                           return null;
@@ -294,8 +270,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           if (value == null || value.isEmpty) {
                             return 'Ingresa tu número de control';
                           }
-                          if (value.length < 8) {
-                            return 'El número de control debe tener al menos 8 dígitos';
+                          if (!RegExp(r'^\d{8,20}$').hasMatch(value.trim())) {
+                            return 'Usa entre 8 y 20 dígitos para el número de control';
                           }
                           return null;
                         },
@@ -422,7 +398,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           height: 24,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
                           ),
                         ),
                       ),

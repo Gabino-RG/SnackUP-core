@@ -2,7 +2,7 @@ name: Flutter CI
 
 on:
   push:
-    branches: [develop]
+    branches: [develop, test/api-aaa-sonarqube]
   pull_request:
     branches: [main, develop]
 
@@ -29,10 +29,85 @@ jobs:
 
       - name: Dependencies
         run: flutter pub get
+
+      - name: Preserve resolved dependency lock
+        uses: actions/upload-artifact@v4
+        with:
+          name: snackup-dependency-lock
+          path: app/pubspec.lock
+          if-no-files-found: error
+          retention-days: 14
         
+      - name: Test local review server
+        run: python3 -m unittest discover -s ../scripts/review -p 'test_*.py' -v
+
       - name: Static analysis
         run: flutter analyze --no-fatal-infos --no-fatal-warnings
 
       - name: Unit and widget tests
         run: flutter test --coverage
+
+      - name: Build integrated review package frontend
+        run: flutter build web --no-web-resources-cdn --target lib/main.dart --dart-define=BACKEND=rest --dart-define=REVIEW_MODE=true --output build/portal-review
+
+      - name: Preserve review frontend
+        uses: actions/upload-artifact@v4
+        with:
+          name: snackup-paneles-revision
+          path: app/build/portal-review
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Install browser for integrated review
+        run: |
+          npm install --prefix "$RUNNER_TEMP/snackup-ui" --no-package-lock --no-audit --no-fund playwright@1.51.1
+          "$RUNNER_TEMP/snackup-ui/node_modules/.bin/playwright" install --with-deps chromium
+
+      - name: Review compiled panels in browser
+        run: |
+          python3 ../scripts/review/review_server.py --no-browser --web build/portal-review --data "$RUNNER_TEMP/snackup-review-data" > "$RUNNER_TEMP/snackup-review.log" 2>&1 &
+          export SNACKUP_PLAYWRIGHT="$RUNNER_TEMP/snackup-ui/node_modules/playwright"
+          node ../scripts/review/browser_smoke.cjs
+
+      - name: Preserve integrated review evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: snackup-paneles-capturas
+          path: app/build/review-screenshots
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Build integrated application
+        run: flutter build web --no-web-resources-cdn --target lib/main.dart
+
+      - name: Preserve integrated web build
+        uses: actions/upload-artifact@v4
+        with:
+          name: snackup-integrated-web
+          path: app/build/web
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Build local editable catalog
+        run: flutter build web --no-web-resources-cdn --target lib/main_catalog_local.dart --output build/catalog-local
+
+      - name: Preserve editable catalog
+        uses: actions/upload-artifact@v4
+        with:
+          name: snackup-catalogo-local
+          path: app/build/catalog-local
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Build REST operations portal
+        run: flutter build web --no-web-resources-cdn --target lib/main.dart --dart-define=BACKEND=rest --output build/portal-api
+
+      - name: Preserve REST operations portal
+        uses: actions/upload-artifact@v4
+        with:
+          name: snackup-portal-api
+          path: app/build/portal-api
+          if-no-files-found: error
+          retention-days: 14
 

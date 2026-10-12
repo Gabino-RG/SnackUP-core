@@ -1,0 +1,22 @@
+{
+  "name": "snackup-rest-qa",
+  "version": "1.1.0",
+  "private": true,
+  "type": "module",
+  "description": "12 casos AAA sobre Firestore REST; solo emuladores de SnackUP QA",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "check": "node --check rest.test.mjs && node --check preflight.mjs && node --check guard.mjs",
+    "test:guard": "node --test guard.test.mjs",
+    "preflight": "node preflight.mjs",
+    "test": "node --test --test-concurrency=1 rest.test.mjs",
+    "test:ci": "node preflight.mjs && firebase emulators:exec --only auth,firestore --project demo-snackup-qa --config firebase.json \"node --test --test-concurrency=1 --test-reporter=spec --test-reporter=junit --test-reporter-destination=stdout --test-reporter-destination=reports/api-junit.xml rest.test.mjs\""
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "5.0.2",
+    "firebase": "12.19.0",
+    "firebase-tools": "15.32.0"
+  }
+}

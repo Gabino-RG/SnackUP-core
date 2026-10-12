@@ -1,0 +1,67 @@
+name: SnackUP documented Rules diagnostic
+on:
+  pull_request:
+    branches: [develop]
+    paths:
+      - 'tests/api/**'
+      - '.github/workflows/snackup-baseline.yml'
+permissions:
+  contents: read
+concurrency:
+  group: snackup-baseline-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  documented-rest:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'test/api-aaa-sonarqube'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [documented, candidate]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install locked dependencies
+        working-directory: tests/api
+        run: |
+          mkdir -p reports
+          npm ci
+          cp package.json reports/package.installed.json
+          cp package-lock.json reports/package-lock.installed.json
+          npm ls --depth=0 > reports/dependency-versions.txt
+      - name: Run same AAA suite against explicitly identified Rules
+        working-directory: tests/api
+        env:
+          GCLOUD_PROJECT: demo-snackup-qa
+          PROFILE: ${{ matrix.profile }}
+        run: |
+          if [ "$PROFILE" = documented ]; then
+            cp baselines/documented-annex-a.rules firestore.rules
+          else
+            cp candidates/order-hardening.rules firestore.rules
+          fi
+          cp baselines/source.json reports/documentary-source.json
+          cp firestore.rules reports/executed.rules
+          printf '%s\n' "$PROFILE" > reports/profile.txt
+          git rev-parse HEAD > reports/executed-source-commit.txt
+          sha256sum firestore.rules package-lock.json > reports/input-sha256.txt
+          set -o pipefail
+          npm run test:ci 2>&1 | tee reports/api-console.log
+      - name: Preserve actual reports including failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rules-${{ matrix.profile }}-diagnostic
+          path: tests/api/reports/
+          if-no-files-found: error
+          retention-days: 30

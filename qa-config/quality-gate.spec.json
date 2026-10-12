@@ -1,0 +1,16 @@
+{
+  "name": "SNACKUP-NEW-CODE-v1",
+  "status": "propuesto_no_aplicado_a_servidor",
+  "metric_mode": "Standard Experience; cotejar equivalencias si se usa MQR",
+  "new_code_conditions": {
+    "new_coverage_min_percent": 80,
+    "new_duplicated_lines_density_max_percent": 3,
+    "new_reliability_rating": "A",
+    "new_security_rating": "A",
+    "new_maintainability_rating": "A",
+    "new_security_hotspots_reviewed_min_percent": 100
+  },
+  "external_required_checks": ["validate", "api-rest", "quality-gate"],
+  "baseline": "Registrar analisis base y definicion de New Code; no reiniciar la base para esconder incidencias.",
+  "limitations": "Especificacion, no configura el servidor. No mide cobertura interna de Firebase."
+}

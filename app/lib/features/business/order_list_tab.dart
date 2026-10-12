@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:audioplayers/audioplayers.dart';
 import 'order_detail_screen.dart';
 import 'package:snackup/theme/app_colors.dart';
 import 'package:snackup/theme/app_text.dart';
@@ -22,34 +21,6 @@ class OrderListTab extends StatefulWidget {
 }
 
 class _OrderListTabState extends State<OrderListTab> {
-  int _previousOrderCount = -1;
-  final AudioPlayer _audioPlayer = AudioPlayer();
-  bool _soundPlayedForThisBatch = false;
-
-  @override
-  void dispose() {
-    _audioPlayer.dispose();
-    super.dispose();
-  }
-
-  void _checkAndPlaySound(int currentOrderCount) {
-    if (widget.status == 'pending' && widget.orderType == 'asap') {
-      if (_previousOrderCount != -1 && 
-          currentOrderCount > _previousOrderCount && 
-          !_soundPlayedForThisBatch) {
-        print("🔔 Nuevo pedido detectado! Reproduciendo sonido...");
-        try {
-          _audioPlayer.play(AssetSource('sounds/notification_bell.mp3'));
-          _soundPlayedForThisBatch = true;
-          Future.delayed(const Duration(seconds: 5), () => _soundPlayedForThisBatch = false);
-        } catch (e) {
-          print("Error al reproducir sonido: $e");
-        }
-      }
-      _previousOrderCount = currentOrderCount;
-    }
-  }
-
   String _getTabTitle() {
     switch (widget.status) {
       case 'pending':
@@ -67,55 +38,34 @@ class _OrderListTabState extends State<OrderListTab> {
     }
   }
 
-  Color _getStatusColor() {
-    switch (widget.status) {
-      case 'pending': return AppColors.warning;
-      case 'preparing': return AppColors.tertiary;
-      case 'ready': return AppColors.primary;
-      case 'completed': return AppColors.success;
-      case 'cancelled': return AppColors.error;
-      default: return AppColors.textSecondary;
-    }
-  }
-
   IconData _getStatusIcon() {
     switch (widget.status) {
-      case 'pending': return Icons.access_time_rounded;
-      case 'preparing': return Icons.restaurant_rounded;
-      case 'ready': return Icons.check_circle_rounded;
-      case 'completed': return Icons.done_all_rounded;
-      case 'cancelled': return Icons.cancel_rounded;
-      default: return Icons.receipt_rounded;
+      case 'pending':
+        return Icons.access_time_rounded;
+      case 'preparing':
+        return Icons.restaurant_rounded;
+      case 'ready':
+        return Icons.check_circle_rounded;
+      case 'completed':
+        return Icons.done_all_rounded;
+      case 'cancelled':
+        return Icons.cancel_rounded;
+      default:
+        return Icons.receipt_rounded;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    Query query = FirebaseFirestore.instance
+    // Query only the ownership field; sort/filter locally so no composite
+    // index is required and overdue scheduled orders never disappear.
+    final ordersStream = FirebaseFirestore.instance
         .collection('orders')
         .where('businessId', isEqualTo: widget.businessId)
-        .where('status', isEqualTo: widget.status);
-
-    String emptyMessage = 'No hay pedidos ${_getTabTitle().toLowerCase()}';
-    String emptySubtitle = 'Los nuevos pedidos aparecerán aquí';
-
-    if (widget.orderType == 'asap') {
-      query = query.where('scheduledPickupTime', isEqualTo: null)
-                   .orderBy('createdAt', descending: true);
-      emptyMessage = 'No hay pedidos nuevos';
-      emptySubtitle = 'Los pedidos para ahora aparecerán aquí';
-
-    } else if (widget.orderType == 'scheduled') {
-      query = query.where('scheduledPickupTime', isGreaterThan: Timestamp.now())
-                   .orderBy('scheduledPickupTime', descending: false);
-      emptyMessage = 'No hay pedidos programados';
-      emptySubtitle = 'Los pedidos programados aparecerán aquí';
-
-    } else {
-      query = query.orderBy('createdAt', descending: true);
-    }
-
-    final Stream<QuerySnapshot> ordersStream = query.snapshots();
+        .snapshots();
+    final emptyMessage = 'No hay pedidos ${_getTabTitle().toLowerCase()}';
+    const emptySubtitle =
+        'Los pedidos aparecerán aquí cuando cambien a este estado';
 
     return StreamBuilder<QuerySnapshot>(
       stream: ordersStream,
@@ -127,12 +77,28 @@ class _OrderListTabState extends State<OrderListTab> {
           return _buildLoadingState();
         }
 
-        final docs = snapshot.data?.docs ?? [];
-
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            _checkAndPlaySound(docs.length);
-          }
+        final docs = (snapshot.data?.docs ?? []).where((doc) {
+          final data = doc.data() as Map<String, dynamic>;
+          if (data['status'] != widget.status) return false;
+          final scheduled = data['scheduledPickupTime'] is Timestamp;
+          return widget.orderType == 'all' ||
+              (widget.orderType == 'scheduled' ? scheduled : !scheduled);
+        }).toList();
+        docs.sort((a, b) {
+          final left = a.data() as Map<String, dynamic>;
+          final right = b.data() as Map<String, dynamic>;
+          final field = widget.orderType == 'scheduled'
+              ? 'scheduledPickupTime'
+              : 'createdAt';
+          final leftTime = left[field] is Timestamp
+              ? (left[field] as Timestamp).millisecondsSinceEpoch
+              : 0;
+          final rightTime = right[field] is Timestamp
+              ? (right[field] as Timestamp).millisecondsSinceEpoch
+              : 0;
+          return widget.orderType == 'scheduled'
+              ? leftTime.compareTo(rightTime)
+              : rightTime.compareTo(leftTime);
         });
 
         if (docs.isEmpty) {
@@ -159,17 +125,13 @@ class _OrderListTabState extends State<OrderListTab> {
             const SizedBox(height: 16),
             Text(
               'Error al cargar pedidos',
-              style: AppText.h3.copyWith(
-                color: AppColors.textPrimary,
-              ),
+              style: AppText.h3.copyWith(color: AppColors.textPrimary),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
               'Verifica tu conexión e intenta nuevamente',
-              style: AppText.body.copyWith(
-                color: AppColors.textSecondary,
-              ),
+              style: AppText.body.copyWith(color: AppColors.textSecondary),
               textAlign: TextAlign.center,
             ),
           ],
@@ -183,15 +145,11 @@ class _OrderListTabState extends State<OrderListTab> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          CircularProgressIndicator(
-            color: AppColors.primary,
-          ),
+          CircularProgressIndicator(color: AppColors.primary),
           const SizedBox(height: 16),
           Text(
             'Cargando pedidos...',
-            style: AppText.body.copyWith(
-              color: AppColors.textSecondary,
-            ),
+            style: AppText.body.copyWith(color: AppColors.textSecondary),
           ),
         ],
       ),
@@ -221,17 +179,13 @@ class _OrderListTabState extends State<OrderListTab> {
             const SizedBox(height: 24),
             Text(
               message,
-              style: AppText.h3.copyWith(
-                color: AppColors.textPrimary,
-              ),
+              style: AppText.h3.copyWith(color: AppColors.textPrimary),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
               subtitle,
-              style: AppText.body.copyWith(
-                color: AppColors.textSecondary,
-              ),
+              style: AppText.body.copyWith(color: AppColors.textSecondary),
               textAlign: TextAlign.center,
             ),
           ],
@@ -240,14 +194,18 @@ class _OrderListTabState extends State<OrderListTab> {
     );
   }
 
-  Widget _buildOrderList(BuildContext context, List<QueryDocumentSnapshot> docs) {
+  Widget _buildOrderList(
+    BuildContext context,
+    List<QueryDocumentSnapshot> docs,
+  ) {
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       children: docs.map((doc) {
         final order = doc.data()! as Map<String, dynamic>;
         final total = order['totalPrice'] ?? 0.0;
         final items = order['items'] as List<dynamic>? ?? [];
-        final Timestamp? pickupTime = order['scheduledPickupTime'] as Timestamp?;
+        final Timestamp? pickupTime =
+            order['scheduledPickupTime'] as Timestamp?;
         final Timestamp? createdAt = order['createdAt'] as Timestamp?;
         final String userName = order['userDisplayName'] ?? 'Cliente';
 
@@ -259,9 +217,14 @@ class _OrderListTabState extends State<OrderListTab> {
             elevation: 2,
             child: InkWell(
               onTap: () {
-                Navigator.of(context).push(MaterialPageRoute(
-                  builder: (context) => OrderDetailScreen(orderId: doc.id),
-                ));
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => OrderDetailScreen(
+                      orderId: doc.id,
+                      businessId: widget.businessId,
+                    ),
+                  ),
+                );
               },
               borderRadius: BorderRadius.circular(16),
               child: Padding(
@@ -326,7 +289,8 @@ class _OrderListTabState extends State<OrderListTab> {
                         if (pickupTime != null) ...[
                           _buildInfoChip(
                             icon: Icons.schedule_rounded,
-                            text: 'Recoger: ${_formatTime(pickupTime.toDate())}',
+                            text:
+                                'Recoger: ${_formatTime(pickupTime.toDate())}',
                             color: AppColors.primary,
                           ),
                         ],
@@ -334,7 +298,8 @@ class _OrderListTabState extends State<OrderListTab> {
                     ),
 
                     // INDICADOR DE NUEVO PEDIDO (solo para pendientes ASAP)
-                    if (widget.status == 'pending' && widget.orderType == 'asap') ...[
+                    if (widget.status == 'pending' &&
+                        widget.orderType == 'asap') ...[
                       const SizedBox(height: 8),
                       Row(
                         children: [
@@ -377,16 +342,17 @@ class _OrderListTabState extends State<OrderListTab> {
         .take(3) // Mostrar máximo 3 productos
         .join(', ');
 
-    final totalItems = items.fold(0, (sum, item) => sum + ((item['quantity'] as int?) ?? 1));
+    final totalItems = items.fold(
+      0,
+      (count, item) => count + ((item['quantity'] as int?) ?? 1),
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           itemsSummary,
-          style: AppText.body.copyWith(
-            color: AppColors.textPrimary,
-          ),
+          style: AppText.body.copyWith(color: AppColors.textPrimary),
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
         ),
@@ -394,9 +360,7 @@ class _OrderListTabState extends State<OrderListTab> {
           const SizedBox(height: 4),
           Text(
             '+ ${items.length - 3} productos más',
-            style: AppText.notes.copyWith(
-              color: AppColors.textSecondary,
-            ),
+            style: AppText.notes.copyWith(color: AppColors.textSecondary),
           ),
         ],
         const SizedBox(height: 4),
@@ -425,11 +389,7 @@ class _OrderListTabState extends State<OrderListTab> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
-            size: 12,
-            color: color ?? AppColors.textSecondary,
-          ),
+          Icon(icon, size: 12, color: color ?? AppColors.textSecondary),
           const SizedBox(width: 4),
           Text(
             text,
