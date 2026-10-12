@@ -8,7 +8,7 @@ import 'package:snackup/api/rest_session.dart';
 
 final now = DateTime.utc(2026, 10, 12);
 final base = Uri.parse('https://snackup.example/api/v1/');
-http.Response reply(Object? value, [int status = 200]) => http.Response(jsonEncode(value), status);
+http.Response reply(Object? value, [int status = 200]) => http.Response(jsonEncode(value), status, encoding: utf8, headers: {'content-type': 'application/json; charset=utf-8'});
 Map<String, dynamic> tokens([String value = 'access-1']) => {'tokens': {
   'accessToken': value, 'accessTokenExpiresAt': now.add(const Duration(minutes: 15)).toIso8601String(),
   'refreshToken': 'must-never-be-used-by-web-code',

@@ -9,6 +9,9 @@ import 'package:snackup/features/portal/rest_portal_app.dart';
 import 'package:snackup/features/admin/admin_dashboard_screen.dart';
 import 'package:snackup/features/catalog/catalog_screen.dart';
 
+http.Response jsonReply(String body, int status) => http.Response(body, status,
+  encoding: utf8, headers: {'content-type': 'application/json; charset=utf-8'});
+
 void main() {
   testWidgets('mobile login blocks duplicate submits and uses the assigned business', (tester) async {
     tester.view.physicalSize = const Size(360, 800); tester.view.devicePixelRatio = 1;
@@ -16,11 +19,11 @@ void main() {
     final login = Completer<http.Response>();
     var logins = 0;
     final session = RestSession(baseUri: Uri.parse('https://snackup.example/api/v1/'), client: MockClient((r) async {
-      if (r.url.path.endsWith('auth/refresh')) return http.Response('{"error":{"code":"UNAUTHENTICATED"}}', 401);
+      if (r.url.path.endsWith('auth/refresh')) return jsonReply('{"error":{"code":"UNAUTHENTICATED"}}', 401);
       if (r.url.path.endsWith('auth/login')) {
         logins++; expect(jsonDecode(r.body)['password'], ' secret '); return login.future;
       }
-      return http.Response('{"id":"one","role":"business","displayName":"Operador","businessId":"assigned-local"}', 200);
+      return jsonReply('{"id":"one","role":"business","displayName":"Operador","businessId":"assigned-local"}', 200);
     }));
     addTearDown(session.dispose);
     await tester.pumpWidget(RestPortalApp(session: session,
@@ -32,7 +35,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('portal-login'))); await tester.pump();
     await tester.tap(find.byKey(const ValueKey('portal-login'))); await tester.pump();
     expect(logins, 1);
-    login.complete(http.Response(jsonEncode({'tokens': {'accessToken': 'a',
+    login.complete(jsonReply(jsonEncode({'tokens': {'accessToken': 'a',
       'accessTokenExpiresAt': DateTime.now().toUtc().add(const Duration(minutes: 15)).toIso8601String()}}), 200));
     await tester.pumpAndSettle();
     expect(find.text('Local asignado: assigned-local'), findsOneWidget);
@@ -43,11 +46,11 @@ void main() {
     tester.view.physicalSize = const Size(360, 800); tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize); addTearDown(tester.view.resetDevicePixelRatio);
     final session = RestSession(baseUri: Uri.parse('https://snackup.example/api/v1/'), client: MockClient((r) async {
-      if (r.url.path.endsWith('auth/refresh')) return http.Response(jsonEncode({'tokens': {'accessToken': 'a',
+      if (r.url.path.endsWith('auth/refresh')) return jsonReply(jsonEncode({'tokens': {'accessToken': 'a',
         'accessTokenExpiresAt': DateTime.now().toUtc().add(const Duration(minutes: 15)).toIso8601String()}}), 200);
-      if (r.url.path.endsWith('users/me')) return http.Response('{"id":"admin-1","role":"admin","displayName":"Administración"}', 200);
+      if (r.url.path.endsWith('users/me')) return jsonReply('{"id":"admin-1","role":"admin","displayName":"Administración"}', 200);
       expect(r.headers['Authorization'], 'Bearer a');
-      return http.Response('{"data":[],"pagination":{"page":1,"totalPages":0}}', 200);
+      return jsonReply('{"data":[],"pagination":{"page":1,"totalPages":0}}', 200);
     }));
     addTearDown(session.dispose);
     await tester.pumpWidget(RestPortalApp(session: session)); await tester.pumpAndSettle();
@@ -66,9 +69,9 @@ void main() {
 
   testWidgets('a business without an assignment cannot open either panel', (tester) async {
     final session = RestSession(baseUri: Uri.parse('https://snackup.example/api/v1/'), client: MockClient((r) async {
-      if (r.url.path.endsWith('auth/refresh')) return http.Response(jsonEncode({'tokens': {'accessToken': 'a',
+      if (r.url.path.endsWith('auth/refresh')) return jsonReply(jsonEncode({'tokens': {'accessToken': 'a',
         'accessTokenExpiresAt': DateTime.now().toUtc().add(const Duration(minutes: 15)).toIso8601String()}}), 200);
-      return http.Response('{"id":"one","role":"business","displayName":"Operador"}', 200);
+      return jsonReply('{"id":"one","role":"business","displayName":"Operador"}', 200);
     }));
     addTearDown(session.dispose);
     await tester.pumpWidget(RestPortalApp(session: session)); await tester.pumpAndSettle();
