@@ -18,20 +18,27 @@ class RestPortalApp extends StatefulWidget {
 }
 
 class _RestPortalAppState extends State<RestPortalApp> {
-  late final SessionHttpClient _client;
-  late final RestCatalogRepository _catalog;
-  late final RestAdminRepository _admin;
+  SessionHttpClient? _client;
+  RestCatalogRepository? _catalog;
+  RestAdminRepository? _admin;
+  int? _dataGeneration;
   @override
   void initState() {
     super.initState();
-    _client = SessionHttpClient(widget.session);
-    _catalog = RestCatalogRepository(baseUri: widget.session.api.baseUri,
-      client: _client, accessToken: widget.session.accessToken);
-    _admin = RestAdminRepository(ApiClient(baseUri: widget.session.api.baseUri, client: _client));
     if (widget.restoreOnStart) widget.session.restore();
   }
+
+  void _prepareDataSession() {
+    if (_dataGeneration == widget.session.generation) return;
+    _client?.close();
+    _dataGeneration = widget.session.generation;
+    _client = SessionHttpClient(widget.session);
+    _catalog = RestCatalogRepository(baseUri: widget.session.api.baseUri,
+      client: _client!, accessToken: widget.session.accessToken);
+    _admin = RestAdminRepository(ApiClient(baseUri: widget.session.api.baseUri, client: _client!));
+  }
   @override
-  void dispose() { _client.close(); super.dispose(); }
+  void dispose() { _client?.close(); super.dispose(); }
 
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
@@ -40,6 +47,7 @@ class _RestPortalAppState extends State<RestPortalApp> {
       final session = widget.session;
       final account = session.account;
       final authenticated = session.phase == PortalSessionPhase.authenticated && account != null;
+      if (authenticated) _prepareDataSession();
       // Replacing the root Navigator removes every protected route and dialog.
       final navigationKey = authenticated ? 'private:${session.generation}:${account.identity}' : 'public';
       final Widget home;
@@ -50,10 +58,10 @@ class _RestPortalAppState extends State<RestPortalApp> {
           action: 'Reintentar conexión', onAction: session.restore);
       } else if (authenticated && account.isBusiness) {
         home = widget.businessBuilder?.call(account) ?? CatalogScreen(
-          businessId: account.businessId!, repository: _catalog, onSignOut: session.signOut);
+          businessId: account.businessId!, repository: _catalog!, onSignOut: session.signOut);
       } else if (authenticated && account.isAdmin) {
         home = widget.adminBuilder?.call(account) ?? AdminDashboardScreen(
-          repository: _admin, onSignOut: session.signOut);
+          repository: _admin!, onSignOut: session.signOut);
       } else if (authenticated) {
         home = _AccessNotice(
           message: account.role == 'business'

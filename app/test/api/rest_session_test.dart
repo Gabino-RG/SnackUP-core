@@ -208,6 +208,26 @@ void main() {
     expect(session.account, isNull);
   });
 
+  test('a repository from the previous login cannot start a write in a new session', () async {
+    var writes = 0;
+    final session = makeSession((r) async {
+      if (r.url.path.endsWith('auth/login')) return reply(tokens());
+      if (r.url.path.endsWith('users/me')) return reply(profile());
+      if (r.url.path.endsWith('auth/logout')) return http.Response('', 204);
+      writes++; return reply({'ok': true});
+    });
+    addTearDown(session.dispose);
+    await session.signIn('owner@example.test', 'secret');
+    final oldClient = SessionHttpClient(session);
+    await session.signOut();
+    await session.signIn('another@example.test', 'secret');
+    await expectLater(oldClient.post(base.resolve('products'), body: '{}'),
+      throwsA(isA<ApiException>().having((e) => e.code, 'code', 'SESSION_CHANGED')));
+    expect(writes, 0);
+    expect((await SessionHttpClient(session).post(base.resolve('products'), body: '{}')).statusCode, 200);
+    expect(writes, 1);
+  });
+
   test('authenticated multipart preserves image bytes and boundary on token renewal', () async {
     final bodies = <String>[];
     final contentTypes = <String>[];

@@ -233,8 +233,9 @@ class RestSession extends ChangeNotifier {
 
 /// One refresh for simultaneous expirations. Network failures never replay writes.
 class SessionHttpClient extends http.BaseClient {
-  SessionHttpClient(this.session);
+  SessionHttpClient(this.session) : _generation = session.generation;
   final RestSession session;
+  final int _generation;
   bool _closed = false;
 
   @override
@@ -242,7 +243,10 @@ class SessionHttpClient extends http.BaseClient {
     if (_closed || !belongsToApi(session.api.baseUri, request.url)) {
       throw const ApiException('La solicitud no pertenece a la API configurada.', code: 'CONFIGURATION');
     }
-    final generation = session.generation;
+    final generation = _generation;
+    if (generation != session.generation) {
+      throw const ApiException('La sesión cambió.', code: 'SESSION_CHANGED');
+    }
     final bytes = await request.finalize().toBytes();
     for (var attempt = 0; attempt < 2; attempt++) {
       final token = await session.accessToken();
