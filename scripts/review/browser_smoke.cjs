@@ -95,7 +95,7 @@ fs.mkdirSync(output, { recursive: true });
     await page.getByRole('button',{name:'Guardar precio',exact:true}).click();
     await page.getByRole('switch',{name:/Producto creado por el equipo.*\$54\.00/s}).waitFor();
     await page.getByRole('button',{name:/Cocina/}).click();
-    await page.getByRole('switch').click();
+    await page.getByRole('switch',{name:'Recibir pedidos',exact:true}).click();
     await label('Recibiendo pedidos').waitFor();
     const ticketResponse=page.waitForResponse(r=>r.url().endsWith('/api/v1/review/orders')&&r.request().method()==='POST');
     await page.getByRole('button',{name:'Recibir pedido de prueba',exact:true}).click();

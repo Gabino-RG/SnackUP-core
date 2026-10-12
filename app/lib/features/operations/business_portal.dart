@@ -278,15 +278,18 @@ class _BusinessPortalState extends State<BusinessPortal>
                       ),
                     ),
                     if (b != null)
-                      Switch(
-                        value: b.isOpen,
-                        onChanged:
-                            _kitchen.stale ||
-                                _kitchen.updatingBusiness ||
-                                !b.isActive
-                            ? null
-                            : _open,
-                        activeColor: AdminColors.teal,
+                      Semantics(
+                        label: 'Recibir pedidos',
+                        child: Switch(
+                          value: b.isOpen,
+                          onChanged:
+                              _kitchen.stale ||
+                                  _kitchen.updatingBusiness ||
+                                  !b.isActive
+                              ? null
+                              : _open,
+                          activeColor: AdminColors.teal,
+                        ),
                       ),
                   ],
                 ),
