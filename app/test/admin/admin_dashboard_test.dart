@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:snackup/features/admin/admin_dashboard_screen.dart';
 import 'package:snackup/features/admin/followup_dialog.dart';
 import 'package:snackup/features/admin/data/admin_repository.dart';
+import 'package:snackup/features/admin/data/demo_admin_repository.dart';
 import 'package:snackup/features/admin/domain/admin_models.dart';
 
 class PartialRepository extends DemoAdminRepository {

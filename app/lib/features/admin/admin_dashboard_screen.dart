@@ -7,8 +7,8 @@ import 'domain/admin_models.dart';
 import 'followup_dialog.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
-  const AdminDashboardScreen({super.key, this.repository, this.onSignOut});
-  final AdminRepository? repository;
+  const AdminDashboardScreen({super.key, required this.repository, this.onSignOut});
+  final AdminRepository repository;
   final VoidCallback? onSignOut;
   @override
   State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
@@ -29,7 +29,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   @override
   void initState() {
     super.initState();
-    _repository = widget.repository ?? FirebaseAdminRepository();
+    _repository = widget.repository;
     _load(reset: true);
   }
 

@@ -1,0 +1,166 @@
+import 'package:flutter/material.dart';
+import '../../api/api_client.dart';
+import '../../api/rest_session.dart';
+import '../../catalog/rest_catalog_repository.dart';
+import '../catalog/catalog_screen.dart';
+import '../admin/admin_dashboard_screen.dart';
+import '../admin/admin_theme.dart';
+import '../admin/data/rest_admin_repository.dart';
+
+class RestPortalApp extends StatefulWidget {
+  const RestPortalApp({super.key, required this.session, this.restoreOnStart = true,
+    this.businessBuilder, this.adminBuilder});
+  final RestSession session;
+  final bool restoreOnStart;
+  final Widget Function(PortalAccount)? businessBuilder, adminBuilder;
+  @override
+  State<RestPortalApp> createState() => _RestPortalAppState();
+}
+
+class _RestPortalAppState extends State<RestPortalApp> {
+  late final SessionHttpClient _client;
+  late final RestCatalogRepository _catalog;
+  late final RestAdminRepository _admin;
+  @override
+  void initState() {
+    super.initState();
+    _client = SessionHttpClient(widget.session);
+    _catalog = RestCatalogRepository(baseUri: widget.session.api.baseUri,
+      client: _client, accessToken: widget.session.accessToken);
+    _admin = RestAdminRepository(ApiClient(baseUri: widget.session.api.baseUri, client: _client));
+    if (widget.restoreOnStart) widget.session.restore();
+  }
+  @override
+  void dispose() { _client.close(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: widget.session,
+    builder: (context, _) {
+      final session = widget.session;
+      final account = session.account;
+      final authenticated = session.phase == PortalSessionPhase.authenticated && account != null;
+      // Replacing the root Navigator removes every protected route and dialog.
+      final navigationKey = authenticated ? 'private:${session.generation}:${account.identity}' : 'public';
+      final Widget home;
+      if (session.phase == PortalSessionPhase.restoring || session.phase == PortalSessionPhase.signingOut) {
+        home = const Scaffold(body: Center(child: CircularProgressIndicator()));
+      } else if (session.phase == PortalSessionPhase.unavailable) {
+        home = _AccessNotice(message: session.message ?? 'No se pudo contactar con el servidor.',
+          action: 'Reintentar conexión', onAction: session.restore);
+      } else if (authenticated && account.isBusiness) {
+        home = widget.businessBuilder?.call(account) ?? CatalogScreen(
+          businessId: account.businessId!, repository: _catalog, onSignOut: session.signOut);
+      } else if (authenticated && account.isAdmin) {
+        home = widget.adminBuilder?.call(account) ?? AdminDashboardScreen(
+          repository: _admin, onSignOut: session.signOut);
+      } else if (authenticated) {
+        home = _AccessNotice(
+          message: account.role == 'business'
+            ? 'Tu cuenta todavía no tiene un local asignado. Solicita la asignación a administración.'
+            : 'Este acceso es para negocios y administración. Tu cuenta no tiene un rol habilitado para estos paneles.',
+          action: 'Cerrar sesión', onAction: session.signOut);
+      } else {
+        home = _PortalLogin(session: session);
+      }
+      return MaterialApp(key: ValueKey(navigationKey), title: 'SnackUP · Paneles',
+        debugShowCheckedModeBanner: false, theme: adminTheme(), home: home);
+    },
+  );
+}
+
+class _AccessNotice extends StatelessWidget {
+  const _AccessNotice({required this.message, required this.action, required this.onAction});
+  final String message, action;
+  final VoidCallback onAction;
+  @override
+  Widget build(BuildContext context) => Scaffold(body: SafeArea(child: Center(child: Padding(
+    padding: const EdgeInsets.all(24), child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 480),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        const Icon(Icons.info_outline, size: 38, color: AdminColors.navy),
+        const SizedBox(height: 20), Text(message, textAlign: TextAlign.center),
+        const SizedBox(height: 24), FilledButton(onPressed: onAction, child: Text(action)),
+      ])),
+  ))));
+}
+
+class _PortalLogin extends StatefulWidget {
+  const _PortalLogin({required this.session});
+  final RestSession session;
+  @override
+  State<_PortalLogin> createState() => _PortalLoginState();
+}
+
+class _PortalLoginState extends State<_PortalLogin> {
+  final _form = GlobalKey<FormState>();
+  final _email = TextEditingController(), _password = TextEditingController();
+  bool _hidePassword = true, _recovering = false;
+  String? _notice;
+  bool get _busy => _recovering || widget.session.phase == PortalSessionPhase.signingIn || widget.session.logoutPending;
+  @override
+  void dispose() { _email.dispose(); _password.dispose(); super.dispose(); }
+
+  Future<void> _submit() async {
+    if (_busy || !_form.currentState!.validate()) return;
+    setState(() => _notice = null);
+    await widget.session.signIn(_email.text, _password.text);
+  }
+  Future<void> _recover() async {
+    if (_busy) return;
+    setState(() { _recovering = true; _notice = null; });
+    try {
+      await widget.session.forgotPassword(_email.text);
+      if (mounted) setState(() => _notice = 'Si el correo tiene una cuenta, recibirás las instrucciones para recuperar el acceso.');
+    } catch (error) {
+      if (mounted) setState(() => _notice = error is ApiException ? error.message : 'No se pudo solicitar la recuperación.');
+    } finally { if (mounted) setState(() => _recovering = false); }
+  }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: AdminColors.background,
+    body: SafeArea(child: Center(child: SingleChildScrollView(padding: const EdgeInsets.all(24),
+      child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 430),
+        child: Card(child: Padding(padding: const EdgeInsets.all(28), child: Form(key: _form,
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+            const Icon(Icons.restaurant_rounded, size: 42, color: AdminColors.navy),
+            const SizedBox(height: 16),
+            const Text('Acceso a SnackUP', textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: AdminColors.navy)),
+            const SizedBox(height: 8),
+            const Text('Negocios y administración', textAlign: TextAlign.center),
+            const SizedBox(height: 30),
+            TextFormField(key: const ValueKey('portal-email'), controller: _email,
+              enabled: !_busy, keyboardType: TextInputType.emailAddress,
+              autofillHints: const [AutofillHints.username], textInputAction: TextInputAction.next,
+              decoration: const InputDecoration(labelText: 'Correo electrónico', border: OutlineInputBorder()),
+              validator: (v) => RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(v?.trim() ?? '')
+                ? null : 'Escribe un correo válido.'),
+            const SizedBox(height: 18),
+            TextFormField(key: const ValueKey('portal-password'), controller: _password,
+              enabled: !_busy, obscureText: _hidePassword, autocorrect: false, enableSuggestions: false,
+              autofillHints: const [AutofillHints.password], onFieldSubmitted: (_) => _submit(),
+              decoration: InputDecoration(labelText: 'Contraseña', border: const OutlineInputBorder(),
+                suffixIcon: IconButton(tooltip: _hidePassword ? 'Mostrar contraseña' : 'Ocultar contraseña',
+                  onPressed: _busy ? null : () => setState(() => _hidePassword = !_hidePassword),
+                  icon: Icon(_hidePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined))),
+              validator: (v) => v == null || v.isEmpty ? 'Escribe tu contraseña.' : null),
+            if (widget.session.message != null) Padding(padding: const EdgeInsets.only(top: 16),
+              child: Text(widget.session.message!, style: const TextStyle(color: AdminColors.red))),
+            if (_notice != null) Padding(padding: const EdgeInsets.only(top: 16), child: Text(_notice!)),
+            const SizedBox(height: 24),
+            FilledButton(key: const ValueKey('portal-login'), onPressed: _busy ? null : _submit,
+              child: Text(widget.session.phase == PortalSessionPhase.signingIn ? 'Comprobando acceso…' : 'Entrar')),
+            if (widget.session.logoutPending) OutlinedButton(
+              onPressed: widget.session.signOut, child: const Text('Reintentar cierre de sesión')),
+            TextButton(onPressed: _busy ? null : _recover,
+              child: Text(_recovering ? 'Enviando solicitud…' : 'Olvidé mi contraseña')),
+            const SizedBox(height: 12),
+            const Text('Utiliza la cuenta que te asignó administración.', textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 12, color: AdminColors.muted)),
+          ]),
+        ))),
+      ),
+    ))),
+  );
+}

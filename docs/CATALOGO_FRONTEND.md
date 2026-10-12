@@ -41,6 +41,10 @@ navegador; se informa el error y no se confirma un guardado fallido.
 
 ## Conectar con la API del equipo
 
+El arranque `BACKEND=rest` ya compone este adaptador con la sesión de la API.
+Consultar [PORTAL_API_LOCAL.md](./PORTAL_API_LOCAL.md) para login, roles,
+configuración del servidor y conexión del panel administrativo.
+
 El adaptador RestCatalogRepository recibe:
 
 - baseUri: URL de la API local, incluyendo /api/v1/.
@@ -142,8 +146,9 @@ Prueba de aceptación a acordar con el equipo:
   con el equipo según hardware y red; no se presentan como resultados.
 
 No se ejecutó una prueba con 500 usuarios ni se modificó una base SQL desde
-este módulo. La integración de autenticación REST general, pedidos en tiempo
-real y el panel administrativo continúa dentro del plan del proyecto.
+este módulo. El acceso REST y el adaptador administrativo están implementados
+en el portal descrito arriba. Quedan pendientes los pedidos en tiempo real y
+la verificación de todos los recorridos contra el backend SQL real.
 
 ## Compatibilidad con la aplicación anterior
 

@@ -24,6 +24,8 @@ class _FollowupDialogState extends State<FollowupDialog> {
   FollowupHistory _history = const FollowupHistory([]);
   bool _loading = true, _saving = false, _loaded = false;
   String? _error;
+  int? _version;
+  bool _conflict = false;
   @override
   void initState() {
     super.initState();
@@ -48,6 +50,8 @@ class _FollowupDialogState extends State<FollowupDialog> {
       if (!mounted) return;
       setState(() {
         _status = followup.status;
+        _version = followup.version;
+        _conflict = false;
         _assignee.text = followup.assignee;
         _history = history;
         _loading = false;
@@ -65,7 +69,7 @@ class _FollowupDialogState extends State<FollowupDialog> {
   }
 
   Future<void> _save() async {
-    if (!_form.currentState!.validate()) return;
+    if (_saving || !_loaded || !_form.currentState!.validate()) return;
     setState(() {
       _saving = true;
       _error = null;
@@ -76,17 +80,18 @@ class _FollowupDialogState extends State<FollowupDialog> {
       status: _status,
       assignee: _assignee.text.trim(),
       note: _note.text.trim(),
-      updatedAt: DateTime.now().toUtc(),
+      version: _version,
     );
     try {
-      await widget.repository.saveFollowup(update);
-      if (mounted) Navigator.pop(context, update);
-    } catch (_) {
+      final saved = await widget.repository.saveFollowup(update);
+      if (mounted) Navigator.pop(context, saved);
+    } catch (error) {
       if (mounted) {
         setState(() {
           _saving = false;
-          _error =
-              'No se guardó el seguimiento. Revisa tu conexión y permisos e inténtalo de nuevo.';
+          _conflict = error is AdminDataException && error.code == 'VERSION_CONFLICT';
+          _error = error is AdminDataException ? error.message :
+              'No se pudo confirmar el guardado. Actualiza el caso para comprobar el resultado antes de repetir.';
         });
       }
     }
@@ -179,10 +184,10 @@ class _FollowupDialogState extends State<FollowupDialog> {
                       ),
                     ),
                   ),
-                if (_error != null && !_loaded)
+                if (_error != null && (!_loaded || _conflict))
                   TextButton(
-                    onPressed: _load,
-                    child: const Text('Volver a cargar'),
+                    onPressed: _saving ? null : _load,
+                    child: Text(_conflict ? 'Actualizar caso y conservar mi nota' : 'Volver a cargar'),
                   ),
                 DropdownButtonFormField<FollowupStatus>(
                   value: _status,

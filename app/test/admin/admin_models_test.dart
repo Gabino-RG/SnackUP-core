@@ -1,6 +1,8 @@
+import 'package:snackup/features/admin/data/firebase_admin_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:snackup/features/admin/domain/admin_models.dart';
 import 'package:snackup/features/admin/data/admin_repository.dart';
+import 'package:snackup/features/admin/data/demo_admin_repository.dart';
 
 void main() {
   test('global mean weights each individual opinion, not each business', () {

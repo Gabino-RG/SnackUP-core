@@ -77,6 +77,7 @@ class AdminFollowup {
     this.assignee = '',
     this.note = '',
     this.updatedAt,
+    this.version,
   });
   final String reviewId;
   final String businessId;
@@ -84,6 +85,7 @@ class AdminFollowup {
   final String assignee;
   final String note;
   final DateTime? updatedAt;
+  final int? version;
 }
 
 class FollowupHistory {

@@ -1,5 +1,10 @@
 # SnackUP: aplicación integrada
 
+> Arquitectura objetivo actual: API y SQL en servidor local. La entrada REST
+> de negocios y administración se describe en [PORTAL_API_LOCAL.md](./PORTAL_API_LOCAL.md).
+> Este documento conserva la integración Firebase anterior y sus requisitos;
+> no describe un despliegue SQL ya completado.
+
 La entrada de la aplicación es `app/lib/main.dart`. Alumno, negocio y administración comparten Firebase Authentication, Firestore, los pedidos y las reseñas del proyecto ya configurado `snackup-8fe96`. El paquete de PC se construye desde esa entrada; no abre `main_admin_demo.dart` ni inserta locales u opiniones ficticias.
 
 El código se trabaja en `test/api-aaa-sonarqube`. No se ha publicado esta revisión en Firebase ni modificado `main`.

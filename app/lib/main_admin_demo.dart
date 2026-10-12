@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'features/admin/admin_dashboard_screen.dart';
 import 'features/admin/admin_theme.dart';
 import 'features/admin/data/admin_repository.dart';
+import 'features/admin/data/demo_admin_repository.dart';
 
 // Standalone offline preview: deliberately does not initialize Firebase.
 void main() => runApp(const SnackUpAdminDemo());

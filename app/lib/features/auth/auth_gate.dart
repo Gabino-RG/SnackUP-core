@@ -5,6 +5,7 @@ import 'role_selection_screen.dart';
 import '../home/user_dashboard_screen.dart';
 import '../home/business_home_screen.dart';
 import '../admin/admin_dashboard_screen.dart';
+import '../admin/data/firebase_admin_repository.dart';
 
 /// The root of all authenticated navigation; entry forms never choose a role.
 class AuthWrapper extends StatefulWidget {
@@ -163,7 +164,7 @@ class _RoleGateState extends State<RoleGate> {
         return _resolved(
           'admin',
           widget.adminBuilder?.call(context) ??
-              AdminDashboardScreen(onSignOut: _signOut),
+              AdminDashboardScreen(repository: FirebaseAdminRepository(), onSignOut: _signOut),
         );
       }
       return StreamBuilder<Map<String, dynamic>?>(

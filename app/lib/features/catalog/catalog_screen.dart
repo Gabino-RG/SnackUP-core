@@ -42,9 +42,10 @@ class ProductImage extends StatelessWidget {
 }
 
 class CatalogScreen extends StatefulWidget {
-  const CatalogScreen({super.key, required this.businessId, required this.repository});
+  const CatalogScreen({super.key, required this.businessId, required this.repository, this.onSignOut});
   final String businessId;
   final CatalogRepository repository;
+  final VoidCallback? onSignOut;
   @override
   State<CatalogScreen> createState() => _CatalogScreenState();
 }
@@ -138,6 +139,8 @@ class _CatalogScreenState extends State<CatalogScreen> {
       actions: [IconButton(
         tooltip: 'Actualizar catálogo', onPressed: _loading ? null : _load,
         icon: const Icon(Icons.refresh),
+      ), if (widget.onSignOut != null) IconButton(
+        tooltip: 'Cerrar sesión', onPressed: widget.onSignOut, icon: const Icon(Icons.logout),
       )],
     ),
     body: Column(children: [

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'app_bootstrap.dart';
+import 'main_portal_api.dart' show runApiPortal;
 import 'catalog/catalog.dart';
 import 'catalog/firebase_catalog_repository.dart';
 import 'utils/reload_stub.dart'
@@ -14,6 +15,10 @@ import 'theme/app_colors.dart';
 import 'theme/app_text.dart';
 
 void main() {
+  if (const String.fromEnvironment('BACKEND', defaultValue: 'firebase') == 'rest') {
+    runApiPortal();
+    return;
+  }
   WidgetsFlutterBinding.ensureInitialized();
   runApp(
     AppBootstrap(
