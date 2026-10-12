@@ -8,7 +8,7 @@ import threading
 import unittest
 import urllib.error
 import urllib.request
-from review_server import ReviewServer, Store, PASSWORD
+from review_server import ReviewServer, Store, PASSWORD, REVIEW_LOCAL_EMAIL, REVIEW_LOCAL_ID, hash_password
 
 class Client:
     def __init__(self,url):
@@ -25,7 +25,7 @@ class Client:
 class ReviewTests(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.root=Path(self.temp.name);(self.root/'web').mkdir();(self.root/'web'/'index.html').write_text('ok')
-        self.server=ReviewServer(('127.0.0.1',0),self.root/'web',self.root/'data');self.server.store.seed_test_fixtures();self.server.store.migrate_institution();self.thread=threading.Thread(target=self.server.serve_forever,daemon=True);self.thread.start()
+        self.server=ReviewServer(('127.0.0.1',0),self.root/'web',self.root/'data',ready_local=False);self.server.store.seed_test_fixtures();self.server.store.migrate_institution();self.thread=threading.Thread(target=self.server.serve_forever,daemon=True);self.thread.start()
         self.client=Client(f'http://127.0.0.1:{self.server.server_port}');self.client.login()
     def tearDown(self):
         self.server.shutdown();self.server.server_close();self.thread.join();self.server.store.db.close();self.temp.cleanup()
@@ -153,7 +153,7 @@ class ReviewTests(unittest.TestCase):
 class AccessFlowTests(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.root=Path(self.temp.name);(self.root/'web').mkdir();(self.root/'web'/'index.html').write_text('ok')
-        self.server=ReviewServer(('127.0.0.1',0),self.root/'web',self.root/'data');self.thread=threading.Thread(target=self.server.serve_forever,daemon=True);self.thread.start()
+        self.server=ReviewServer(('127.0.0.1',0),self.root/'web',self.root/'data',ready_local=False);self.thread=threading.Thread(target=self.server.serve_forever,daemon=True);self.thread.start()
         self.client=Client(f'http://127.0.0.1:{self.server.server_port}')
         self.master=Client(self.client.url);self.master.login('admin@snackup.test')
     tearDown=ReviewTests.tearDown
@@ -164,7 +164,7 @@ class AccessFlowTests(unittest.TestCase):
         return self.master.call('GET','admin/access-requests')[1]['data'][0]
     def local(self):
         return self.master.call('POST','admin/businesses',{'name':'Local creado por el equipo','category':'Comida','isActive':True})[1]
-    def test_fresh_install_has_only_master_and_no_invented_records(self):
+    def test_store_without_review_bootstrap_has_only_master(self):
         store=self.server.store
         self.assertEqual([u['id'] for u in store.rows('users')],['admin'])
         for kind in ('businesses','products','orders','reviews','academic_catalog'):
@@ -286,5 +286,69 @@ class AccessFlowTests(unittest.TestCase):
         self.assertEqual(len(s.rows('retired_example_accounts')),4)
         self.assertEqual(s.get('products','central-p1')['price'],321.5)
         self.assertEqual(s.get('users','user-created')['passwordHash'],'preserved')
+
+class ReadyLocalTests(unittest.TestCase):
+    def setUp(self):
+        self.temp=tempfile.TemporaryDirectory();self.root=Path(self.temp.name);(self.root/'web').mkdir();(self.root/'web'/'index.html').write_text('ok')
+        self.server=ReviewServer(('127.0.0.1',0),self.root/'web',self.root/'data')
+        self.thread=threading.Thread(target=self.server.serve_forever,daemon=True);self.thread.start()
+        self.client=Client(f'http://127.0.0.1:{self.server.server_port}');self.client.login(REVIEW_LOCAL_EMAIL)
+        self.master=Client(self.client.url);self.master.login('admin@snackup.test')
+    tearDown=ReviewTests.tearDown
+    def test_local_is_ready_before_any_administration_and_roles_stay_separate(self):
+        store=self.server.store
+        self.assertEqual({u['email'] for u in store.rows('users')},{'admin@snackup.test',REVIEW_LOCAL_EMAIL})
+        self.assertEqual([b['id'] for b in store.rows('businesses')],[REVIEW_LOCAL_ID])
+        _,profile=self.client.call('GET','users/me')
+        self.assertEqual((profile['role'],profile['isMaster'],profile['businessId']),('business',False,REVIEW_LOCAL_ID))
+        for path in ('admin/businesses','admin/users','admin/access-requests','admin/reviews'):
+            self.assertEqual(self.client.call('GET',path)[0],403)
+        for path in ('businesses/'+REVIEW_LOCAL_ID,'businesses/'+REVIEW_LOCAL_ID+'/products','businesses/'+REVIEW_LOCAL_ID+'/orders/active'):
+            self.assertEqual(self.client.call('GET',path)[0],200)
+            self.assertEqual(self.master.call('GET',path)[0],403)
+        for kind in ('products','orders','reviews','academic_catalog'):self.assertEqual(store.rows(kind),[])
+        status,p=self.client.call('POST','businesses/'+REVIEW_LOCAL_ID+'/products',{'name':'Producto propio','category':'Comida','price':40,'isAvailable':True,'isFeatured':False})
+        self.assertEqual(status,201)
+        self.assertEqual(self.client.call('PATCH','products/'+p['id'],{**p,'price':45,'expectedVersion':p['version']})[0],200)
+        self.assertEqual(self.client.call('PATCH','businesses/'+REVIEW_LOCAL_ID+'/status',{'isOpen':True,'expectedVersion':1})[0],200)
+        _,ticket=self.client.call('POST','review/orders',{'businessId':REVIEW_LOCAL_ID})
+        _,active=self.client.call('GET','businesses/'+REVIEW_LOCAL_ID+'/orders/active');order=active['data'][0]
+        self.assertEqual(order['status'],'pending')
+        for action in ('accept','start','ready'):
+            status,order=self.client.call('POST','orders/'+order['id']+'/'+action,{'expectedVersion':order['version']});self.assertEqual(status,200)
+        status,order=self.client.call('POST','orders/'+order['id']+'/complete',{'expectedVersion':order['version'],'method':'manual','code':ticket['pickupCode']})
+        self.assertEqual(status,200);self.assertEqual(order['status'],'completed')
+    def test_restart_preserves_edits_password_and_suspension(self):
+        s=self.server.store
+        with s.lock,s.db:
+            b=s.get('businesses',REVIEW_LOCAL_ID);s.bump('businesses',b,{'name':'Mi local editado'})
+            u=s.get('users','review-operator');s.bump('users',u,{'isActive':False,'passwordHash':hash_password('Clave-Nueva-123')})
+        before={kind:s.rows(kind) for kind in ('users','businesses')}
+        other=Store(s.path)
+        try:
+            other.ensure_review_local();self.assertEqual(before,{kind:other.rows(kind) for kind in before})
+        finally:other.db.close()
+        self.assertEqual(self.client.call('GET','users/me')[0],403)
+    def test_upgrade_adds_only_the_review_access_and_preserves_existing_work(self):
+        s=Store(self.root/'upgrade'/'revision.sqlite3')
+        try:
+            with s.db:
+                s.put('businesses',{'id':'existing','name':'Local del equipo','isActive':True,'version':3})
+                s.put('products',{'id':'existing-product','businessId':'existing','price':123.45,'version':7})
+            before=s.rows('products');s.ensure_review_local();s.ensure_review_local()
+            self.assertEqual(s.rows('products'),before)
+            self.assertEqual(s.get('businesses','existing')['version'],3)
+            self.assertEqual(len(s.rows('businesses')),2)
+            self.assertEqual(len(s.rows('users')),2)
+        finally:s.db.close()
+    def test_existing_email_is_never_overwritten_or_promoted(self):
+        s=Store(self.root/'collision'/'revision.sqlite3')
+        try:
+            with s.db:
+                s.put('users',{'id':'custom','email':REVIEW_LOCAL_EMAIL,'role':'business','businessId':'custom-local',
+                    'isActive':False,'isMaster':False,'passwordHash':hash_password('Clave-Del-Equipo-123'),'version':4})
+            before=s.rows('users');s.ensure_review_local()
+            self.assertEqual(s.rows('users'),before);self.assertEqual(s.rows('businesses'),[])
+        finally:s.db.close()
 
 if __name__=='__main__':unittest.main()

@@ -26,6 +26,8 @@ import webbrowser
 from datetime import datetime, timedelta, timezone
 
 PASSWORD = 'SnackUP-Prueba-2026'
+REVIEW_LOCAL_EMAIL = 'negocio@snackup.test'
+REVIEW_LOCAL_ID = 'review-local'
 ACTIVE = {'pending', 'accepted', 'preparing', 'ready'}
 REASONS = {'product_unavailable', 'cannot_prepare', 'store_issue', 'store_closing', 'other'}
 UTC = timezone.utc
@@ -116,6 +118,24 @@ class Store:
         require(type(body.get('expectedVersion')) is int and body['expectedVersion']==record['version'],409,'VERSION_CONFLICT')
     def configuration(self):
         return self.get('configuration','institution')
+    def ensure_review_local(self):
+        # Review package only: one immediately usable operator, never four real accounts.
+        # Apply once. A later password/assignment/suspension by the master is preserved.
+        with self.lock,self.db:
+            if any(r['id']=='ready-local-v5' for r in self.rows('migrations')):return
+            users=self.rows('users')
+            if not any(u['email']==REVIEW_LOCAL_EMAIL or u['id']=='review-operator' for u in users):
+                cafeteria=self.configuration()['cafeteria']
+                bid=REVIEW_LOCAL_ID
+                if any(b['id']==bid for b in self.rows('businesses')):bid=new_id()
+                self.put('businesses',{'id':bid,'name':'Local de prueba','category':'Cafetería',
+                    'description':'Local de revisión para probar Cocina, Productos, Historial y Resumen.',
+                    'cafeteriaId':cafeteria['id'],'cafeteriaName':cafeteria['name'],'timezone':'America/Mexico_City',
+                    'isOpen':False,'isActive':True,'version':1,'createdAt':now(),'updatedAt':now()})
+                self.put('users',{'id':'review-operator','email':REVIEW_LOCAL_EMAIL,'displayName':'Operador de prueba',
+                    'role':'business','businessId':bid,'isActive':True,'isMaster':False,'approvalStatus':'approved',
+                    'provider':'local','version':1,'passwordHash':hash_password(PASSWORD),'createdAt':now(),'updatedAt':now()})
+            self.put('migrations',{'id':'ready-local-v5','appliedAt':now()})
     def migrate_institution(self):
         # Additive and idempotent: never reset passwords, products or reviewed data.
         if any(r['id']=='institution-v2' for r in self.rows('migrations')):return
@@ -551,8 +571,9 @@ class ReviewHandler(http.server.SimpleHTTPRequestHandler):
 class ReviewServer(http.server.ThreadingHTTPServer):
     allow_reuse_address=False
     daemon_threads=True
-    def __init__(self,address,web_root,data_dir):
+    def __init__(self,address,web_root,data_dir,*,ready_local=True):
         self.web_root=Path(web_root).resolve();self.data_dir=Path(data_dir).resolve();self.store=Store(self.data_dir/'revision.sqlite3')
+        if ready_local:self.store.ensure_review_local()
         super().__init__(address,ReviewHandler)
     def server_bind(self):
         if sys.platform=='win32' and hasattr(socket,'SO_EXCLUSIVEADDRUSE'):self.socket.setsockopt(socket.SOL_SOCKET,socket.SO_EXCLUSIVEADDRUSE,1)
@@ -569,7 +590,7 @@ def main():
     except OSError:print('No se pudo abrir el puerto. Cierra la otra instancia de SnackUP e intenta nuevamente.');return 1
     url=f'http://localhost:{server.server_port}/'
     print('\nSNACKUP | REVISION DE NEGOCIOS Y ADMINISTRACION\nDatos de prueba persistentes en esta PC.\nNo es el backend de producción.\n',flush=True)
-    print(url+'\nCuenta maestra: admin@snackup.test\nContraseña de prueba: '+PASSWORD+'\n\nMantén esta ventana abierta. Ctrl+C para terminar.\n',flush=True)
+    print(url+'\nCocina / Local: '+REVIEW_LOCAL_EMAIL+'\nAdministración / Cuenta maestra: admin@snackup.test\nContraseña de prueba: '+PASSWORD+'\n\nCada cuenta abre exclusivamente su panel.\nMantén esta ventana abierta. Ctrl+C para terminar.\n',flush=True)
     if not args.no_browser:
         try:
             if sys.platform=='win32':os.startfile(url)

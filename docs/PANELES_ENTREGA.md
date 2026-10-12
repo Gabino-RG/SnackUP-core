@@ -6,19 +6,23 @@ Paquete de revisión local para Windows 10/11 de 64 bits. El frontend web utiliz
 
 Extrae todo `SnackUP-Paneles-PC.zip` y ejecuta `INICIAR_SNACKUP.cmd`. Se abre `http://localhost:8791/`. Mantén la consola abierta. No necesitas instalar Flutter, Python o Git.
 
-La **única cuenta inicial** es `admin@snackup.test`, contraseña `SnackUP-Prueba-2026`. Es la cuenta maestra de revisión. Una instalación nueva no crea locales, operadores, productos, pedidos, opiniones ni grupos. La universidad y su cafetería son la configuración institucional; sus locales los crea el equipo.
+**El panel del local ya está listo para entrar.** Pulsa **Entrar al local de prueba** o usa `negocio@snackup.test` con contraseña `SnackUP-Prueba-2026`. No requiere crear primero un local ni pasar por Administración.
+
+El paquete de revisión incluye exactamente un **Local de prueba** con una cuenta operadora propia y la cuenta maestra `admin@snackup.test` (misma contraseña de prueba). No se crean los cuatro locales reales ni productos, pedidos, opiniones o grupos. El equipo conserva el alta de sus locales reales y cuentas adicionales.
 
 ## Dos paneles separados
 
 El correo y la contraseña identifican una cuenta; el servidor determina su panel. **Administración, incluida la cuenta maestra, no puede entrar a Cocina ni operar productos o pedidos. Las cuentas de los locales no pueden entrar a Administración ni operar otro local.** La separación se aplica en las pantallas y en cada petición de la API; no hay cambio de panel ni suplantación de operadores.
 
-Para probar el panel del local:
+Para probar el panel del local, usa **Entrar al local de prueba**. Abre directamente Cocina, Productos, Historial, Resumen y Mi local con una sesión `business` normal validada por la API.
+
+Para crear cuentas adicionales:
 
 1. Entra con la cuenta maestra. En **Gestionar locales y cuentas**, pulsa **Agregar local** si todavía no existe.
 2. Vuelve a Administración y pulsa **Crear cuenta**. Selecciona **Local de cafetería**, asigna ese local e introduce el nombre, correo y contraseña que ustedes decidan. Guarda.
 3. **Cierra sesión** y entra con la nueva cuenta del local. Verás Cocina, Productos, Historial, Resumen y Mi local.
 
-La cuenta maestra conserva la gestión de accesos. No se crean cuentas de operadores automáticamente. Los locales inactivos permanecen bloqueados.
+La cuenta maestra conserva la gestión de accesos. El único acceso operativo preparado es el del Local de prueba. Las cuentas nuevas siguen sujetas a autorización y los locales inactivos permanecen bloqueados.
 
 ## Solicitar y autorizar acceso
 
@@ -53,7 +57,9 @@ El canal WebSocket agrupa avisos y recarga REST; sin conexión en vivo consulta 
 
 Cierra SnackUP y respalda la carpeta `datos/` completa antes de actualizar. Extrae el ZIP en otra carpeta y copia allí `datos/`. La actualización retira a un archivo interno las cuentas automáticas conocidas (`owner`, `owner2`, `owner3`, `owner4` con sus correos originales) y revoca sus renovaciones. Conserva el maestro, cuentas creadas por ustedes, precios, productos, pedidos y demás trabajo. Si modificaste el correo de una cuenta antigua se conserva para no retirar por error una cuenta personalizada.
 
-Los datos anteriores no se borran automáticamente. Si quieres un arranque completamente vacío, renombra `datos/` como respaldo con la consola cerrada; al reiniciar solo aparece el maestro. No hay base de datos prellenada dentro del ZIP.
+El acceso al Local de prueba se agrega una sola vez al actualizar y no modifica locales, precios ni cuentas existentes. Los cambios posteriores a su contraseña, asignación o estado también se conservan. Si el correo `negocio@snackup.test` ya pertenece a una cuenta creada manualmente, se respeta esa cuenta y su contraseña; no se reemplaza ni se le conceden privilegios nuevos.
+
+Los datos anteriores no se borran automáticamente. Para comenzar de nuevo, renombra `datos/` como respaldo con la consola cerrada; al reiniciar aparecen el maestro y el Local de prueba. No hay base de datos prellenada dentro del ZIP.
 
 ## Integración
 
@@ -63,4 +69,4 @@ Consulta `CONTRATO_PANELES.md`. Se mantiene la rama `test/api-aaa-sonarqube`. Co
 flutter build web --no-web-resources-cdn --target lib/main.dart --dart-define=BACKEND=rest --output build/portal-api
 ```
 
-Sin `REVIEW_MODE` desaparecen la contraseña de ejemplo y el generador de pedidos. Por defecto utiliza `/api/v1/` en el mismo origen; `API_BASE_URL` permite configurar otro servidor al compilar. El navegador no se conecta directamente a SQL. El backend mantiene la autorización, transacciones, verificación de correos, OAuth, revocaciones y controles de capacidad. Los dominios institucionales y el catálogo académico se obtienen del backend; los grupos no se deducen de las opiniones.
+Sin `REVIEW_MODE` desaparecen el botón de acceso de prueba, las credenciales de ejemplo y el generador de pedidos. El alta del Local de prueba pertenece exclusivamente a `review_server.py`; el frontend no crea cuentas ni omite la autenticación. Por defecto utiliza `/api/v1/` en el mismo origen; `API_BASE_URL` permite configurar otro servidor al compilar. El navegador no se conecta directamente a SQL. El backend mantiene la autorización, transacciones, verificación de correos, OAuth, revocaciones y controles de capacidad. Los dominios institucionales y el catálogo académico se obtienen del backend; los grupos no se deducen de las opiniones.

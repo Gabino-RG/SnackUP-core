@@ -34,14 +34,20 @@ fs.mkdirSync(output, { recursive: true });
       await typeField('Contraseña',password);
       await page.getByRole('button',{name:'Entrar',exact:true}).click();
     }
-    // A fresh install contains only the master. All operational records below
-    // are created by this isolated CI test through the UI, never by the package.
+    // The review package has one ready local and a separate master account.
+    // Products and orders below are created only by this isolated UI test.
     await page.screenshot({path:path.join(output,'00-acceso-desktop.png')});
     for(const [width,height,name] of [[360,800,'00-acceso-movil.png'],[768,1024,'00-acceso-tablet.png']]) {
       await page.setViewportSize({width,height});
       await page.screenshot({path:path.join(output,name)});
     }
     await page.setViewportSize({width:1440,height:1050});
+    await page.getByRole('button',{name:'Entrar al local de prueba',exact:true}).click();
+    await page.getByText(/^Local de prueba\s+Cafetería universitaria$/).waitFor();
+    await page.getByRole('switch',{name:'Recibir pedidos',exact:true}).waitFor();
+    if(await page.getByRole('button',{name:'Gestionar locales y cuentas',exact:true}).count()) throw new Error('Ready local must not access administration');
+    await page.screenshot({path:path.join(output,'00-local-listo-sin-configurar.png')});
+    await page.getByRole('button',{name:'Cerrar sesión',exact:true}).click();
     await page.getByRole('button',{name:'Crea tu cuenta',exact:true}).click();
     await typeField('Nombre completo','Operador solicitado UI');
     await typeField('Correo electrónico','solicitado-ui@snackup.test');
@@ -57,8 +63,8 @@ fs.mkdirSync(output, { recursive: true });
     await page.getByRole('button',{name:'Gestionar locales y cuentas',exact:true}).waitFor();
     if(await page.getByRole('button',{name:'Entrar al panel del local',exact:true}).count()) throw new Error('Master must not enter the business panel');
     if(await page.getByRole('switch',{name:'Recibir pedidos',exact:true}).count()) throw new Error('Kitchen controls leaked into administration');
-    await label('Todavía no hay locales registrados.').waitFor();
-    await page.screenshot({path:path.join(output,'02-maestro-sin-datos.png')});
+    await label('Local de prueba').waitFor();
+    await page.screenshot({path:path.join(output,'02-maestro-separado.png')});
     await page.getByRole('button',{name:'Gestionar locales y cuentas',exact:true}).click();
     await page.getByRole('button',{name:'Agregar local',exact:true}).click();
     await typeField('Nombre del local','Local del equipo');
@@ -89,6 +95,10 @@ fs.mkdirSync(output, { recursive: true });
     for(const name of ['Volver a Administración','Gestionar locales y cuentas','Crear cuenta','Solicitudes de acceso']) {
       if(await page.getByRole('button',{name,exact:true}).count()) throw new Error('Administrative control leaked into business panel: '+name);
     }
+    // Exercise the actual ready-to-use login through the complete local workflow.
+    await page.getByRole('button',{name:'Cerrar sesión',exact:true}).click();
+    await page.getByRole('button',{name:'Entrar al local de prueba',exact:true}).click();
+    await page.getByText(/^Local de prueba\s+Cafetería universitaria$/).waitFor();
     await page.getByRole('button',{name:/Productos/}).click();
     await page.getByRole('button',{name:'Agregar',exact:true}).click();
     await typeField('Nombre del producto','Producto creado por el equipo');
@@ -126,7 +136,7 @@ fs.mkdirSync(output, { recursive: true });
     await page.getByRole('button',{name:'Confirmar entrega',exact:true}).click();
     await label('Listos (0)').waitFor();
     if(errors.length) throw new Error('Browser errors: '+errors.join('\n'));
-    fs.writeFileSync(path.join(output,'result.json'),JSON.stringify({passed:true,flows:['master-only start','master restricted to administration','local access request','pending denied login','master approval','business created by user','operator restricted to business panel','catalog create','price edit','explicit accept','prepare','ready','verified delivery','mobile 360','tablet 768','desktop 1440'],errors},null,2));
+    fs.writeFileSync(path.join(output,'result.json'),JSON.stringify({passed:true,flows:['ready local login before administration','master restricted to administration','local access request','pending denied login','master approval','business created by user','operator restricted to business panel','ready local catalog create','price edit','explicit accept','prepare','ready','verified delivery','mobile 360','tablet 768','desktop 1440'],errors},null,2));
     console.log('Integrated browser review passed');
   } catch(error) {
     await page.screenshot({path:path.join(output,'failure.png')}).catch(()=>{});

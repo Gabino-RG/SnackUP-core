@@ -306,6 +306,13 @@ class _PortalLoginState extends State<_PortalLogin> {
     await widget.session.signIn(_email.text, _password.text);
   }
 
+  Future<void> _enterReviewLocal() async {
+    if (!const bool.fromEnvironment('REVIEW_MODE') || _busy) return;
+    _email.text = 'negocio@snackup.test';
+    _password.text = 'SnackUP-Prueba-2026';
+    await _submit();
+  }
+
   Future<void> _recover() async {
     if (_busy) return;
     setState(() {
@@ -394,6 +401,23 @@ class _PortalLoginState extends State<_PortalLogin> {
                         'Cafetería universitaria · Locales y administración',
                         textAlign: TextAlign.center,
                       ),
+                      if (const bool.fromEnvironment('REVIEW_MODE')) ...[
+                        const SizedBox(height: 20),
+                        FilledButton.icon(
+                          onPressed: _busy ? null : _enterReviewLocal,
+                          icon: const Icon(Icons.restaurant_menu),
+                          label: const Text('Entrar al local de prueba'),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Cocina y productos listos para probar con una cuenta propia del local.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AdminColors.muted,
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 30),
                       TextFormField(
                         key: const ValueKey('portal-email'),
@@ -529,7 +553,7 @@ class _PortalLoginState extends State<_PortalLogin> {
                         const Padding(
                           padding: EdgeInsets.only(bottom: 12),
                           child: SelectableText(
-                            'Cuenta maestra (Administración): admin@snackup.test\nContraseña de prueba: SnackUP-Prueba-2026',
+                            'Local (Cocina): negocio@snackup.test\nCuenta maestra (Administración): admin@snackup.test\nContraseña de prueba para ambas: SnackUP-Prueba-2026',
                             textAlign: TextAlign.center,
                             style: TextStyle(fontSize: 12),
                           ),

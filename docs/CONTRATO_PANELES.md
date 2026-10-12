@@ -62,7 +62,7 @@ Estas extensiones deben implementarse en el backend definitivo. El proveedor de 
 }
 ```
 
-Una cafetería contiene los locales; la instalación nueva empieza sin locales ni cuentas de operadores. El equipo los crea, sin un límite de cuatro codificado. `POST admin/businesses` envía `cafeteriaId`; el servidor valida la pertenencia y devuelve también `cafeteriaName`.
+Una cafetería contiene los locales. El equipo crea los locales reales y sus cuentas, sin un límite de cuatro codificado. El paquete de revisión prepara un único Local de prueba con `negocio@snackup.test`, independiente de la cuenta maestra, para poder probar el panel de inmediato. Esta inicialización es exclusiva del servidor de revisión, se ejecuta una sola vez y no sobrescribe cuentas existentes. El backend productivo no debe generar ese acceso de prueba. `POST admin/businesses` envía `cafeteriaId`; el servidor valida la pertenencia y devuelve también `cafeteriaName`.
 
 El perfil de `GET users/me` agrega `isMaster:boolean`. Solo `role=admin` junto con `isMaster=true` habilita la gestión de cuentas. Sin esa marca no se concede el permiso. `GET/POST/PATCH admin/users` deben comprobar ambas condiciones en el servidor. Los demás administradores consultan opiniones y administran locales, sin administrar accesos. La cuenta maestra permanece activa y administrativa; no se puede crear/promover otra mediante estos formularios. El bootstrap inicial y cualquier recuperación del maestro pertenecen a un procedimiento administrativo del backend, fuera del registro público. No basta con conocer el correo ni modificar el frontend.
 
