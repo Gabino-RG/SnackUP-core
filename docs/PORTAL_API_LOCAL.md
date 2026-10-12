@@ -2,13 +2,13 @@
 
 Actualización de alcance: [entrega para PC](PANELES_ENTREGA.md) y [contrato completo de paneles](CONTRATO_PANELES.md).
 
-Actualización: 11 de octubre de 2026, hora de México.
+Actualización: 12 de octubre de 2026, hora de México.
 
 ## Estado del frontend
 
 | Área | Implementado en esta revisión | Pendiente de integración real |
 | --- | --- | --- |
-| Acceso web | Login, recuperación, restauración con cookie, renovación coordinada, cierre, rutas por perfil del servidor | Servidor de autenticación, cookie HTTPS y cuentas autorizadas |
+| Acceso web | Login, solicitud de cuenta, aprobación del maestro, recuperación, restauración con cookie, renovación coordinada y cierre | Autenticación real, verificación de correo, cookie HTTPS y proveedor Google OAuth |
 | Negocios | Catálogo completo con REST, imágenes, precio, stock, versión y paginación | Confirmar las rutas CRUD y probar contra SQL |
 | Administración | Monitor REST, seguimiento, historial y gestión de locales/cuentas | Aprobar extensiones de gestión, permisos y agregados oficiales |
 | Pedidos y cocina | Acciones v3, tablero, entrega QR/manual, cancelación, historial, resumen y WebSocket con consulta de respaldo | Validar contra backend definitivo y dispositivos reales |
@@ -24,7 +24,7 @@ Desde `app`, para desarrollo:
 
 ```bash
 flutter pub get
-flutter run -d chrome --dart-define=BACKEND=rest --dart-define=API_BASE_URL=https://servidor-del-campus.example/api/v1/
+flutter run -d chrome --dart-define=BACKEND=rest --dart-define=API_BASE_URL=https://servidor-de-la-universidad.example/api/v1/
 ```
 
 El dominio anterior es un ejemplo: sustituirlo por el servidor del equipo.
@@ -65,8 +65,9 @@ Se usa `api_v3_agnostica.md` para `/auth/login`, `/auth/refresh`, `/auth/logout`
 - `business` necesita un `businessId` válido asignado por el servidor.
   `admin` abre administración. Este último rol es una **extensión propuesta**:
   v3 solo enumera `user` y `business`; el backend debe aprobarlo e implementar
-  la autorización administrativa. No hay selector de rol ni registro público
-  de administradores en el portal.
+  la autorización administrativa. El registro público permite solicitar una
+  función; no concede permisos. Solo el maestro puede aprobar, asignar la
+  función efectiva y el local. Google también requiere esta aprobación.
 - Un rol distinto o un negocio sin asignación muestra una pantalla de acceso
   pendiente; no abre ninguno de los paneles.
 - Las solicitudes de una sesión no pueden enviar el bearer fuera del origen
