@@ -302,7 +302,8 @@ class ReviewHandler(http.server.SimpleHTTPRequestHandler):
     def master(self,user):
         self.admin(user);require(user.get('isMaster') is True,403,'MASTER_REQUIRED','Solo la cuenta maestra puede administrar accesos.')
     def business_access(self,user,bid):
-        require(user['role']=='business' and user.get('businessId')==bid,403,'FORBIDDEN')
+        master=user['role']=='admin' and user.get('isMaster') is True
+        require(master or (user['role']=='business' and user.get('businessId')==bid),403,'FORBIDDEN')
         require(self.server.store.get('businesses',bid)['isActive'],403,'ACCESS_REVOKED')
     def route(self,m,p,q,d):
         s=self.server.store
@@ -346,7 +347,9 @@ class ReviewHandler(http.server.SimpleHTTPRequestHandler):
             bid=text_field(d,'businessId');self.business_access(user,bid);order=s.new_order(bid)
             self.reply({'orderNumber':order['orderNumber'],'pickupCode':order['pickupCode']},201);return
         if p==['media'] and m=='POST':
-            require(user['role']=='business',403,'FORBIDDEN');self.business_access(user,user['businessId']);self.upload(d);return
+            if user['role']=='business':self.business_access(user,user['businessId'])
+            else:self.master(user)
+            self.upload(d);return
         if p and p[0]=='businesses':
             require(len(p)>=2,404,'NOT_FOUND');bid=p[1];self.business_access(user,bid);business=s.get('businesses',bid)
             if len(p)==2 and m=='GET':self.reply(business);return

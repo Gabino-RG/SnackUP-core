@@ -21,6 +21,7 @@ class BusinessPortal extends StatefulWidget {
     required this.repository,
     required this.token,
     required this.onSignOut,
+    this.onReturnToAdmin,
     this.enableRealtime = true,
   });
   final String businessId;
@@ -28,6 +29,7 @@ class BusinessPortal extends StatefulWidget {
   final OperationsRepository repository;
   final Future<String> Function() token;
   final VoidCallback onSignOut;
+  final VoidCallback? onReturnToAdmin;
   final bool enableRealtime;
   @override
   State<BusinessPortal> createState() => _BusinessPortalState();
@@ -212,11 +214,29 @@ class _BusinessPortalState extends State<BusinessPortal>
       final b = _kitchen.business;
       return Scaffold(
         appBar: AppBar(
-          title: Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-            Text(b?.name ?? 'SnackUP · Local',maxLines:1,overflow:TextOverflow.ellipsis),
-            Text(b?.cafeteriaName ?? 'Cafetería universitaria',maxLines:1,overflow:TextOverflow.ellipsis,
-              style:const TextStyle(fontSize:11,color:AdminColors.muted)),
-          ]),
+          leading: widget.onReturnToAdmin == null
+              ? null
+              : IconButton(
+                  tooltip: 'Volver a Administración',
+                  onPressed: widget.onReturnToAdmin,
+                  icon: const Icon(Icons.arrow_back),
+                ),
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                b?.name ?? 'SnackUP · Local',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              Text(
+                '${widget.onReturnToAdmin != null ? 'Cuenta maestra · ' : ''}${b?.cafeteriaName ?? 'Cafetería universitaria'}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 11, color: AdminColors.muted),
+              ),
+            ],
+          ),
           backgroundColor: Colors.white,
           actions: [
             IconButton(

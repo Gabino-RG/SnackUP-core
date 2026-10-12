@@ -185,6 +185,44 @@ class AccessFlowTests(unittest.TestCase):
         self.assertEqual(self.request(password='Otra-Contrasena-123')[0],202)
         status,result=self.client.call('POST','auth/login',{'email':'operador@example.test','password':'Otra-Contrasena-123'})
         self.assertEqual(status,401)
+    def test_master_operates_local_without_creating_or_impersonating_operator(self):
+        b=self.local();bid=b['id']
+        self.assertEqual(self.master.call('GET','businesses/'+bid)[0],200)
+        self.assertEqual(self.master.call('PATCH','businesses/'+bid+'/status',{'isOpen':True,'expectedVersion':b['version']})[0],200)
+        status,p=self.master.call('POST','businesses/'+bid+'/products',{'name':'Producto propio','category':'Comida','price':40,'isAvailable':True,'isFeatured':False})
+        self.assertEqual(status,201)
+        self.assertEqual(self.master.call('PATCH','products/'+p['id'],{**p,'price':45,'expectedVersion':p['version']})[0],200)
+        _,ticket=self.master.call('POST','review/orders',{'businessId':bid})
+        _,active=self.master.call('GET','businesses/'+bid+'/orders/active');order=active['data'][0]
+        for action in ('accept','start','ready'):
+            status,order=self.master.call('POST','orders/'+order['id']+'/'+action,{'expectedVersion':order['version']});self.assertEqual(status,200)
+        status,order=self.master.call('POST','orders/'+order['id']+'/complete',{'expectedVersion':order['version'],'method':'manual','code':ticket['pickupCode']})
+        self.assertEqual(status,200);self.assertEqual(self.server.store.get('orders',order['id'])['verification']['verifiedBy'],'admin')
+        image=base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jGZkAAAAASUVORK5CYII=')
+        raw=b'--TEST\r\nContent-Disposition: form-data; name="file"; filename="test.png"\r\nContent-Type: image/png\r\n\r\n'+image+b'\r\n--TEST--\r\n'
+        self.assertEqual(self.master.call('POST','media',headers={'Content-Type':'multipart/form-data; boundary=TEST'},raw=raw)[0],201)
+        _,profile=self.master.call('GET','users/me')
+        self.assertEqual((profile['id'],profile['role'],profile['businessId']),('admin','admin',None))
+        self.assertEqual([u['id'] for u in self.server.store.rows('users')],['admin'])
+    def test_master_local_permission_does_not_leak_to_other_roles_or_inactive_local(self):
+        b=self.local();bid=b['id']
+        self.master.call('POST','admin/users',{'displayName':'Admin','email':'admin2@utsjr.edu.mx','role':'admin','isActive':True,'password':'Clave-Prueba-123'})
+        admin=Client(self.client.url);admin.login('admin2@utsjr.edu.mx','Clave-Prueba-123')
+        for path in ('businesses/'+bid,'businesses/'+bid+'/products','businesses/'+bid+'/orders/active'):
+            self.assertEqual(admin.call('GET',path)[0],403)
+            self.assertEqual(self.client.call('GET',path)[0],401)
+        self.assertEqual(admin.call('POST','media',{})[0],403)
+        other=self.local()
+        self.master.call('POST','admin/users',{'displayName':'Operador','email':'operador@example.test','role':'business','businessId':other['id'],'isActive':True,'password':'Clave-Prueba-123'})
+        owner=Client(self.client.url);owner.login('operador@example.test','Clave-Prueba-123')
+        self.assertEqual(owner.call('GET','businesses/'+bid)[0],403)
+        self.assertEqual(owner.call('GET','businesses/'+other['id'])[0],200)
+        self.master.call('PATCH','admin/businesses/'+bid,{**b,'isActive':False,'expectedVersion':b['version']})
+        self.assertEqual(self.master.call('GET','businesses/'+bid)[0],403)
+        with self.server.store.lock,self.server.store.db:
+            master=self.server.store.get('users','admin')
+            self.server.store.bump('users',master,{'isMaster':False})
+        self.assertEqual(self.master.call('GET','businesses/'+other['id'])[0],403)
     def test_master_confirms_identity_and_assignment_before_activation(self):
         self.request();request=self.pending();local=self.local()
         path='admin/access-requests/'+request['id']+'/decision'

@@ -8,6 +8,12 @@ Extrae todo `SnackUP-Paneles-PC.zip` y ejecuta `INICIAR_SNACKUP.cmd`. Se abre `h
 
 La **única cuenta inicial** es `admin@snackup.test`, contraseña `SnackUP-Prueba-2026`. Es la cuenta maestra de revisión. Una instalación nueva no crea locales, operadores, productos, pedidos, opiniones ni grupos. La universidad y su cafetería son la configuración institucional; sus locales los crea el equipo.
 
+## Abrir el panel del local con la cuenta maestra
+
+Después de entrar con el maestro, pulsa **Entrar al panel del local** y elige un local activo. Abre las mismas pantallas de Cocina, Productos, Historial, Resumen y Mi local que utilizan sus operadores. Si aún no existe ninguno, **Agregar local** permite registrar sus datos y entrar directamente al guardar. No se crea una cuenta de operador ni se inventa un local al arrancar.
+
+La flecha **Volver a Administración** regresa sin cerrar sesión. El encabezado indica **Cuenta maestra**; las acciones guardan cambios reales sobre el local elegido. La identidad autenticada sigue siendo la del maestro. Los administradores ordinarios no reciben este acceso y los operadores conservan acceso únicamente a su local. Los locales inactivos permanecen bloqueados.
+
 ## Solicitar y autorizar acceso
 
 1. La persona pulsa **Crea tu cuenta**, introduce nombre, correo, función solicitada, local o área y contraseña propia.

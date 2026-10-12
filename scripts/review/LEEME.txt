@@ -12,6 +12,15 @@ Contrasena de prueba: SnackUP-Prueba-2026
 La instalacion nueva no crea locales, productos, pedidos, opiniones ni
 cuentas de operadores. Ustedes crean los datos desde los paneles.
 
+ENTRAR AL PANEL DEL LOCAL CON LA CUENTA MAESTRA:
+1. Entra con admin@snackup.test y SnackUP-Prueba-2026.
+2. Pulsa Entrar al panel del local y elige tu local.
+3. Si no hay locales, pulsa Agregar local y escribe sus datos. Al guardar
+   entraras directamente a Cocina, Productos, Historial, Resumen y Mi local.
+4. La flecha Volver a Administracion regresa sin cerrar sesion.
+No necesitas crear otra cuenta para revisar y operar el local como maestro.
+Los cambios realizados en este panel se guardan en el local elegido.
+
 PARA DAR ACCESO:
 - La persona pulsa Crea tu cuenta en el acceso y envia su solicitud.
 - La cuenta maestra crea el local, abre Solicitudes de acceso, verifica la
@@ -23,7 +32,7 @@ PARA DAR ACCESO:
   de revision. Requiere configurar OAuth y la validacion del backend real.
 
 PRIMERA PRUEBA DE COCINA:
-Crea un local y autoriza su cuenta. Entra con esa cuenta, agrega un producto,
+Abre el panel del local como maestro o con su cuenta autorizada, agrega un producto,
 abre la recepcion de pedidos y pulsa Recibir pedido de prueba si quieres
 simular un cliente. Ningun pedido aparece por si solo. Acepta el pedido,
 inicia preparacion, marcalo listo y verifica su codigo para entregarlo.

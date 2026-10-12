@@ -96,6 +96,12 @@ El tablero vuelve a consultar configuración, catálogo académico, locales, opi
 
 El login con contraseña correcta de una cuenta pendiente devuelve `403 ACCESS_PENDING`, rechazada `403 ACCESS_REJECTED`; suspendida `403 ACCESS_REVOKED`. No genera sesiones. Sin contraseña correcta, respuesta genérica401. La marca de autorización debe comprobarse también en refresh y en cada recurso. Las rutas tradicionales `admin/users` aceptan únicamente cuentas aprobadas; no pueden saltarse el flujo de revisión cambiando un pendiente por PATCH.
 
+## Operación de locales desde la cuenta maestra
+
+El portal permite al maestro seleccionar un local activo y abrir el mismo panel de negocio sin cambiar su sesión, rol o asignación. Reutiliza las rutas existentes `businesses/{id}`, catálogo, pedidos, historial, estadísticas y `media`; no existe un token de suplantación ni una cuenta de operador creada para este acceso.
+
+El backend debe autorizar cada recurso a un operador asignado a ese local **o** a un usuario activo con `role=admin,isMaster=true`. Un administrador ordinario no obtiene permisos de operación. Resolver siempre el local del producto/pedido en el servidor y comprobar que sigue activo. `POST media` permite al maestro cargar imágenes; los operadores siguen sujetos al estado de su local. Comprobar revocación y versión de sesión en todas las peticiones, y atribuir la auditoría al usuario maestro real. La API local de revisión implementa estos controles; el backend definitivo debe incluirlos antes de activar esta función en producción.
+
 ## Google: identidad externa, permisos internos
 
 El frontend navega únicamente a `GET auth/google/start` del backend configurado. No incluye tokens, contraseñas, roles, asignaciones ni un retorno arbitrario en esa URL. El backend inicia OpenID Connect Authorization Code Flow, con `state` y `nonce` de un solo uso y corta duración vinculados al navegador; utilizar una biblioteca mantenida. Registrar el callback exacto y el origen/dominio en Google Cloud. El secreto OAuth vive solo en el servidor. Pedir únicamente `openid email profile`.

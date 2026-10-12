@@ -17,6 +17,7 @@ class AdminDashboardScreen extends StatefulWidget {
     this.onManage,
     this.onCreateAccount,
     this.onAccessRequests,
+    this.onOpenBusiness,
     this.isMaster = false,
     this.autoRefresh = false,
   });
@@ -24,7 +25,8 @@ class AdminDashboardScreen extends StatefulWidget {
   final VoidCallback? onSignOut;
   final Future<void> Function(BuildContext)? onManage,
       onCreateAccount,
-      onAccessRequests;
+      onAccessRequests,
+      onOpenBusiness;
   final bool isMaster, autoRefresh;
   @override
   State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
@@ -526,6 +528,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
               spacing: 12,
               runSpacing: 10,
               children: [
+                if (widget.isMaster && widget.onOpenBusiness != null)
+                  FilledButton.icon(
+                    onPressed: () async {
+                      await widget.onOpenBusiness!(context);
+                      if (mounted) _load(reset: true);
+                    },
+                    icon: const Icon(Icons.restaurant_menu),
+                    label: const Text('Entrar al panel del local'),
+                  ),
                 OutlinedButton.icon(
                   onPressed: () async {
                     await widget.onManage!(context);
