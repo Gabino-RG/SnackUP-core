@@ -35,7 +35,7 @@ fs.mkdirSync(output, { recursive: true });
       await page.getByRole('button',{name:'Entrar',exact:true}).click();
     }
     await login('negocio@snackup.test');
-    await label('Local 1 · Central').waitFor();
+    await page.getByText(/^Local 1 · Central\s+Cafetería universitaria$/).waitFor();
     await page.getByRole('button',{name:'Aceptar pedido',exact:true}).first().waitFor();
     await page.screenshot({path:path.join(output,'01-cocina-desktop.png')});
     await page.getByRole('button',{name:'Recibir pedido de prueba',exact:true}).click();
