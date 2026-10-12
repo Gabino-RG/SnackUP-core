@@ -5,7 +5,7 @@ const { chromium } = require(process.env.SNACKUP_PLAYWRIGHT || 'playwright');
 const output = process.env.SNACKUP_SCREENSHOTS || 'build/review-screenshots';
 fs.mkdirSync(output, { recursive: true });
 (async () => {
-  const browser = await chromium.launch({headless:true,args:['--no-sandbox']});
+  const browser = await chromium.launch({headless:true,executablePath:process.env.SNACKUP_CHROMIUM||undefined,args:['--no-sandbox']});
   const context = await browser.newContext({viewport:{width:1440,height:1050}});
   const page = await context.newPage();
   const errors=[];
@@ -22,10 +22,14 @@ fs.mkdirSync(output, { recursive: true });
   function label(text){
     return page.getByText(text,{exact:true}).or(page.getByLabel(text,{exact:true})).first();
   }
+  function contents(text){
+    // Flutter merges non-interactive card text into one accessibility node.
+    return page.getByText(text,{exact:false}).or(page.getByLabel(text,{exact:false})).first();
+  }
   page.on('pageerror',e=>errors.push(e.message));
   page.setDefaultTimeout(20000);
   try {
-    await page.goto('http://localhost:8791/');
+    await page.goto(process.env.SNACKUP_REVIEW_URL||'http://localhost:8791/');
     await page.locator('flutter-view').waitFor({timeout:60000});
     const accessibility=page.locator('flt-semantics-placeholder');
     if(await accessibility.count()) await accessibility.evaluate(node=>node.click());
@@ -47,12 +51,12 @@ fs.mkdirSync(output, { recursive: true });
     await page.getByRole('switch',{name:'Recibir pedidos',exact:true}).waitFor();
     if(await page.getByRole('button',{name:'Gestionar locales y cuentas',exact:true}).count()) throw new Error('Ready local must not access administration');
     await page.screenshot({path:path.join(output,'00-local-listo-sin-configurar.png')});
-    const salesResponse=page.waitForResponse(r=>new URL(r.url()).pathname.endsWith('/'+ 'review-local/stats')&&r.status()===200);
+    const salesResponse=page.waitForResponse(r=>new URL(r.url()).pathname.endsWith('/review-local/stats')&&r.status()===200);
     await page.getByRole('button',{name:/Resumen/}).click();
     const sales=await (await salesResponse).json();
     if(sales.totalSold<=0||sales.completed<=0||sales.cancelled<=0) throw new Error('Demo sales and cancellations must be populated');
     await label('Resumen de ventas').waitFor();
-    await label('$'+sales.totalSold.toFixed(2)).waitFor();
+    await contents('$'+sales.totalSold.toFixed(2)+'\nVentas entregadas').waitFor();
     await page.screenshot({path:path.join(output,'00-resumen-con-datos.png')});
     const historyResponse=page.waitForResponse(r=>new URL(r.url()).pathname.endsWith('/review-local/orders/history')&&r.status()===200);
     await page.getByRole('button',{name:/Historial/}).click();
@@ -80,27 +84,27 @@ fs.mkdirSync(output, { recursive: true });
     if(await page.getByRole('button',{name:'Entrar al panel del local',exact:true}).count()) throw new Error('Master must not enter the business panel');
     if(await page.getByRole('switch',{name:'Recibir pedidos',exact:true}).count()) throw new Error('Kitchen controls leaked into administration');
     await label('Local de prueba').waitFor();
-    await label('Promedio de '+reviews.length+' valoraciones').waitFor();
+    await contents('Promedio de '+reviews.length+' valoraciones').waitFor();
     await page.screenshot({path:path.join(output,'02-maestro-separado.png')});
     const negatives=reviews.filter(r=>r.rating<=2);
     await label('Solo 1–2 estrellas').click();
-    await label('Promedio de '+negatives.length+' valoraciones').waitFor();
+    await contents('Promedio de '+negatives.length+' valoraciones').waitFor();
     await label('Limpiar filtros').click();
     await page.getByRole('button',{name:/Carrera: Todas las carreras/}).click();
     await page.getByText('Desarrollo de Software',{exact:true}).or(page.getByLabel('Desarrollo de Software',{exact:true})).last().click();
     const software=reviews.filter(r=>r.career==='Desarrollo de Software');
-    await label('Promedio de '+software.length+' valoraciones').waitFor();
+    await contents('Promedio de '+software.length+' valoraciones').waitFor();
     await page.getByRole('button',{name:/Grupo: Todos los grupos/}).click();
     await label('DSM-1').click();
-    await label('Promedio de '+software.filter(r=>r.group==='DSM-1').length+' valoraciones').waitFor();
+    await contents('Promedio de '+software.filter(r=>r.group==='DSM-1').length+' valoraciones').waitFor();
     await label('Limpiar filtros').click();
     await page.getByRole('button',{name:/Últimos 30 días/}).or(label('Últimos 30 días')).first().click();
     await page.getByText('Últimos 7 días',{exact:true}).or(page.getByLabel('Últimos 7 días',{exact:true})).last().click();
-    await label('Promedio de 21 valoraciones').waitFor();
+    await contents('Promedio de 21 valoraciones').waitFor();
     await label('Limpiar filtros').click();
     await page.mouse.move(1120,830);
     await page.mouse.wheel(0,750);
-    await label('Evolución de la experiencia').waitFor();
+    await contents('Evolución de la experiencia').waitFor();
     await page.screenshot({path:path.join(output,'02-graficas-con-datos.png')});
     await page.mouse.wheel(0,-1800);
     await page.getByRole('button',{name:'Gestionar locales y cuentas',exact:true}).click();
