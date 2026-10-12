@@ -43,7 +43,9 @@ class KitchenController extends ChangeNotifier {
                 )
                 .length
           : 0;
-      _seen.addAll(next.map((o) => o.id));
+      _seen
+        ..clear()
+        ..addAll(next.map((o) => o.id));
       _initialized = true;
       business = result[0] as BusinessRecord;
       orders = next;
@@ -161,6 +163,11 @@ String operationsMessage(Object e) {
         'El pedido ya cambió de estado. Revisa el tablero actualizado.',
       'LAST_ADMIN' => 'Debe quedar al menos una cuenta administrativa activa.',
       'EMAIL_EXISTS' => 'Ya existe una cuenta con ese correo.',
+      'REQUEST_ALREADY_REVIEWED' =>
+        'Esta solicitud ya fue revisada. Actualiza la lista.',
+      'IDENTITY_CONFIRMATION_REQUIRED' =>
+        'Confirma que verificaste la identidad antes de autorizar.',
+      'APPROVAL_REQUIRED' => 'Revisa primero la solicitud de acceso.',
       'MASTER_REQUIRED' => 'Solo la cuenta maestra puede administrar accesos.',
       'MASTER_PROTECTED' => 'La cuenta maestra debe conservar su acceso.',
       'INSTITUTIONAL_EMAIL_REQUIRED' =>

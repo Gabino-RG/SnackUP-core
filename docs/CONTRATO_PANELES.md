@@ -62,7 +62,7 @@ Estas extensiones deben implementarse en el backend definitivo. El proveedor de 
 }
 ```
 
-Una cafetería contiene los locales; cuatro es el dato inicial, no un límite codificado. `POST admin/businesses` envía `cafeteriaId`; el servidor valida la pertenencia y devuelve también `cafeteriaName`.
+Una cafetería contiene los locales; la instalación nueva empieza sin locales ni cuentas de operadores. El equipo los crea, sin un límite de cuatro codificado. `POST admin/businesses` envía `cafeteriaId`; el servidor valida la pertenencia y devuelve también `cafeteriaName`.
 
 El perfil de `GET users/me` agrega `isMaster:boolean`. Solo `role=admin` junto con `isMaster=true` habilita la gestión de cuentas. Sin esa marca no se concede el permiso. `GET/POST/PATCH admin/users` deben comprobar ambas condiciones en el servidor. Los demás administradores consultan opiniones y administran locales, sin administrar accesos. La cuenta maestra permanece activa y administrativa; no se puede crear/promover otra mediante estos formularios. El bootstrap inicial y cualquier recuperación del maestro pertenecen a un procedimiento administrativo del backend, fuera del registro público. No basta con conocer el correo ni modificar el frontend.
 
@@ -83,3 +83,30 @@ Las nuevas cuentas administrativas usan exclusivamente un dominio exacto de `adm
 IDs únicos y estables; cada grupo referencia una carrera presente. Orden estable durante la paginación. El frontend carga y valida todas las páginas (máximo 20,000 entradas), incluye grupos sin opiniones y ofrece búsqueda. Primero se selecciona carrera, después grupo. `admin/reviews` agrega `careerId,groupId`, conservando `career,group` como nombres de presentación. Las referencias tienen prioridad sobre nombres repetidos. Los datos antiguos sin IDs admiten comparación por nombre mientras se migra; el backend debe completar esos IDs.
 
 El tablero vuelve a consultar configuración, catálogo académico, locales, opiniones y atenciones al pulsar Actualizar, regresar de gestión o cada 60 segundos mientras está visible. Relee las páginas previamente cargadas y reemplaza los datos solo al completar la lectura; las gráficas se recalculan con puntuaciones válidas del resultado. No inventa puntuaciones para grupos vacíos. Si faltan páginas de opiniones, indica resultados parciales. Para grandes volúmenes, acordar endpoints agregados y filtros del servidor antes de certificar capacidad. El catálogo académico se mantiene en el backend; estos paneles permiten consultarlo y filtrarlo, no alterar el padrón escolar.
+
+## Alta solicitada y aprobación del maestro (actualización)
+
+`GET auth/options` es público y devuelve booleanos obligatorios `passwordLogin,selfRegistration,googleEnabled`. Solo habilitar Google cuando exista una configuración operativa. El frontend no deduce la disponibilidad de la presencia de un SDK. Si esta consulta falla mantiene el acceso por contraseña existente, bloquea registro/Google y ofrece reintento de opciones.
+
+`POST auth/register` recibe `{displayName,email,password,requestedRole:"business"|"admin",context}` y responde `202 {status:"received"}`. No emite tokens/cookies de acceso. Normaliza correo, limita intentos y longitudes, hashea la contraseña y crea `approvalStatus=pending,isActive=false,role=pending,isMaster=false,businessId=null`. Rechaza campos de privilegios efectivos. Correo duplicado devuelve el mismo acuse sin reemplazar contraseñas ni reabrir rechazos. Verificación de correo y límites antiabuso reales pertenecen al backend; en producción verificar el correo antes de activar el acceso. En la revisión sin servicio de correo se exige confirmación explícita de identidad por el maestro.
+
+`GET admin/access-requests?page=&limit=30` devuelve solicitudes pendientes con paginación, solo al maestro. Registros: `{id,displayName,email,requestedRole,requestContext,provider,emailVerified,approvalStatus,version,createdAt}`; nunca hashes ni secretos.
+
+`POST admin/access-requests/{id}/decision` recibe `{decision:"approve"|"reject",role,businessId,identityConfirmed,note,expectedVersion}`. Solo el maestro. Operación transaccional: comprobar versión y pendiente; al aprobar verificar identidad, dominio si es admin y disponibilidad del local si es operador; asignar permisos en el servidor; marcar approved y activo. Al rechazar mantiene inactivo. Registrar actor, fecha, decisión, nota y asignación; invalidar sesiones previas. Repeticiones/conflictos: 409, nunca duplicar aprobación.
+
+El login con contraseña correcta de una cuenta pendiente devuelve `403 ACCESS_PENDING`, rechazada `403 ACCESS_REJECTED`; suspendida `403 ACCESS_REVOKED`. No genera sesiones. Sin contraseña correcta, respuesta genérica401. La marca de autorización debe comprobarse también en refresh y en cada recurso. Las rutas tradicionales `admin/users` aceptan únicamente cuentas aprobadas; no pueden saltarse el flujo de revisión cambiando un pendiente por PATCH.
+
+## Google: identidad externa, permisos internos
+
+El frontend navega únicamente a `GET auth/google/start` del backend configurado. No incluye tokens, contraseñas, roles, asignaciones ni un retorno arbitrario en esa URL. El backend inicia OpenID Connect Authorization Code Flow, con `state` y `nonce` de un solo uso y corta duración vinculados al navegador; utilizar una biblioteca mantenida. Registrar el callback exacto y el origen/dominio en Google Cloud. El secreto OAuth vive solo en el servidor. Pedir únicamente `openid email profile`.
+
+El callback del backend valida state/nonce, intercambia código, verifica firma, issuer, audience, expiry y email_verified del ID token; identifica por `iss + sub`, no por texto de correo. El parámetro `hd` y el dominio visible no sustituyen esas verificaciones. Si ya hay una cuenta local con ese correo, no vincular automáticamente por coincidencia: exigir un procedimiento de vinculación autenticado con aprobación del maestro.
+
+- Identidad Google nueva: registrar solicitud pendiente sin permisos; el maestro confirma persona, función y local. Redirigir al frontend `/#/access-pending`, sin tokens en la URL.
+- Pendiente/rechazada: no emitir una sesión operativa. Retorno `/#/access-pending` o `/#/access-rejected`.
+- Cuenta aprobada: emitir la cookie de sesión/renovación segura del contrato y redirigir al frontend; el frontend ejecuta refresh y users/me como con contraseña.
+- Error/cancelación: `/#/google-error`; coincidencia con cuenta local sin vínculo: `/#/account-link-required`.
+
+Los fragmentos solo presentan información; nunca autentican ni otorgan rol. La cookie temporal del flujo OAuth necesita SameSite compatible con el retorno externo (por ejemplo Lax, HttpOnly, Secure y expira en minutos); es distinta de la cookie operativa. Eliminarla después del callback. No pedir contraseñas de Google en SnackUP. Rechazar replays, retornos ajenos y proveedores no configurados. Mantener suspendido el permiso interno aunque Google autentique correctamente. El servidor de revisión devuelve `googleEnabled=false` y `503 PROVIDER_NOT_CONFIGURED`; no finge autenticar Google.
+
+Referencia oficial consultada: https://developers.google.com/identity/openid-connect/openid-connect

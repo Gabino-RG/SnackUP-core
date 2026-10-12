@@ -1,12 +1,17 @@
-# Referencia institucional UTSJR
+# Identidad de UTSJR
 
-El cintillo se conserva íntegro, sin recolorear ni redibujar. Procede del
-encabezado público de https://www.utsjr.edu.mx/ y se incluyó a petición del usuario.
-Archivo de origen: https://www.utsjr.edu.mx/build/img/logos/cintillo2026.png
+La pantalla de acceso muestra únicamente el logotipo de UT San Juan sobre azul,
+sin el cintillo de otras instituciones. Se conserva el archivo original, sin
+recolorear ni agrandar por encima de su resolución: 425×83 px, mostrado a 212 px
+de ancho lógico con filtrado de alta calidad.
 
-La paleta del panel toma el azul #002855 y el turquesa #00A788 observados en
-la navegación y acciones del sitio oficial el 12 de octubre de 2026 (UTC).
-Para textos sobre blanco se usa una variante oscura #007C66 que mejora el contraste.
-Los grises y blancos sirven como superficies de lectura. Esto es una referencia
-al sitio, no una declaración de certificación contra un manual de identidad.
-El rosa observado en la portada actual no se incorporó al panel operativo.
+Archivo: `utsjr-logo.png`.
+Fuente: https://commons.wikimedia.org/wiki/File:Utsjr_2026.png
+Autor atribuido en esa ficha: Universidad Tecnológica de San Juan del Río.
+Licencia indicada: CC BY 4.0, https://creativecommons.org/licenses/by/4.0/
+No se modificaron los píxeles. No implica certificación o patrocinio.
+
+Los colores #002855 y #00A788 se observaron en el sitio oficial
+https://www.utsjr.edu.mx/ el 12 de octubre de 2026; #007C66 se usa para textos
+sobre blanco. El cintillo anterior `utsjr-cintillo-2026.png` se conserva como
+referencia histórica del encabezado público, pero no se muestra en el acceso.

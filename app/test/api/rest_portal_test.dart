@@ -19,6 +19,7 @@ void main() {
     final login = Completer<http.Response>();
     var logins = 0;
     final session = RestSession(baseUri: Uri.parse('https://snackup.example/api/v1/'), client: MockClient((r) async {
+      if (r.url.path.endsWith('auth/options')) return jsonReply('{"passwordLogin":true,"selfRegistration":true,"googleEnabled":false}',200);
       if (r.url.path.endsWith('auth/refresh')) return jsonReply('{"error":{"code":"UNAUTHENTICATED"}}', 401);
       if (r.url.path.endsWith('auth/login')) {
         logins++; expect(jsonDecode(r.body)['password'], ' secret '); return login.future;
@@ -46,6 +47,7 @@ void main() {
     tester.view.physicalSize = const Size(360, 800); tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize); addTearDown(tester.view.resetDevicePixelRatio);
     final session = RestSession(baseUri: Uri.parse('https://snackup.example/api/v1/'), client: MockClient((r) async {
+      if (r.url.path.endsWith('auth/options')) return jsonReply('{"passwordLogin":true,"selfRegistration":true,"googleEnabled":false}',200);
       if (r.url.path.endsWith('auth/refresh')) return jsonReply(jsonEncode({'tokens': {'accessToken': 'a',
         'accessTokenExpiresAt': DateTime.now().toUtc().add(const Duration(minutes: 15)).toIso8601String()}}), 200);
       if (r.url.path.endsWith('users/me')) return jsonReply('{"id":"admin-1","role":"admin","displayName":"Administración"}', 200);
@@ -69,6 +71,7 @@ void main() {
 
   testWidgets('a business without an assignment cannot open either panel', (tester) async {
     final session = RestSession(baseUri: Uri.parse('https://snackup.example/api/v1/'), client: MockClient((r) async {
+      if (r.url.path.endsWith('auth/options')) return jsonReply('{"passwordLogin":true,"selfRegistration":true,"googleEnabled":false}',200);
       if (r.url.path.endsWith('auth/refresh')) return jsonReply(jsonEncode({'tokens': {'accessToken': 'a',
         'accessTokenExpiresAt': DateTime.now().toUtc().add(const Duration(minutes: 15)).toIso8601String()}}), 200);
       return jsonReply('{"id":"one","role":"business","displayName":"Operador"}', 200);

@@ -39,6 +39,7 @@ def hash_password(password, salt=None):
     return salt + ':' + hashlib.pbkdf2_hmac('sha256', password.encode(), bytes.fromhex(salt), 120_000).hex()
 
 def check_password(password, hashed):
+    if not hashed or ':' not in hashed:return False
     return hmac.compare_digest(hash_password(password, hashed.split(':')[0]), hashed)
 
 class Problem(Exception):
@@ -60,7 +61,7 @@ def new_id():
     return uuid.uuid4().hex
 
 def public_user(user):
-    return {k: v for k, v in user.items() if k != 'passwordHash'}
+    return {k: v for k, v in user.items() if k not in {'passwordHash','emailVerificationHash'}}
 
 def public_order(order):
     return {k: v for k, v in order.items() if k not in {'pickupCode', 'customerNumeroDeControl'}}
@@ -77,8 +78,28 @@ class Store:
         self.tokens = {}
         self.login_attempts = {}
         if not self.rows('users'):
-            self.seed()
-        self.migrate_institution()
+            self.bootstrap()
+        self.migrate_clean_start()
+    def bootstrap(self):
+        with self.db:
+            self.put('users',{'id':'admin','email':'admin@snackup.test','displayName':'Cuenta maestra SnackUP','role':'admin',
+                'businessId':None,'isActive':True,'isMaster':True,'version':1,'passwordHash':hash_password(PASSWORD),'createdAt':now(),'updatedAt':now()})
+    def migrate_clean_start(self):
+        if any(r['id']=='owner-managed-v3' for r in self.rows('migrations')):return
+        with self.db:
+            if not any(r['id']=='institution' for r in self.rows('configuration')):
+                self.put('configuration',{'id':'institution','university':{'id':'utsjr','name':'Universidad Tecnológica de San Juan del Río'},
+                    'cafeteria':{'id':'cafeteria-utsjr','name':'Cafetería universitaria'},'adminEmailDomains':['utsjr.edu.mx']})
+            # Retire only known automatically generated accounts, retaining an archive.
+            generated={'owner':'negocio@snackup.test','owner2':'antojitos@snackup.test','owner3':'verde@snackup.test','owner4':'dulce@snackup.test'}
+            for user in self.rows('users'):
+                if generated.get(user['id'])==user['email']:
+                    self.put('retired_example_accounts',{**user,'isActive':False,'retiredAt':now()})
+                    self.db.execute('DELETE FROM records WHERE kind=? AND id=?',('users',user['id']))
+                    self.db.execute('DELETE FROM refresh WHERE user_id=?',(user['id'],))
+                elif user['id']=='admin' and user['role']=='admin' and not user.get('isMaster'):
+                    self.bump('users',user,{'isMaster':True})
+            self.put('migrations',{'id':'owner-managed-v3','appliedAt':now()})
     def rows(self, kind):
         return [json.loads(r[0]) for r in self.db.execute('SELECT payload FROM records WHERE kind=? ORDER BY id', (kind,))]
     def get(self, kind, id):
@@ -132,7 +153,7 @@ class Store:
                     if r.get('career')==name and re.fullmatch(prefix+r'-[1-6]',r.get('group','')):
                         self.put('reviews',{**r,'careerId':cid,'groupId':f'{cid}-{r["group"].split("-")[-1]}'})
             self.put('migrations',{'id':'institution-v2','appliedAt':now()})
-    def seed(self):
+    def seed_test_fixtures(self):
         with self.db:
             for i,(id,name,category) in enumerate([('central','Cafetería Central','Cafetería'),('antojitos','Antojitos del Campus','Comida mexicana'),('verde','Rincón Verde','Saludable'),('dulce','Pausa Dulce','Postres')]):
                 self.put('businesses',{'id':id,'name':name,'category':category,'description':'Preparado al momento para la comunidad del campus.','timezone':'America/Mexico_City','isOpen':True,'isActive':True,'version':1,'createdAt':now(),'updatedAt':now()})
@@ -181,8 +202,9 @@ class Store:
         require(value is not None,401,'UNAUTHENTICATED')
         uid,version,expires=value
         require(expires>time.time(),401,'TOKEN_EXPIRED')
-        user=self.get('users',uid)
-        require(user['isActive'] and user['version']==version,403,'ACCESS_REVOKED')
+        user=next((u for u in self.rows('users') if u['id']==uid),None)
+        require(user is not None,403,'ACCESS_REVOKED')
+        require(user['isActive'] and user.get('approvalStatus','approved')=='approved' and user['version']==version,403,'ACCESS_REVOKED')
         return user
 
 class ReviewHandler(http.server.SimpleHTTPRequestHandler):
@@ -285,13 +307,21 @@ class ReviewHandler(http.server.SimpleHTTPRequestHandler):
     def route(self,m,p,q,d):
         s=self.server.store
         if p==['realtime']:raise Problem(503,'POLLING_MODE')
+        if p==['auth','options'] and m=='GET':
+            self.reply({'passwordLogin':True,'selfRegistration':True,'googleEnabled':False});return
+        if p==['auth','google','start']:raise Problem(503,'PROVIDER_NOT_CONFIGURED','Google aún no está configurado.')
+        if p==['auth','register'] and m=='POST':
+            self.register_access(d);return
         if p==['auth','login'] and m=='POST':
             email=text_field(d,'email',160).lower();password=d.get('password','');require(isinstance(password,str))
             failures=[t for t in s.login_attempts.get(email,[]) if t>time.time()-60]
             require(len(failures)<12,429,'RATE_LIMITED')
             user=next((u for u in s.rows('users') if u['email']==email),None)
-            if user is None or not user['isActive'] or not check_password(password,user['passwordHash']):
+            if user is None or not check_password(password,user.get('passwordHash','')):
                 s.login_attempts[email]=failures+[time.time()];raise Problem(401,'INVALID_CREDENTIALS')
+            require(user.get('approvalStatus','approved')!='pending',403,'ACCESS_PENDING','Tu solicitud está pendiente de autorización.')
+            require(user.get('approvalStatus','approved')!='rejected',403,'ACCESS_REJECTED','Tu solicitud no fue autorizada. Contacta a la cuenta maestra.')
+            require(user['isActive'],403,'ACCESS_REVOKED')
             if user['role']=='business':require(s.get('businesses',user['businessId'])['isActive'],403,'ACCESS_REVOKED')
             old=self.refresh_cookie()
             if old:s.db.execute('DELETE FROM refresh WHERE hash=?',(hashlib.sha256(old.encode()).hexdigest(),))
@@ -354,6 +384,12 @@ class ReviewHandler(http.server.SimpleHTTPRequestHandler):
             if len(p)==3 and m=='POST':self.transition(order,p[2],d,user);return
         if p and p[0]=='admin':
             self.admin(user)
+            if p[1:]==['access-requests'] and m=='GET':
+                self.master(user)
+                query=q.get('q',[''])[0].casefold()
+                self.reply(self.page([public_user(u) for u in s.rows('users') if u.get('approvalStatus')=='pending' and query in (u['displayName']+' '+u['email']).casefold()],q));return
+            if len(p)==4 and p[1]=='access-requests' and p[3]=='decision' and m=='POST':
+                self.master(user);self.decide_access(d,user,s.get('users',p[2]));return
             if p[1:]==['academic-catalog'] and m=='GET':self.reply(self.page(s.rows('academic_catalog'),q));return
             if p[1:]==['businesses']:
                 if m=='GET':
@@ -371,7 +407,7 @@ class ReviewHandler(http.server.SimpleHTTPRequestHandler):
                 self.reply(s.bump('businesses',b,changes));return
             if p[1:]==['users'] and m=='GET':
                 self.master(user)
-                query=q.get('q',[''])[0].casefold();self.reply(self.page([public_user(u) for u in s.rows('users') if query in (u['displayName']+' '+u['email']).casefold()],q));return
+                query=q.get('q',[''])[0].casefold();self.reply(self.page([public_user(u) for u in s.rows('users') if u.get('approvalStatus','approved')=='approved' and query in (u['displayName']+' '+u['email']).casefold()],q));return
             if (p[1:]==['users'] and m=='POST') or (len(p)==3 and p[1]=='users' and m=='PATCH'):
                 self.master(user)
                 self.save_user(d,user,None if m=='POST' else s.get('users',p[2]));return
@@ -432,10 +468,52 @@ class ReviewHandler(http.server.SimpleHTTPRequestHandler):
     def summary(self,rows):
         done=[r for r in rows if r['status']=='completed']
         return {'completed':len(done),'cancelled':sum(r['status']=='cancelled' for r in rows),'totalSold':round(sum(r['total'] for r in done),2)}
+    def register_access(self,d):
+        s=self.server.store
+        email=text_field(d,'email',160).lower();name=text_field(d,'displayName',100)
+        password=d.get('password');requested=d.get('requestedRole');context=text_field(d,'context',400)
+        require(re.fullmatch(r'[^\s@]+@[^\s@]+\.[^\s@]+',email) and isinstance(password,str) and 12<=len(password)<=128)
+        require(requested in {'admin','business'})
+        if requested=='admin':require(email.rsplit('@',1)[-1] in s.configuration()['adminEmailDomains'],422,'INSTITUTIONAL_EMAIL_REQUIRED')
+        # The request never chooses effective role, assignment, master flag or activation.
+        require(not any(k in d for k in ('role','isMaster','isActive','businessId','approvalStatus')),400,'INVALID_INPUT')
+        key='register:'+self.client_address[0]
+        attempts=[t for t in s.login_attempts.get(key,[]) if t>time.time()-60]
+        require(len(attempts)<10,429,'RATE_LIMITED');s.login_attempts[key]=attempts+[time.time()]
+        if not any(u['email']==email for u in s.rows('users')):
+            s.put('users',{'id':new_id(),'displayName':name,'email':email,'passwordHash':hash_password(password),
+                'requestedRole':requested,'requestContext':context,'role':'pending','businessId':None,'isActive':False,'isMaster':False,
+                'approvalStatus':'pending','provider':'password','emailVerified':False,'version':1,'createdAt':now(),'updatedAt':now()})
+        # Same response for existing emails; registration cannot replace a password.
+        self.reply({'status':'received','message':'Solicitud recibida. La cuenta maestra debe revisar tus datos antes de permitir el acceso.'},202)
+    def decide_access(self,d,actor,old):
+        s=self.server.store;s.version(d,old)
+        require(old.get('approvalStatus')=='pending',409,'REQUEST_ALREADY_REVIEWED')
+        decision=d.get('decision');require(decision in {'approve','reject'})
+        note=text_field(d,'note',500,False)
+        changes={'reviewedBy':actor['id'],'reviewedAt':now(),'decisionNote':note}
+        if decision=='approve':
+            role=d.get('role');bid=d.get('businessId');require(role in {'admin','business'})
+            require(d.get('identityConfirmed') is True,422,'IDENTITY_CONFIRMATION_REQUIRED')
+            if role=='admin':
+                require(old['email'].rsplit('@',1)[-1] in s.configuration()['adminEmailDomains'],422,'INSTITUTIONAL_EMAIL_REQUIRED');bid=None
+            else:
+                require(isinstance(bid,str) and bid,422,'BUSINESS_REQUIRED')
+                require(s.get('businesses',bid)['isActive'],422,'BUSINESS_REQUIRED')
+                require(not any(u['role']=='business' and u['isActive'] and u.get('businessId')==bid for u in s.rows('users')),409,'BUSINESS_ALREADY_ASSIGNED')
+            changes.update({'role':role,'businessId':bid,'isActive':True,'approvalStatus':'approved','isMaster':False,'identityConfirmedBy':actor['id']})
+        else:changes.update({'isActive':False,'approvalStatus':'rejected','role':'pending','businessId':None})
+        changed=s.bump('users',old,changes)
+        s.db.execute('DELETE FROM refresh WHERE user_id=?',(old['id'],))
+        s.put('access_audit',{'id':new_id(),'userId':old['id'],'actorId':actor['id'],'decision':decision,'role':changed['role'],
+            'businessId':changed.get('businessId'),'note':note,'at':now()})
+        self.reply(public_user(changed))
     def save_user(self,d,actor,old):
         s=self.server.store
         require('isMaster' not in d or d['isMaster']==bool(old and old.get('isMaster')),403,'MASTER_PROTECTED')
-        if old:s.version(d,old)
+        if old:
+            require(old.get('approvalStatus','approved')=='approved',409,'APPROVAL_REQUIRED')
+            s.version(d,old)
         role=d.get('role');active=d.get('isActive');bid=d.get('businessId');email=text_field(d,'email',160).lower()
         require(role in {'admin','business','user'} and type(active)is bool and re.fullmatch(r'[^\s@]+@[^\s@]+\.[^\s@]+',email))
         require(not any(u['email']==email and (old is None or u['id']!=old['id']) for u in s.rows('users')),409,'EMAIL_EXISTS')
@@ -454,7 +532,7 @@ class ReviewHandler(http.server.SimpleHTTPRequestHandler):
             changed=s.bump('users',old,changes);s.db.execute('DELETE FROM refresh WHERE user_id=?',(old['id'],))
         else:
             password=d.get('password');require(isinstance(password,str) and 12<=len(password)<=128)
-            changed=s.put('users',{'id':new_id(),**changes,'isMaster':False,'passwordHash':hash_password(password),'version':1,'createdAt':now(),'updatedAt':now()})
+            changed=s.put('users',{'id':new_id(),**changes,'isMaster':False,'approvalStatus':'approved','provider':'password','passwordHash':hash_password(password),'version':1,'createdAt':now(),'updatedAt':now()})
         self.reply(public_user(changed),200 if old else 201)
     def upload(self,raw):
         content_type=self.headers.get('Content-Type','')
@@ -491,7 +569,7 @@ def main():
     except OSError:print('No se pudo abrir el puerto. Cierra la otra instancia de SnackUP e intenta nuevamente.');return 1
     url=f'http://localhost:{server.server_port}/'
     print('\nSNACKUP | REVISION DE NEGOCIOS Y ADMINISTRACION\nDatos de prueba persistentes en esta PC.\nNo es el backend de producción.\n',flush=True)
-    print(url+'\nNegocio: negocio@snackup.test\nAdministración: admin@snackup.test\nContraseña de prueba: '+PASSWORD+'\n\nMantén esta ventana abierta. Ctrl+C para terminar.\n',flush=True)
+    print(url+'\nCuenta maestra: admin@snackup.test\nContraseña de prueba: '+PASSWORD+'\n\nMantén esta ventana abierta. Ctrl+C para terminar.\n',flush=True)
     if not args.no_browser:
         try:
             if sys.platform=='win32':os.startfile(url)

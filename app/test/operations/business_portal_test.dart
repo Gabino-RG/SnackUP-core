@@ -10,6 +10,66 @@ import 'package:snackup/operations/operations_repository.dart';
 import 'operations_repository_test.dart' show orderData;
 
 void main() {
+  for (final width in [320.0, 768.0, 1440.0]) {
+    testWidgets(
+      'peak kitchen fits ${width.toInt()}px and builds visible cards lazily',
+      (tester) async {
+        tester.view.physicalSize = Size(width, 900);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        final api = ApiClient(
+          baseUri: Uri.parse('https://test.example/api/v1/'),
+          client: MockClient(
+            (r) async => http.Response(
+              jsonEncode(
+                r.url.path.endsWith('/businesses/b1')
+                    ? {
+                        'id': 'b1',
+                        'name': 'Local del equipo',
+                        'isOpen': true,
+                        'version': 1,
+                      }
+                    : {
+                        'data': List.generate(
+                          180,
+                          (i) => {
+                            ...orderData(status: 'pending'),
+                            'id': 'p$i',
+                            'orderNumber': 1000 + i,
+                          },
+                        ),
+                      },
+              ),
+              200,
+              headers: {'content-type': 'application/json; charset=utf-8'},
+            ),
+          ),
+        );
+        await tester.pumpWidget(
+          MaterialApp(
+            home: BusinessPortal(
+              businessId: 'b1',
+              catalog: LocalCatalogRepository(MemoryCatalogStore()),
+              repository: OperationsRepository(api),
+              token: () async => 'a',
+              onSignOut: () {},
+              enableRealtime: false,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        expect(find.text('Aceptar pedido').evaluate().length, greaterThan(0));
+        expect(
+          find.text('Aceptar pedido').evaluate().length,
+          lessThan(25),
+          reason: 'Do not build all 180 cards',
+        );
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+  }
   testWidgets(
     'mobile kitchen completes a verified delivery and navigates the integrated catalog',
     (tester) async {

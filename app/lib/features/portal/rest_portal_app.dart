@@ -1,3 +1,7 @@
+import '../../api/access_repository.dart';
+import '../../api/external_login.dart';
+import 'request_access_screen.dart';
+import '../operations/access_requests_screen.dart';
 import 'package:flutter/material.dart';
 import '../../api/api_client.dart';
 import '../../api/rest_session.dart';
@@ -117,6 +121,16 @@ class _RestPortalAppState extends State<RestPortalApp> {
               onSignOut: session.signOut,
               isMaster: account.canManageAccounts,
               autoRefresh: true,
+              onAccessRequests: !account.canManageAccounts
+                  ? null
+                  : (context) async {
+                      await Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              AccessRequestsScreen(repository: _operations!),
+                        ),
+                      );
+                    },
               onCreateAccount: !account.canManageAccounts
                   ? null
                   : (context) async {
@@ -242,6 +256,39 @@ class _PortalLoginState extends State<_PortalLogin> {
   final _email = TextEditingController(), _password = TextEditingController();
   bool _hidePassword = true, _recovering = false;
   String? _notice;
+  AccessOptions? _accessOptions;
+  bool _optionsFailed = false;
+  @override
+  void initState() {
+    super.initState();
+    _notice = accessReturnMessage(Uri.base.fragment);
+    if (_notice != null) clearResetLocation();
+    _loadOptions();
+  }
+
+  Future<void> _loadOptions() async {
+    try {
+      final options = await AccessRepository(widget.session.api).options();
+      if (mounted)
+        setState(() {
+          _accessOptions = options;
+          _optionsFailed = false;
+        });
+    } catch (_) {
+      if (mounted) setState(() => _optionsFailed = true);
+    }
+  }
+
+  Future<void> _google() async {
+    if (_busy || _accessOptions?.googleEnabled != true) return;
+    try {
+      beginExternalLogin(AccessRepository(widget.session.api).googleStart);
+    } catch (_) {
+      if (mounted)
+        setState(() => _notice = 'No se pudo abrir Google. Intenta de nuevo.');
+    }
+  }
+
   bool get _busy =>
       _recovering ||
       widget.session.phase == PortalSessionPhase.signingIn ||
@@ -303,22 +350,32 @@ class _PortalLoginState extends State<_PortalLogin> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: AdminColors.navy,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Image.asset(
-                          'assets/institution/utsjr-cintillo-2026.png',
-                          height: 52,
-                          fit: BoxFit.contain,
-                          semanticLabel:
-                              'Universidad Tecnológica de San Juan del Río',
-                          errorBuilder: (_, __, ___) => const Text(
-                            'Universidad Tecnológica de San Juan del Río',
-                            style: TextStyle(color: Colors.white),
-                            textAlign: TextAlign.center,
+                      Center(
+                        child: Container(
+                          width: 248,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 18,
+                            vertical: 20,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AdminColors.navy,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Image.asset(
+                            'assets/institution/utsjr-logo.png',
+                            width: 212,
+                            fit: BoxFit.contain,
+                            filterQuality: FilterQuality.high,
+                            semanticLabel:
+                                'Universidad Tecnológica de San Juan del Río',
+                            errorBuilder: (_, __, ___) => const Text(
+                              'UT San Juan',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 22,
+                              ),
+                            ),
                           ),
                         ),
                       ),
@@ -405,7 +462,10 @@ class _PortalLoginState extends State<_PortalLogin> {
                       const SizedBox(height: 24),
                       FilledButton(
                         key: const ValueKey('portal-login'),
-                        onPressed: _busy ? null : _submit,
+                        onPressed:
+                            _busy || _accessOptions?.passwordLogin == false
+                            ? null
+                            : _submit,
                         child: Text(
                           widget.session.phase == PortalSessionPhase.signingIn
                               ? 'Comprobando acceso…'
@@ -425,18 +485,57 @@ class _PortalLoginState extends State<_PortalLogin> {
                               : 'Olvidé mi contraseña',
                         ),
                       ),
+                      TextButton(
+                        onPressed:
+                            _busy || _accessOptions?.selfRegistration != true
+                            ? null
+                            : () async {
+                                await Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => RequestAccessScreen(
+                                      repository: AccessRepository(
+                                        widget.session.api,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                        child: const Text('Crea tu cuenta'),
+                      ),
+                      const SizedBox(height: 8),
+                      OutlinedButton(
+                        onPressed:
+                            _busy || _accessOptions?.googleEnabled != true
+                            ? null
+                            : _google,
+                        child: const Text('Continuar con Google'),
+                      ),
+                      if (_accessOptions?.googleEnabled == false)
+                        const Text(
+                          'Google no está disponible en este servidor. Puedes usar una cuenta de SnackUP.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AdminColors.muted,
+                          ),
+                        ),
+                      if (_optionsFailed)
+                        TextButton(
+                          onPressed: _loadOptions,
+                          child: const Text('Reintentar opciones de acceso'),
+                        ),
                       const SizedBox(height: 12),
                       if (const bool.fromEnvironment('REVIEW_MODE'))
                         const Padding(
                           padding: EdgeInsets.only(bottom: 12),
                           child: SelectableText(
-                            'Cuenta maestra: admin@snackup.test\nLocal 1: negocio@snackup.test\nLocal 2: antojitos@snackup.test\nLocal 3: verde@snackup.test\nLocal 4: dulce@snackup.test\nContraseña de prueba: SnackUP-Prueba-2026',
+                            'Cuenta maestra: admin@snackup.test\nContraseña de prueba: SnackUP-Prueba-2026',
                             textAlign: TextAlign.center,
                             style: TextStyle(fontSize: 12),
                           ),
                         ),
                       const Text(
-                        '¿Necesitas acceso? La cuenta maestra puede darte de alta con Crear cuenta. Los administradores utilizan su correo institucional.',
+                        'Solo las cuentas autorizadas por la cuenta maestra pueden entrar. Puedes solicitar acceso o pedirle que cree tu cuenta.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 12,

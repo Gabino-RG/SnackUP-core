@@ -16,12 +16,15 @@ class AdminDashboardScreen extends StatefulWidget {
     this.onSignOut,
     this.onManage,
     this.onCreateAccount,
+    this.onAccessRequests,
     this.isMaster = false,
     this.autoRefresh = false,
   });
   final AdminRepository repository;
   final VoidCallback? onSignOut;
-  final Future<void> Function(BuildContext)? onManage, onCreateAccount;
+  final Future<void> Function(BuildContext)? onManage,
+      onCreateAccount,
+      onAccessRequests;
   final bool isMaster, autoRefresh;
   @override
   State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
@@ -535,6 +538,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                         : 'Gestionar locales',
                   ),
                 ),
+                if (widget.onAccessRequests != null)
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      await widget.onAccessRequests!(context);
+                      if (mounted) _load(reset: true);
+                    },
+                    icon: const Icon(Icons.how_to_reg_outlined),
+                    label: const Text('Solicitudes de acceso'),
+                  ),
                 if (widget.onCreateAccount != null)
                   FilledButton.icon(
                     onPressed: () async {

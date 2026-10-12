@@ -584,6 +584,7 @@ class _BusinessPortalState extends State<BusinessPortal>
                   ),
                 )
               : ListView.builder(
+                  key: PageStorageKey('kitchen-${widget.businessId}-$index'),
                   padding: const EdgeInsets.symmetric(horizontal: 10),
                   itemCount: orders.length,
                   itemBuilder: (_, i) => _card(orders[i]),
@@ -600,6 +601,7 @@ class _BusinessPortalState extends State<BusinessPortal>
         .inMinutes
         .clamp(0, 99999);
     return Card(
+      key: ValueKey(o.id),
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
         padding: const EdgeInsets.all(16),

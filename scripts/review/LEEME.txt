@@ -1,43 +1,45 @@
-SNACKUP - PANELES INTEGRADOS PARA REVISION
+SNACKUP - PANELES PARA REVISION LOCAL
 
 1. Extrae todo el ZIP.
 2. Abre INICIAR_SNACKUP.cmd.
 3. Se abrira http://localhost:8791/ en tu navegador.
 4. Manten la consola abierta mientras usas SnackUP.
 
-CUENTA MAESTRA: admin@snackup.test
-LOCAL 1 - CENTRAL: negocio@snackup.test
-LOCAL 2 - ANTOJITOS: antojitos@snackup.test
-LOCAL 3 - RINCON VERDE: verde@snackup.test
-LOCAL 4 - PAUSA DULCE: dulce@snackup.test
-CONTRASENA DE LAS CUENTAS: SnackUP-Prueba-2026
+UNICA CUENTA INICIAL:
+Cuenta maestra: admin@snackup.test
+Contrasena de prueba: SnackUP-Prueba-2026
 
-Pedidos iniciales: codigo de recogida 4821.
-Recibir pedido de prueba crea un pedido y muestra su codigo y QR.
-Los productos, precios, pedidos y seguimientos se guardan en datos/.
-Para comenzar otra vez, cierra SnackUP y renombra datos/ a datos-respaldo/.
+La instalacion nueva no crea locales, productos, pedidos, opiniones ni
+cuentas de operadores. Ustedes crean los datos desde los paneles.
 
-Lee documentos/PANELES_ENTREGA.md para el recorrido de prueba y
-CONTRATO_PANELES.md para conectar el backend definitivo.
+PARA DAR ACCESO:
+- La persona pulsa Crea tu cuenta en el acceso y envia su solicitud.
+- La cuenta maestra crea el local, abre Solicitudes de acceso, verifica la
+  identidad y autoriza la funcion y el local. Tambien puede rechazarla.
+- Una solicitud pendiente o rechazada no permite entrar a ningun panel.
+- Crear cuenta desde la cuenta maestra permite altas directas con
+  contrasena de SnackUP. Administradores: correo institucional autorizado.
+- Google esta preparado en el frontend pero deshabilitado en este servidor
+  de revision. Requiere configurar OAuth y la validacion del backend real.
 
-La franja amarilla identifica datos de prueba. Este servidor es solo
-para esta PC. No envia correos ni certifica 500 usuarios simultaneos.
-El frontend esta preparado para la API real; el servidor de revision
-no debe publicarse ni utilizarse como backend de produccion.
+PRIMERA PRUEBA DE COCINA:
+Crea un local y autoriza su cuenta. Entra con esa cuenta, agrega un producto,
+abre la recepcion de pedidos y pulsa Recibir pedido de prueba si quieres
+simular un cliente. Ningun pedido aparece por si solo. Acepta el pedido,
+inicia preparacion, marcalo listo y verifica su codigo para entregarlo.
 
-Windows 10/11 de 64 bits. Incluye Python con su licencia.
-No necesitas instalar Flutter, Python o Git ni ejecutar como administrador.
-Si el puerto esta ocupado, cierra la instancia anterior antes de abrir otra.
-Para terminar, pulsa Ctrl+C o cierra la consola.
-
-CUENTA MAESTRA: entra y pulsa Crear cuenta para dar acceso a otras personas.
-Administradores nuevos: correo institucional autorizado (@utsjr.edu.mx).
-Cuentas de local: selecciona su local. Cada local tiene su propio acceso.
-Carreras y grupos: primero elige carrera; despues busca su grupo.
-Atencion de opiniones: responsable, accion y resolucion de una opinion o queja.
-
-PARA ACTUALIZAR SIN PERDER CAMBIOS:
+ACTUALIZAR CONSERVANDO TU TRABAJO:
 Cierra SnackUP, respalda datos/, extrae este ZIP en otra carpeta y copia
 alli tu carpeta datos/ completa. Abre el iniciador e inicia sesion de nuevo.
-Se conservan tus productos, precios, pedidos y contrasenas anteriores.
-Las cuentas y grupos de esta version son ejemplos; no son el padron oficial.
+Se retiran las cuentas automaticas conocidas de los cuatro locales de la
+version anterior. Se conservan tus datos y cuentas creadas manualmente.
+Los locales y productos existentes se conservan para no perder tu trabajo.
+Para empezar vacio, con el programa cerrado renombra datos/ como respaldo;
+el proximo inicio creara solamente la cuenta maestra.
+
+Lee documentos/PANELES_ENTREGA.md y CONTRATO_PANELES.md.
+La revision guarda datos en SQLite y escucha solo en esta PC. No envia
+correos ni conecta Google ni acredita 500 usuarios simultaneos.
+Windows 10/11 de 64 bits. Incluye Python con su licencia.
+No requiere instalar Flutter o Python ni ejecutar como administrador.
+Para terminar, pulsa Ctrl+C o cierra la consola.

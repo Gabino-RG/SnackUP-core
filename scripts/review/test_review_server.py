@@ -25,7 +25,7 @@ class Client:
 class ReviewTests(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.root=Path(self.temp.name);(self.root/'web').mkdir();(self.root/'web'/'index.html').write_text('ok')
-        self.server=ReviewServer(('127.0.0.1',0),self.root/'web',self.root/'data');self.thread=threading.Thread(target=self.server.serve_forever,daemon=True);self.thread.start()
+        self.server=ReviewServer(('127.0.0.1',0),self.root/'web',self.root/'data');self.server.store.seed_test_fixtures();self.server.store.migrate_institution();self.thread=threading.Thread(target=self.server.serve_forever,daemon=True);self.thread.start()
         self.client=Client(f'http://127.0.0.1:{self.server.server_port}');self.client.login()
     def tearDown(self):
         self.server.shutdown();self.server.server_close();self.thread.join();self.server.store.db.close();self.temp.cleanup()
@@ -149,5 +149,81 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual(store.get('products','central-p1')['price'],123.45)
         self.assertEqual(store.get('users','admin')['passwordHash'],password)
         self.assertEqual(len(store.rows('users')),5)
+
+class AccessFlowTests(unittest.TestCase):
+    def setUp(self):
+        self.temp=tempfile.TemporaryDirectory();self.root=Path(self.temp.name);(self.root/'web').mkdir();(self.root/'web'/'index.html').write_text('ok')
+        self.server=ReviewServer(('127.0.0.1',0),self.root/'web',self.root/'data');self.thread=threading.Thread(target=self.server.serve_forever,daemon=True);self.thread.start()
+        self.client=Client(f'http://127.0.0.1:{self.server.server_port}')
+        self.master=Client(self.client.url);self.master.login('admin@snackup.test')
+    tearDown=ReviewTests.tearDown
+    def request(self,email='operador@example.test',**extra):
+        return self.client.call('POST','auth/register',{'displayName':'Operador solicitado','email':email,'password':'Clave-Solicitada-123',
+            'requestedRole':'business','context':'Trabajaré en el local que nos asigne la universidad.',**extra})
+    def pending(self):
+        return self.master.call('GET','admin/access-requests')[1]['data'][0]
+    def local(self):
+        return self.master.call('POST','admin/businesses',{'name':'Local creado por el equipo','category':'Comida','isActive':True})[1]
+    def test_fresh_install_has_only_master_and_no_invented_records(self):
+        store=self.server.store
+        self.assertEqual([u['id'] for u in store.rows('users')],['admin'])
+        for kind in ('businesses','products','orders','reviews','academic_catalog'):
+            self.assertEqual(store.rows(kind),[],kind)
+        _,options=self.client.call('GET','auth/options');self.assertEqual(options,{'passwordLogin':True,'selfRegistration':True,'googleEnabled':False})
+        self.assertEqual(self.client.call('GET','auth/google/start')[0],503)
+    def test_pending_and_rejected_requests_never_get_a_session(self):
+        self.assertEqual(self.request()[0],202)
+        status,result=self.client.call('POST','auth/login',{'email':'operador@example.test','password':'Clave-Solicitada-123'})
+        self.assertEqual((status,result['error']['code']),(403,'ACCESS_PENDING'));self.assertEqual(len(self.client.cookies),0)
+        self.assertNotIn('tokens',result);self.assertEqual(self.client.call('GET','admin/access-requests')[0],401)
+        request=self.pending();self.assertNotIn('passwordHash',request)
+        self.assertEqual(self.client.call('POST','admin/access-requests/'+request['id']+'/decision',{'decision':'approve'})[0],401)
+        status,denied=self.master.call('POST','admin/access-requests/'+request['id']+'/decision',{'decision':'reject','expectedVersion':request['version']})
+        self.assertEqual(status,200);self.assertFalse(denied['isActive'])
+        status,result=self.client.call('POST','auth/login',{'email':'operador@example.test','password':'Clave-Solicitada-123'})
+        self.assertEqual((status,result['error']['code']),(403,'ACCESS_REJECTED'))
+        self.assertEqual(self.request(password='Otra-Contrasena-123')[0],202)
+        status,result=self.client.call('POST','auth/login',{'email':'operador@example.test','password':'Otra-Contrasena-123'})
+        self.assertEqual(status,401)
+    def test_master_confirms_identity_and_assignment_before_activation(self):
+        self.request();request=self.pending();local=self.local()
+        path='admin/access-requests/'+request['id']+'/decision'
+        payload={'decision':'approve','role':'business','businessId':local['id'],'expectedVersion':request['version']}
+        self.assertEqual(self.master.call('POST',path,payload)[0],422)
+        self.assertEqual(self.pending()['approvalStatus'],'pending')
+        status,user=self.master.call('POST',path,{**payload,'identityConfirmed':True});self.assertEqual(status,200)
+        self.assertEqual(user['businessId'],local['id']);self.assertFalse(user['isMaster'])
+        self.assertEqual(self.master.call('POST',path,{**payload,'identityConfirmed':True})[0],409)
+        self.client.login('operador@example.test','Clave-Solicitada-123')
+        self.assertEqual(self.client.call('GET','businesses/'+local['id']+'/orders/active')[0],200)
+        self.assertEqual(self.client.call('GET','admin/access-requests')[0],403)
+        self.assertEqual(self.server.store.rows('access_audit')[0]['actorId'],'admin')
+    def test_request_cannot_grant_own_role_or_master_or_overwrite_credentials(self):
+        for extra in ({'role':'admin'},{'isMaster':True},{'isActive':True},{'businessId':'arbitrary'}):
+            self.assertEqual(self.request(**extra)[0],400)
+        self.assertEqual(self.request(email='a@utsjr.edu.mx.evil.example',requestedRole='admin')[0],422)
+        before=self.server.store.get('users','admin')['passwordHash']
+        self.assertEqual(self.request(email='admin@snackup.test')[0],202)
+        self.assertEqual(self.server.store.get('users','admin')['passwordHash'],before)
+        self.assertEqual(self.master.call('GET','admin/access-requests')[1]['data'],[])
+    def test_ordinary_admin_cannot_review_requests(self):
+        self.request(email='administracion@utsjr.edu.mx',requestedRole='admin')
+        req=self.pending()
+        status,user=self.master.call('POST','admin/access-requests/'+req['id']+'/decision',{'decision':'approve','role':'admin','identityConfirmed':True,'expectedVersion':req['version']})
+        self.assertEqual(status,200);self.assertFalse(user['isMaster'])
+        self.client.login('administracion@utsjr.edu.mx','Clave-Solicitada-123')
+        self.assertEqual(self.client.call('GET','admin/access-requests')[0],403)
+        self.assertEqual(self.client.call('POST','admin/users',{})[0],403)
+    def test_upgrade_retires_only_known_example_accounts_and_preserves_work(self):
+        s=self.server.store;s.seed_test_fixtures();s.migrate_institution()
+        with s.db:
+            s.put('users',{'id':'user-created','email':'propio@example.test','displayName':'Propio','role':'business','isActive':True,'businessId':'central','isMaster':False,'version':1,'passwordHash':'preserved'})
+            p=s.get('products','central-p1');s.put('products',{**p,'price':321.5})
+            s.db.execute("DELETE FROM records WHERE kind='migrations' AND id='owner-managed-v3'")
+        s.migrate_clean_start();s.migrate_clean_start()
+        self.assertEqual({u['id'] for u in s.rows('users')},{'admin','user-created'})
+        self.assertEqual(len(s.rows('retired_example_accounts')),4)
+        self.assertEqual(s.get('products','central-p1')['price'],321.5)
+        self.assertEqual(s.get('users','user-created')['passwordHash'],'preserved')
 
 if __name__=='__main__':unittest.main()

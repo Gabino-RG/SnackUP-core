@@ -228,7 +228,15 @@ class RestSession extends ChangeNotifier {
       account = null;
       phase = PortalSessionPhase.signedOut;
       message = error is ApiException
-          ? error.message
+          ? switch (error.code) {
+              'ACCESS_PENDING' =>
+                'Tu solicitud está pendiente de autorización por la cuenta maestra.',
+              'ACCESS_REJECTED' =>
+                'Tu solicitud no fue autorizada. Contacta a la cuenta maestra.',
+              'ACCESS_REVOKED' =>
+                'Tu acceso está suspendido. Contacta a la cuenta maestra.',
+              _ => error.message,
+            }
           : 'No se pudo iniciar sesión.';
       _changed();
     }
