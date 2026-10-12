@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import '../../api/api_client.dart';
 import '../../api/rest_session.dart';
 import '../../catalog/rest_catalog_repository.dart';
-import '../catalog/catalog_screen.dart';
+import '../../operations/operations_repository.dart';
+import '../operations/business_portal.dart';
+import '../operations/admin_management.dart';
 import '../admin/admin_dashboard_screen.dart';
 import '../admin/admin_theme.dart';
 import '../admin/data/rest_admin_repository.dart';
@@ -21,6 +23,7 @@ class _RestPortalAppState extends State<RestPortalApp> {
   SessionHttpClient? _client;
   RestCatalogRepository? _catalog;
   RestAdminRepository? _admin;
+  OperationsRepository? _operations;
   int? _dataGeneration;
   @override
   void initState() {
@@ -35,7 +38,9 @@ class _RestPortalAppState extends State<RestPortalApp> {
     _client = SessionHttpClient(widget.session);
     _catalog = RestCatalogRepository(baseUri: widget.session.api.baseUri,
       client: _client!, accessToken: widget.session.accessToken);
-    _admin = RestAdminRepository(ApiClient(baseUri: widget.session.api.baseUri, client: _client!));
+    final api = ApiClient(baseUri: widget.session.api.baseUri, client: _client!);
+    _admin = RestAdminRepository(api);
+    _operations = OperationsRepository(api);
   }
   @override
   void dispose() { _client?.close(); super.dispose(); }
@@ -57,11 +62,12 @@ class _RestPortalAppState extends State<RestPortalApp> {
         home = _AccessNotice(message: session.message ?? 'No se pudo contactar con el servidor.',
           action: 'Reintentar conexión', onAction: session.restore);
       } else if (authenticated && account.isBusiness) {
-        home = widget.businessBuilder?.call(account) ?? CatalogScreen(
-          businessId: account.businessId!, repository: _catalog!, onSignOut: session.signOut);
+        home = widget.businessBuilder?.call(account) ?? BusinessPortal(
+          businessId: account.businessId!, catalog: _catalog!, repository: _operations!, token: session.accessToken, onSignOut: session.signOut);
       } else if (authenticated && account.isAdmin) {
         home = widget.adminBuilder?.call(account) ?? AdminDashboardScreen(
-          repository: _admin!, onSignOut: session.signOut);
+          repository: _admin!, onSignOut: session.signOut, onManage: (context) => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => AdminManagement(repository: _operations!, currentUserId: account.id))));
       } else if (authenticated) {
         home = _AccessNotice(
           message: account.role == 'business'
@@ -72,7 +78,12 @@ class _RestPortalAppState extends State<RestPortalApp> {
         home = _PortalLogin(session: session);
       }
       return MaterialApp(key: ValueKey(navigationKey), title: 'SnackUP · Paneles',
-        debugShowCheckedModeBanner: false, theme: adminTheme(), home: home);
+        debugShowCheckedModeBanner: false, theme: adminTheme(), home: home,
+        builder: (context, child) => const bool.fromEnvironment('REVIEW_MODE') ? Column(children: [
+          Material(color: const Color(0xFFFFEDBA), child: SafeArea(bottom:false,child: Padding(padding:const EdgeInsets.symmetric(horizontal:12,vertical:6),
+            child: Text('VERSIÓN DE REVISIÓN · Datos de prueba guardados en esta PC',textAlign:TextAlign.center,style:TextStyle(fontSize:11,color:Color(0xFF493500)))))),
+          Expanded(child: child!),
+        ]) : child!);
     },
   );
 }
@@ -164,6 +175,7 @@ class _PortalLoginState extends State<_PortalLogin> {
             TextButton(onPressed: _busy ? null : _recover,
               child: Text(_recovering ? 'Enviando solicitud…' : 'Olvidé mi contraseña')),
             const SizedBox(height: 12),
+            if (const bool.fromEnvironment('REVIEW_MODE')) const Padding(padding:EdgeInsets.only(bottom:12),child:SelectableText('Negocio: negocio@snackup.test\nAdministración: admin@snackup.test\nContraseña de prueba: SnackUP-Prueba-2026',textAlign:TextAlign.center,style:TextStyle(fontSize:12))),
             const Text('Utiliza la cuenta que te asignó administración.', textAlign: TextAlign.center,
               style: TextStyle(fontSize: 12, color: AdminColors.muted)),
           ]),

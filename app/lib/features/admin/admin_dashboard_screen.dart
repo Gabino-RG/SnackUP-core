@@ -7,9 +7,10 @@ import 'domain/admin_models.dart';
 import 'followup_dialog.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
-  const AdminDashboardScreen({super.key, required this.repository, this.onSignOut});
+  const AdminDashboardScreen({super.key, required this.repository, this.onSignOut, this.onManage});
   final AdminRepository repository;
   final VoidCallback? onSignOut;
+  final void Function(BuildContext)? onManage;
   @override
   State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
 }
@@ -424,7 +425,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             ),
             if (!wide)
               _badge(
-                _repository.isDemo ? 'DEMOSTRACIÓN' : 'DATOS REALES',
+                _repository.isDemo ? 'DEMOSTRACIÓN' : 'DATOS DEL SERVIDOR',
                 AdminColors.cyan,
               ),
           ],
@@ -456,6 +457,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               child: const Text('Cargar 200 más'),
             ),
           ),
+        if (widget.onManage != null) Padding(padding: const EdgeInsets.only(bottom:16),child: OutlinedButton.icon(
+          onPressed: () => widget.onManage!(context), icon: const Icon(Icons.manage_accounts), label: const Text('Gestionar locales y cuentas'))),
         _filters(),
         const SizedBox(height: 22),
         if (_section == 0) ...[
