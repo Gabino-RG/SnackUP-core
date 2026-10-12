@@ -29,6 +29,7 @@ PASSWORD = 'SnackUP-Prueba-2026'
 REVIEW_LOCAL_EMAIL = 'negocio@snackup.test'
 REVIEW_LOCAL_ID = 'review-local'
 REVIEW_DEMO_BATCH = 'charts-demo-v6'
+REVIEW_RELEASE = 'graficas-v7'
 ACTIVE = {'pending', 'accepted', 'preparing', 'ready'}
 REASONS = {'product_unavailable', 'cannot_prepare', 'store_issue', 'store_closing', 'other'}
 UTC = timezone.utc
@@ -147,8 +148,23 @@ class Store:
             migration=next((r for r in self.rows('migrations') if r['id']=='ready-local-v5'),{})
             bid=migration.get('businessId',REVIEW_LOCAL_ID)  # Existing v5 installations.
             operator=next((u for u in self.rows('users') if u['id']=='review-operator'),None)
-            if not operator or operator.get('businessId')!=bid:return
-            if not any(b['id']==bid for b in self.rows('businesses')):return
+            businesses=self.rows('businesses')
+            target=next((b for b in businesses if b['id']==bid),None)
+            # A preserved, manually created account may have the review email.
+            # Reports do not need an operator login: keep their sample local
+            # separate, without assigning or changing any existing account.
+            owned_target=target is not None and (migration.get('businessId')==bid or
+                (operator is not None and operator.get('businessId')==bid))
+            if not owned_target:
+                target=next((b for b in businesses if b.get('reviewPurpose')=='charts-v7'),None)
+                if target is None:
+                    cafeteria=self.configuration()['cafeteria']
+                    target=self.put('businesses',{'id':new_id(),'name':'Local de ejemplo · gráficas',
+                        'category':'Demostración','description':'Datos ficticios para probar los reportes; no es un local real.',
+                        'cafeteriaId':cafeteria['id'],'cafeteriaName':cafeteria['name'],'timezone':'America/Mexico_City',
+                        'isOpen':False,'isActive':True,'version':1,'createdAt':now(),'updatedAt':now(),
+                        'isDemo':True,'reviewPurpose':'charts-v7'})
+                bid=target['id']
             clock=(clock or datetime.now(UTC)).astimezone(CAMPUS)
             iso=lambda date:date.astimezone(UTC).isoformat().replace('+00:00','Z')
             stamp=iso(clock)
@@ -687,6 +703,10 @@ def main():
     except OSError:print('No se pudo abrir el puerto. Cierra la otra instancia de SnackUP e intenta nuevamente.');return 1
     url=f'http://localhost:{server.server_port}/'
     print('\nSNACKUP | REVISION DE NEGOCIOS Y ADMINISTRACION\nDatos de prueba persistentes en esta PC.\nNo es el backend de producción.\n',flush=True)
+    print('Version: '+REVIEW_RELEASE+'\nOpiniones disponibles para graficas: '+str(len(server.store.rows('reviews'))),flush=True)
+    demo=next((r for r in server.store.rows('migrations') if r['id']==REVIEW_DEMO_BATCH),None)
+    if demo:
+        print('Periodo de ejemplos: '+demo['periodFrom']+' a '+demo['periodTo']+'\nEn Administracion: Resumen general > Todos los locales.\n',flush=True)
     print(url+'\nCocina / Local: '+REVIEW_LOCAL_EMAIL+'\nAdministración / Cuenta maestra: admin@snackup.test\nContraseña de prueba: '+PASSWORD+'\n\nCada cuenta abre exclusivamente su panel.\nMantén esta ventana abierta. Ctrl+C para terminar.\n',flush=True)
     if not args.no_browser:
         try:

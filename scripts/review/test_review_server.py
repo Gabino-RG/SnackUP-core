@@ -349,8 +349,12 @@ class ReadyLocalTests(unittest.TestCase):
                 s.put('users',{'id':'custom','email':REVIEW_LOCAL_EMAIL,'role':'business','businessId':'custom-local',
                     'isActive':False,'isMaster':False,'passwordHash':hash_password('Clave-Del-Equipo-123'),'version':4})
             before=s.rows('users');s.ensure_review_local();s.ensure_demo_data()
-            self.assertEqual(s.rows('users'),before);self.assertEqual(s.rows('businesses'),[])
-            for kind in ('products','orders','reviews','academic_catalog'):self.assertEqual(s.rows(kind),[])
+            self.assertEqual(s.rows('users'),before)
+            businesses=s.rows('businesses');self.assertEqual(len(businesses),1)
+            self.assertEqual(businesses[0]['reviewPurpose'],'charts-v7')
+            self.assertNotEqual(businesses[0]['id'],'custom-local')
+            self.assertEqual(len(s.rows('reviews')),90)
+            self.assertEqual({r['businessId'] for r in s.rows('reviews')},{businesses[0]['id']})
         finally:s.db.close()
     def test_demo_reports_reach_both_panels_through_the_api(self):
         store=self.server.store;orders=store.rows('orders')
@@ -376,6 +380,42 @@ class ReadyLocalTests(unittest.TestCase):
         self.assertEqual({f['status'] for f in followups['data']},{'pending','in_review','resolved'})
 
 class DemoDataTests(unittest.TestCase):
+    def test_upgrade_with_preserved_account_populates_api_charts_without_touching_its_local(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);(root/'web').mkdir();(root/'web'/'index.html').write_text('ok')
+            path=root/'data'/'revision.sqlite3';s=Store(path)
+            with s.db:
+                s.put('users',{'id':'custom','email':REVIEW_LOCAL_EMAIL,'displayName':'Cuenta creada por el equipo',
+                    'role':'business','businessId':REVIEW_LOCAL_ID,'isActive':True,'isMaster':False,
+                    'version':4,'passwordHash':hash_password('Clave-Del-Equipo-123')})
+                s.put('businesses',{'id':REVIEW_LOCAL_ID,'name':'Local del equipo','isActive':True,'isOpen':False,'version':7})
+                s.put('products',{'id':'own-product','businessId':REVIEW_LOCAL_ID,'name':'Mi producto','price':123.45,'stock':8,'version':9})
+            s.ensure_review_local()  # Previous package preserved the collision.
+            before={k:s.rows(k) for k in ('users','businesses','products')};s.db.close()
+            server=ReviewServer(('127.0.0.1',0),root/'web',root/'data')
+            thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+            try:
+                master=Client(f'http://127.0.0.1:{server.server_port}');master.login('admin@snackup.test')
+                status,data=master.call('GET','admin/reviews?limit=200')
+                self.assertEqual(status,200);self.assertEqual(len(data['data']),90)
+                self.assertEqual({r['rating'] for r in data['data']},{1,2,3,4,5})
+                sample_id=data['data'][0]['businessId'];self.assertNotEqual(sample_id,REVIEW_LOCAL_ID)
+                for kind,rows in before.items():
+                    for row in rows:self.assertEqual(server.store.get(kind,row['id']),row)
+                self.assertEqual(len(server.store.rows('users')),2)
+                _,catalog=master.call('GET','admin/academic-catalog?limit=200')
+                self.assertEqual(len(catalog['data']),9)
+                self.assertEqual(master.call('GET','businesses/'+sample_id+'/orders/active')[0],403)
+                kinds=('users','businesses','products','orders','reviews','academic_catalog','followups','followup_history','migrations')
+                first={k:server.store.rows(k) for k in kinds}
+            finally:
+                server.shutdown();server.server_close();thread.join();server.store.db.close()
+            s=Store(path)
+            try:
+                s.ensure_review_local();s.ensure_demo_data()
+                self.assertEqual(first,{k:s.rows(k) for k in kinds})
+            finally:s.db.close()
+
     def test_historical_data_is_coherent_even_at_local_midnight(self):
         for clock in (datetime(2026,10,12,0,0,tzinfo=CAMPUS),datetime(2026,10,12,13,25,tzinfo=CAMPUS)):
             with self.subTest(clock=clock),tempfile.TemporaryDirectory() as temp:

@@ -18,7 +18,11 @@ Al iniciar esta versión se añaden **6 productos, 240 pedidos finalizados y 90 
 - **Local → Resumen:** ventas, entregas y cancelaciones del periodo. **Historial:** pedidos finalizados de la fecha seleccionada. Las cancelaciones no suman ventas.
 - **Productos:** los artículos con “ejemplo” se pueden editar o eliminar. Los pedidos históricos conservan sus precios originales; no descuentan existencias del catálogo actual.
 
-El aviso superior identifica la versión con datos ficticios, y los comentarios/clientes/productos de ejemplo están identificados. La carga es única, aditiva y transaccional: reiniciar no duplica ni refecha los registros, ni repone ejemplos eliminados o modifica datos existentes. Si revisas el paquete más adelante, selecciona fechas del periodo original. El catálogo académico reutiliza carreras/grupos coincidentes sin alterarlos. No se crean más cuentas ni locales para estas gráficas. Estos registros pertenecen exclusivamente al servidor de revisión; no se insertan en el backend definitivo.
+El aviso superior identifica la versión con datos ficticios, y los comentarios/clientes/productos de ejemplo están identificados. La carga es única, aditiva y transaccional: reiniciar no duplica ni refecha los registros, ni repone ejemplos eliminados o modifica datos existentes. Si revisas el paquete más adelante, selecciona fechas del periodo original. El catálogo académico reutiliza carreras/grupos coincidentes sin alterarlos. No se crean cuentas adicionales para estas gráficas. Si una cuenta previa impidió preparar el Local de prueba, se utiliza un **Local de ejemplo · gráficas** aislado, sin operador asignado, para no mezclar ejemplos con los locales del equipo. Estos registros pertenecen exclusivamente al servidor de revisión; no se insertan en el backend definitivo.
+
+**Corrección graficas-v7:** antes, conservar una cuenta manual con el correo de prueba podía omitir todas las opiniones de ejemplo. Ahora los reportes se preparan independientemente de esa cuenta. La consola muestra la versión, el número de opiniones disponibles y las fechas del lote. Se verifican 90 opiniones y la conservación de cuentas, local, contraseña, precios y stock al actualizar y reiniciar.
+
+Si aparece **0 opiniones cargadas**, cierra la consola y las pestañas de la versión anterior, extrae el ZIP actualizado y abre su `INICIAR_SNACKUP.cmd`. Copia previamente tu carpeta `datos/` con ambas versiones cerradas si quieres conservar tu trabajo. Comprueba **graficas-v7** en la nueva consola, entra con la cuenta maestra y usa **Resumen general → Limpiar filtros → Todos los locales**. Para lotes antiguos, selecciona **Todo el historial**. No borres la base de datos para agregar los ejemplos. Si el puerto está ocupado, cierra la otra instancia; una pestaña nueva no actualiza el servidor anterior.
 
 ## Dos paneles separados
 
@@ -69,7 +73,7 @@ Cierra SnackUP y respalda la carpeta `datos/` completa antes de actualizar. Extr
 
 El acceso al Local de prueba se agrega una sola vez al actualizar y no modifica locales, precios ni cuentas existentes. Los cambios posteriores a su contraseña, asignación o estado también se conservan. Si el correo `negocio@snackup.test` ya pertenece a una cuenta creada manualmente, se respeta esa cuenta y su contraseña; no se reemplaza ni se le conceden privilegios nuevos.
 
-Los datos anteriores no se borran automáticamente. Para comenzar de nuevo, renombra `datos/` como respaldo con la consola cerrada; al reiniciar aparecen el maestro, el Local de prueba y sus ejemplos. No hay una base de datos personal dentro del ZIP; el servidor genera los datos ficticios en la PC al iniciar. La carga de ejemplos se omite si el operador preparado fue reasignado o si ese correo pertenece a una cuenta manual, para no insertar datos en un local ajeno.
+Los datos anteriores no se borran automáticamente. Para comenzar de nuevo, renombra `datos/` como respaldo con la consola cerrada; al reiniciar aparecen el maestro, el Local de prueba y sus ejemplos. No hay una base de datos personal dentro del ZIP; el servidor genera los datos ficticios en la PC al iniciar. Si el local original de demostración no puede identificarse de forma segura, los ejemplos se agregan a un local de demostración aislado; no se cambia la asignación de ninguna cuenta.
 
 ## Integración
 

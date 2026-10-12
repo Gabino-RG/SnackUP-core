@@ -22,6 +22,8 @@ Los locales reales y sus cuentas los crea el equipo. No se crean cuatro
 negocios ni cuentas adicionales.
 
 DATOS PARA PROBAR LAS GRAFICAS:
+Esta revision se identifica como graficas-v7 en la consola de inicio.
+La consola indica Opiniones disponibles para graficas: 90 en una instalacion nueva.
 El Local de prueba incluye 6 productos, 240 pedidos historicos finalizados
 y 90 opiniones ficticias de los ultimos 30 dias al iniciar esta version.
 Incluye cancelaciones, valoraciones de 1 a 5 estrellas, 3 carreras y 6 grupos.
@@ -31,6 +33,22 @@ Incluye cancelaciones, valoraciones de 1 a 5 estrellas, 3 carreras y 6 grupos.
 Los importes salen de los pedidos entregados; no suman cancelaciones.
 Los ejemplos se guardan una sola vez. No se duplican ni cambian de fecha
 al reiniciar. Si los consultas despues, elige el periodo correspondiente.
+Si habias creado tu propia cuenta antes de instalar los ejemplos, se conservan
+su correo, contrasena y local. Los ejemplos del reporte se agregan a un local
+separado llamado Local de ejemplo - graficas, sin crear otra cuenta.
+
+SI LAS GRAFICAS APARECEN VACIAS:
+1. Cierra la consola negra de la version anterior y sus pestanas del navegador.
+2. Extrae este ZIP completo en una carpeta nueva. No lo ejecutes dentro del ZIP.
+3. Si deseas conservar cambios, copia datos/ de la version anterior a esta carpeta
+   con ambas consolas cerradas. No borres ni reemplaces esa carpeta con otra vacia.
+4. Abre INICIAR_SNACKUP.cmd de esta nueva carpeta. Debe mostrar graficas-v7.
+5. Inicia con admin@snackup.test. Abre Resumen general, pulsa Limpiar filtros
+   y selecciona Todos los locales. Para ejemplos antiguos, usa Todo el historial.
+6. Pulsa Actualizar si la pestana ya estaba abierta.
+Si aparece que el puerto esta ocupado, otra consola de SnackUP sigue abierta:
+cierrala y vuelve a iniciar este paquete. Abrir una pestana no actualiza el servidor.
+No es necesario borrar tu base de datos para agregar los ejemplos.
 
 DOS PANELES CON CUENTAS SEPARADAS:
 - Administracion (incluida la cuenta maestra): locales, cuentas y reportes.
@@ -78,7 +96,8 @@ La actualizacion agrega ese acceso una sola vez y no cambia tus precios,
 contrasenas o cuentas existentes. Si ya creaste manualmente el correo
 negocio@snackup.test, se conservan sus datos y su contrasena.
 Los ejemplos se agregan solo al Local de prueba preparado por el paquete;
-no se sobrescriben productos, precios ni datos creados por ustedes.
+si no existe, se prepara un local aislado para graficas sin cambiar tus cuentas.
+No se sobrescriben productos, precios ni datos creados por ustedes.
 
 Lee documentos/PANELES_ENTREGA.md y CONTRATO_PANELES.md.
 La revision guarda datos en SQLite y escucha solo en esta PC. No envia
