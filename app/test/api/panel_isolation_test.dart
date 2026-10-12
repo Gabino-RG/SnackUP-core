@@ -100,8 +100,14 @@ void main() {
       expect(find.text('Entrar al panel del local'), findsNothing);
       expect(find.byTooltip('Volver a Administración'), findsNothing);
       if (business) {
-        expect(find.text('Cocina'), findsOneWidget);
-        expect(find.text('Productos'), findsOneWidget);
+        final navigation = find.byType(NavigationBar);
+        expect(navigation, findsOneWidget);
+        for (final label in ['Cocina', 'Productos']) {
+          expect(
+            find.descendant(of: navigation, matching: find.text(label)),
+            findsOneWidget,
+          );
+        }
         expect(find.text('Gestionar locales y cuentas'), findsNothing);
         expect(find.text('Crear cuenta'), findsNothing);
         expect(find.text('Solicitudes de acceso'), findsNothing);
