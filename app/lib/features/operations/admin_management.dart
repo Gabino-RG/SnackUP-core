@@ -84,6 +84,7 @@ class _AdminManagementState extends State<AdminManagement> {
   }
 
   Future<void> _business([BusinessRecord? b]) async {
+    if (_configuration == null || _error != null) return;
     final result = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -317,7 +318,7 @@ class _AdminManagementState extends State<AdminManagement> {
                 Align(
                   alignment: Alignment.centerRight,
                   child: FilledButton.icon(
-                    onPressed: _busy
+                    onPressed: _busy || _configuration == null || _error != null
                         ? null
                         : () => _section == 0 ? _business() : _user(),
                     icon: const Icon(Icons.add),
