@@ -18,7 +18,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[2]
 REQUIRED_WEB = {'index.html', 'main.dart.js', 'flutter_bootstrap.js', 'vendor/zxing-0.21.3.min.js'}
 DOCS = [
-    'docs/integracion/README.md', 'docs/integracion/openapi.json',
+    'docs/integracion/README.md', 'docs/integracion/EQUIPO_BACKEND.md', 'docs/integracion/openapi.json',
     'docs/integracion/REALTIME.md', 'docs/integracion/ACEPTACION.md',
     'docs/integracion/nginx.conf.example', 'docs/MANUAL_BACKEND_PANELES.md',
     'docs/CONTRATO_PANELES.md', 'docs/PORTAL_API_LOCAL.md',

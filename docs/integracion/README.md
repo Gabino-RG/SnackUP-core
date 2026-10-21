@@ -1,5 +1,8 @@
 # Entrega de frontend: Administración y Cocina
 
+**Equipo de backend y asistente de IA:** comenzar por [EQUIPO_BACKEND.md](EQUIPO_BACKEND.md).
+Incluye orden de trabajo, entregables y un bloque de instrucciones listo para copiar.
+
 Versión de entrega: **1.0.0 para integración**, preparada el 20 de octubre de 2026.
 Base recuperada: `respaldo/2026-10-13-antes-restablecimiento`, commit `006ef99`.
 El SHA de esta entrega, su compilador y sus huellas están en `VERSION.json` del ZIP.
