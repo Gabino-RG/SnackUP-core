@@ -1,6 +1,6 @@
 # Ejecutar las cinco pruebas de SnackUp
 
-Desde la carpeta SnackUP-core, en la rama codex/pruebas-flutter:
+Desde la carpeta SnackUP-core, en la rama codex/pruebas-snackup-informe:
 
 ```powershell
 flutter pub get
@@ -36,3 +36,4 @@ Salida final: `00:05 +5: All tests passed!`
 Evidencia completa: resultados_pruebas.txt.
 
 Alcance: son pruebas de widgets con servicios simulados. Comprueban interacción y lógica de estas pantallas; no verifican reglas de seguridad ni conectividad del servicio Firebase real.
+
