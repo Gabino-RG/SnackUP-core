@@ -18,6 +18,13 @@ fs.mkdirSync(output, { recursive: true });
   const apiFailures=[];
   const traces=[];
   const traceJobs=[];
+  const traceErrors=[];
+  const pendingApiRequests=new Set();
+  page.on('request', request => {
+    if (new URL(request.url()).pathname.startsWith('/api/v1/')) pendingApiRequests.add(request);
+  });
+  page.on('requestfinished', request => pendingApiRequests.delete(request));
+  page.on('requestfailed', request => pendingApiRequests.delete(request));
   function redact(value) {
     if (Array.isArray(value)) return value.map(redact);
     if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key,v])=>[key,/^(password|newPassword|accessToken|refreshToken|token)$/i.test(key)?'REDACTED-SECRET':redact(v)]));
@@ -29,11 +36,30 @@ fs.mkdirSync(output, { recursive: true });
     const req = response.request();
     traceJobs.push((async()=>{
       let body=null, requestBody=null;
-      try {body=await response.json();} catch {}
+      if (response.status() !== 204) {
+        try {body=await response.json();}
+        catch {traceErrors.push(`${req.method()} ${url.pathname} HTTP ${response.status()}: response body could not be captured`);}
+      }
       try {requestBody=req.postDataJSON();} catch {}
       traces.push(redact({method:req.method(),path:url.pathname.slice('/api/v1/'.length)+url.search,status:response.status(),body,requestBody}));
     })());
   });
+  async function drainTraces() {
+    // Chromium can discard response bodies on reload. Read them before leaving
+    // the document, including jobs added while an earlier batch was pending.
+    const deadline=Date.now()+20000;
+    while (pendingApiRequests.size) {
+      if (Date.now() >= deadline) throw new Error('API requests did not finish before navigation');
+      await page.waitForTimeout(25);
+    }
+    let cursor=0;
+    while (cursor < traceJobs.length) {
+      const batch=traceJobs.slice(cursor);
+      cursor+=batch.length;
+      await Promise.all(batch);
+    }
+    if (traceErrors.length) throw new Error('Incomplete API trace: '+traceErrors.join('\n'));
+  }
   page.on('response',r=>{if(r.url().includes('/api/v1/') && r.status()>=400 && !r.url().includes('/auth/refresh'))apiFailures.push(r.status()+' '+new URL(r.url()).pathname);});
   async function typeField(label,value){
     const field=page.getByRole('textbox',{name:label,exact:true});
@@ -147,6 +173,7 @@ fs.mkdirSync(output, { recursive: true });
     await page.getByRole('button',{name:'Guardar',exact:true}).click();
     await page.getByRole('button',{name:'Editar Local del equipo',exact:true}).waitFor();
     if(await page.getByRole('button',{name:'Entrar a Local del equipo',exact:true}).count()) throw new Error('Business management must not open kitchen');
+    await drainTraces();
     await page.reload();
     await page.locator('flutter-view').waitFor();
     const enableAgain=page.locator('flt-semantics-placeholder');
@@ -160,6 +187,7 @@ fs.mkdirSync(output, { recursive: true });
     await page.screenshot({path:path.join(output,'03-autorizacion-maestra.png')});
     await page.getByRole('button',{name:'Guardar',exact:true}).click();
     await label('No hay solicitudes pendientes.').waitFor();
+    await drainTraces();
     await page.reload();
     await page.locator('flutter-view').waitFor();
     const enableThird=page.locator('flt-semantics-placeholder');
@@ -227,7 +255,7 @@ fs.mkdirSync(output, { recursive: true });
     await page.getByRole('button',{name:'Confirmar entrega',exact:true}).click();
     await label('Listos (0)').waitFor();
     if(errors.length) throw new Error('Browser errors: '+errors.join('\n'));
-    await Promise.all(traceJobs);
+    await drainTraces();
     fs.writeFileSync(path.join(output,'contract-trace.json'),JSON.stringify(traces,null,2));
     fs.writeFileSync(path.join(output,'result.json'),JSON.stringify({passed:true,productionFrontend:productionBuild,productionBackend:false,demo:{reviews:reviews.length,sales,history:history.summary},flows:['local login before administration','populated sales and history through API','charts filtered by rating, career, group and period','master restricted to administration','local access request','pending denied login','master approval','business created by user','operator restricted to business panel','catalog create','price edit','explicit accept','prepare','ready','verified delivery','mobile 360','tablet 768','desktop 1440'],errors},null,2));
     console.log('Integrated browser review passed');
