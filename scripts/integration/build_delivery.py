@@ -69,8 +69,9 @@ def main():
     parser.add_argument('--output', type=Path, default=ROOT / 'build/delivery/SnackUP-Paneles-Frontend.zip')
     args = parser.parse_args()
     api = validate_api(args.api_base_url)
-    if git('status', '--porcelain'):
-        raise ValueError('Commit the reviewed source first. Delivery requires a clean working tree.')
+    pending = git('status', '--porcelain')
+    if pending:
+        raise ValueError('Commit the reviewed source first. Delivery requires a clean working tree:\n' + pending)
     if args.output.exists():
         raise ValueError('Output already exists. Select a new --output path.')
     commit = git('rev-parse', 'HEAD')
@@ -84,8 +85,9 @@ def main():
                '--dart-define=REVIEW_MODE=false', '--dart-define=API_BASE_URL=' + api,
                '--output', 'build/portal-entrega']
     subprocess.run(command, cwd=ROOT / 'app', check=True)
-    if git('status', '--porcelain') or git('rev-parse', 'HEAD') != commit:
-        raise ValueError('Build changed versioned sources. Review and commit before packaging.')
+    pending = git('status', '--porcelain')
+    if pending or git('rev-parse', 'HEAD') != commit:
+        raise ValueError('Build changed versioned sources. Review and commit before packaging.\n' + pending)
     names = {p.relative_to(build).as_posix() for p in build.rglob('*') if p.is_file()}
     if not REQUIRED_WEB <= names:
         raise ValueError('Incomplete web compilation: ' + str(REQUIRED_WEB - names))

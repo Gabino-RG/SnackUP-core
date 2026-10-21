@@ -39,11 +39,14 @@ jobs:
       - name: Flutter tests and analysis
         working-directory: app
         run: |
+          flutter config --enable-web --no-enable-linux-desktop --no-enable-windows-desktop --no-enable-macos-desktop
           flutter pub get
           flutter test --reporter expanded
           flutter analyze --no-fatal-infos --no-fatal-warnings
       - name: Build exact-commit delivery
-        run: python scripts/integration/build_delivery.py
+        run: |
+          git status --short
+          python scripts/integration/build_delivery.py
       - name: Install test browser
         run: |
           npm install --prefix "$RUNNER_TEMP/snackup-ui" --no-package-lock --no-audit --no-fund playwright@1.51.1
