@@ -1,0 +1,7 @@
+00:00 +0: loading C:/Users/Familia Munguia/Documents/ChatGPT/Paco/SnackUP-core/test/snackup_test.dart
+00:00 +0: CP-01: aumentar cantidad de 1 a 2
+00:03 +1: CP-02: la cantidad no baja de uno
+00:03 +2: CP-03: total con precio decimal
+00:04 +3: CP-04: rechazar productos de varias tiendas
+00:04 +4: CP-05: crear pedido y vaciar carrito
+00:05 +5: All tests passed!

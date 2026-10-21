@@ -7,11 +7,15 @@ import 'package:snackup/theme/app_text.dart';
 class ProductDetailScreen extends StatefulWidget {
   final Map<String, dynamic> product;
   final String productId;
+  final FirebaseAuth? auth;
+  final FirebaseFirestore? firestore;
 
   const ProductDetailScreen({
     super.key,
     required this.product,
     required this.productId,
+    this.auth,
+    this.firestore,
   });
 
   @override
@@ -28,9 +32,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   @override
   void initState() {
     super.initState();
-    final userId = FirebaseAuth.instance.currentUser?.uid;
+    final userId = (widget.auth ?? FirebaseAuth.instance).currentUser?.uid;
     if (userId != null) {
-      _favoriteRef = FirebaseFirestore.instance
+      _favoriteRef = (widget.firestore ?? FirebaseFirestore.instance)
           .collection('users')
           .doc(userId)
           .collection('favorites')
@@ -39,7 +43,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   }
 
   Future<void> _toggleFavorite() async {
-    final userId = FirebaseAuth.instance.currentUser?.uid;
+    final userId = (widget.auth ?? FirebaseAuth.instance).currentUser?.uid;
     if (userId == null) return;
 
     setState(() => _isLoading = true);
@@ -82,7 +86,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   Future<void> _addToCart() async {
     setState(() => _isLoading = true);
-    final userId = FirebaseAuth.instance.currentUser?.uid;
+    final userId = (widget.auth ?? FirebaseAuth.instance).currentUser?.uid;
     if (userId == null) {
       _showError('Error: Usuario no encontrado.');
       setState(() => _isLoading = false);
@@ -90,7 +94,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     }
     
     try {
-      final cartRef = FirebaseFirestore.instance
+      final cartRef = (widget.firestore ?? FirebaseFirestore.instance)
           .collection('users')
           .doc(userId)
           .collection('cart')

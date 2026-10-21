@@ -5,7 +5,10 @@ import 'package:snackup/theme/app_colors.dart';
 import 'package:snackup/theme/app_text.dart';
 
 class CartScreen extends StatefulWidget {
-  const CartScreen({super.key});
+  final FirebaseAuth? auth;
+  final FirebaseFirestore? firestore;
+
+  const CartScreen({super.key, this.auth, this.firestore});
 
   @override
   State<CartScreen> createState() => _CartScreenState();
@@ -84,7 +87,7 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   Future<void> _placeOrder(List<QueryDocumentSnapshot> cartDocs, double totalPrice) async {
-    final userId = FirebaseAuth.instance.currentUser?.uid;
+    final userId = (widget.auth ?? FirebaseAuth.instance).currentUser?.uid;
     if (userId == null) return;
 
     if (cartDocs.isEmpty) {
@@ -103,7 +106,7 @@ class _CartScreenState extends State<CartScreen> {
       }
       final String businessId = allBusinessIds.first;
 
-      final userDoc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+      final userDoc = await (widget.firestore ?? FirebaseFirestore.instance).collection('users').doc(userId).get();
       if (!userDoc.exists || userDoc.data() == null) {
         _showError('Error: No se encontraron tus datos de usuario.');
         setState(() => _isLoading = false);
@@ -145,8 +148,8 @@ class _CartScreenState extends State<CartScreen> {
         'items': orderItems,
       };
 
-      final batch = FirebaseFirestore.instance.batch();
-      final orderRef = FirebaseFirestore.instance.collection('orders').doc();
+      final batch = (widget.firestore ?? FirebaseFirestore.instance).batch();
+      final orderRef = (widget.firestore ?? FirebaseFirestore.instance).collection('orders').doc();
       batch.set(orderRef, orderData);
 
       for (var doc in cartDocs) {
@@ -192,13 +195,13 @@ class _CartScreenState extends State<CartScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final userId = FirebaseAuth.instance.currentUser?.uid;
+    final userId = (widget.auth ?? FirebaseAuth.instance).currentUser?.uid;
 
     if (userId == null) {
       return _buildErrorState('Debes iniciar sesión para ver tu carrito');
     }
 
-    final Stream<QuerySnapshot> cartStream = FirebaseFirestore.instance
+    final Stream<QuerySnapshot> cartStream = (widget.firestore ?? FirebaseFirestore.instance)
         .collection('users')
         .doc(userId)
         .collection('cart')
