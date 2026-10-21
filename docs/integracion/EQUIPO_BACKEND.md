@@ -26,7 +26,7 @@ automáticas, contraseñas, generador de pedidos o inicializadores de ejemplos.
 
 1. [Guía de integración](README.md): alcance, conexión, compilación y decisiones pendientes.
 2. [Contrato OpenAPI 3.1](openapi.json): 43 operaciones, entradas, respuestas y permisos.
-3. [Manual completo](../MANUAL_BACKEND_PANELES.md): reglas y explicación de los flujos.
+3. [Manual completo](https://github.com/Gabino-RG/SnackUP-core/blob/6fbe5d6260b76d35960fe2e165b738766e4b81b4/docs/MANUAL_BACKEND_PANELES.md): reglas y explicación de los flujos (también incluido en el paquete).
 4. [Protocolo WebSocket](REALTIME.md): mensajes realmente consumidos por Cocina.
 5. [Matriz de aceptación](ACEPTACION.md): pruebas que deben pasar con su backend.
 
