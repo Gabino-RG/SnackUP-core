@@ -1,0 +1,3998 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "SnackUP - contrato de Administración y Cocina",
+    "version": "1.0.0",
+    "description": "Contrato canónico para implementar el backend de los dos paneles existentes. Basado en respaldo 006ef99 y manual 1.0. No certifica un backend desplegado. IDs opacos, JSON UTF-8, dinero en MXN, UTC con zona. Admin nunca opera cocina. No define compras ni registro del alumnado. Validación estricta del servidor y control de versión atómico obligatorios."
+  },
+  "servers": [
+    {
+      "url": "/api/v1",
+      "description": "Mismo origen del frontend; despliegue HTTPS a cargo del backend"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "public",
+      "description": "Sin sesión; aplicar límites antiabuso."
+    },
+    {
+      "name": "cookie",
+      "description": "Cookie de sesión segura; validar Origin/CSRF."
+    },
+    {
+      "name": "authenticated",
+      "description": "Sesión activa de los paneles."
+    },
+    {
+      "name": "master",
+      "description": "role=admin e isMaster=true; no basta el correo."
+    },
+    {
+      "name": "admin",
+      "description": "role=admin, incluido maestro."
+    },
+    {
+      "name": "business",
+      "description": "role=business y businessId propio; rechazar admin."
+    },
+    {
+      "name": "websocket",
+      "description": "Upgrade y autorización por mensajes del protocolo."
+    }
+  ],
+  "paths": {
+    "/auth/options": {
+      "get": {
+        "operationId": "getAccessOptions",
+        "summary": "Opciones de acceso",
+        "tags": [
+          "public"
+        ],
+        "x-required-role": "public",
+        "description": "Opciones de acceso",
+        "responses": {
+          "200": {
+            "description": "Respuesta confirmada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessOptions"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. Conservar error.code; ver manual para códigos y estados HTTP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [],
+        "security": [],
+        "x-frontend-source": "app/lib/api/access_repository.dart"
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "operationId": "login",
+        "summary": "Entrar con contraseña",
+        "tags": [
+          "public"
+        ],
+        "x-required-role": "public",
+        "description": "Correo normalizado; no recortar contraseña. Establece cookie de renovación. Pendiente/rechazado/suspendido no recibe sesión.",
+        "responses": {
+          "200": {
+            "description": "Respuesta confirmada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Tokens"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. Conservar error.code; ver manual para códigos y estados HTTP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginInput"
+              }
+            }
+          }
+        },
+        "security": [],
+        "x-frontend-source": "app/lib/api/rest_session.dart"
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "operationId": "refresh",
+        "summary": "Rotar cookie y renovar acceso",
+        "tags": [
+          "cookie"
+        ],
+        "x-required-role": "cookie",
+        "description": "Rotar cookie y renovar acceso",
+        "responses": {
+          "200": {
+            "description": "Respuesta confirmada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Tokens"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. Conservar error.code; ver manual para códigos y estados HTTP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Empty"
+              }
+            }
+          }
+        },
+        "security": [],
+        "x-session-cookie": "Cookie HttpOnly Secure SameSite=Strict; nombre configurable del backend. Requerida para refresh. Logout admite cookie o Bearer vigente y revoca ambos.",
+        "x-frontend-source": "app/lib/api/rest_session.dart"
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "operationId": "logout",
+        "summary": "Revocar sesión y borrar cookie",
+        "tags": [
+          "cookie"
+        ],
+        "x-required-role": "cookie",
+        "description": "Revocar sesión y borrar cookie",
+        "responses": {
+          "204": {
+            "description": "Sin contenido"
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. Conservar error.code; ver manual para códigos y estados HTTP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Empty"
+              }
+            }
+          }
+        },
+        "security": [],
+        "x-session-cookie": "Cookie HttpOnly Secure SameSite=Strict; nombre configurable del backend. Requerida para refresh. Logout admite cookie o Bearer vigente y revoca ambos.",
+        "x-frontend-source": "app/lib/api/rest_session.dart"
+      }
+    },
+    "/users/me": {
+      "get": {
+        "operationId": "getProfile",
+        "summary": "Perfil de la sesión",
+        "tags": [
+          "authenticated"
+        ],
+        "x-required-role": "authenticated",
+        "description": "Perfil de la sesión",
+        "responses": {
+          "200": {
+            "description": "Respuesta confirmada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Profile"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. Conservar error.code; ver manual para códigos y estados HTTP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [],
+        "x-frontend-source": "app/lib/api/rest_session.dart"
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "operationId": "requestAccess",
+        "summary": "Solicitar acceso; no concederlo",
+        "tags": [
+          "public"
+        ],
+        "x-required-role": "public",
+        "description": "Rechazar campos de privilegios. Duplicados mantienen acuse genérico y no modifican cuenta. Sin token/cookie operativa.",
+        "responses": {
+          "202": {
+            "description": "Respuesta confirmada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Received"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. Conservar error.code; ver manual para códigos y estados HTTP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterInput"
+              }
+            }
+          }
+        },
+        "security": [],
+        "x-frontend-source": "app/lib/api/access_repository.dart"
+      }
+    },
+    "/auth/forgot-password": {
+      "post": {
+        "operationId": "forgotPassword",
+        "summary": "Solicitar recuperación",
+        "tags": [
+          "public"
+        ],
+        "x-required-role": "public",
+        "description": "Solicitar recuperación",
+        "responses": {
+          "204": {
+            "description": "Sin contenido"
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. Conservar error.code; ver manual para códigos y estados HTTP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotInput"
+              }
+            }
+          }
+        },
+        "security": [],
+        "x-frontend-source": "app/lib/api/rest_session.dart"
+      }
+    },
+    "/auth/reset-password": {
+      "post": {
+        "operationId": "resetPassword",
+        "summary": "Restablecer con token de un uso",
+        "tags": [
+          "public"
+        ],
+        "x-required-role": "public",
+        "description": "Restablecer con token de un uso",
+        "responses": {
+          "204": {
+            "description": "Sin contenido"
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. Conservar error.code; ver manual para códigos y estados HTTP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetInput"
+              }
+            }
+          }
+        },
+        "security": [],
+        "x-frontend-source": "app/lib/features/portal/rest_portal_app.dart"
+      }
+    },
+    "/auth/google/start": {
+      "get": {
+        "operationId": "startGoogle",
+        "summary": "Iniciar OAuth en el servidor",
+        "tags": [
+          "public"
+        ],
+        "x-required-role": "public",
+        "description": "Solo habilitar si googleEnabled=true. Navegación del browser, retorno fijo; el callback del proveedor es implementación backend. Nunca asignar rol por identidad Google.",
+        "responses": {
+          "302": {
+            "description": "Respuesta confirmada",
+            "headers": {
+              "Location": {
+                "description": "Destino de autorización permitido por el servidor",
+                "schema": {
+                  "type": "string",
+                  "format": "uri"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. Conservar error.code; ver manual para códigos y estados HTTP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [],
+        "security": [],
+        "x-frontend-source": "app/lib/api/access_repository.dart"
+      }
+    },
+    "/institution": {
+      "get": {
+        "operationId": "getInstitution",
+        "summary": "Institución, cafetería y dominios administrativos",
+        "tags": [
+          "authenticated"
+        ],
+        "x-required-role": "authenticated",
+        "description": "Institución, cafetería y dominios administrativos",
+        "responses": {
+          "200": {
+            "description": "Respuesta confirmada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Institution"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. Conservar error.code; ver manual para códigos y estados HTTP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [],
+        "x-frontend-source": "app/lib/operations/operations_repository.dart"
+      }
+    },
+    "/admin/users": {
+      "get": {
+        "operationId": "listUsers",
+        "summary": "Listar cuentas",
+        "tags": [
+          "master"
+        ],
+        "x-required-role": "master",
+        "description": "Listar cuentas",
+        "responses": {
+          "200": {
+            "description": "Respuesta confirmada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserPage"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. Conservar error.code; ver manual para códigos y estados HTTP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 20
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "x-frontend-source": "app/lib/operations/operations_repository.dart"
+      },
+      "post": {
+        "operationId": "createUser",
+        "summary": "Crear cuenta autorizada",
+        "tags": [
+          "master"
+        ],
+        "x-required-role": "master",
+        "description": "No permite crear/promover maestros. Admin requiere dominio institucional; business requiere local libre. Alta directa del maestro.",
+        "responses": {
+          "201": {
+            "description": "Respuesta confirmada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. Conservar error.code; ver manual para códigos y estados HTTP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserCreate"
+              }
+            }
+          }
+        },
+        "x-frontend-source": "app/lib/operations/operations_repository.dart"
+      }
+    },
+    "/admin/users/{id}": {
+      "patch": {
+        "operationId": "updateUser",
+        "summary": "Editar cuenta y revocar sesiones previas",
+        "tags": [
+          "master"
+        ],
+        "x-required-role": "master",
+        "description": "Protege maestro y último admin. No cambia contraseña ni aprueba solicitudes pendientes. Una cuenta operadora activa por local.",
+        "responses": {
+          "200": {
+            "description": "Respuesta confirmada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. Conservar error.code; ver manual para códigos y estados HTTP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserUpdate"
+              }
+            }
+          }
+        },
+        "x-frontend-source": "app/lib/operations/operations_repository.dart"
+      }
+    },
+    "/admin/access-requests": {
+      "get": {
+        "operationId": "listAccessRequests",
+        "summary": "Solicitudes pendientes",
+        "tags": [
+          "master"
+        ],
+        "x-required-role": "master",
+        "description": "Solicitudes pendientes",
+        "responses": {
+          "200": {
+            "description": "Respuesta confirmada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessRequestPage"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. Conservar error.code; ver manual para códigos y estados HTTP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 20
+            }
+          }
+        ],
+        "x-frontend-source": "app/lib/features/operations/access_requests_screen.dart"
+      }
+    },
+    "/admin/access-requests/{id}/decision": {
+      "post": {
+        "operationId": "decideAccessRequest",
+        "summary": "Autorizar o rechazar solicitud",
+        "tags": [
+          "master"
+        ],
+        "x-required-role": "master",
+        "description": "Comprobar versión y estado pending; auditoría y asignación atómicas. No devolver hash ni contraseña.",
+        "responses": {
+          "200": {
+            "description": "Respuesta confirmada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionResult"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. Conservar error.code; ver manual para códigos y estados HTTP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionInput"
+              }
+            }
+          }
+        },
+        "x-frontend-source": "app/lib/features/operations/access_requests_screen.dart"
+      }
+    },
+    "/admin/academic-catalog": {
+      "get": {
+        "operationId": "listAcademicCatalog",
+        "summary": "Carreras y grupos completos",
+        "tags": [
+          "admin"
+        ],
+        "x-required-role": "admin",
+        "description": "Carreras y grupos completos",
+        "responses": {
+          "200": {
+            "description": "Respuesta confirmada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcademicEntryPage"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. Conservar error.code; ver manual para códigos y estados HTTP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 20
+            }
+          }
+        ],
+        "x-frontend-source": "app/lib/features/admin/data/rest_admin_repository.dart"
+      }
+    },
+    "/admin/businesses": {
+      "get": {
+        "operationId": "listAdminBusinesses",
+        "summary": "Locales con datos completos",
+        "tags": [
+          "admin"
+        ],
+        "x-required-role": "admin",
+        "description": "Locales con datos completos",
+        "responses": {
+          "200": {
+            "description": "Respuesta confirmada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessPage"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. Conservar error.code; ver manual para códigos y estados HTTP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 20
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "x-frontend-source": "app/lib/operations/operations_repository.dart"
+      },
+      "post": {
+        "operationId": "createBusiness",
+        "summary": "Crear local con recepción cerrada",
+        "tags": [
+          "admin"
+        ],
+        "x-required-role": "admin",
+        "description": "Crear local con recepción cerrada",
+        "responses": {
+          "201": {
+            "description": "Respuesta confirmada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Business"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. Conservar error.code; ver manual para códigos y estados HTTP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BusinessCreate"
+              }
+            }
+          }
+        },
+        "x-frontend-source": "app/lib/operations/operations_repository.dart"
+      }
+    },
+    "/admin/businesses/{id}": {
+      "patch": {
+        "operationId": "updateAdminBusiness",
+        "summary": "Editar o desactivar local",
+        "tags": [
+          "admin"
+        ],
+        "x-required-role": "admin",
+        "description": "Desactivar conserva historial y rechaza con 409 BUSINESS_HAS_ACTIVE_ORDERS si existen pedidos activos.",
+        "responses": {
+          "200": {
+            "description": "Respuesta confirmada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Business"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. Conservar error.code; ver manual para códigos y estados HTTP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BusinessAdminUpdate"
+              }
+            }
+          }
+        },
+        "x-frontend-source": "app/lib/operations/operations_repository.dart"
+      }
+    },
+    "/businesses/{id}": {
+      "get": {
+        "operationId": "getBusiness",
+        "summary": "Ficha del propio local",
+        "tags": [
+          "business"
+        ],
+        "x-required-role": "business",
+        "description": "Solo operador del local asignado. Incluso la cuenta maestra debe recibir 403 en estas rutas operativas.",
+        "responses": {
+          "200": {
+            "description": "Respuesta confirmada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Business"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. Conservar error.code; ver manual para códigos y estados HTTP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "x-frontend-source": "app/lib/operations/operations_repository.dart"
+      },
+      "patch": {
+        "operationId": "updateBusiness",
+        "summary": "Editar ficha del propio local",
+        "tags": [
+          "business"
+        ],
+        "x-required-role": "business",
+        "description": "Solo operador del local asignado. Incluso la cuenta maestra debe recibir 403 en estas rutas operativas.",
+        "responses": {
+          "200": {
+            "description": "Respuesta confirmada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Business"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. Conservar error.code; ver manual para códigos y estados HTTP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BusinessUpdate"
+              }
+            }
+          }
+        },
+        "x-frontend-source": "app/lib/operations/operations_repository.dart"
+      }
+    },
+    "/businesses/{id}/status": {
+      "patch": {
+        "operationId": "setBusinessOpen",
+        "summary": "Abrir o cerrar recepción",
+        "tags": [
+          "business"
+        ],
+        "x-required-role": "business",
+        "description": "Solo operador del local asignado. Incluso la cuenta maestra debe recibir 403 en estas rutas operativas.",
+        "responses": {
+          "200": {
+            "description": "Respuesta confirmada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Business"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. Conservar error.code; ver manual para códigos y estados HTTP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BusinessStatus"
+              }
+            }
+          }
+        },
+        "x-frontend-source": "app/lib/operations/operations_repository.dart"
+      }
+    },
+    "/orders/{id}": {
+      "get": {
+        "operationId": "getOrder",
+        "summary": "Consultar pedido del propio local",
+        "tags": [
+          "business"
+        ],
+        "x-required-role": "business",
+        "description": "Solo operador del local asignado. Incluso la cuenta maestra debe recibir 403 en estas rutas operativas.",
+        "responses": {
+          "200": {
+            "description": "Respuesta confirmada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Order"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. Conservar error.code; ver manual para códigos y estados HTTP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "x-frontend-source": "app/lib/operations/operations_repository.dart"
+      }
+    },
+    "/businesses/{id}/orders/active": {
+      "get": {
+        "operationId": "listActiveOrders",
+        "summary": "Foto completa de pedidos activos",
+        "tags": [
+          "business"
+        ],
+        "x-required-role": "business",
+        "description": "Todos los pending/accepted/preparing/ready, paginados. Sin códigos de recogida ni matrícula.",
+        "responses": {
+          "200": {
+            "description": "Respuesta confirmada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderPage"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. Conservar error.code; ver manual para códigos y estados HTTP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 20
+            }
+          }
+        ],
+        "x-frontend-source": "app/lib/operations/operations_repository.dart"
+      }
+    },
+    "/businesses/{id}/orders/history": {
+      "get": {
+        "operationId": "getOrderHistory",
+        "summary": "Historial diario y resumen de todo el día",
+        "tags": [
+          "business"
+        ],
+        "x-required-role": "business",
+        "description": "Fecha de completedAt/cancelledAt en America/Mexico_City; resumen completo, aunque haya varias páginas.",
+        "responses": {
+          "200": {
+            "description": "Respuesta confirmada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/History"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. Conservar error.code; ver manual para códigos y estados HTTP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 20
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "x-frontend-source": "app/lib/operations/operations_repository.dart"
+      }
+    },
+    "/businesses/{id}/stats": {
+      "get": {
+        "operationId": "getSalesSummary",
+        "summary": "Resumen de ventas entregadas",
+        "tags": [
+          "business"
+        ],
+        "x-required-role": "business",
+        "description": "Rango inclusivo de fechas locales; totalSold excluye cancelados y pedidos sin entregar.",
+        "responses": {
+          "200": {
+            "description": "Respuesta confirmada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesSummary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. Conservar error.code; ver manual para códigos y estados HTTP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "x-frontend-source": "app/lib/operations/operations_repository.dart"
+      }
+    },
+    "/orders/{id}/accept": {
+      "post": {
+        "operationId": "acceptOrder",
+        "summary": "Aceptar pedido",
+        "tags": [
+          "business"
+        ],
+        "x-required-role": "business",
+        "description": "pending -> accepted. expectedVersion en transacción; respuesta mismo ID/local, versión mayor. Stock reservado al crear pedido; cancelar devuelve una sola vez. No exigir Idempotency-Key: el cliente no lo envía.",
+        "responses": {
+          "200": {
+            "description": "Respuesta confirmada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Order"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. Conservar error.code; ver manual para códigos y estados HTTP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VersionInput"
+              }
+            }
+          }
+        },
+        "x-frontend-source": "app/lib/operations/operations_repository.dart"
+      }
+    },
+    "/orders/{id}/start": {
+      "post": {
+        "operationId": "startOrder",
+        "summary": "Preparar pedido",
+        "tags": [
+          "business"
+        ],
+        "x-required-role": "business",
+        "description": "accepted -> preparing. expectedVersion en transacción; respuesta mismo ID/local, versión mayor. Stock reservado al crear pedido; cancelar devuelve una sola vez. No exigir Idempotency-Key: el cliente no lo envía.",
+        "responses": {
+          "200": {
+            "description": "Respuesta confirmada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Order"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. Conservar error.code; ver manual para códigos y estados HTTP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VersionInput"
+              }
+            }
+          }
+        },
+        "x-frontend-source": "app/lib/operations/operations_repository.dart"
+      }
+    },
+    "/orders/{id}/ready": {
+      "post": {
+        "operationId": "readyOrder",
+        "summary": "Marcar listo pedido",
+        "tags": [
+          "business"
+        ],
+        "x-required-role": "business",
+        "description": "preparing -> ready. expectedVersion en transacción; respuesta mismo ID/local, versión mayor. Stock reservado al crear pedido; cancelar devuelve una sola vez. No exigir Idempotency-Key: el cliente no lo envía.",
+        "responses": {
+          "200": {
+            "description": "Respuesta confirmada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Order"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. Conservar error.code; ver manual para códigos y estados HTTP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VersionInput"
+              }
+            }
+          }
+        },
+        "x-frontend-source": "app/lib/operations/operations_repository.dart"
+      }
+    },
+    "/orders/{id}/complete": {
+      "post": {
+        "operationId": "completeOrder",
+        "summary": "Verificar y entregar pedido",
+        "tags": [
+          "business"
+        ],
+        "x-required-role": "business",
+        "description": "ready -> completed. expectedVersion en transacción; respuesta mismo ID/local, versión mayor. Stock reservado al crear pedido; cancelar devuelve una sola vez. No exigir Idempotency-Key: el cliente no lo envía.",
+        "responses": {
+          "200": {
+            "description": "Respuesta confirmada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Order"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. Conservar error.code; ver manual para códigos y estados HTTP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteInput"
+              }
+            }
+          }
+        },
+        "x-frontend-source": "app/lib/operations/operations_repository.dart"
+      }
+    },
+    "/orders/{id}/cancel": {
+      "post": {
+        "operationId": "cancelOrder",
+        "summary": "Cancelar pedido",
+        "tags": [
+          "business"
+        ],
+        "x-required-role": "business",
+        "description": "pending/accepted/preparing -> cancelled. expectedVersion en transacción; respuesta mismo ID/local, versión mayor. Stock reservado al crear pedido; cancelar devuelve una sola vez. No exigir Idempotency-Key: el cliente no lo envía.",
+        "responses": {
+          "200": {
+            "description": "Respuesta confirmada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Order"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. Conservar error.code; ver manual para códigos y estados HTTP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelInput"
+              }
+            }
+          }
+        },
+        "x-frontend-source": "app/lib/operations/operations_repository.dart"
+      }
+    },
+    "/businesses/{id}/products": {
+      "get": {
+        "operationId": "listProducts",
+        "summary": "Catálogo del local",
+        "tags": [
+          "business"
+        ],
+        "x-required-role": "business",
+        "description": "Catálogo del local",
+        "responses": {
+          "200": {
+            "description": "Respuesta confirmada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductPage"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. Conservar error.code; ver manual para códigos y estados HTTP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "isAvailable",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "x-frontend-source": "app/lib/catalog/rest_catalog_repository.dart"
+      },
+      "post": {
+        "operationId": "createProduct",
+        "summary": "Agregar producto",
+        "tags": [
+          "business"
+        ],
+        "x-required-role": "business",
+        "description": "Agregar producto",
+        "responses": {
+          "201": {
+            "description": "Respuesta confirmada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Product"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. Conservar error.code; ver manual para códigos y estados HTTP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductDraft"
+              }
+            }
+          }
+        },
+        "x-frontend-source": "app/lib/catalog/rest_catalog_repository.dart"
+      }
+    },
+    "/products/{id}": {
+      "get": {
+        "operationId": "getProduct",
+        "summary": "Consultar producto del local",
+        "tags": [
+          "business"
+        ],
+        "x-required-role": "business",
+        "description": "Consultar producto del local",
+        "responses": {
+          "200": {
+            "description": "Respuesta confirmada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Product"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. Conservar error.code; ver manual para códigos y estados HTTP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "x-frontend-source": "app/lib/catalog/rest_catalog_repository.dart"
+      },
+      "patch": {
+        "operationId": "updateProduct",
+        "summary": "Editar producto con control de versión",
+        "tags": [
+          "business"
+        ],
+        "x-required-role": "business",
+        "description": "Omitir stock no lo modifica; null significa inventario sin control. Stock 0 exige isAvailable=false.",
+        "responses": {
+          "200": {
+            "description": "Respuesta confirmada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Product"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. Conservar error.code; ver manual para códigos y estados HTTP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductUpdate"
+              }
+            }
+          }
+        },
+        "x-frontend-source": "app/lib/catalog/rest_catalog_repository.dart"
+      },
+      "delete": {
+        "operationId": "deleteProduct",
+        "summary": "Retirar producto preservando historial",
+        "tags": [
+          "business"
+        ],
+        "x-required-role": "business",
+        "description": "Retirar producto preservando historial",
+        "responses": {
+          "204": {
+            "description": "Sin contenido"
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. Conservar error.code; ver manual para códigos y estados HTTP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VersionInput"
+              }
+            }
+          }
+        },
+        "x-frontend-source": "app/lib/catalog/rest_catalog_repository.dart"
+      }
+    },
+    "/media": {
+      "post": {
+        "operationId": "uploadProductImage",
+        "summary": "Subir imagen del catálogo",
+        "tags": [
+          "business"
+        ],
+        "x-required-role": "business",
+        "description": "JPEG/PNG/WebP; archivo real hasta 5242880 bytes. El local sale de la sesión. URL cargable por navegador; no se añade Bearer al descargar la imagen.",
+        "responses": {
+          "201": {
+            "description": "Respuesta confirmada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaResult"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. Conservar error.code; ver manual para códigos y estados HTTP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [],
+        "x-frontend-source": "app/lib/catalog/rest_catalog_repository.dart",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "purpose": {
+                    "type": "string",
+                    "enum": [
+                      "product"
+                    ]
+                  },
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "purpose",
+                  "file"
+                ],
+                "additionalProperties": false
+              },
+              "encoding": {
+                "file": {
+                  "contentType": "image/jpeg, image/png, image/webp"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/reviews": {
+      "get": {
+        "operationId": "listReviews",
+        "summary": "Opiniones para gráficas",
+        "tags": [
+          "admin"
+        ],
+        "x-required-role": "admin",
+        "description": "No requiere datos personales del alumno. Calificaciones faltantes son null/ausentes, nunca 0. El panel calcula gráficas sobre páginas cargadas.",
+        "responses": {
+          "200": {
+            "description": "Respuesta confirmada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewPage"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. Conservar error.code; ver manual para códigos y estados HTTP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 20
+            }
+          }
+        ],
+        "x-frontend-source": "app/lib/features/admin/data/rest_admin_repository.dart"
+      }
+    },
+    "/admin/followups": {
+      "get": {
+        "operationId": "listFollowups",
+        "summary": "Seguimientos administrativos",
+        "tags": [
+          "admin"
+        ],
+        "x-required-role": "admin",
+        "description": "Seguimientos administrativos",
+        "responses": {
+          "200": {
+            "description": "Respuesta confirmada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FollowupPage"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. Conservar error.code; ver manual para códigos y estados HTTP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 20
+            }
+          }
+        ],
+        "x-frontend-source": "app/lib/features/admin/data/rest_admin_repository.dart"
+      }
+    },
+    "/admin/reviews/{id}/followup": {
+      "get": {
+        "operationId": "getFollowup",
+        "summary": "Consultar seguimiento",
+        "tags": [
+          "admin"
+        ],
+        "x-required-role": "admin",
+        "description": "404 FOLLOWUP_NOT_FOUND solo para opinión válida sin seguimiento; permite expectedVersion=0 al crear.",
+        "responses": {
+          "200": {
+            "description": "Respuesta confirmada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Followup"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. Conservar error.code; ver manual para códigos y estados HTTP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "x-frontend-source": "app/lib/features/admin/data/rest_admin_repository.dart"
+      },
+      "put": {
+        "operationId": "saveFollowup",
+        "summary": "Guardar seguimiento y evento de historial",
+        "tags": [
+          "admin"
+        ],
+        "x-required-role": "admin",
+        "description": "Guardar seguimiento y evento de historial",
+        "responses": {
+          "200": {
+            "description": "Respuesta confirmada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Followup"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. Conservar error.code; ver manual para códigos y estados HTTP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FollowupInput"
+              }
+            }
+          }
+        },
+        "x-frontend-source": "app/lib/features/admin/data/rest_admin_repository.dart"
+      }
+    },
+    "/admin/reviews/{id}/followup/history": {
+      "get": {
+        "operationId": "getFollowupHistory",
+        "summary": "Eventos con forma de Followup",
+        "tags": [
+          "admin"
+        ],
+        "x-required-role": "admin",
+        "description": "Más recientes primero. El frontend muestra primera página de 50 e indica si hay más.",
+        "responses": {
+          "200": {
+            "description": "Respuesta confirmada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FollowupPage"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. Conservar error.code; ver manual para códigos y estados HTTP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 20
+            }
+          }
+        ],
+        "x-frontend-source": "app/lib/features/admin/data/rest_admin_repository.dart"
+      }
+    },
+    "/realtime": {
+      "get": {
+        "operationId": "openRealtime",
+        "summary": "Upgrade a WebSocket nativo",
+        "tags": [
+          "websocket"
+        ],
+        "x-required-role": "websocket",
+        "description": "No es Socket.IO. Autenticación en mensaje inicial auth; cada suscripción exige business propio. Protocolo completo en REALTIME.md. 503 POLLING_MODE permite consulta REST de respaldo.",
+        "responses": {
+          "101": {
+            "description": "Respuesta confirmada"
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. Conservar error.code; ver manual para códigos y estados HTTP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [],
+        "security": [],
+        "x-frontend-source": "app/lib/operations/realtime_web.dart"
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Access token en memoria; JWT según acuerdo v3. Rotación con cookie cuyo nombre el cliente no lee."
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "minLength": 1
+              },
+              "message": {
+                "type": "string"
+              },
+              "details": {}
+            },
+            "required": [
+              "code",
+              "message"
+            ]
+          }
+        },
+        "required": [
+          "error"
+        ]
+      },
+      "Pagination": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "totalPages": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "page",
+          "limit",
+          "total",
+          "totalPages"
+        ]
+      },
+      "Empty": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "VersionInput": {
+        "type": "object",
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "expectedVersion"
+        ],
+        "additionalProperties": false
+      },
+      "AccessOptions": {
+        "type": "object",
+        "properties": {
+          "passwordLogin": {
+            "type": "boolean"
+          },
+          "selfRegistration": {
+            "type": "boolean"
+          },
+          "googleEnabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "passwordLogin",
+          "selfRegistration",
+          "googleEnabled"
+        ]
+      },
+      "Tokens": {
+        "type": "object",
+        "properties": {
+          "tokens": {
+            "type": "object",
+            "properties": {
+              "accessToken": {
+                "type": "string",
+                "minLength": 1
+              },
+              "accessTokenExpiresAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "accessToken",
+              "accessTokenExpiresAt"
+            ]
+          }
+        },
+        "required": [
+          "tokens"
+        ]
+      },
+      "LoginInput": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 160,
+            "minLength": 1
+          },
+          "password": {
+            "type": "string",
+            "writeOnly": true,
+            "minLength": 1
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ],
+        "additionalProperties": false
+      },
+      "RegisterInput": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 160,
+            "minLength": 1
+          },
+          "password": {
+            "type": "string",
+            "writeOnly": true,
+            "maxLength": 128,
+            "minLength": 12
+          },
+          "requestedRole": {
+            "type": "string",
+            "enum": [
+              "business",
+              "admin"
+            ]
+          },
+          "context": {
+            "type": "string",
+            "maxLength": 400
+          }
+        },
+        "required": [
+          "displayName",
+          "email",
+          "password",
+          "requestedRole",
+          "context"
+        ],
+        "additionalProperties": false
+      },
+      "Received": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "received"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "ForgotInput": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 160,
+            "minLength": 1
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "additionalProperties": false
+      },
+      "ResetInput": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "writeOnly": true,
+            "minLength": 1
+          },
+          "newPassword": {
+            "type": "string",
+            "writeOnly": true,
+            "maxLength": 128,
+            "minLength": 12
+          }
+        },
+        "required": [
+          "token",
+          "newPassword"
+        ],
+        "additionalProperties": false
+      },
+      "UserCreate": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 160,
+            "minLength": 1
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "business",
+              "admin"
+            ]
+          },
+          "businessId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "password": {
+            "type": "string",
+            "writeOnly": true,
+            "maxLength": 128,
+            "minLength": 12
+          }
+        },
+        "required": [
+          "displayName",
+          "email",
+          "role",
+          "businessId",
+          "isActive",
+          "password"
+        ],
+        "additionalProperties": false
+      },
+      "UserUpdate": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 160,
+            "minLength": 1
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "business",
+              "admin"
+            ]
+          },
+          "businessId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "displayName",
+          "email",
+          "role",
+          "businessId",
+          "isActive",
+          "expectedVersion"
+        ],
+        "additionalProperties": false
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "displayName": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 160,
+            "minLength": 1
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "business",
+              "admin",
+              "user",
+              "pending"
+            ]
+          },
+          "businessId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "isMaster": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "approvalStatus": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "displayName",
+          "email",
+          "role",
+          "businessId",
+          "isActive",
+          "isMaster",
+          "version"
+        ]
+      },
+      "Profile": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "displayName": {
+            "type": "string",
+            "minLength": 1
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "business",
+              "admin",
+              "user",
+              "pending"
+            ]
+          },
+          "businessId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "isMaster": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "displayName",
+          "role",
+          "businessId",
+          "isMaster"
+        ]
+      },
+      "AccessRequest": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "displayName": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 160,
+            "minLength": 1
+          },
+          "requestedRole": {
+            "type": "string",
+            "enum": [
+              "business",
+              "admin"
+            ]
+          },
+          "requestContext": {
+            "type": "string",
+            "maxLength": 400
+          },
+          "provider": {
+            "type": "string",
+            "enum": [
+              "password",
+              "google"
+            ]
+          },
+          "emailVerified": {
+            "type": "boolean"
+          },
+          "approvalStatus": {
+            "type": "string",
+            "enum": [
+              "pending"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "displayName",
+          "email",
+          "requestedRole",
+          "requestContext",
+          "provider",
+          "emailVerified",
+          "approvalStatus",
+          "version",
+          "createdAt"
+        ]
+      },
+      "DecisionInput": {
+        "type": "object",
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": [
+              "approve",
+              "reject"
+            ]
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "business",
+              "admin"
+            ]
+          },
+          "businessId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "identityConfirmed": {
+            "type": "boolean"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "decision",
+          "role",
+          "businessId",
+          "identityConfirmed",
+          "note",
+          "expectedVersion"
+        ],
+        "description": "Aprobar exige identidad confirmada. Para business, local activo no vacío y libre; para admin, businessId=null y dominio institucional. Rechazar no concede acceso.",
+        "additionalProperties": false
+      },
+      "DecisionResult": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "displayName": {
+            "type": "string",
+            "minLength": 1
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 160,
+            "minLength": 1
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "business",
+              "admin",
+              "pending"
+            ]
+          },
+          "businessId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "id",
+          "displayName",
+          "email",
+          "role",
+          "isActive",
+          "version"
+        ]
+      },
+      "Institution": {
+        "type": "object",
+        "properties": {
+          "university": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ]
+          },
+          "cafeteria": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ]
+          },
+          "adminEmailDomains": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)+$"
+            }
+          }
+        },
+        "required": [
+          "university",
+          "cafeteria",
+          "adminEmailDomains"
+        ]
+      },
+      "AcademicEntry": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "career"
+                ]
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "id",
+              "kind",
+              "name"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "group"
+                ]
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "careerId": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "id",
+              "kind",
+              "name",
+              "careerId"
+            ]
+          }
+        ]
+      },
+      "Business": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 60
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 600
+          },
+          "timezone": {
+            "type": "string",
+            "minLength": 1
+          },
+          "cafeteriaId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "cafeteriaName": {
+            "type": "string",
+            "minLength": 1
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "isOpen": {
+            "type": "boolean"
+          },
+          "isActive": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "version",
+          "isOpen",
+          "isActive",
+          "cafeteriaId",
+          "cafeteriaName"
+        ]
+      },
+      "BusinessCreate": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 60
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 600
+          },
+          "cafeteriaId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "timezone": {
+            "type": "string",
+            "enum": [
+              "America/Mexico_City"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "category",
+          "description",
+          "cafeteriaId",
+          "isActive",
+          "timezone"
+        ],
+        "additionalProperties": false
+      },
+      "BusinessAdminUpdate": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 60
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 600
+          },
+          "cafeteriaId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "name",
+          "category",
+          "description",
+          "isActive",
+          "expectedVersion"
+        ],
+        "additionalProperties": false
+      },
+      "BusinessUpdate": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 60
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 600
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "name",
+          "category",
+          "description",
+          "expectedVersion"
+        ],
+        "additionalProperties": false
+      },
+      "BusinessStatus": {
+        "type": "object",
+        "properties": {
+          "isOpen": {
+            "type": "boolean"
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "isOpen",
+          "expectedVersion"
+        ],
+        "additionalProperties": false
+      },
+      "ProductDraft": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1
+          },
+          "price": {
+            "type": "number",
+            "minimum": 0.01,
+            "maximum": 10000,
+            "description": "MXN con hasta 2 decimales."
+          },
+          "stock": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 1000000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "imageUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "isAvailable": {
+            "type": "boolean"
+          },
+          "isFeatured": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "category",
+          "price",
+          "stock",
+          "imageUrl",
+          "isAvailable",
+          "isFeatured"
+        ],
+        "additionalProperties": false
+      },
+      "ProductUpdate": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1
+          },
+          "price": {
+            "type": "number",
+            "minimum": 0.01,
+            "maximum": 10000,
+            "description": "MXN con hasta 2 decimales."
+          },
+          "stock": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 1000000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "imageUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "isAvailable": {
+            "type": "boolean"
+          },
+          "isFeatured": {
+            "type": "boolean"
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "category",
+          "price",
+          "imageUrl",
+          "isAvailable",
+          "isFeatured",
+          "expectedVersion"
+        ],
+        "description": "Omitir stock conserva inventario; stock:null desactiva su control. Validar y cambiar versión en la misma transacción.",
+        "additionalProperties": false
+      },
+      "Product": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "businessId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1
+          },
+          "price": {
+            "type": "number",
+            "minimum": 0.01,
+            "maximum": 10000,
+            "description": "MXN con hasta 2 decimales."
+          },
+          "stock": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 1000000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "imageUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "isAvailable": {
+            "type": "boolean"
+          },
+          "isFeatured": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "businessId",
+          "name",
+          "description",
+          "category",
+          "price",
+          "stock",
+          "imageUrl",
+          "isAvailable",
+          "isFeatured",
+          "version",
+          "updatedAt"
+        ]
+      },
+      "MediaResult": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "minLength": 1
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "url"
+        ]
+      },
+      "OrderItem": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "price": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Pesos MXN, no centavos. Finito y máximo dos decimales."
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "quantity",
+          "price"
+        ]
+      },
+      "Order": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "businessId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "orderNumber": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "accepted",
+              "preparing",
+              "ready",
+              "completed",
+              "cancelled"
+            ]
+          },
+          "customerName": {
+            "type": "string"
+          },
+          "paymentMethod": {
+            "type": "string"
+          },
+          "total": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Pesos MXN, no centavos. Finito y máximo dos decimales."
+          },
+          "items": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/components/schemas/OrderItem"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "scheduledPickupTime": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cancelReason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cancelNotes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "businessId",
+          "orderNumber",
+          "version",
+          "status",
+          "total",
+          "items",
+          "createdAt"
+        ],
+        "description": "DTO de cocina: NO incluir pickupCode ni customerNumeroDeControl.",
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "pickupCode"
+              ]
+            },
+            {
+              "required": [
+                "customerNumeroDeControl"
+              ]
+            }
+          ]
+        }
+      },
+      "CompleteInput": {
+        "type": "object",
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "qr",
+              "manual"
+            ]
+          },
+          "code": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1
+          }
+        },
+        "required": [
+          "expectedVersion",
+          "method",
+          "code"
+        ],
+        "additionalProperties": false
+      },
+      "CancelInput": {
+        "type": "object",
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "product_unavailable",
+              "cannot_prepare",
+              "store_issue",
+              "store_closing",
+              "other"
+            ]
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "expectedVersion",
+          "reason"
+        ],
+        "if": {
+          "properties": {
+            "reason": {
+              "const": "other"
+            }
+          }
+        },
+        "then": {
+          "required": [
+            "notes"
+          ],
+          "properties": {
+            "notes": {
+              "type": "string",
+              "maxLength": 500,
+              "minLength": 1
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "SalesSummary": {
+        "type": "object",
+        "properties": {
+          "completed": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "cancelled": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "totalSold": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Pesos MXN, no centavos. Finito y máximo dos decimales."
+          }
+        },
+        "required": [
+          "completed",
+          "cancelled",
+          "totalSold"
+        ]
+      },
+      "Review": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "businessId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "rating": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "foodRating": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "serviceRating": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "careerId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "groupId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "career": {
+            "type": "string"
+          },
+          "group": {
+            "type": "string"
+          },
+          "comment": {
+            "type": "string"
+          },
+          "createdAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "businessId",
+          "rating",
+          "comment",
+          "createdAt"
+        ]
+      },
+      "Followup": {
+        "type": "object",
+        "properties": {
+          "reviewId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "businessId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "in_review",
+              "resolved"
+            ]
+          },
+          "assignee": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "reviewId",
+          "businessId",
+          "status",
+          "assignee",
+          "note",
+          "version",
+          "updatedAt"
+        ]
+      },
+      "FollowupInput": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "in_review",
+              "resolved"
+            ]
+          },
+          "assignee": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "status",
+          "assignee",
+          "note",
+          "expectedVersion"
+        ],
+        "description": "expectedVersion=0 solo crea si aún no existe. Guardar caso e historial atómicamente.",
+        "additionalProperties": false
+      },
+      "UserPage": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/User"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/Pagination"
+          }
+        },
+        "required": [
+          "data",
+          "pagination"
+        ]
+      },
+      "AccessRequestPage": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AccessRequest"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/Pagination"
+          }
+        },
+        "required": [
+          "data",
+          "pagination"
+        ]
+      },
+      "AcademicEntryPage": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AcademicEntry"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/Pagination"
+          }
+        },
+        "required": [
+          "data",
+          "pagination"
+        ]
+      },
+      "BusinessPage": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Business"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/Pagination"
+          }
+        },
+        "required": [
+          "data",
+          "pagination"
+        ]
+      },
+      "ProductPage": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Product"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/Pagination"
+          }
+        },
+        "required": [
+          "data",
+          "pagination"
+        ]
+      },
+      "OrderPage": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Order"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/Pagination"
+          }
+        },
+        "required": [
+          "data",
+          "pagination"
+        ]
+      },
+      "ReviewPage": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Review"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/Pagination"
+          }
+        },
+        "required": [
+          "data",
+          "pagination"
+        ]
+      },
+      "FollowupPage": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Followup"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/Pagination"
+          }
+        },
+        "required": [
+          "data",
+          "pagination"
+        ]
+      },
+      "History": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Order"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/Pagination"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/SalesSummary"
+          }
+        },
+        "required": [
+          "data",
+          "pagination",
+          "summary"
+        ]
+      }
+    }
+  },
+  "externalDocs": {
+    "description": "Manual base versionado",
+    "url": "https://github.com/Gabino-RG/SnackUP-core/blob/006ef99e461d1ced33116ef338bcf3e9d7b2ec4d/docs/MANUAL_BACKEND_PANELES.md"
+  }
+}

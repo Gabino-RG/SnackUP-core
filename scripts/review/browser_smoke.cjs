@@ -3,6 +3,12 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { chromium } = require(process.env.SNACKUP_PLAYWRIGHT || 'playwright');
 const output = process.env.SNACKUP_SCREENSHOTS || 'build/review-screenshots';
+const productionBuild = process.env.SNACKUP_PRODUCTION_BUILD === '1';
+const reviewUrl = process.env.SNACKUP_REVIEW_URL || 'http://localhost:8791/';
+// This test creates disposable fixtures. Never point it at a deployed backend.
+if (!['localhost', '127.0.0.1', '[::1]'].includes(new URL(reviewUrl).hostname)) {
+  throw new Error('Browser fixture test requires a loopback server');
+}
 fs.mkdirSync(output, { recursive: true });
 (async () => {
   const browser = await chromium.launch({headless:true,executablePath:process.env.SNACKUP_CHROMIUM||undefined,args:['--no-sandbox']});
@@ -10,6 +16,24 @@ fs.mkdirSync(output, { recursive: true });
   const page = await context.newPage();
   const errors=[];
   const apiFailures=[];
+  const traces=[];
+  const traceJobs=[];
+  function redact(value) {
+    if (Array.isArray(value)) return value.map(redact);
+    if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key,v])=>[key,/^(password|newPassword|accessToken|refreshToken|token)$/i.test(key)?'REDACTED-SECRET':redact(v)]));
+    return value;
+  }
+  page.on('response', response => {
+    const url = new URL(response.url());
+    if (!url.pathname.startsWith('/api/v1/')) return;
+    const req = response.request();
+    traceJobs.push((async()=>{
+      let body=null, requestBody=null;
+      try {body=await response.json();} catch {}
+      try {requestBody=req.postDataJSON();} catch {}
+      traces.push(redact({method:req.method(),path:url.pathname.slice('/api/v1/'.length)+url.search,status:response.status(),body,requestBody}));
+    })());
+  });
   page.on('response',r=>{if(r.url().includes('/api/v1/') && r.status()>=400 && !r.url().includes('/auth/refresh'))apiFailures.push(r.status()+' '+new URL(r.url()).pathname);});
   async function typeField(label,value){
     const field=page.getByRole('textbox',{name:label,exact:true});
@@ -29,7 +53,7 @@ fs.mkdirSync(output, { recursive: true });
   page.on('pageerror',e=>errors.push(e.message));
   page.setDefaultTimeout(20000);
   try {
-    await page.goto(process.env.SNACKUP_REVIEW_URL||'http://localhost:8791/');
+    await page.goto(reviewUrl);
     await page.locator('flutter-view').waitFor({timeout:60000});
     const accessibility=page.locator('flt-semantics-placeholder');
     if(await accessibility.count()) await accessibility.evaluate(node=>node.click());
@@ -38,6 +62,15 @@ fs.mkdirSync(output, { recursive: true });
       await typeField('Contraseña',password);
       await page.getByRole('button',{name:'Entrar',exact:true}).click();
     }
+    async function loginLocal() {
+      if (productionBuild) {
+        if (await page.getByRole('button',{name:'Entrar al local de prueba',exact:true}).count()) throw new Error('Review shortcut leaked into delivery');
+        await login('negocio@snackup.test');
+      } else {
+        await page.getByRole('button',{name:'Entrar al local de prueba',exact:true}).click();
+      }
+    }
+    await page.getByRole('button',{name:'Entrar',exact:true}).waitFor();
     // The review package has one ready local and a separate master account.
     // Fictional history feeds the actual API charts; active orders remain opt-in.
     await page.screenshot({path:path.join(output,'00-acceso-desktop.png')});
@@ -46,7 +79,7 @@ fs.mkdirSync(output, { recursive: true });
       await page.screenshot({path:path.join(output,name)});
     }
     await page.setViewportSize({width:1440,height:1050});
-    await page.getByRole('button',{name:'Entrar al local de prueba',exact:true}).click();
+    await loginLocal();
     await page.getByText(/^Local de prueba\s+Cafetería universitaria$/).waitFor();
     await page.getByRole('switch',{name:'Recibir pedidos',exact:true}).waitFor();
     if(await page.getByRole('button',{name:'Gestionar locales y cuentas',exact:true}).count()) throw new Error('Ready local must not access administration');
@@ -139,7 +172,7 @@ fs.mkdirSync(output, { recursive: true });
     }
     // Exercise the actual ready-to-use login through the complete local workflow.
     await page.getByRole('button',{name:'Cerrar sesión',exact:true}).click();
-    await page.getByRole('button',{name:'Entrar al local de prueba',exact:true}).click();
+    await loginLocal();
     await page.getByText(/^Local de prueba\s+Cafetería universitaria$/).waitFor();
     await page.getByRole('button',{name:/Productos/}).click();
     await page.getByRole('button',{name:'Agregar',exact:true}).click();
@@ -156,10 +189,26 @@ fs.mkdirSync(output, { recursive: true });
     await page.getByRole('switch',{name:'Recibir pedidos',exact:true}).click();
     await page.getByRole('button',{name:'Confirmar',exact:true}).click();
     await label('Recibiendo pedidos').waitFor();
-    const ticketResponse=page.waitForResponse(r=>r.url().endsWith('/api/v1/review/orders')&&r.request().method()==='POST');
-    await page.getByRole('button',{name:'Recibir pedido de prueba',exact:true}).click();
-    const ticket=await (await ticketResponse).json();
-    await page.getByRole('button',{name:'Ir a cocina',exact:true}).click();
+    let ticket;
+    if (productionBuild) {
+      if (await page.getByRole('button',{name:'Recibir pedido de prueba',exact:true}).count()) throw new Error('Review order generator leaked into delivery');
+      // Fixture setup is outside the compiled frontend and uses its own session.
+      const loginResponse=await fetch(new URL('/api/v1/auth/login',reviewUrl),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:'negocio@snackup.test',password:'SnackUP-Prueba-2026'})});
+      if (!loginResponse.ok) throw new Error('Fixture login failed');
+      const token=(await loginResponse.json()).tokens.accessToken;
+      const headers={'Content-Type':'application/json','Authorization':'Bearer '+token};
+      const me=await fetch(new URL('/api/v1/users/me',reviewUrl),{headers});
+      if (!me.ok) throw new Error('Fixture profile failed');
+      const businessId=(await me.json()).businessId;
+      const response=await fetch(new URL('/api/v1/review/orders',reviewUrl),{method:'POST',headers,body:JSON.stringify({businessId})});
+      if (!response.ok) throw new Error('Fixture order creation failed');
+      ticket=await response.json();
+    } else {
+      const ticketResponse=page.waitForResponse(r=>r.url().endsWith('/api/v1/review/orders')&&r.request().method()==='POST');
+      await page.getByRole('button',{name:'Recibir pedido de prueba',exact:true}).click();
+      ticket=await (await ticketResponse).json();
+      await page.getByRole('button',{name:'Ir a cocina',exact:true}).click();
+    }
     await page.getByRole('button',{name:'Aceptar pedido',exact:true}).waitFor();
     await page.screenshot({path:path.join(output,'04-cocina-desktop.png')});
     await page.getByRole('button',{name:'Aceptar pedido',exact:true}).click();
@@ -178,7 +227,9 @@ fs.mkdirSync(output, { recursive: true });
     await page.getByRole('button',{name:'Confirmar entrega',exact:true}).click();
     await label('Listos (0)').waitFor();
     if(errors.length) throw new Error('Browser errors: '+errors.join('\n'));
-    fs.writeFileSync(path.join(output,'result.json'),JSON.stringify({passed:true,demo:{reviews:reviews.length,sales,history:history.summary},flows:['ready local login before administration','populated sales and history through API','charts filtered by rating, career, group and period','master restricted to administration','local access request','pending denied login','master approval','business created by user','operator restricted to business panel','ready local catalog create','price edit','explicit accept','prepare','ready','verified delivery','mobile 360','tablet 768','desktop 1440'],errors},null,2));
+    await Promise.all(traceJobs);
+    fs.writeFileSync(path.join(output,'contract-trace.json'),JSON.stringify(traces,null,2));
+    fs.writeFileSync(path.join(output,'result.json'),JSON.stringify({passed:true,productionFrontend:productionBuild,productionBackend:false,demo:{reviews:reviews.length,sales,history:history.summary},flows:['local login before administration','populated sales and history through API','charts filtered by rating, career, group and period','master restricted to administration','local access request','pending denied login','master approval','business created by user','operator restricted to business panel','catalog create','price edit','explicit accept','prepare','ready','verified delivery','mobile 360','tablet 768','desktop 1440'],errors},null,2));
     console.log('Integrated browser review passed');
   } catch(error) {
     await page.screenshot({path:path.join(output,'failure.png')}).catch(()=>{});
