@@ -107,6 +107,7 @@ Desde la raíz del repositorio:
 python -m pip install -r scripts/integration/requirements.txt
 python scripts/integration/check_contract.py --review --report build/delivery/contract-report.json
 cd app
+flutter config --enable-web --no-enable-linux-desktop --no-enable-windows-desktop --no-enable-macos-desktop
 flutter pub get
 flutter test --reporter expanded
 flutter analyze --no-fatal-infos --no-fatal-warnings
@@ -120,9 +121,11 @@ de demostración, incluye el código exacto y verifica todas las huellas del ZIP
 No sobrescribe un ZIP existente: seleccionar otro `--output` para una nueva entrega.
 Admite `--flutter RUTA` y `--api-base-url https://dominio.example/api/v1/`.
 
-En Windows, si Flutter pide permisos de enlaces simbólicos para plataformas de
-escritorio que no se van a construir, esta herramienta web puede prepararse con
-`flutter config --no-enable-windows-desktop --no-enable-linux-desktop --no-enable-macos-desktop`.
+El comando `flutter config` prepara el SDK para esta entrega web, igual que el
+workflow. Evita que Flutter regenere archivos nativos de escritorio durante
+`pub get` y permite conservar el checkout limpio que exige el empaquetado. En
+Windows también evita pedir enlaces simbólicos de esas plataformas. La opción
+persiste en ese SDK; se pueden volver a habilitar al trabajar en otro proyecto.
 No se necesita generar un APK ni una aplicación nativa para entregar estos paneles.
 
 El workflow `.github/workflows/paneles-entrega.yml` reproduce contrato, pruebas,
