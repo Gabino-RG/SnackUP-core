@@ -98,8 +98,15 @@ jobs:
           python-version: '3.12'
       - name: Install only the locked WebSocket smoke dependency
         run: |
-          rg '^websockets==' requirements.lock > "$RUNNER_TEMP/apps-smoke-requirements.txt"
-          test "$(wc -l < "$RUNNER_TEMP/apps-smoke-requirements.txt")" -eq 1
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          requirements = [line for line in Path('requirements.lock').read_text().splitlines()
+                          if line.startswith('websockets==')]
+          if len(requirements) != 1:
+              raise SystemExit('requirements.lock must contain exactly one pinned websockets dependency')
+          (Path(os.environ['RUNNER_TEMP']) / 'apps-smoke-requirements.txt').write_text(requirements[0] + '\n')
+          PY
           python -m pip install --disable-pip-version-check -r "$RUNNER_TEMP/apps-smoke-requirements.txt"
       - name: Set up Compose with explicit override support
         uses: docker/setup-compose-action@v2
