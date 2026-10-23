@@ -531,7 +531,7 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
                         size: 20,
                       ),
                     ),
-                    tooltip: 'Calificar Pedido',
+                    tooltip: 'Valorar restaurante o comida',
                     onPressed: () => _rateOrder(context, doc.id, businessId),
                   ),
               ],
@@ -547,6 +547,28 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
     String orderId,
     String businessId,
   ) async {
+    final restaurant = await showModalBottomSheet<bool>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.storefront_rounded),
+              title: const Text('Valorar restaurante'),
+              subtitle: const Text('Estrellas y comentario sobre el local'),
+              onTap: () => Navigator.pop(sheetContext, true),
+            ),
+            ListTile(
+              leading: const Icon(Icons.restaurant_rounded),
+              title: const Text('Calificar un platillo'),
+              onTap: () => Navigator.pop(sheetContext, false),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (restaurant == null || !context.mounted) return;
     String name = 'Cafetería';
     try {
       final business = await FirebaseFirestore.instance
@@ -564,6 +586,7 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
           orderId: orderId,
           businessId: businessId,
           businessName: name,
+          restaurant: restaurant,
         ),
       ),
     );

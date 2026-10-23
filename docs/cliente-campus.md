@@ -35,10 +35,19 @@ Los pagos conservan el comportamiento original del proyecto; no se añadieron co
 
 - Análisis de Flutter: sin errores ni advertencias; quedan avisos informativos de APIs antiguas.
 - Pruebas incluidas: estrellas y descripción, actualización sin duplicados, diferentes platillos, rechazo de otro usuario, producto ajeno, pedido no entregado, límites de valores y anonimato; acceso exclusivo del cliente; categorías del menú en pantalla móvil.
-- Las ocho pruebas automáticas pasaron. El primer intento se interrumpió por espacio insuficiente; tras liberarse espacio, se completaron las pruebas y se corrigió un desbordamiento detectado en la pantalla móvil.
+- Las once pruebas automáticas pasaron. El primer intento se interrumpió por espacio insuficiente; tras liberarse espacio, se completaron las pruebas y se corrigió un desbordamiento detectado en la pantalla móvil.
 
 - Compilación web completada correctamente (`build/web`).
 
 Para comprobar localmente: `flutter pub get`, `flutter analyze --no-fatal-infos`, `flutter test` y `flutter build web`.
 
+
+
+## Entrega y valoración del restaurante
+
+El seguimiento escucha el estado del pedido en tiempo real. Con `ready` se muestra el QR; con `completed` se retiran el QR y las instrucciones de recogida y aparece «¡Gracias por tu compra!» con el botón «Valorar restaurante». Con `cancelled` no se permite recoger ni valorar.
+
+La valoración del local guarda de 1 a 5 estrellas y un comentario opcional de hasta 300 caracteres en `restaurant_reviews/{orderId}`. El restaurante se obtiene del pedido; solo se acepta un pedido completado de su propietario. Reenviar actualiza la misma reseña. La valoración de platillos se conserva por separado. Desde la estrella del historial se puede elegir valorar al restaurante o a un platillo.
+
+Antes de publicar, las reglas de Firestore deben autorizar `restaurant_reviews` al propietario de un pedido completado, conservar la asociación con `businessId` y validar estrellas/comentario en el servidor. No se desplegaron cambios en Firebase.
 

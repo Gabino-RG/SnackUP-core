@@ -6,7 +6,7 @@ class ReviewService {
 
   Future<void> save({
     required String orderId,
-    required String productId,
+    String? productId,
     required String userId,
     required int rating,
     required String comment,
@@ -20,8 +20,8 @@ class ReviewService {
     }
     final orderRef = firestore.collection('orders').doc(orderId);
     final reviewRef = firestore
-        .collection('reviews')
-        .doc('${orderId}_$productId');
+        .collection(productId == null ? 'restaurant_reviews' : 'reviews')
+        .doc(productId == null ? orderId : '${orderId}_$productId');
     await firestore.runTransaction((transaction) async {
       final snapshot = await transaction.get(orderRef);
       final order = snapshot.data();
@@ -32,12 +32,14 @@ class ReviewService {
       }
       final items = (order['items'] as List? ?? []).whereType<Map>();
       final matches = items.where((item) => item['productId'] == productId);
-      if (matches.isEmpty)
+      if (productId != null && matches.isEmpty)
         throw StateError('El platillo no pertenece al pedido.');
       transaction.set(reviewRef, {
         'orderId': orderId,
-        'productId': productId,
-        'productName': matches.first['name'] ?? 'Platillo',
+        'type': productId == null ? 'restaurant' : 'product',
+        if (productId != null) 'productId': productId,
+        if (productId != null)
+          'productName': matches.first['name'] ?? 'Platillo',
         'businessId': order['businessId'],
         'userId': userId,
         'userName': anonymous ? 'Estudiante anónimo' : userName,

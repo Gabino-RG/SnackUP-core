@@ -8,11 +8,17 @@ class RateOrderScreen extends StatefulWidget {
   final String orderId;
   final String businessId;
   final String businessName;
+  final bool restaurant;
+  final FirebaseFirestore? firestore;
+  final String? userId;
   const RateOrderScreen({
     super.key,
     required this.orderId,
     required this.businessId,
     required this.businessName,
+    this.restaurant = false,
+    this.firestore,
+    this.userId,
   });
   @override
   State<RateOrderScreen> createState() => _RateOrderScreenState();
@@ -22,20 +28,37 @@ class _RateOrderScreenState extends State<RateOrderScreen> {
   final _comment = TextEditingController();
   late final Future<List<Map<String, dynamic>>> _items = _loadItems();
   String? _productId;
+  String? _restaurantName;
   int _rating = 0;
   bool _anonymous = false;
   bool _saving = false;
 
+  FirebaseFirestore get _db => widget.firestore ?? FirebaseFirestore.instance;
+  String? get _userId =>
+      widget.userId ?? FirebaseAuth.instance.currentUser?.uid;
+
   Future<List<Map<String, dynamic>>> _loadItems() async {
-    final order = await FirebaseFirestore.instance
-        .collection('orders')
-        .doc(widget.orderId)
-        .get();
+    final order = await _db.collection('orders').doc(widget.orderId).get();
     final data = order.data();
     if (data == null ||
-        data['userId'] != FirebaseAuth.instance.currentUser?.uid ||
+        data['userId'] != _userId ||
         data['status'] != 'completed') {
       throw StateError('Solo puedes valorar tus pedidos entregados.');
+    }
+    if (widget.restaurant) {
+      final businessId = data['businessId'];
+      if (businessId is String && businessId.isNotEmpty) {
+        try {
+          final business = await _db
+              .collection('businesses')
+              .doc(businessId)
+              .get();
+          _restaurantName = business.data()?['name'] as String?;
+        } catch (_) {
+          // The order can still be rated if the public restaurant name is unavailable.
+        }
+      }
+      return [];
     }
     final products = <String, Map<String, dynamic>>{};
     for (final item in (data['items'] as List? ?? []).whereType<Map>()) {
@@ -47,31 +70,39 @@ class _RateOrderScreenState extends State<RateOrderScreen> {
   }
 
   Future<void> _submit() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null || _productId == null || _rating == 0) {
+    final userId = _userId;
+    if (userId == null ||
+        (!widget.restaurant && _productId == null) ||
+        _rating == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Selecciona un platillo y sus estrellas.'),
+        SnackBar(
+          content: Text(
+            widget.restaurant
+                ? 'Selecciona de 1 a 5 estrellas para el restaurante.'
+                : 'Selecciona un platillo y sus estrellas.',
+          ),
         ),
       );
       return;
     }
     setState(() => _saving = true);
     try {
-      await ReviewService(FirebaseFirestore.instance).save(
+      await ReviewService(_db).save(
         orderId: widget.orderId,
-        productId: _productId!,
-        userId: user.uid,
+        productId: widget.restaurant ? null : _productId!,
+        userId: userId,
         rating: _rating,
         comment: _comment.text,
         anonymous: _anonymous,
-        userName: user.displayName ?? 'Estudiante',
+        userName: widget.userId != null
+            ? 'Estudiante'
+            : FirebaseAuth.instance.currentUser?.displayName ?? 'Estudiante',
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('¡Gracias! Tu valoración se guardó.')),
       );
-      Navigator.of(context).pop();
+      if (Navigator.of(context).canPop()) Navigator.of(context).pop();
     } catch (_) {
       if (mounted)
         ScaffoldMessenger.of(context).showSnackBar(
@@ -106,7 +137,11 @@ class _RateOrderScreenState extends State<RateOrderScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Calificar comida')),
+    appBar: AppBar(
+      title: Text(
+        widget.restaurant ? 'Valorar restaurante' : 'Calificar comida',
+      ),
+    ),
     body: FutureBuilder<List<Map<String, dynamic>>>(
       future: _items,
       builder: (context, snapshot) {
@@ -117,7 +152,7 @@ class _RateOrderScreenState extends State<RateOrderScreen> {
         if (!snapshot.hasData)
           return const Center(child: CircularProgressIndicator());
         final items = snapshot.data!;
-        if (items.isEmpty)
+        if (!widget.restaurant && items.isEmpty)
           return const Center(
             child: Text('Este pedido no tiene platillos para valorar.'),
           );
@@ -143,7 +178,9 @@ class _RateOrderScreenState extends State<RateOrderScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Ayúdanos a mejorar el menú de ${widget.businessName}.',
+                        widget.restaurant
+                            ? 'Comparte tu experiencia en ${widget.businessName}.'
+                            : 'Ayúdanos a mejorar el menú de ${widget.businessName}.',
                       ),
                     ],
                   ),
@@ -152,34 +189,43 @@ class _RateOrderScreenState extends State<RateOrderScreen> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('PLATILLO A CALIFICAR'),
+                      if (widget.restaurant)
+                        Text(
+                          _restaurantName ?? widget.businessName,
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                      if (!widget.restaurant)
+                        const Text('PLATILLO A CALIFICAR'),
                       const SizedBox(height: 12),
-                      DropdownButtonFormField<String>(
-                        isExpanded: true,
-                        value: _productId,
-                        hint: const Text('Selecciona tu platillo'),
-                        items: items
-                            .map(
-                              (item) => DropdownMenuItem<String>(
-                                value: item['productId'] as String,
-                                child: Text(
-                                  item['name'] as String? ?? 'Platillo',
-                                  overflow: TextOverflow.ellipsis,
+                      if (!widget.restaurant)
+                        DropdownButtonFormField<String>(
+                          isExpanded: true,
+                          value: _productId,
+                          hint: const Text('Selecciona tu platillo'),
+                          items: items
+                              .map(
+                                (item) => DropdownMenuItem<String>(
+                                  value: item['productId'] as String,
+                                  child: Text(
+                                    item['name'] as String? ?? 'Platillo',
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: _saving
-                            ? null
-                            : (id) => setState(() {
-                                _productId = id;
-                                _rating = 0;
-                                _comment.clear();
-                              }),
-                      ),
+                              )
+                              .toList(),
+                          onChanged: _saving
+                              ? null
+                              : (id) => setState(() {
+                                  _productId = id;
+                                  _rating = 0;
+                                  _comment.clear();
+                                }),
+                        ),
                       const SizedBox(height: 24),
                       Text(
-                        '¿Qué tal estuvo el sabor y la temperatura?',
+                        widget.restaurant
+                            ? '¿Cómo fue tu experiencia con el restaurante?'
+                            : '¿Qué tal estuvo el sabor y la temperatura?',
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       const SizedBox(height: 12),
@@ -230,9 +276,10 @@ class _RateOrderScreenState extends State<RateOrderScreen> {
                         enabled: !_saving,
                         maxLength: 300,
                         maxLines: 4,
-                        decoration: const InputDecoration(
-                          hintText:
-                              'Cuéntanos sobre el sabor, la porción y la presentación…',
+                        decoration: InputDecoration(
+                          hintText: widget.restaurant
+                              ? 'Cuéntanos sobre el servicio, la atención y tu experiencia en el local…'
+                              : 'Cuéntanos sobre el sabor, la porción y la presentación…',
                           fillColor: AppColors.background,
                         ),
                       ),
