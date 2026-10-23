@@ -5,7 +5,8 @@ from datetime import timezone
 import jwt
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerificationError
-from fastapi import Depends, Request
+from fastapi import Depends, Request, Security
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
@@ -19,6 +20,7 @@ _DUMMY_HASH = PASSWORDS.hash("non-account-timing-equalizer")
 JWT_ISSUER = "snackup-backend"
 JWT_AUDIENCE = "snackup-api"
 REFRESH_COOKIE = "snackup_refresh"
+BEARER = HTTPBearer(auto_error=False, scheme_name="BearerAuth", bearerFormat="JWT")
 
 
 def as_utc(value):
@@ -85,8 +87,10 @@ def verify_access_token(token: str, db: Session, settings) -> User:
     sid = claims.get("sid")
     if not isinstance(sid, str) or not isinstance(claims.get("sub"), str):
         raise ApiError(401, "UNAUTHENTICATED", "La sesión no es válida.")
-    session = db.get(RefreshSession, sid)
-    user = db.get(User, claims["sub"])
+    # Revalidation after waiting on a write lock must observe a logout or an
+    # administrative revocation committed while this Session was waiting.
+    session = db.get(RefreshSession, sid, populate_existing=True)
+    user = db.get(User, claims["sub"], populate_existing=True)
     if (session is None or user is None or session.user_id != user.id or
             session.revoked_at is not None or as_utc(session.expires_at) <= utcnow() or
             claims.get("ver") != user.auth_version or session.auth_version != user.auth_version):
@@ -95,7 +99,8 @@ def verify_access_token(token: str, db: Session, settings) -> User:
     return user
 
 
-def current_user(request: Request, db: Session = Depends(get_db, scope="function")) -> User:
+def current_user(request: Request, db: Session = Depends(get_db, scope="function"),
+                 credentials: HTTPAuthorizationCredentials | None = Security(BEARER)) -> User:
     authorization = request.headers.get("authorization", "")
     scheme, _, token = authorization.partition(" ")
     if scheme.lower() != "bearer" or not token:

@@ -1,9 +1,10 @@
 from datetime import datetime, timezone
 from pathlib import Path
+import logging
 from uuid import uuid4
 
 from fastapi import Request
-from sqlalchemy import DateTime, Integer, JSON, String, create_engine, event
+from sqlalchemy import DateTime, Integer, JSON, String, Text, create_engine, event
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
 
@@ -23,11 +24,14 @@ class OutboxEvent(Base):
     __tablename__ = 'outbox_events'
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     event_id: Mapped[str] = mapped_column(String(32), default=new_id, unique=True)
-    topic: Mapped[str] = mapped_column(String(200), index=True)
+    topic: Mapped[str] = mapped_column(Text, index=True)
     event_type: Mapped[str] = mapped_column(String(80))
     data: Mapped[dict] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+    publish_attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    last_error: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    next_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
 
 
 def emit_event(db, topic, event_type, data):
@@ -62,5 +66,21 @@ class Database:
 
 def get_db(request: Request):
     with request.app.state.db.sessions() as session:
-        with session.begin():
-            yield session
+        try:
+            with session.begin():
+                yield session
+        except BaseException:
+            # A media upload is staged until its metadata transaction commits.
+            for path in session.info.get('created_media_files', ()):
+                try:
+                    Path(path).unlink(missing_ok=True)
+                except OSError:
+                    logging.getLogger('snackup.media').warning('Rolled back media cleanup required')
+            raise
+        else:
+            # Never remove a file while the deletion could still roll back.
+            for path in session.info.get('deleted_media_files', ()):
+                try:
+                    Path(path).unlink(missing_ok=True)
+                except OSError:
+                    logging.getLogger('snackup.media').warning('Deferred media cleanup required')

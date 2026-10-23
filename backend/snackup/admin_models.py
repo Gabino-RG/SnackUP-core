@@ -17,7 +17,7 @@ class Review(Base):
         CheckConstraint("service_rating IS NULL OR service_rating BETWEEN 1 AND 5", name="ck_review_service_rating"),
         Index("ix_reviews_business_created", "business_id", "created_at", "id"),
     )
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    id: Mapped[str] = mapped_column(Text, primary_key=True, default=new_id)
     order_id: Mapped[str] = mapped_column(ForeignKey("orders.id"), nullable=False)
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)
     business_id: Mapped[str] = mapped_column(ForeignKey("businesses.id"), nullable=False)
@@ -30,6 +30,7 @@ class Review(Base):
     group_name: Mapped[str] = mapped_column(String(200), default="", nullable=False)
     comment: Mapped[str] = mapped_column(Text, default="", nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
 
 
 class Followup(Base):
@@ -56,7 +57,7 @@ class FollowupEvent(Base):
         CheckConstraint("status IN ('pending', 'in_review', 'resolved')", name="ck_followup_event_status"),
         Index("ix_followup_events_review_version", "review_id", "version"),
     )
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    id: Mapped[str] = mapped_column(Text, primary_key=True, default=new_id)
     review_id: Mapped[str] = mapped_column(ForeignKey("followups.review_id"), nullable=False)
     business_id: Mapped[str] = mapped_column(ForeignKey("businesses.id"), nullable=False)
     actor_id: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)
@@ -70,7 +71,7 @@ class FollowupEvent(Base):
 class AccessDecision(Base):
     __tablename__ = "access_decisions"
     __table_args__ = (UniqueConstraint("request_id", name="uq_access_decision_request"),)
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    id: Mapped[str] = mapped_column(Text, primary_key=True, default=new_id)
     request_id: Mapped[str] = mapped_column(ForeignKey("access_requests.id"), nullable=False)
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)
     actor_id: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)

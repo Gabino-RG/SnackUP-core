@@ -4,6 +4,7 @@ import { check, sleep } from 'k6';
 import exec from 'k6/execution';
 import { SharedArray } from 'k6/data';
 import { Rate } from 'k6/metrics';
+import crypto from 'k6/crypto';
 
 const base = (__ENV.BASE_URL || '').replace(/\/$/, '');
 const target = Number(__ENV.TARGET_VUS || '1000');
@@ -36,7 +37,9 @@ const accounts = new SharedArray('private-student-credentials', () => {
 
 const idempotency = new Rate('idempotent_retries_match');
 const cancellation = new Rate('reservations_cancelled');
+const creation = new Rate('orders_created');
 export const options = {
+  // Every VU keeps its own browser cookie jar through iterations and refreshes.
   noCookiesReset: true,
   scenarios: {
     students: {
@@ -54,6 +57,7 @@ export const options = {
     http_req_duration: ['p(95)<750', 'p(99)<2000'],
     checks: ['rate>0.99'],
     ...(mode === 'orders' ? {
+      orders_created: ['rate>0.99'],
       idempotent_retries_match: ['rate==1'], reservations_cancelled: ['rate==1'],
       'http_req_duration{name:create_order}': ['p(95)<1500'],
     } : {}),
@@ -67,6 +71,15 @@ function params(name, extra = {}) {
   return { tags: { name }, headers: { 'Content-Type': 'application/json', Origin: base,
     ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}), ...extra } };
 }
+function orderKey() {
+  // A UUIDv4 identifies one checkout intent and is reused verbatim on retry.
+  // randomBytes is provided by k6 itself; no remote JS dependency is fetched.
+  const bytes = new Uint8Array(crypto.randomBytes(16));
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
 function login(account) {
   let response;
   if (accessToken) response = http.post(`${base}/api/v1/auth/refresh`, '{}', params('refresh'));
@@ -75,9 +88,13 @@ function login(account) {
     response = http.post(`${base}/api/v1/auth/login`, JSON.stringify({ email: account.email, password: account.password }), params('login'));
   }
   const payload = json(response);
-  if (!check(response, { authenticated: (r) => r.status === 200 && Boolean(payload.tokens?.accessToken) })) return false;
+  const expiry = Date.parse(payload.tokens?.accessTokenExpiresAt);
+  if (!check(response, { authenticated: (r) => r.status === 200 && Boolean(payload.tokens?.accessToken)
+      && Number.isFinite(expiry) && expiry > Date.now()
+      && (!payload.user || payload.user.role === 'ALUMNO')
+      && payload.tokens.refreshToken === undefined })) return false;
   accessToken = payload.tokens.accessToken;
-  expiresAt = Date.parse(payload.tokens.accessTokenExpiresAt);
+  expiresAt = expiry;
   return true;
 }
 
@@ -91,26 +108,44 @@ export default function () {
   if (!accessToken || Date.now() + 60000 >= expiresAt) {
     if (!login(account)) { sleep(10); return; }
   }
-  const businesses = http.get(`${base}/api/v1/student/businesses?limit=20`, params('list_businesses'));
+  const businesses = http.get(`${base}/api/v1/businesses?limit=20`, params('list_businesses'));
   check(businesses, { 'businesses readable': (r) => r.status === 200 });
-  const products = http.get(`${base}/api/v1/student/businesses/${account.businessId}/products?limit=20`, params('list_products'));
+  const products = http.get(`${base}/api/v1/businesses/${encodeURIComponent(account.businessId)}/products?limit=20`, params('list_products'));
   check(products, { 'products readable': (r) => r.status === 200 });
-  const history = http.get(`${base}/api/v1/student/orders?limit=20`, params('own_orders'));
-  check(history, { 'own orders readable': (r) => r.status === 200 });
+  const active = http.get(`${base}/api/v1/users/me/orders/active?limit=20`, params('own_active_orders'));
+  check(active, { 'own active orders readable': (r) => r.status === 200 });
 
   if (mode === 'orders') {
-    const key = `load-${exec.vu.idInTest}-${exec.vu.iterationInScenario}-${Date.now()}`;
+    const rows = json(products).data;
+    const product = Array.isArray(rows) ? rows.find((row) => row.id === account.productId) : undefined;
+    // Use the current catalog price; never rely on a price embedded in fixture credentials.
+    if (!check(product, { 'fixture product available': (row) => Boolean(row && row.businessId === account.businessId
+        && row.isAvailable && (row.stock === null || row.stock >= 1)
+        && typeof row.price === 'number' && Number.isFinite(row.price) && row.price > 0) })) {
+      sleep(5);
+      return;
+    }
+    const expectedTotal = Math.round(product.price * 100) / 100;
+    const key = orderKey();
     const payload = JSON.stringify({ businessId: account.businessId,
-      items: [{ productId: account.productId, quantity: 1, notes: '[CARGA AISLADA]' }], paymentMethod: 'cash' });
-    const response = http.post(`${base}/api/v1/student/orders`, payload, params('create_order', { 'Idempotency-Key': key }));
+      items: [{ productId: account.productId, quantity: 1, notes: '[CARGA AISLADA]' }],
+      paymentMethod: 'Efectivo', expectedTotal });
+    const response = http.post(`${base}/api/v1/orders`, payload, params('create_order', { 'Idempotency-Key': key }));
     const created = json(response);
-    if (check(response, { 'order created': (r) => r.status === 201 && Boolean(created.id) })) {
-      const retry = http.post(`${base}/api/v1/student/orders`, payload, params('retry_order', { 'Idempotency-Key': key }));
-      idempotency.add(retry.status === 201 && json(retry).id === created.id);
+    const confirmed = check(response, { 'order created': (r) => r.status === 201 && Boolean(created.id)
+      && created.total === expectedTotal && created.paymentMethod === 'Efectivo'
+      && created.paymentStatus === 'pay_at_pickup' && /^[A-Z0-9]{6}$/.test(created.pickupCode) });
+    creation.add(confirmed);
+    if (confirmed) {
+      const retry = http.post(`${base}/api/v1/orders`, payload, params('retry_order', { 'Idempotency-Key': key }));
+      idempotency.add(retry.status === 201 && JSON.stringify(json(retry)) === JSON.stringify(created));
       sleep(0.5);
-      const cancelled = http.post(`${base}/api/v1/student/orders/${created.id}/cancel`,
-        JSON.stringify({ expectedVersion: created.version }), params('cancel_order'));
-      cancellation.add(cancelled.status === 200 && json(cancelled).status === 'cancelled');
+      const cancelled = http.post(`${base}/api/v1/orders/${encodeURIComponent(created.id)}/cancel`,
+        JSON.stringify({ expectedVersion: created.version, reason: 'user_other', notes: '[CARGA AISLADA] Fin del ensayo de reserva.' }),
+        params('cancel_order'));
+      const result = json(cancelled);
+      cancellation.add(cancelled.status === 200 && result.id === created.id && result.status === 'cancelled'
+        && result.cancelledBy === 'ALUMNO' && result.cancelReason === 'user_other');
     }
   }
   sleep(5 + Math.random() * 5);

@@ -1,6 +1,6 @@
 # Prueba de carga pendiente: objetivo de 1,000 alumnos
 
-Este directorio contiene una prueba **optativa**, no un resultado de capacidad. No se ejecuta al iniciar la aplicación ni en CI. Las pruebas unitarias, PostgreSQL de CI y este escenario no sustituyen una medición en el servidor asignado.
+Este directorio contiene una prueba **optativa**, no un resultado de capacidad. Utiliza el contrato V3 de FastAPI en `/api/v1`, con `expectedTotal`, claves UUID de idempotencia, método `Efectivo` y cancelación `user_other` con notas. No se ejecuta al iniciar la aplicación ni en CI. Las pruebas unitarias, PostgreSQL de CI y este escenario no sustituyen una medición en el servidor asignado.
 
 ## Entorno aislado
 
@@ -34,7 +34,7 @@ Para pedidos, repetir con `MODE=orders` y agregar `-e ALLOW_WRITES=YES`. Este mo
 ## Qué mide
 
 - Rampa de 2 minutos a 100 usuarios, 2 a 300, 2 a 1,000, **30 minutos sostenidos** y 2 de descenso: aproximadamente 38 minutos más el cierre. `TARGET_VUS` limita cada etapa. La fase sostenida permite ejercer la renovación de sesiones de 15 minutos.
-- Login por usuario, renovación cuando corresponde, consulta de locales, menú y pedidos propios; pausas de 5–10 segundos entre iteraciones.
+- Login por usuario, renovación mediante cookie web y `Origin` cuando corresponde, consulta autenticada de locales, menú y pedidos activos propios; pausas de 5–10 segundos entre iteraciones.
 - En modo pedidos: reserva, precio confirmado por servidor, reintento idempotente y cancelación. No prueba pago electrónico, recogida ni transición completa por cocina.
 - Umbrales propuestos: menos de 1% de HTTP fallidos; p95 global <750 ms y p99 <2 s; p95 de creación <1.5 s; todos los reintentos deben conservar el ID y todas las cancelaciones intentadas deben confirmarse. Son criterios de aceptación a acordar, **no mediciones ya obtenidas**. [Semántica de umbrales](https://grafana.com/docs/k6/latest/using-k6/thresholds/).
 

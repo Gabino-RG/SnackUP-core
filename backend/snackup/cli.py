@@ -12,7 +12,7 @@ import sys
 from sqlalchemy import select, text
 from sqlalchemy.exc import SQLAlchemyError
 
-from . import admin_models, operation_models  # noqa: F401 -- register schema
+from . import admin_models, operation_models, push_models, review_models  # noqa: F401 -- register schema
 from .auth import hash_password, revoke_user_sessions
 from .config import Settings
 from .db import Database
@@ -71,8 +71,8 @@ def main(argv=None, settings=None):
                 domains = {part.strip().lower() for part in settings.admin_email_domains.split(',') if part.strip()}
                 if email.rsplit('@', 1)[1] not in domains:
                     raise ValueError('El correo debe pertenecer a SNACKUP_ADMIN_EMAIL_DOMAINS.')
-                if not 1 <= len(args.name.strip()) <= 100:
-                    raise ValueError('El nombre debe tener entre 1 y 100 caracteres.')
+                if not 1 <= len(args.name.strip()) <= 160:
+                    raise ValueError('El nombre debe tener entre 1 y 160 caracteres.')
             encoded = _password()
             with database.sessions.begin() as db:
                 _master_lock(db)

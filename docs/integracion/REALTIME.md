@@ -1,6 +1,6 @@
 # WebSocket de Cocina
 
-Conectar a `/api/v1/realtime`, cambiando HTTPS por WSS. WebSocket nativo, no Socket.IO.
+Conectar a `/api/legacy/v1/realtime`, cambiando HTTPS por WSS. WebSocket nativo, no Socket.IO.
 El upgrade no lleva Bearer en la URL. Validar Origin antes de aceptar y autorizar
 mensajes en orden. No suscribir temas antes de validar el mensaje `auth`.
 
@@ -34,3 +34,10 @@ simulador; esto no acredita funcionamiento de WSS. La API REST debe seguir dispo
 
 El cliente no consume eventos de productos ni opiniones. No promete avisos con
 la pestaña cerrada. Probar reconexión, cambio de sesión y revocación en el backend real.
+
+## Convivencia con V3
+
+Este documento describe el protocolo que ya consume el portal de compatibilidad.
+Socket.IO V3 se conecta por `/socket.io/` y usa salas autorizadas; no es intercambiable
+con este WebSocket. `OperationsRealtime` deriva `realtime` de la base REST, por lo que
+la base `/api/legacy/v1/` mantiene su ruta correcta sin modificar el cliente.

@@ -7,7 +7,7 @@
   },
   "servers": [
     {
-      "url": "/api/v1"
+      "url": "/api/legacy/v1"
     }
   ],
   "security": [
@@ -125,7 +125,7 @@
       "get": {
         "operationId": "emailVerificationPage",
         "summary": "Abrir pantalla de confirmación de correo",
-        "description": "HTML. El correo apunta a /api/v1/auth/verify-email#token=...; el fragmento no se envía al servidor. JavaScript lo retira de la barra y envía el POST solo tras pulsar Confirmar correo. GET no modifica datos. No pasar el token en query parameters. Respuesta con CSP de nonce y Cache-Control no-store.",
+        "description": "HTML. El correo apunta a /api/legacy/v1/auth/verify-email#token=...; el fragmento no se envía al servidor. JavaScript lo retira de la barra y envía el POST solo tras pulsar Confirmar correo. GET no modifica datos. No pasar el token en query parameters. Respuesta con CSP de nonce y Cache-Control no-store.",
         "tags": [
           "public"
         ],
@@ -1180,7 +1180,11 @@
           },
           "paymentMethod": {
             "type": "string",
-            "const": "cash"
+            "enum": [
+              "cash",
+              "Transferencia"
+            ],
+            "description": "Adaptador legacy: efectivo sigue siendo cash. Transferencia conserva el método de una orden V3; no representa cobro confirmado."
           },
           "total": {
             "type": "number",
@@ -1231,8 +1235,11 @@
           },
           "paymentStatus": {
             "type": "string",
-            "const": "pay_at_pickup",
-            "description": "No acredita cobro; este backend no procesa pagos electrónicos ni registra liquidación."
+            "enum": [
+              "pay_at_pickup",
+              "unverified"
+            ],
+            "description": "pay_at_pickup para efectivo; unverified para transferencia registrada por V3. Ningún valor acredita cobro ni liquidación."
           },
           "subtotal": {
             "type": "number",
@@ -1240,8 +1247,9 @@
           },
           "pickupCode": {
             "type": "string",
-            "pattern": "^[0-9]{8}$",
-            "readOnly": true
+            "pattern": "^(?:[0-9]{8}|[A-Z0-9]{6})$",
+            "readOnly": true,
+            "description": "Conserva códigos legacy de ocho dígitos; también lee códigos V3 de seis caracteres alfanuméricos mayúsculos."
           },
           "updatedAt": {
             "type": "string",

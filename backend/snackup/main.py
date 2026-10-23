@@ -13,6 +13,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError, OperationalError
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.exceptions import HTTPException
+from starlette.concurrency import run_in_threadpool
 
 from .config import Settings
 from .db import Database
@@ -24,7 +25,9 @@ log = logging.getLogger('snackup.http')
 
 
 def create_app(settings: Settings | None = None):
-    from . import admin, identity, operations, realtime
+    from . import admin, identity, operations, realtime, v3_admin, v3_identity, v3_operations, v3_media, v3_reviews, push
+    from .push import install_push
+    from .socketio_gateway import install_socketio
 
     settings = settings or Settings()
     app_logger = logging.getLogger('snackup')
@@ -43,15 +46,22 @@ def create_app(settings: Settings | None = None):
             if settings.environment != 'test':
                 connection.execute(text('SELECT version_num FROM alembic_version'))
         if settings.background_events:
+            await app.state.socketio_gateway.start()
             await app.state.events.start()
+            await app.state.push.start()
         try:
             yield
         finally:
+            await app.state.push.stop()
             await app.state.events.stop()
+            await app.state.socketio_gateway.stop()
             app.state.limiter.close()
             database.dispose()
 
-    app = FastAPI(title='SnackUP Backend', version='0.1.0', lifespan=lifespan,
+    app = FastAPI(title='SnackUP API V3 · FastAPI', version='3.1.0', lifespan=lifespan,
+                  description='Contrato canónico V3 en /api/v1. Compatibilidad de paneles anteriores en /api/legacy/v1. '
+                              'Registro institucional requiere verificación de correo antes de emitir una sesión. '
+                              'Pagos son métodos registrados; no se procesa cobro. Tiempo real Socket.IO: /socket.io.',
                   docs_url='/api/docs' if settings.environment != 'production' else None,
                   redoc_url=None, openapi_url='/api/openapi.json' if settings.environment != 'production' else None)
     app.state.settings = settings
@@ -62,6 +72,17 @@ def create_app(settings: Settings | None = None):
 
     @app.exception_handler(ApiError)
     async def api_error(_, error):
+        if error.audit:
+            def persist_failure():
+                from .identity_models import audit_event
+                with database.sessions.begin() as db:
+                    audit_event(db, **error.audit)
+            try:
+                await run_in_threadpool(persist_failure)
+            except Exception:
+                # An unavailable audit store must not expose exception details
+                # or turn a denied delivery into a successful operation.
+                log.warning('Audit persistence unavailable for %s', error.code)
         return JSONResponse(error.payload(), status_code=error.status,
                             headers={'Retry-After': '60'} if error.status == 429 else None)
 
@@ -94,7 +115,7 @@ def create_app(settings: Settings | None = None):
                 # Cookie endpoints enforce presence too; bearer CLI clients can omit Origin.
                 if origin and origin != settings.public_origin:
                     raise ApiError(403, 'ORIGIN_DENIED', 'Origen no autorizado.')
-                maximum = 6 * 1024 * 1024 if path == '/api/v1/media' else 64 * 1024
+                maximum = 6 * 1024 * 1024 if path in {'/api/v1/media', '/api/legacy/v1/media'} else 64 * 1024
                 try:
                     claimed = int(request.headers.get('content-length', '0'))
                 except ValueError:
@@ -109,15 +130,16 @@ def create_app(settings: Settings | None = None):
                     if len(body) > maximum:
                         raise ApiError(413, 'PAYLOAD_TOO_LARGE')
                 request._body = bytes(body)
-                if path.startswith('/api/v1/auth/') or path == '/api/v1/student/register':
+                if path.startswith(('/api/v1/auth/', '/api/legacy/v1/auth/')) or path == '/api/legacy/v1/student/register':
                     address = request.client.host if request.client else 'unknown'
-                    app.state.limiter.check('auth-ip', address, 3000, 60)
+                    await run_in_threadpool(app.state.limiter.check, 'auth-ip', address, 3000, 60)
                     if path.endswith(('/login', '/register', '/forgot-password', '/resend-verification')):
                         try:
                             payload = json.loads(body)
                             email = payload.get('email', '')
                             if isinstance(email, str) and email:
-                                app.state.limiter.check('auth-account:' + path.rsplit('/', 1)[-1], email.strip().lower(), 10, 60)
+                                await run_in_threadpool(app.state.limiter.check, 'auth-account:' + path.rsplit('/', 1)[-1],
+                                                        email.strip().lower(), 10, 60)
                         except (ValueError, AttributeError):
                             pass
             response = await call_next(request)
@@ -133,8 +155,20 @@ def create_app(settings: Settings | None = None):
         log.info('%s %s %d %.0fms', request.method, path, response.status_code, (time.monotonic() - started) * 1000)
         return response
 
-    for router in (identity.router, admin.router, operations.router, realtime.router):
+    for router in (v3_identity.router, v3_admin.router, v3_operations.router, v3_media.router, v3_reviews.router, push.router):
         app.include_router(router, prefix='/api/v1')
+    # Keep the established panels' strict lower-case DTOs explicitly versioned.
+    # They do not override or dilute the canonical V3 roles, errors or payloads.
+    for router in (identity.router, admin.router, operations.router, realtime.router):
+        app.include_router(router, prefix='/api/legacy/v1', include_in_schema=False)
+    from fastapi import APIRouter
+    administrative_extensions = APIRouter(tags=['Administración institucional'])
+    for route in admin.router.routes:
+        if (route.path == '/institution' or route.path.startswith(('/admin/reviews', '/admin/followups', '/admin/academic-catalog'))):
+            administrative_extensions.routes.append(route)
+    app.include_router(administrative_extensions, prefix='/api/v1')
+    install_push(app)
+    install_socketio(app)
 
     @app.get('/health/live')
     def live():
@@ -170,4 +204,6 @@ def create_app(settings: Settings | None = None):
                 target = web_root / 'index.html'
             return FileResponse(target)
 
+    from .openapi import install_openapi
+    install_openapi(app)
     return app

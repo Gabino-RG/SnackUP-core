@@ -31,7 +31,7 @@ def normalize_email(value: str) -> str:
     if not isinstance(value, str):
         raise ApiError(422, "INVALID_EMAIL", "Escribe un correo válido.")
     normalized = value.strip().lower()
-    if len(normalized) > 160 or not EMAIL_PATTERN.fullmatch(normalized):
+    if len(normalized) > 254 or not EMAIL_PATTERN.fullmatch(normalized):
         raise ApiError(422, "INVALID_EMAIL", "Escribe un correo válido.")
     return normalized
 
@@ -70,12 +70,12 @@ def serialize_profile(user: User, db: Session) -> dict:
 def _cookie(response: Response, token: str, settings, expires_at) -> None:
     response.set_cookie(REFRESH_COOKIE, token, max_age=max(1, int((as_utc(expires_at) - utcnow()).total_seconds())),
                         httponly=True, secure=settings.public_origin.startswith("https://"),
-                        samesite="strict", path="/api/v1/auth")
+                        samesite="strict", path="/api")
     response.headers["Cache-Control"] = "no-store"
 
 
 def _clear_cookie(response: Response, settings) -> None:
-    response.delete_cookie(REFRESH_COOKIE, path="/api/v1/auth", httponly=True,
+    response.delete_cookie(REFRESH_COOKIE, path="/api", httponly=True,
                            secure=settings.public_origin.startswith("https://"), samesite="strict")
     response.headers["Cache-Control"] = "no-store"
 
@@ -97,7 +97,7 @@ def _issue_session(db: Session, user: User, response: Response, settings,
     return {"tokens": {"accessToken": access, "accessTokenExpiresAt": iso(expiry)}}
 
 
-def _mail_token(db: Session, user: User, settings, purpose: str, mailer=None) -> None:
+def _mail_token(db: Session, user: User, settings, purpose: str, mailer=None, registration_data=None) -> None:
     if not mail_available(settings):
         raise ApiError(503, "EMAIL_UNAVAILABLE", "El envío de correo aún no está configurado.")
     raw = secrets.token_urlsafe(32)
@@ -107,7 +107,8 @@ def _mail_token(db: Session, user: User, settings, purpose: str, mailer=None) ->
                                                VerificationToken.purpose == purpose,
                                                VerificationToken.used_at.is_(None)).values(used_at=now))
     db.add(VerificationToken(user_id=user.id, email=user.email, purpose=purpose,
-                             token_hash=token_hash(raw), expires_at=now + timedelta(minutes=30)))
+                             token_hash=token_hash(raw), expires_at=now + timedelta(minutes=30),
+                             registration_data=registration_data))
     db.flush()
     if purpose == "verify":
         link = settings.public_origin.rstrip("/") + "/api/v1/auth/verify-email#token=" + quote(raw)
@@ -116,7 +117,8 @@ def _mail_token(db: Session, user: User, settings, purpose: str, mailer=None) ->
                    + link + "\n\nEl enlace vence en 30 minutos y se usa una sola vez. "
                    "Verificar el correo no otorga permisos administrativos. Si no solicitaste el registro, ignora este mensaje.")
     else:
-        link = settings.public_origin.rstrip("/") + "/#/reset-password?token=" + quote(raw)
+        link = (settings.public_origin.rstrip("/") + settings.password_reset_frontend_path
+                + "#/reset-password?token=" + quote(raw))
         subject = "Restablece tu contraseña de SnackUP"
         content = ("Solicitaste restablecer la contraseña de SnackUP:\n\n" + link +
                    "\n\nEl enlace vence en 30 minutos y se usa una sola vez. "
@@ -420,7 +422,7 @@ def import_roster_csv(db: Session, content: str, source: str) -> dict:
         except ApiError as exc:
             raise ValueError(f"Invalid email on row {line}") from exc
         if (row["email"] in emails or not 1 <= len(row["institutional_id"]) <= 100
-                or not 1 <= len(row["display_name"]) <= 100 or row["kind"] not in ("student", "staff")
+                or not 1 <= len(row["display_name"]) <= 160 or row["kind"] not in ("student", "staff")
                 or row["is_active"].lower() not in ("true", "false", "1", "0")):
             raise ValueError(f"Invalid or duplicate identity on row {line}")
         identity = (row["kind"], row["institutional_id"])

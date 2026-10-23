@@ -3,9 +3,9 @@ name: Backend REST SQL
 on:
   workflow_dispatch:
   push:
-    paths: ['backend/**', '.github/workflows/backend.yml']
+    paths: ['backend/**', 'docs/integracion/openapi.json', '.github/workflows/backend.yml']
   pull_request:
-    paths: ['backend/**', '.github/workflows/backend.yml']
+    paths: ['backend/**', 'docs/integracion/openapi.json', '.github/workflows/backend.yml']
 
 permissions:
   contents: read
@@ -54,7 +54,16 @@ jobs:
       - name: Install exact dependency lock
         run: python -m pip install -r requirements.lock
       - name: Static checks
-        run: python -m ruff check snackup tests deploy load
+        run: python -m ruff check snackup tests tools deploy load
+      - name: Verify generated API and Prisma references
+        run: |
+          python tools/export_prisma_reference.py --check
+          python tools/export_v3_openapi.py --check
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate Prisma reference without adding a runtime ORM
+        run: npx --yes prisma@7.10.1 validate --schema schema.prisma
       - name: Upgrade PostgreSQL schema and check model drift
         run: |
           python -m alembic upgrade head
@@ -65,11 +74,14 @@ jobs:
         run: |
           docker build --tag snackup-backend:ci .
           docker build --file deploy/proxy.Dockerfile --tag snackup-proxy:ci .
+          docker build --file deploy/proxy.Dockerfile --build-arg CADDY_CONFIG=deploy/Caddy.apps --tag snackup-proxy-apps:ci .
           test "$(docker inspect --format '{{.Config.User}}' snackup-backend:ci)" = '10001:10001'
           test "$(docker inspect --format '{{.Config.User}}' snackup-proxy:ci)" = '10001:10001'
+          test "$(docker inspect --format '{{.Config.User}}' snackup-proxy-apps:ci)" = '10001:10001'
       - name: Validate proxy configuration
         run: |
           docker run --rm -e SNACKUP_DOMAIN=snackup.example.test -e TLS_ACME_EMAIL=qa@example.test snackup-proxy:ci caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+          docker run --rm -e SNACKUP_DOMAIN=snackup.example.test -e TLS_ACME_EMAIL=qa@example.test snackup-proxy-apps:ci caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
       - name: Boot isolated Compose stack with application SQL role
         env:
           SNACKUP_DOMAIN: snackup.example.test
@@ -88,6 +100,7 @@ jobs:
           trap 'docker compose -p snackup-smoke down --volumes --remove-orphans' EXIT
           docker tag snackup-backend:ci snackup-backend:local
           docker compose -p snackup-smoke config --quiet
+          docker compose -p snackup-smoke -f compose.yaml -f deploy/compose.apps.yaml config --quiet
           docker compose -p snackup-smoke up -d db redis
           docker compose -p snackup-smoke run --rm migrate
           docker compose -p snackup-smoke up -d --wait --wait-timeout 120 api
@@ -99,5 +112,6 @@ jobs:
           path: |
             backend/reports/pytest*.xml
             backend/reports/contract-responses.json
+            backend/reports/v3-contract-responses.json
           if-no-files-found: ignore
           retention-days: 30

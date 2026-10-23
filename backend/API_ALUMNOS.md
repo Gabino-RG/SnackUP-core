@@ -1,6 +1,8 @@
 # API del alumnado e identidad institucional
 
-Esta guía describe el backend que está implementado, con base `/api/v1`.
+Esta guía conserva el contrato anterior, disponible en `/api/legacy/v1`.
+Para integraciones nuevas, usar [API V3 de FastAPI](API_V3_FASTAPI.md) y
+[OpenAPI V3](contracts/v3.openapi.json), con base `/api/v1`.
 El contrato ejecutable es [extensions.openapi.json](contracts/extensions.openapi.json):
 11 operaciones adicionales y la ampliación compatible de `GET users/me`.
 Las 43 operaciones de Administración y Cocina conservan su
@@ -97,7 +99,9 @@ https://<dominio>/api/v1/auth/verify-email#token=<token>
 ```
 
 El token se envía en el fragmento, no en la consulta URL. `GET /auth/verify-email`
-solo muestra HTML: no confirma automáticamente. La página retira el fragmento y,
+solo muestra HTML: no confirma automáticamente. Los enlaces generados por el servidor
+apuntan a la página canónica `/api/v1/auth/verify-email`, que también consume tokens
+anteriores. La página retira el fragmento y,
 después de pulsar **Confirmar correo**, envía:
 
 ```http

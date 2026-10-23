@@ -1,7 +1,7 @@
 """Identity records. Institutional roster data never grants a SnackUP staff role."""
 from datetime import datetime
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, Integer, String, UniqueConstraint, text
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, Integer, JSON, String, Text, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .db import Base, new_id, utcnow
@@ -9,9 +9,9 @@ from .db import Base, new_id, utcnow
 
 class User(Base):
     __tablename__ = "users"
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
-    email: Mapped[str] = mapped_column(String(160), unique=True, nullable=False)
-    display_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    id: Mapped[str] = mapped_column(Text, primary_key=True, default=new_id)
+    email: Mapped[str] = mapped_column(String(254), unique=True, nullable=False)
+    display_name: Mapped[str] = mapped_column(String(160), nullable=False)
     password_hash: Mapped[str] = mapped_column(String(256), nullable=False)
     role: Mapped[str] = mapped_column(String(16), nullable=False, default="pending")
     business_id: Mapped[str | None] = mapped_column(ForeignKey("businesses.id"), nullable=True)
@@ -21,6 +21,10 @@ class User(Base):
     email_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     auth_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    numero_de_control: Mapped[str | None] = mapped_column(String(100), unique=True, nullable=True)
+    avatar_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    institutional_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
     __table_args__ = (
@@ -36,14 +40,14 @@ class User(Base):
 
 class Career(Base):
     __tablename__ = "careers"
-    id: Mapped[str] = mapped_column(String(128), primary_key=True, default=new_id)
+    id: Mapped[str] = mapped_column(Text, primary_key=True, default=new_id)
     name: Mapped[str] = mapped_column(String(160), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
 
 class AcademicGroup(Base):
     __tablename__ = "academic_groups"
-    id: Mapped[str] = mapped_column(String(128), primary_key=True, default=new_id)
+    id: Mapped[str] = mapped_column(Text, primary_key=True, default=new_id)
     career_id: Mapped[str] = mapped_column(ForeignKey("careers.id"), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(160), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
@@ -51,10 +55,10 @@ class AcademicGroup(Base):
 
 class AcademicRecord(Base):
     __tablename__ = "academic_records"
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
-    email: Mapped[str] = mapped_column(String(160), nullable=False, unique=True)
+    id: Mapped[str] = mapped_column(Text, primary_key=True, default=new_id)
+    email: Mapped[str] = mapped_column(String(254), nullable=False, unique=True)
     institutional_id: Mapped[str] = mapped_column(String(100), nullable=False)
-    display_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    display_name: Mapped[str] = mapped_column(String(160), nullable=False)
     kind: Mapped[str] = mapped_column(String(16), nullable=False)
     career_id: Mapped[str | None] = mapped_column(ForeignKey("careers.id"), nullable=True)
     group_id: Mapped[str | None] = mapped_column(ForeignKey("academic_groups.id"), nullable=True)
@@ -71,23 +75,27 @@ class AcademicRecord(Base):
 
 class RefreshSession(Base):
     __tablename__ = "refresh_sessions"
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    __table_args__ = (Index("ix_refresh_sessions_user_revoked", "user_id", "revoked_at"),
+                      Index("ix_refresh_sessions_expiry", "expires_at"))
+    id: Mapped[str] = mapped_column(Text, primary_key=True, default=new_id)
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
-    family_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    family_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
     token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
     auth_version: Mapped[int] = mapped_column(Integer, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     rotated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    device_id: Mapped[str | None] = mapped_column(ForeignKey("devices.id", ondelete="SET NULL"), nullable=True)
+    replaced_by_id: Mapped[str | None] = mapped_column(ForeignKey("refresh_sessions.id", ondelete="SET NULL"), nullable=True)
 
 
 class AccessRequest(Base):
     __tablename__ = "access_requests"
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    id: Mapped[str] = mapped_column(Text, primary_key=True, default=new_id)
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False, unique=True)
-    email: Mapped[str] = mapped_column(String(160), nullable=False)
-    display_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    email: Mapped[str] = mapped_column(String(254), nullable=False)
+    display_name: Mapped[str] = mapped_column(String(160), nullable=False)
     requested_role: Mapped[str] = mapped_column(String(16), nullable=False)
     request_context: Mapped[str] = mapped_column(String(400), nullable=False, default="")
     provider: Mapped[str] = mapped_column(String(16), nullable=False, default="password")
@@ -106,12 +114,34 @@ class AccessRequest(Base):
 
 class VerificationToken(Base):
     __tablename__ = "verification_tokens"
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    id: Mapped[str] = mapped_column(Text, primary_key=True, default=new_id)
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
-    email: Mapped[str] = mapped_column(String(160), nullable=False)
+    email: Mapped[str] = mapped_column(String(254), nullable=False)
     purpose: Mapped[str] = mapped_column(String(16), nullable=False)
     token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # A pending V3 registration is applied only after proof of email ownership.
+    # May contain a password hash, never a plaintext password; never serialized.
+    registration_data: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
-    __table_args__ = (CheckConstraint("purpose IN ('verify','reset')", name="ck_verification_purpose"),)
+    __table_args__ = (CheckConstraint("purpose IN ('verify','reset')", name="ck_verification_purpose"),
+                      Index("ix_verification_tokens_expiry", "expires_at"))
+
+
+class AccountAuditEvent(Base):
+    __tablename__ = "account_audit_events"
+    id: Mapped[str] = mapped_column(Text, primary_key=True, default=new_id)
+    actor_id: Mapped[str | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    action: Mapped[str] = mapped_column(String(80), nullable=False)
+    target_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    target_id: Mapped[str] = mapped_column(Text, nullable=False)
+    data: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+    __table_args__ = (Index("ix_account_audit_target", "target_type", "target_id"),)
+
+
+def audit_event(db, actor_id, action, target_type, target_id, data=None):
+    """Append nonsensitive metadata in the caller's mutation transaction."""
+    db.add(AccountAuditEvent(actor_id=actor_id, action=action, target_type=target_type,
+                             target_id=target_id, data=data or {}))

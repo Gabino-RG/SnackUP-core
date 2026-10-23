@@ -1,10 +1,11 @@
-"""Native WebSocket protocol with commit-first SQL outbox and Redis fan-out.
+"""Commit-first SQL outbox and Redis fan-out for both realtime protocols.
 
 Pub/sub is an online notification channel. REST remains authoritative and the
 existing frontend periodically reconciles its state after missing notifications.
 """
 import asyncio
 from contextlib import suppress
+from datetime import timedelta
 import json
 import logging
 import time
@@ -12,7 +13,7 @@ import time
 from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
 from redis import Redis
 from redis.asyncio import Redis as AsyncRedis
-from sqlalchemy import select
+from sqlalchemy import or_, select
 
 from .db import OutboxEvent, utcnow
 from .errors import ApiError
@@ -27,12 +28,23 @@ class EventBridge:
         self.db = database
         self.settings = settings
         self.clients = {}  # queue -> allowed topics
-        self.connections = 0  # Includes handshakes waiting for authentication.
+        self.connections = 0  # Both protocols, including unauthenticated handshakes.
         self.tasks = []
+        self.listeners = set()
+        self.dispatch_paused_until = 0
+        self.subscription_ready = asyncio.Event()
         self.redis = Redis.from_url(settings.redis_url, socket_timeout=2, socket_connect_timeout=2) if settings.redis_url else None
         self.subscriber = None
 
+    def add_listener(self, listener):
+        self.listeners.add(listener)
+
+    def remove_listener(self, listener):
+        self.listeners.discard(listener)
+
     def broadcast(self, event):
+        for listener in tuple(self.listeners):
+            listener(event)
         for queue, topics in list(self.clients.items()):
             if event.get('topic') in topics:
                 try:
@@ -45,17 +57,40 @@ class EventBridge:
                         queue.put_nowait({'type': 'error', 'code': 'SLOW_CONSUMER'})
 
     def _dispatch(self):
+        from .push import enqueue_outbox_push
+        from .auth import as_utc
+        if self.redis and time.monotonic() < self.dispatch_paused_until:
+            return []
         local = []
+        failure = None
         with self.db.sessions.begin() as db:
-            rows = db.scalars(select(OutboxEvent).where(OutboxEvent.published_at.is_(None))
-                              .order_by(OutboxEvent.id).limit(100).with_for_update(skip_locked=True)).all()
+            query = select(OutboxEvent).where(OutboxEvent.published_at.is_(None))
+            if self.redis:
+                query = query.where(or_(OutboxEvent.next_attempt_at.is_(None), OutboxEvent.next_attempt_at <= utcnow()))
+            rows = db.scalars(query.order_by(OutboxEvent.id).limit(100).with_for_update(skip_locked=True)).all()
             for row in rows:
-                event = {'id': row.event_id, 'type': row.event_type, 'topic': row.topic, 'data': row.data}
-                if self.redis:
-                    self.redis.publish(CHANNEL, json.dumps(event))
-                else:
-                    local.append(event)
-                row.published_at = utcnow()
+                # Push jobs and publication state commit together; publication
+                # retries cannot enqueue the same event/device twice.
+                enqueue_outbox_push(db, row)
+                event = {'id': row.event_id, 'type': row.event_type, 'topic': row.topic,
+                         'occurredAt': as_utc(row.created_at).isoformat(), 'data': row.data}
+                row.publish_attempts += 1
+                try:
+                    if self.redis:
+                        self.redis.publish(CHANNEL, json.dumps(event))
+                    else:
+                        local.append(event)
+                    row.published_at, row.last_error, row.next_attempt_at = utcnow(), None, None
+                except Exception as error:
+                    delay = min(60, 2 ** min(row.publish_attempts, 6))
+                    row.last_error, row.next_attempt_at = 'REDIS_PUBLISH_FAILED', utcnow() + timedelta(seconds=delay)
+                    self.dispatch_paused_until = time.monotonic() + delay
+                    failure = error
+                    # Persist the failed attempt and any jobs already enqueued.
+                    # Do not hammer the remaining rows during a broker outage.
+                    break
+        if failure is not None:
+            raise failure
         return local
 
     async def dispatch_once(self):
@@ -80,24 +115,34 @@ class EventBridge:
                 async with self.subscriber.pubsub() as sub:
                     await sub.subscribe(CHANNEL)
                     async for item in sub.listen():
-                        if item['type'] == 'message':
+                        if item['type'] == 'subscribe':
+                            self.subscription_ready.set()
+                        elif item['type'] == 'message':
                             self.broadcast(json.loads(item['data']))
             except asyncio.CancelledError:
                 raise
             except Exception:
+                self.subscription_ready.clear()
                 log.warning('Event subscription unavailable; reconnecting')
                 await asyncio.sleep(1)
 
     async def start(self):
+        if self.tasks:
+            return
         if self.redis:
             await asyncio.to_thread(self.redis.ping)
+            self.subscription_ready.clear()
             self.tasks.append(asyncio.create_task(self.subscribe_loop()))
+            # The worker must subscribe before it can publish its own outbox.
+            # Waiting for the Redis acknowledgment avoids a startup race.
+            await asyncio.wait_for(self.subscription_ready.wait(), timeout=5)
         self.tasks.append(asyncio.create_task(self.publish_loop()))
 
     async def stop(self):
         for task in self.tasks:
             task.cancel()
         await asyncio.gather(*self.tasks, return_exceptions=True)
+        self.tasks = []
         if self.subscriber:
             await self.subscriber.aclose()
         if self.redis:

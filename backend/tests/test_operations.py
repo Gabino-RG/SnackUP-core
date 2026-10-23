@@ -27,7 +27,7 @@ from snackup.operation_models import Business, IdempotencyRecord, Order, OrderIt
 
 
 @pytest.fixture
-def operations_env(tmp_path):
+def operations_env(tmp_path, monkeypatch):
     database_url = os.environ.get("SNACKUP_TEST_DATABASE_URL")
     schema = None
     if database_url:
@@ -73,6 +73,10 @@ def operations_env(tmp_path):
         return user
 
     app.dependency_overrides[current_user] = test_user
+    # Production services recheck authentication after acquiring SQL locks.
+    # This isolated domain fixture replaces that same lookup explicitly; the
+    # integration/V3 suites exercise real access tokens and revocation races.
+    monkeypatch.setattr('snackup.operations.current_user', test_user)
     with TestClient(app) as client:
         yield SimpleNamespace(client=client, db=database, app=app)
     if schema:
@@ -82,12 +86,12 @@ def operations_env(tmp_path):
 
 
 def buy(env, items=None, key="order-request-key-0001", **extra):
-    return env.client.post("/api/v1/student/orders", headers={"Idempotency-Key": key},
+    return env.client.post("/api/legacy/v1/student/orders", headers={"Idempotency-Key": key},
                            json={"businessId": "shop", "items": items or [{"productId": "meal", "quantity": 2}], **extra})
 
 
 def act(env, order, action, **extra):
-    return env.client.post(f"/api/v1/orders/{order['id']}/{action}", headers={"x-user": "operator"},
+    return env.client.post(f"/api/legacy/v1/orders/{order['id']}/{action}", headers={"x-user": "operator"},
                            json={"expectedVersion": order["version"], **extra})
 
 
@@ -111,7 +115,7 @@ def test_creation_reserves_atomically_and_replays_exact_result(operations_env):
         assert db.get(Product, "meal").version == 2
         assert db.get(Business, "shop").next_order_number == 2
         assert count(db, Order) == count(db, IdempotencyRecord) == count(db, OrderTransition) == 1
-        assert count(db, OutboxEvent) == 2
+        assert count(db, OutboxEvent) == 4
         assert all("pickupCode" not in event.data for event in db.scalars(select(OutboxEvent)))
 
 
@@ -127,15 +131,15 @@ def test_all_or_nothing_stock_failure_and_untrusted_fields(operations_env):
     assert buy(env, total=0.01).status_code == 422
     assert buy(env, items=[{"productId": "meal", "quantity": True}]).status_code == 422
     assert buy(env, paymentMethod="paid").status_code == 422
-    assert env.client.post("/api/v1/student/orders", json={"businessId": "shop", "items": []}).status_code == 422
+    assert env.client.post("/api/legacy/v1/student/orders", json={"businessId": "shop", "items": []}).status_code == 422
 
 
 def test_kitchen_flow_hides_codes_and_rejects_wrong_order_and_stale_version(operations_env):
     env = operations_env
     order = buy(env).json()
-    assert env.client.get(f"/api/v1/orders/{order['id']}", headers={"x-user": "otherop"}).status_code == 404
-    assert env.client.get(f"/api/v1/orders/{order['id']}", headers={"x-user": "admin"}).status_code == 403
-    assert env.client.get(f"/api/v1/student/orders/{order['id']}", headers={"x-user": "student2"}).status_code == 404
+    assert env.client.get(f"/api/legacy/v1/orders/{order['id']}", headers={"x-user": "otherop"}).status_code == 404
+    assert env.client.get(f"/api/legacy/v1/orders/{order['id']}", headers={"x-user": "admin"}).status_code == 403
+    assert env.client.get(f"/api/legacy/v1/student/orders/{order['id']}", headers={"x-user": "student2"}).status_code == 404
     assert act(env, order, "ready").status_code == 409
     code = order["pickupCode"]
     accepted = act(env, order, "accept")
@@ -143,7 +147,7 @@ def test_kitchen_flow_hides_codes_and_rejects_wrong_order_and_stale_version(oper
     assert "pickupCode" not in accepted.json() and "customerNumeroDeControl" not in accepted.json()
     assert act(env, order, "accept").json()["error"]["code"] == "VERSION_CONFLICT"
     order = accepted.json()
-    assert env.client.post(f"/api/v1/student/orders/{order['id']}/cancel", json={"expectedVersion": order["version"]}).status_code == 409
+    assert env.client.post(f"/api/legacy/v1/student/orders/{order['id']}/cancel", json={"expectedVersion": order["version"]}).status_code == 409
     order = act(env, order, "start").json()
     order = act(env, order, "ready").json()
     assert act(env, order, "cancel", reason="other", notes="motivo").status_code == 409
@@ -154,7 +158,7 @@ def test_kitchen_flow_hides_codes_and_rejects_wrong_order_and_stale_version(oper
     assert completed.json()["status"] == "completed"
     assert completed.json()["paymentStatus"] == "pay_at_pickup"
     assert act(env, order, "complete", method="qr", code=code).status_code == 409
-    active = env.client.get("/api/v1/businesses/shop/orders/active", headers={"x-user": "operator"}).json()
+    active = env.client.get("/api/legacy/v1/businesses/shop/orders/active", headers={"x-user": "operator"}).json()
     assert active["data"] == []
     with env.db.sessions() as db:
         assert db.get(Product, "meal").stock == 3
@@ -184,7 +188,7 @@ def test_cancellation_returns_stock_once_and_cannot_inflate_newly_enabled_stock(
 def test_student_can_cancel_only_own_pending_order(operations_env):
     env = operations_env
     order = buy(env).json()
-    url = f"/api/v1/student/orders/{order['id']}/cancel"
+    url = f"/api/legacy/v1/student/orders/{order['id']}/cancel"
     assert env.client.post(url, headers={"x-user": "student2"}, json={"expectedVersion": 1}).status_code == 404
     cancelled = env.client.post(url, json={"expectedVersion": 1})
     assert cancelled.status_code == 200 and cancelled.json()["cancelReason"] == "student_cancelled"
@@ -198,14 +202,14 @@ def test_catalog_omitted_stock_preserves_snapshot_and_soft_delete(operations_env
     order = buy(env).json()
     body = {"name": "Torta nueva", "description": "", "category": "Comida", "price": 30.25,
             "imageUrl": None, "isAvailable": True, "isFeatured": False, "expectedVersion": 2}
-    updated = env.client.patch("/api/v1/products/meal", headers={"x-user": "operator"}, json=body)
+    updated = env.client.patch("/api/legacy/v1/products/meal", headers={"x-user": "operator"}, json=body)
     assert updated.status_code == 200, updated.text
     assert updated.json()["stock"] == 3
-    deleted = env.client.request("DELETE", "/api/v1/products/meal", headers={"x-user": "operator"},
+    deleted = env.client.request("DELETE", "/api/legacy/v1/products/meal", headers={"x-user": "operator"},
                                  json={"expectedVersion": 3})
     assert deleted.status_code == 204
-    assert env.client.get("/api/v1/products/meal", headers={"x-user": "operator"}).status_code == 404
-    historical = env.client.get(f"/api/v1/orders/{order['id']}", headers={"x-user": "operator"}).json()
+    assert env.client.get("/api/legacy/v1/products/meal", headers={"x-user": "operator"}).status_code == 404
+    historical = env.client.get(f"/api/legacy/v1/orders/{order['id']}", headers={"x-user": "operator"}).json()
     assert historical["items"][0]["name"] == "Torta" and historical["total"] == 51.0
     assert act(env, order, "cancel", reason="store_issue").status_code == 200
     with env.db.sessions() as db:
@@ -217,10 +221,11 @@ def test_null_stock_disables_tracking_and_business_closed_blocks_new_orders(oper
     env = operations_env
     body = {"name": "Torta", "description": "", "category": "Comida", "price": 25.50, "stock": None,
             "imageUrl": None, "isAvailable": True, "isFeatured": False, "expectedVersion": 1}
-    assert env.client.patch("/api/v1/products/meal", headers={"x-user": "operator"}, json=body).json()["stock"] is None
+    assert env.client.patch("/api/legacy/v1/products/meal", headers={"x-user": "operator"}, json=body).json()["stock"] is None
     order = buy(env).json()
-    closed = env.client.patch("/api/v1/businesses/shop/status", headers={"x-user": "operator"},
-                               json={"expectedVersion": 1, "isOpen": False})
+    business = env.client.get("/api/legacy/v1/businesses/shop", headers={"x-user": "operator"}).json()
+    closed = env.client.patch("/api/legacy/v1/businesses/shop/status", headers={"x-user": "operator"},
+                               json={"expectedVersion": business["version"], "isOpen": False})
     assert closed.status_code == 200
     assert buy(env, key="order-request-key-0002").json()["error"]["code"] == "BUSINESS_CLOSED"
     assert act(env, order, "accept").status_code == 200  # existing orders remain operable
@@ -236,13 +241,13 @@ def test_history_uses_local_completion_day_and_full_summary(operations_env):
             order.status = "completed" if i < 2 else "cancelled"
             # UTC Oct23 05:59 = Mexico City Oct22 23:59, all belong to Oct22.
             setattr(order, "completed_at" if i < 2 else "cancelled_at", datetime(2026, 10, 23, 5, 59, tzinfo=timezone.utc))
-    response = env.client.get("/api/v1/businesses/shop/orders/history?date=2026-10-22&limit=1", headers={"x-user": "operator"})
+    response = env.client.get("/api/legacy/v1/businesses/shop/orders/history?date=2026-10-22&limit=1", headers={"x-user": "operator"})
     assert response.status_code == 200, response.text
     result = response.json()
     assert len(result["data"]) == 1 and result["pagination"]["total"] == 3
     assert result["summary"] == {"completed": 2, "cancelled": 1, "totalSold": 51.0}
     assert all("pickupCode" not in row for row in result["data"])
-    empty = env.client.get("/api/v1/businesses/shop/stats?from=2026-10-23&to=2026-10-23", headers={"x-user": "operator"})
+    empty = env.client.get("/api/legacy/v1/businesses/shop/stats?from=2026-10-23&to=2026-10-23", headers={"x-user": "operator"})
     assert empty.json() == {"completed": 0, "cancelled": 0, "totalSold": 0}
 
 
@@ -250,17 +255,17 @@ def test_media_real_image_is_reencoded_and_mime_spoof_rejected(operations_env):
     env = operations_env
     buffer = io.BytesIO()
     Image.new("RGB", (4, 4), "red").save(buffer, format="PNG")
-    response = env.client.post("/api/v1/media", headers={"x-user": "operator"}, data={"purpose": "product"},
+    response = env.client.post("/api/legacy/v1/media", headers={"x-user": "operator"}, data={"purpose": "product"},
                                files={"file": ("../../evil.png", buffer.getvalue(), "image/png")})
     assert response.status_code == 201, response.text
     filename = response.json()["url"].rsplit("/", 1)[1]
     assert "/" not in filename and filename.endswith(".webp")
     with Image.open(env.app.state.settings.media_dir / filename) as image:
         assert image.format == "WEBP"
-    spoof = env.client.post("/api/v1/media", headers={"x-user": "operator"}, data={"purpose": "product"},
+    spoof = env.client.post("/api/legacy/v1/media", headers={"x-user": "operator"}, data={"purpose": "product"},
                             files={"file": ("looks.png", b"<html>not an image</html>", "image/png")})
     assert spoof.status_code == 422
-    assert env.client.post("/api/v1/media", headers={"x-user": "admin"}, data={"purpose": "product"},
+    assert env.client.post("/api/legacy/v1/media", headers={"x-user": "admin"}, data={"purpose": "product"},
                             files={"file": ("photo.png", buffer.getvalue(), "image/png")}).status_code == 403
 
 
@@ -285,7 +290,7 @@ def test_dtos_match_existing_panel_contract(operations_env):
     spec = contract()
     for schema_name, path in (("Business", "/businesses/shop"), ("Product", "/products/meal"),
                               ("Order", f"/orders/{order['id']}"), ("OrderPage", "/businesses/shop/orders/active")):
-        response = env.client.get("/api/v1" + path, headers={"x-user": "operator"})
+        response = env.client.get("/api/legacy/v1" + path, headers={"x-user": "operator"})
         assert response.status_code == 200
         schema = {"$ref": "#/components/schemas/" + schema_name, "components": spec["components"]}
         Draft202012Validator(schema, format_checker=FormatChecker()).validate(response.json())

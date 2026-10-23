@@ -1,7 +1,7 @@
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
-markers = ["postgres: requires PostgreSQL for locking/concurrency guarantees"]
+markers = ["postgres: requires PostgreSQL for locking/concurrency guarantees", "v3: canonical API V3 contract"]
 
 [tool.ruff]
 target-version = "py312"

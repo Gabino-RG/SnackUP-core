@@ -1,0 +1,27 @@
+# Optional overlay: docker compose -f compose.yaml -f compose.push.example.yaml up -d api
+# Set SNACKUP_PUSH_SECRETS_DIR to an existing, dedicated absolute directory outside
+# the checkout. Mount only the credentials used by this deployment. No credentials
+# are supplied in this repository, and missing providers remain unconfigured.
+#
+# Expected filenames, for the providers you enable:
+#   fcm-service-account.json — Firebase service account; set FCM_PROJECT_ID.
+#   apns-key.p8              — Apple signing key; set APNS_KEY_ID/TEAM_ID/TOPIC.
+#   webpush-vapid.pem        — VAPID private key; set WEBPUSH_SUBJECT.
+# All setting names above have the SNACKUP_PUSH_ prefix.
+# Files/directories must be readable by the container's UID/GID 10001 with
+# restrictive host permissions. Do not put keys in images, git or frontend builds.
+services:
+  api:
+    environment:
+      SNACKUP_PUSH_ENABLED: 'true'
+      SNACKUP_PUSH_FCM_CREDENTIALS_FILE: /run/snackup-push/fcm-service-account.json
+      SNACKUP_PUSH_APNS_KEY_FILE: /run/snackup-push/apns-key.p8
+      SNACKUP_PUSH_WEBPUSH_PRIVATE_KEY_FILE: /run/snackup-push/webpush-vapid.pem
+      SNACKUP_PUSH_WEBPUSH_ALLOWED_HOSTS: ${SNACKUP_PUSH_WEBPUSH_ALLOWED_HOSTS:-fcm.googleapis.com,updates.push.services.mozilla.com,web.push.apple.com}
+    volumes:
+      - type: bind
+        source: ${SNACKUP_PUSH_SECRETS_DIR:?Set an existing dedicated credentials directory}
+        target: /run/snackup-push
+        read_only: true
+        bind:
+          create_host_path: false

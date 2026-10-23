@@ -23,12 +23,12 @@ PASSWORD = 'Test-Only-Password-392!'
 # Validate actual API responses from every module's TestClient, not serializers
 # alone. No personal input, cookies, tokens or response bodies enter the report.
 CONTRACT = json.loads((Path(__file__).parents[1] / 'contracts/panels.openapi.json').read_text(encoding='utf-8'))
-OPERATIONS = [(method.upper(), re.compile('^/api/v1' + re.sub(r'\{[^}]+\}', '[^/]+', path) + '$'), operation)
+OPERATIONS = [(method.upper(), re.compile('^/api/legacy/v1' + re.sub(r'\{[^}]+\}', '[^/]+', path) + '$'), operation)
               for path, item in CONTRACT['paths'].items() for method, operation in item.items()
               if method in {'get', 'post', 'put', 'patch', 'delete'}]
 CONTRACT_COUNTS = {}
 EXTENSION_CONTRACT = json.loads((Path(__file__).parents[1] / 'contracts/extensions.openapi.json').read_text(encoding='utf-8'))
-EXTENSION_OPERATIONS = [(method.upper(), re.compile('^/api/v1' + re.sub(r'\{[^}]+\}', '[^/]+', path) + '$'), operation)
+EXTENSION_OPERATIONS = [(method.upper(), re.compile('^/api/legacy/v1' + re.sub(r'\{[^}]+\}', '[^/]+', path) + '$'), operation)
                        for path, item in EXTENSION_CONTRACT['paths'].items() for method, operation in item.items()
                        if method in {'get', 'post', 'put', 'patch', 'delete'}]
 EXTENSION_COUNTS = {}
@@ -150,7 +150,7 @@ def tokens(client):
     result = {}
     for identity in ['master', 'admin', 'operator', 'other-operator', 'student', 'other-student']:
         domain = 'students.example.edu' if 'student' in identity else 'staff.example.edu'
-        response = client.post('/api/v1/auth/login', json={'email': identity + '@' + domain, 'password': PASSWORD},
+        response = client.post('/api/legacy/v1/auth/login', json={'email': identity + '@' + domain, 'password': PASSWORD},
                                headers={'Origin': 'http://testserver'})
         assert response.status_code == 200, response.text
         result[identity] = {'Authorization': 'Bearer ' + response.json()['tokens']['accessToken'], 'Origin': 'http://testserver'}

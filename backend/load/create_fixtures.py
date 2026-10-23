@@ -10,7 +10,7 @@ from sqlalchemy import text
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import SQLAlchemyError
 
-from snackup import admin_models  # noqa: F401
+from snackup import admin_models, push_models, review_models  # noqa: F401
 from snackup.auth import hash_password
 from snackup.config import Settings
 from snackup.db import Database, new_id

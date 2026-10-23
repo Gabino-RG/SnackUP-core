@@ -1,5 +1,14 @@
 # SnackUP | Manual de backend y personalización
 
+> Nota de compatibilidad del 23 de octubre de 2026: este manual 1.0 conserva sus
+> ejemplos históricos. El portal REST actual usa `/api/legacy/v1/` y
+> `/api/legacy/v1/realtime`; al aplicar sus ejemplos al backend actual, sustituir
+> ese prefijo. `/api/v1/` corresponde ahora al contrato V3. Consultar
+> [la guía vigente de integración](../backend/API_V3_FASTAPI.md) y
+> [la instalación del backend](../backend/README.md). Las rutas `app/` y
+> `scripts/` citadas en el cuerpo pertenecen a los snapshots del frontend
+> enlazados; el código Flutter reside en la rama `codex/entrega-paneles-rest`.
+
 **Entrega técnica para el responsable del backend y su asistente de IA**
 
 Administración institucional y operación de locales de la cafetería universitaria.

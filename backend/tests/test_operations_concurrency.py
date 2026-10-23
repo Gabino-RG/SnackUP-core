@@ -42,7 +42,7 @@ def concurrent(app, *requests):
 
 
 def purchase(headers, key=None, quantity=1):
-    return ("POST", "/api/v1/student/orders", {
+    return ("POST", "/api/legacy/v1/student/orders", {
         "headers": {**headers, "Idempotency-Key": key or uuid4().hex},
         "json": {"businessId": "business-1", "items": [{"productId": "product-1", "quantity": quantity}]},
     })
@@ -59,7 +59,7 @@ def test_simultaneous_same_idempotency_key_creates_one_order(app, client, tokens
         assert db.get(Business, "business-1").next_order_number == 2
         for model in (Order, IdempotencyRecord, OrderTransition):
             assert db.scalar(select(func.count()).select_from(model)) == 1
-        assert db.scalar(select(func.count()).select_from(OutboxEvent)) == 2
+        assert db.scalar(select(func.count()).select_from(OutboxEvent)) == 4
 
 
 def test_simultaneous_cancellation_returns_inventory_once(app, client, tokens):
@@ -68,7 +68,7 @@ def test_simultaneous_cancellation_returns_inventory_once(app, client, tokens):
     created = client.post(path, **options)
     assert created.status_code == 201, created.text
     order = created.json()
-    request = ("POST", f"/api/v1/orders/{order['id']}/cancel", {
+    request = ("POST", f"/api/legacy/v1/orders/{order['id']}/cancel", {
         "headers": tokens["operator"], "json": {"expectedVersion": 1, "reason": "cannot_prepare"},
     })
     responses = concurrent(app, request, request)
@@ -82,7 +82,7 @@ def test_simultaneous_cancellation_returns_inventory_once(app, client, tokens):
 
 def test_price_edit_racing_purchase_cannot_overwrite_stock_or_old_snapshot(app, client, tokens):
     require_postgres(app)
-    edit = ("PATCH", "/api/v1/products/product-1", {
+    edit = ("PATCH", "/api/legacy/v1/products/product-1", {
         "headers": tokens["operator"],
         "json": {"name": "Nueva torta", "description": "", "category": "Comida", "price": 99,
                  "imageUrl": None, "isAvailable": True, "isFeatured": False, "expectedVersion": 1},
@@ -102,7 +102,7 @@ def test_price_edit_racing_purchase_cannot_overwrite_stock_or_old_snapshot(app, 
 
 def test_business_disable_and_purchase_have_a_consistent_serial_order(app, client, tokens):
     require_postgres(app)
-    disable = ("PATCH", "/api/v1/admin/businesses/business-1", {
+    disable = ("PATCH", "/api/legacy/v1/admin/businesses/business-1", {
         "headers": tokens["admin"],
         "json": {"name": "Cafetería Uno", "category": "", "description": "", "isActive": False,
                  "cafeteriaId": "cafeteria", "expectedVersion": 1},

@@ -1,8 +1,9 @@
+import re
 from pathlib import Path
 from typing import Literal
 from urllib.parse import urlsplit
 
-from pydantic import model_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -13,6 +14,7 @@ class Settings(BaseSettings):
     database_url: str = 'sqlite:///./data/snackup.db'
     secret_key: str
     public_origin: str = 'http://localhost:8000'
+    password_reset_frontend_path: str = '/'
     admin_email_domains: str = ''
     student_email_domains: str = ''
     institution_id: str = 'institution'
@@ -29,13 +31,48 @@ class Settings(BaseSettings):
     smtp_from: str = ''
     smtp_starttls: bool = True
     access_token_minutes: int = 15
-    refresh_days: int = 7
+    refresh_days: int = 30
     pool_size: int = 10
     max_overflow: int = 5
     max_websockets: int = 2000
     websocket_revalidate_seconds: float = 15
     enable_test_mailbox: bool = False
     background_events: bool = True
+    push_enabled: bool = False
+    push_poll_seconds: float = 2
+    push_batch_size: int = 25
+    push_max_attempts: int = 8
+    push_retry_base_seconds: int = 30
+    push_unconfigured_retry_seconds: int = 300
+    push_delivery_lease_seconds: int = 90
+    push_http_timeout_seconds: float = 10
+    push_fcm_credentials_file: Path | None = None
+    push_fcm_project_id: str = ''
+    push_apns_key_file: Path | None = None
+    push_apns_key_id: str = ''
+    push_apns_team_id: str = ''
+    push_apns_topic: str = ''
+    push_apns_sandbox: bool = False
+    push_webpush_private_key_file: Path | None = None
+    push_webpush_subject: str = ''
+    push_webpush_allowed_hosts: str = 'fcm.googleapis.com,updates.push.services.mozilla.com,web.push.apple.com'
+
+    @field_validator('push_fcm_credentials_file', 'push_apns_key_file', 'push_webpush_private_key_file', mode='before')
+    @classmethod
+    def optional_credential_file(cls, value):
+        # Compose supplies empty variables for providers that are not enabled.
+        return None if value == '' else value
+
+    @field_validator('password_reset_frontend_path')
+    @classmethod
+    def local_password_reset_frontend_path(cls, value: str) -> str:
+        # Restrict to unencoded local segments so browsers cannot reinterpret
+        # a scheme, authority, separator or dot segment in the emailed link.
+        if (not re.fullmatch(r'/[A-Za-z0-9._~/-]*', value) or '//' in value
+                or any(segment in {'.', '..'} for segment in value.split('/'))):
+            raise ValueError('SNACKUP_PASSWORD_RESET_FRONTEND_PATH must be a local root-relative path without '
+                             'schemes, queries, fragments, backslashes, encoding or dot segments.')
+        return value.rstrip('/') + '/'
 
     @model_validator(mode='after')
     def validate_configuration(self):
@@ -51,6 +88,12 @@ class Settings(BaseSettings):
             raise ValueError('Invalid WebSocket capacity or authorization revalidation interval.')
         if not (1 <= self.access_token_minutes <= 60 and 1 <= self.refresh_days <= 30):
             raise ValueError('Invalid session lifetimes.')
+        if not (0.1 <= self.push_poll_seconds <= 60 and 1 <= self.push_batch_size <= 100
+                and 1 <= self.push_max_attempts <= 20 and 1 <= self.push_http_timeout_seconds <= 30
+                and 1 <= self.push_retry_base_seconds <= 3600
+                and 30 <= self.push_unconfigured_retry_seconds <= 86400
+                and self.push_delivery_lease_seconds >= 3 * self.push_http_timeout_seconds):
+            raise ValueError('Invalid push delivery limits or lease.')
         if self.enable_test_mailbox and self.environment != 'test':
             raise ValueError('Test mailbox is only available in the test environment.')
         if self.environment == 'production':

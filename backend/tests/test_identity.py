@@ -9,6 +9,7 @@ from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
+from pydantic import ValidationError
 from sqlalchemy import create_engine, event, func, select, text
 
 from snackup.auth import REFRESH_COOKIE, ensure_account, hash_password, verify_access_token
@@ -63,7 +64,7 @@ def identity_env(tmp_path):
 
 
 def login(env, email="master@school.test", password=PASSWORD):
-    response = env.client.post("/api/v1/auth/login", json={"email": email, "password": password})
+    response = env.client.post("/api/legacy/v1/auth/login", json={"email": email, "password": password})
     assert response.status_code == 200, response.text
     return response.json()["tokens"]["accessToken"]
 
@@ -80,34 +81,34 @@ def staff_body(email="staff@school.test"):
 
 def test_origin_cookie_and_instant_logout(identity_env):
     env = identity_env
-    denied = env.client.post("/api/v1/auth/login", headers={"Origin": "https://evil.test"},
+    denied = env.client.post("/api/legacy/v1/auth/login", headers={"Origin": "https://evil.test"},
                              json={"email": "master@school.test", "password": PASSWORD})
     assert denied.status_code == 403
-    response = env.client.post("/api/v1/auth/login", json={"email": "MASTER@SCHOOL.TEST", "password": PASSWORD})
+    response = env.client.post("/api/legacy/v1/auth/login", json={"email": "MASTER@SCHOOL.TEST", "password": PASSWORD})
     assert response.status_code == 200
     cookie = response.headers["set-cookie"]
     assert "HttpOnly" in cookie and "Secure" in cookie and "SameSite=strict" in cookie
     access = response.json()["tokens"]["accessToken"]
     assert "refreshToken" not in response.text
-    assert env.client.get("/api/v1/users/me", headers={"Authorization": f"Bearer {access}"}).status_code == 200
-    assert env.client.post("/api/v1/auth/logout", json={}).status_code == 204
-    assert env.client.get("/api/v1/users/me", headers={"Authorization": f"Bearer {access}"}).status_code == 401
+    assert env.client.get("/api/legacy/v1/users/me", headers={"Authorization": f"Bearer {access}"}).status_code == 200
+    assert env.client.post("/api/legacy/v1/auth/logout", json={}).status_code == 204
+    assert env.client.get("/api/legacy/v1/users/me", headers={"Authorization": f"Bearer {access}"}).status_code == 401
 
 
 def test_refresh_rotation_replay_revokes_entire_family(identity_env):
     env = identity_env
     old_access = login(env)
     old_refresh = env.client.cookies.get(REFRESH_COOKIE)
-    response = env.client.post("/api/v1/auth/refresh", json={})
+    response = env.client.post("/api/legacy/v1/auth/refresh", json={})
     assert response.status_code == 200
     new_access = response.json()["tokens"]["accessToken"]
     new_refresh = env.client.cookies.get(REFRESH_COOKIE)
     assert new_refresh != old_refresh
-    replay = env.client.post("/api/v1/auth/refresh", json={}, headers={"Cookie": f"{REFRESH_COOKIE}={old_refresh}"})
+    replay = env.client.post("/api/legacy/v1/auth/refresh", json={}, headers={"Cookie": f"{REFRESH_COOKIE}={old_refresh}"})
     assert replay.status_code == 401
     assert replay.json()["error"]["code"] == "SESSION_REPLAY"
     for access in (old_access, new_access):
-        assert env.client.get("/api/v1/users/me", headers={"Authorization": f"Bearer {access}"}).status_code == 401
+        assert env.client.get("/api/legacy/v1/users/me", headers={"Authorization": f"Bearer {access}"}).status_code == 401
     with env.db() as db:
         sessions = db.scalars(select(RefreshSession)).all()
         assert len(sessions) == 2 and all(x.revoked_at for x in sessions)
@@ -118,7 +119,7 @@ def test_missing_origin_is_rejected_even_with_valid_cookie(identity_env):
     env = identity_env
     login(env)
     env.client.headers.pop("origin")
-    response = env.client.post("/api/v1/auth/refresh", json={})
+    response = env.client.post("/api/legacy/v1/auth/refresh", json={})
     assert response.status_code == 403
     assert response.json()["error"]["code"] == "ORIGIN_NOT_ALLOWED"
 
@@ -126,10 +127,10 @@ def test_missing_origin_is_rejected_even_with_valid_cookie(identity_env):
 def test_staff_registration_never_grants_role_and_duplicate_preserves_password(identity_env):
     env = identity_env
     body = staff_body()
-    assert env.client.post("/api/v1/auth/register", json=body).status_code == 202
+    assert env.client.post("/api/legacy/v1/auth/register", json=body).status_code == 202
     verify = last_token(env)
-    assert env.client.post("/api/v1/auth/verify-email", json={"token": verify}).status_code == 204
-    response = env.client.post("/api/v1/auth/login", json={"email": body["email"], "password": PASSWORD})
+    assert env.client.post("/api/legacy/v1/auth/verify-email", json={"token": verify}).status_code == 204
+    response = env.client.post("/api/legacy/v1/auth/login", json={"email": body["email"], "password": PASSWORD})
     assert response.status_code == 403 and response.json()["error"]["code"] == "ACCESS_PENDING"
     assert REFRESH_COOKIE not in env.client.cookies
     with env.db() as db:
@@ -137,29 +138,29 @@ def test_staff_registration_never_grants_role_and_duplicate_preserves_password(i
         original_hash = user.password_hash
         assert user.role == "pending" and not user.is_master and not user.is_active and user.email_verified
     body["password"] = "Different password! 77"
-    assert env.client.post("/api/v1/auth/register", json=body).status_code == 202
+    assert env.client.post("/api/legacy/v1/auth/register", json=body).status_code == 202
     assert len(env.emails) == 1
     with env.db() as db:
         user = db.scalar(select(User).where(User.email == body["email"]))
         assert user.password_hash == original_hash
     body["isMaster"] = True
-    assert env.client.post("/api/v1/auth/register", json=body).status_code == 422
+    assert env.client.post("/api/legacy/v1/auth/register", json=body).status_code == 422
 
 
 def test_student_career_comes_from_roster_and_no_personal_data_leaks(identity_env):
     env = identity_env
-    assert env.client.post("/api/v1/student/register", json={"email": "student@school.test", "password": PASSWORD}).status_code == 202
-    response = env.client.post("/api/v1/auth/login", json={"email": "student@school.test", "password": PASSWORD})
+    assert env.client.post("/api/legacy/v1/student/register", json={"email": "student@school.test", "password": PASSWORD}).status_code == 202
+    response = env.client.post("/api/legacy/v1/auth/login", json={"email": "student@school.test", "password": PASSWORD})
     assert response.status_code == 403 and response.json()["error"]["code"] == "EMAIL_NOT_VERIFIED"
-    assert env.client.post("/api/v1/auth/verify-email", json={"token": last_token(env)}).status_code == 204
+    assert env.client.post("/api/legacy/v1/auth/verify-email", json={"token": last_token(env)}).status_code == 204
     token = login(env, "student@school.test")
     headers = {"Authorization": f"Bearer {token}"}
-    profile = env.client.get("/api/v1/users/me", headers=headers).json()
+    profile = env.client.get("/api/legacy/v1/users/me", headers=headers).json()
     assert profile["role"] == "user" and profile["academic"]["careerId"] == "ENG"
     assert profile["academic"]["groupId"] == "G1" and profile["academic"]["verified"] is True
     assert profile["displayName"] == "Student Example"
-    assert env.client.get("/api/v1/admin/users", headers=headers).status_code == 403
-    assert env.client.get("/api/v1/businesses/local/orders/active", headers=headers).status_code == 403
+    assert env.client.get("/api/legacy/v1/admin/users", headers=headers).status_code == 403
+    assert env.client.get("/api/legacy/v1/businesses/local/orders/active", headers=headers).status_code == 403
     assert "password" not in str(profile).lower() and "token" not in str(profile).lower()
 
 
@@ -168,68 +169,92 @@ def test_unknown_email_and_staff_roster_cannot_self_assign_student(identity_env)
     with env.db.begin() as db:
         import_roster_csv(db, COLUMNS + "staff@school.test,E-100,Staff Person,staff,,,,,true\n", "authorized-staff-list")
     for email in ("guess-eng@school.test", "staff@school.test", "student@evil.test"):
-        response = env.client.post("/api/v1/student/register", json={"email": email, "password": PASSWORD})
+        response = env.client.post("/api/legacy/v1/student/register", json={"email": email, "password": PASSWORD})
         assert response.status_code == 202 and response.json() == {"status": "received"}
     assert not env.emails
     with env.db() as db:
         assert db.scalar(select(func.count()).select_from(User)) == 2
-    response = env.client.post("/api/v1/student/register", json={"email": "student@school.test", "password": PASSWORD, "careerId": "FAKE"})
+    response = env.client.post("/api/legacy/v1/student/register", json={"email": "student@school.test", "password": PASSWORD, "careerId": "FAKE"})
     assert response.status_code == 422
 
 
 def test_revoked_roster_cancels_existing_student_session(identity_env):
     env = identity_env
-    env.client.post("/api/v1/student/register", json={"email": "student@school.test", "password": PASSWORD})
-    env.client.post("/api/v1/auth/verify-email", json={"token": last_token(env)})
+    env.client.post("/api/legacy/v1/student/register", json={"email": "student@school.test", "password": PASSWORD})
+    env.client.post("/api/legacy/v1/auth/verify-email", json={"token": last_token(env)})
     access = login(env, "student@school.test")
     with env.db.begin() as db:
         import_roster_csv(db, ROSTER.replace(",true", ",false"), "revocation-authorized")
-    assert env.client.get("/api/v1/users/me", headers={"Authorization": f"Bearer {access}"}).status_code == 401
-    response = env.client.post("/api/v1/auth/login", json={"email": "student@school.test", "password": PASSWORD})
+    assert env.client.get("/api/legacy/v1/users/me", headers={"Authorization": f"Bearer {access}"}).status_code == 401
+    response = env.client.post("/api/legacy/v1/auth/login", json={"email": "student@school.test", "password": PASSWORD})
     assert response.status_code == 403
 
 
-def test_reset_token_is_hashed_one_use_and_revokes_access(identity_env):
+@pytest.mark.parametrize('frontend_path', ['/', '/paneles/'])
+def test_reset_token_is_hashed_one_use_and_revokes_access(identity_env, frontend_path):
     env = identity_env
+    env.settings.password_reset_frontend_path = frontend_path
     access = login(env)
-    assert env.client.post("/api/v1/auth/forgot-password", json={"email": "master@school.test"}).status_code == 204
+    assert env.client.post("/api/legacy/v1/auth/forgot-password", json={"email": "master@school.test"}).status_code == 204
     raw = last_token(env)
-    assert "/#/reset-password?token=" in env.emails[-1]["body"]
+    assert f"{env.settings.public_origin}{frontend_path}#/reset-password?token={raw}" in env.emails[-1]["body"]
     with env.db() as db:
         record = db.scalar(select(VerificationToken).where(VerificationToken.purpose == "reset"))
         assert record.token_hash != raw and len(record.token_hash) == 64
     new_password = "  New unchanged spaces  "
-    assert env.client.post("/api/v1/auth/reset-password", json={"token": raw, "newPassword": new_password}).status_code == 204
-    assert env.client.get("/api/v1/users/me", headers={"Authorization": f"Bearer {access}"}).status_code == 401
-    assert env.client.post("/api/v1/auth/reset-password", json={"token": raw, "newPassword": PASSWORD}).status_code == 422
-    assert env.client.post("/api/v1/auth/login", json={"email": "master@school.test", "password": PASSWORD}).status_code == 401
+    assert env.client.post("/api/legacy/v1/auth/reset-password", json={"token": raw, "newPassword": new_password}).status_code == 204
+    assert env.client.get("/api/legacy/v1/users/me", headers={"Authorization": f"Bearer {access}"}).status_code == 401
+    assert env.client.post("/api/legacy/v1/auth/reset-password", json={"token": raw, "newPassword": PASSWORD}).status_code == 422
+    assert env.client.post("/api/legacy/v1/auth/login", json={"email": "master@school.test", "password": PASSWORD}).status_code == 401
     login(env, password=new_password)
+
+
+@pytest.mark.parametrize(('frontend_path', 'expected'), [
+    ('/', '/'), ('/paneles', '/paneles/'), ('/paneles/', '/paneles/'),
+    ('/apps/paneles', '/apps/paneles/'),
+])
+def test_password_reset_frontend_path_settings(frontend_path, expected):
+    settings = Settings(_env_file=None, secret_key='test-only-' + 's' * 48,
+                        password_reset_frontend_path=frontend_path)
+    assert settings.password_reset_frontend_path == expected
+
+
+@pytest.mark.parametrize('frontend_path', [
+    '', 'paneles/', '//evil.test/', '/paneles//other/', 'https://evil.test/',
+    '/https://evil.test/', '/paneles?next=evil', '/paneles#fragment',
+    '/paneles\\other/', '/./paneles/', '/paneles/../', '/paneles/.',
+    '/%2e%2e/', '/%2f%2fevil.test/', '/paneles /', '/paneles\n/',
+])
+def test_password_reset_frontend_path_rejects_unsafe_settings(frontend_path):
+    with pytest.raises(ValidationError, match='SNACKUP_PASSWORD_RESET_FRONTEND_PATH'):
+        Settings(_env_file=None, secret_key='test-only-' + 's' * 48,
+                 password_reset_frontend_path=frontend_path)
 
 
 def test_email_verification_expiry_and_resend(identity_env):
     env = identity_env
-    env.client.post("/api/v1/auth/register", json=staff_body())
+    env.client.post("/api/legacy/v1/auth/register", json=staff_body())
     old = last_token(env)
     with env.db.begin() as db:
         record = db.scalar(select(VerificationToken))
         record.expires_at = utcnow() - timedelta(seconds=1)
-    assert env.client.post("/api/v1/auth/verify-email", json={"token": old}).status_code == 422
-    assert env.client.post("/api/v1/auth/resend-verification", json={"email": "staff@school.test"}).status_code == 202
+    assert env.client.post("/api/legacy/v1/auth/verify-email", json={"token": old}).status_code == 422
+    assert env.client.post("/api/legacy/v1/auth/resend-verification", json={"email": "staff@school.test"}).status_code == 202
     new = last_token(env)
     assert new != old
-    assert env.client.post("/api/v1/auth/verify-email", json={"token": new}).status_code == 204
-    assert env.client.post("/api/v1/auth/verify-email", json={"token": new}).status_code == 422
+    assert env.client.post("/api/legacy/v1/auth/verify-email", json={"token": new}).status_code == 204
+    assert env.client.post("/api/legacy/v1/auth/verify-email", json={"token": new}).status_code == 422
 
 
 def test_mail_unavailable_fails_closed_and_no_fake_capabilities(identity_env):
     env = identity_env
     env.settings.smtp_host = ""
-    options = env.client.get("/api/v1/auth/options").json()
+    options = env.client.get("/api/legacy/v1/auth/options").json()
     assert options == {"passwordLogin": True, "selfRegistration": False, "googleEnabled": False}
-    assert env.client.post("/api/v1/auth/register", json=staff_body()).status_code == 503
-    assert env.client.post("/api/v1/student/register", json={"email": "student@school.test", "password": PASSWORD}).status_code == 503
-    assert env.client.post("/api/v1/auth/forgot-password", json={"email": "missing@school.test"}).status_code == 503
-    assert env.client.get("/api/v1/auth/google/start").status_code == 503
+    assert env.client.post("/api/legacy/v1/auth/register", json=staff_body()).status_code == 503
+    assert env.client.post("/api/legacy/v1/student/register", json={"email": "student@school.test", "password": PASSWORD}).status_code == 503
+    assert env.client.post("/api/legacy/v1/auth/forgot-password", json={"email": "missing@school.test"}).status_code == 503
+    assert env.client.get("/api/legacy/v1/auth/google/start").status_code == 503
     with env.db() as db:
         assert db.scalar(select(func.count()).select_from(User)) == 2
 
@@ -240,7 +265,7 @@ def test_failed_mail_delivery_rolls_back_pending_identity(identity_env):
     def failed(*_):
         raise ApiError(503, "EMAIL_UNAVAILABLE", "SMTP failed")
     env.app.state.mailer = failed
-    assert env.client.post("/api/v1/auth/register", json=staff_body()).status_code == 503
+    assert env.client.post("/api/legacy/v1/auth/register", json=staff_body()).status_code == 503
     with env.db() as db:
         assert db.scalar(select(User).where(User.email == "staff@school.test")) is None
         assert db.scalar(select(func.count()).select_from(AccessRequest)) == 0
@@ -263,9 +288,9 @@ def test_roster_import_is_atomic_and_does_not_guess_or_reassign_identity(identit
 
 def test_verification_page_has_no_get_side_effect_or_url_token_query(identity_env):
     env = identity_env
-    env.client.post("/api/v1/auth/register", json=staff_body())
+    env.client.post("/api/legacy/v1/auth/register", json=staff_body())
     assert "/api/v1/auth/verify-email#token=" in env.emails[-1]["body"]
-    page = env.client.get("/api/v1/auth/verify-email")
+    page = env.client.get("/api/legacy/v1/auth/verify-email")
     assert page.status_code == 200
     assert "script-src 'nonce-" in page.headers["content-security-policy"]
     assert "history.replaceState" in page.text and "Confirmar correo" in page.text
@@ -276,8 +301,8 @@ def test_verification_page_has_no_get_side_effect_or_url_token_query(identity_en
 def test_auth_rate_limit_preserves_generic_errors(identity_env):
     env = identity_env
     for _ in range(10):
-        assert env.client.post("/api/v1/auth/login", json={"email": "unknown@school.test", "password": PASSWORD}).status_code == 401
-    response = env.client.post("/api/v1/auth/login", json={"email": "unknown@school.test", "password": PASSWORD})
+        assert env.client.post("/api/legacy/v1/auth/login", json={"email": "unknown@school.test", "password": PASSWORD}).status_code == 401
+    response = env.client.post("/api/legacy/v1/auth/login", json={"email": "unknown@school.test", "password": PASSWORD})
     assert response.status_code == 429 and "retry-after" in response.headers
 
 
@@ -290,13 +315,13 @@ def test_simultaneous_refresh_cannot_issue_two_live_sessions(identity_env):
     barrier = Barrier(2)
     def rotate(_):
         barrier.wait(timeout=10)
-        return env.client.post("/api/v1/auth/refresh", json={}, headers={"Cookie": f"{REFRESH_COOKIE}={old}"})
+        return env.client.post("/api/legacy/v1/auth/refresh", json={}, headers={"Cookie": f"{REFRESH_COOKIE}={old}"})
     with ThreadPoolExecutor(max_workers=2) as executor:
         results = list(executor.map(rotate, range(2)))
     assert sorted(response.status_code for response in results) == [200, 401]
     successful = next(response for response in results if response.status_code == 200)
     token = successful.json()["tokens"]["accessToken"]
-    assert env.client.get("/api/v1/users/me", headers={"Authorization": f"Bearer {token}"}).status_code == 401
+    assert env.client.get("/api/legacy/v1/users/me", headers={"Authorization": f"Bearer {token}"}).status_code == 401
     with env.db() as db:
         assert db.scalar(select(func.count()).select_from(RefreshSession).where(RefreshSession.revoked_at.is_(None))) == 0
 
@@ -307,11 +332,11 @@ def test_authoritative_inactive_staff_revokes_access_without_changing_assigned_r
     headers = {"Authorization": f"Bearer {access}"}
     with env.db.begin() as db:
         import_roster_csv(db, COLUMNS + "operator@school.test,E-200,Operator,staff,,,,,true\n", "authorized-staff")
-    assert env.client.get("/api/v1/users/me", headers=headers).status_code == 200
+    assert env.client.get("/api/legacy/v1/users/me", headers=headers).status_code == 200
     with env.db.begin() as db:
         import_roster_csv(db, COLUMNS + "operator@school.test,E-200,Operator,staff,,,,,false\n", "authorized-staff-departure")
-    assert env.client.get("/api/v1/users/me", headers=headers).status_code == 401
-    response = env.client.post("/api/v1/auth/login", json={"email": "operator@school.test", "password": PASSWORD})
+    assert env.client.get("/api/legacy/v1/users/me", headers=headers).status_code == 401
+    response = env.client.post("/api/legacy/v1/auth/login", json={"email": "operator@school.test", "password": PASSWORD})
     assert response.status_code == 403 and response.json()["error"]["code"] == "ACCESS_REVOKED"
     with env.db() as db:
         user = db.get(User, "operator")
@@ -329,7 +354,7 @@ def test_staff_roster_status_is_checked_even_without_prior_session_revocation(id
     with env.db.begin() as db:
         db.add(AcademicRecord(email="master@school.test", institutional_id="E-0", display_name="Master",
                               kind="staff", is_active=False, source="authoritative-direct-update"))
-    response = env.client.get("/api/v1/users/me", headers={"Authorization": f"Bearer {access}"})
+    response = env.client.get("/api/legacy/v1/users/me", headers={"Authorization": f"Bearer {access}"})
     assert response.status_code == 403 and response.json()["error"]["code"] == "ACCESS_REVOKED"
     with env.db() as db, pytest.raises(ApiError) as blocked:
         verify_access_token(access, db, env.settings)
@@ -360,7 +385,7 @@ def test_approval_waits_for_user_before_locking_access_request(identity_env):
     from threading import Event
     env = identity_env
     token = login(env)
-    env.client.post("/api/v1/auth/register", json=staff_body())
+    env.client.post("/api/legacy/v1/auth/register", json=staff_body())
     with env.db() as db:
         pending = db.scalar(select(User).where(User.email == "staff@school.test"))
         pending_id = pending.id
@@ -377,7 +402,7 @@ def test_approval_waits_for_user_before_locking_access_request(identity_env):
             with env.db.begin() as verifier:
                 user = verifier.scalar(select(User).where(User.id == pending_id).with_for_update())
                 waiting.clear()
-                future = executor.submit(env.client.post, f"/api/v1/admin/access-requests/{access_id}/decision",
+                future = executor.submit(env.client.post, f"/api/legacy/v1/admin/access-requests/{access_id}/decision",
                                          json=body, headers={"Authorization": f"Bearer {token}"})
                 assert waiting.wait(10), "Approval did not reach the pending account lock"
                 # If approval locked this child first, NOWAIT fails immediately.
@@ -388,7 +413,7 @@ def test_approval_waits_for_user_before_locking_access_request(identity_env):
             response = future.result(timeout=10)
         assert response.status_code == 409 and response.json()["error"]["code"] == "VERSION_CONFLICT"
         body["expectedVersion"] = 2
-        assert env.client.post(f"/api/v1/admin/access-requests/{access_id}/decision", json=body,
+        assert env.client.post(f"/api/legacy/v1/admin/access-requests/{access_id}/decision", json=body,
                                headers={"Authorization": f"Bearer {token}"}).status_code == 200
     finally:
         event.remove(env.app.state.db.engine, "before_cursor_execute", observe)
@@ -398,7 +423,7 @@ def test_approval_waits_for_user_before_locking_access_request(identity_env):
 def test_roster_import_waits_for_user_before_locking_academic_record(identity_env):
     from threading import Event
     env = identity_env
-    env.client.post("/api/v1/student/register", json={"email": "student@school.test", "password": PASSWORD})
+    env.client.post("/api/legacy/v1/student/register", json={"email": "student@school.test", "password": PASSWORD})
     with env.db() as db:
         student_id = db.scalar(select(User.id).where(User.email == "student@school.test"))
     waiting = Event()

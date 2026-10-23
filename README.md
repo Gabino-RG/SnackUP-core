@@ -1,25 +1,51 @@
-# SnackUP
+# SnackUP · backend independiente
 
-Aplicación de cafetería universitaria. Esta rama contiene los paneles web REST de
-Administración y Cocina/Local, y el backend SQL para identidad, catálogo, pedidos,
-inventario, entrega, opiniones y seguimiento.
+Esta rama contiene la API **Python / FastAPI**, modelos **SQLAlchemy 2.x**,
+migraciones **Alembic**, PostgreSQL, Redis y tiempo real. El esquema Prisma es
+una referencia generada del modelo SQL; no se ejecuta un segundo ORM ni un
+segundo sistema de migraciones.
 
-- [Instalar y ejecutar el backend](backend/README.md).
-- [API del alumno e identidad institucional](backend/API_ALUMNOS.md).
-- [Integrar los paneles existentes](docs/integracion/EQUIPO_BACKEND.md).
-- [Contrato de los 43 endpoints de paneles](docs/integracion/openapi.json).
-- [Pruebas del backend](https://github.com/Gabino-RG/SnackUP-core/actions/workflows/backend.yml).
-- [Compilación del frontend](https://github.com/Gabino-RG/SnackUP-core/actions/workflows/paneles-entrega.yml).
+## Las tres aplicaciones
 
-Backend: Python/FastAPI, PostgreSQL, Redis y WebSocket. Frontend de paneles: Flutter,
-entrada `app/lib/main_portal_api.dart`, API `/api/v1/` en el mismo origen HTTPS.
-El código histórico del alumno aún necesita conectarse a la nueva API REST.
+| Aplicación | Rama | Código y contenedor |
+| --- | --- | --- |
+| Backend | [`codex/backend-api-v3-fastapi`](https://github.com/Gabino-RG/SnackUP-core/tree/codex/backend-api-v3-fastapi) | `backend/`, imagen `snackup-backend` |
+| Alumnos / PWA | [`codex/usuarios-pwa`](https://github.com/Gabino-RG/SnackUP-core/tree/codex/usuarios-pwa) | Flutter en `lib/`, imagen `snackup-usuarios` |
+| Cocina / Administración | [`codex/entrega-paneles-rest`](https://github.com/Gabino-RG/SnackUP-core/tree/codex/entrega-paneles-rest) | Flutter en `app/`, imagen `snackup-cocina` |
 
-La instalación institucional, SMTP, dominio y padrón autorizado están pendientes.
-El objetivo es 1,000 alumnos simultáneos más operadores; debe medirse con la carga
-real antes de anunciar capacidad. `backend/load/` contiene el protocolo de carga.
-Google está deshabilitado y los pedidos admiten efectivo al recoger, sin pasarela.
+Cada aplicación se construye desde su propia rama. PostgreSQL, Redis y el proxy
+HTTPS son servicios separados del despliegue. Esta rama ya no incluye el código
+Flutter; la rama de paneles conserva el portal y su contrato de compatibilidad.
 
-Rama de entrega: `codex/entrega-paneles-rest`. Se conserva el respaldo
-`respaldo/2026-10-13-antes-restablecimiento` en `006ef99`. El servidor de
-`scripts/review` sigue siendo una herramienta de revisión de la interfaz.
+La rama de alumnos parte de `main` (`b7abff6`) y todavía utiliza Firebase. Su
+conexión a la API y la retirada de la interfaz histórica de Cocina siguen
+pendientes; Docker no realiza esa migración. `main` y el respaldo
+`respaldo/2026-10-13-antes-restablecimiento` se mantienen sin cambios.
+
+## Lectura y puesta en marcha
+
+- [Instalación, operación y respaldos](backend/README.md).
+- [Desplegar las tres aplicaciones con Docker Compose](backend/DESPLIEGUE_TRES_APPS.md).
+- [Auditoría de funciones existentes frente a V3.2](backend/AUDITORIA_APP_Y_API_V3_2.md).
+- [Discrepancias del documento y esquema V3.2](backend/REVISION_V3_2.md).
+- [Implementación V3 y decisiones técnicas](backend/API_V3_FASTAPI.md).
+- [OpenAPI V3](backend/contracts/v3.openapi.json) y [mapa Prisma](backend/schema.prisma).
+- [Contrato de paneles](backend/contracts/panels.openapi.json) y [tiempo real legacy](docs/integracion/REALTIME.md).
+- [Evidencia de validación V3](backend/VALIDACION_V3.md).
+
+Las integraciones nuevas utilizan `/api/v1/`. El portal actual mantiene
+`/api/legacy/v1/`; cambiarle solo el prefijo rompería roles, payloads y respuestas.
+Socket.IO V3 se publica en `/socket.io/` y el WebSocket anterior sigue en
+`/api/legacy/v1/realtime`.
+
+La revisión encontró omisiones del contrato V3.2 respecto de las aplicaciones
+existentes. Sus nuevas reglas de horarios, vales, chat y calificación no se
+aplican silenciosamente: están descritas en los informes para cerrar sus
+decisiones antes de sustituir el contrato. El esquema SQL actual se conserva.
+
+## Límites de esta entrega
+
+Faltan servidor, dominio, SMTP y padrón autorizados para poner el sistema en
+operación. La capacidad de **1,000 alumnos simultáneos** requiere medir una
+carga realista; las pruebas funcionales no la acreditan. Las instrucciones de
+CI y Docker no equivalen por sí solas a una ejecución exitosa ni a un despliegue.

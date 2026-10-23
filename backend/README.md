@@ -1,18 +1,20 @@
 # Backend de SnackUP
 
-API propia para conectar la aplicación del alumno con los paneles existentes de Administración y Cocina. Implementación inicial con FastAPI, SQLAlchemy, PostgreSQL en producción, sesiones JWT con renovación mediante cookie, correo SMTP y eventos WebSocket respaldados por un outbox SQL y Redis.
+API propia para conectar la aplicación del alumno con los paneles existentes de Administración y Cocina. La versión V3 adapta el documento recibido a **Python y FastAPI**, conserva SQLAlchemy/Alembic/PostgreSQL e incorpora Socket.IO, sesiones web y nativas, medios, calificaciones y entregas push persistentes. Los eventos se respaldan mediante un outbox SQL y Redis.
 
 **Estado:** el código y los procedimientos están preparados para validarse e integrarse. No hay servidor universitario, dominio, servicio SMTP ni padrón institucional confirmados. La capacidad de **1,000 alumnos simultáneos más personal es un objetivo pendiente de medición**, no una certificación. Los datos de prueba nunca se crean automáticamente al iniciar la API.
 
 ## Contratos y alcance
 
-- [Contrato de los 43 endpoints de paneles](contracts/panels.openapi.json), conservado respecto de la entrega del frontend.
-- [API del alumno y verificación de identidad](API_ALUMNOS.md) y [contrato de extensiones](contracts/extensions.openapi.json).
+- **[Guía completa de la adaptación V3](API_V3_FASTAPI.md)**, [OpenAPI V3](contracts/v3.openapi.json), [mapa Prisma](schema.prisma) y [validación de esta entrega](VALIDACION_V3.md).
+- [Auditoría de las aplicaciones existentes frente a V3.2](AUDITORIA_APP_Y_API_V3_2.md), [discrepancias del esquema recibido](REVISION_V3_2.md) y [separación en tres aplicaciones Docker](DESPLIEGUE_TRES_APPS.md).
+- [Contrato de los 43 endpoints de paneles](contracts/panels.openapi.json), disponible en `/api/legacy/v1`; los paneles actuales ya apuntan a ese prefijo.
+- [API anterior del alumno y verificación de identidad](API_ALUMNOS.md) y [contrato de extensiones](contracts/extensions.openapi.json), mantenidos para compatibilidad.
 - [Manual funcional de los paneles](../docs/MANUAL_BACKEND_PANELES.md) y [protocolo de tiempo real](../docs/integracion/REALTIME.md). Las referencias históricas a 500 sesiones del manual quedan sustituidas por el objetivo de 1,000 alumnos indicado aquí.
 
-El backend implementa cuentas, permisos, solicitudes, locales, catálogo, imágenes, pedidos, reserva de existencias, recogida, opiniones con carrera/grupo, seguimiento e historial. El panel administrativo nunca opera cocina; solo el maestro administra cuentas y autoriza solicitudes. El alumnado utiliza sus propias rutas y solo sus pedidos.
+El backend implementa cuentas, permisos, solicitudes, locales, catálogo, imágenes, pedidos, reserva de existencias, recogida, opiniones con carrera/grupo, seguimiento e historial. V3 permite que `ADMIN` gestione locales y cuentas Cocina mediante `/admin/*`, con auditoría; el contrato anterior conserva la política de cuenta maestra para sus accesos. Administración no opera pedidos de Cocina. El alumnado solo puede consultar y modificar los pedidos que le pertenecen.
 
-El pago disponible es **efectivo al recoger** (`cash`, `pay_at_pickup`); no existe una pasarela ni conciliación bancaria. La recogida exige el código del pedido en estado listo: **no se usa matrícula como alternativa**. La API del alumno existe; queda conectar y validar su interfaz. Google/inicio de sesión institucional no está habilitado. Verificar `GET /api/v1/auth/options` en lugar de mostrar capacidades que no están configuradas.
+V3 registra `Efectivo` (`pay_at_pickup`) y `Transferencia` (`unverified`); no existe una pasarela ni conciliación bancaria. El contrato anterior sigue creando compras en efectivo y puede leer ambos métodos V3. La recogida exige el código del pedido en estado listo: **no se usa matrícula como alternativa**. Los códigos nuevos tienen seis caracteres; se conservan los históricos. La API del alumno existe; queda conectar y validar su interfaz. Google/inicio de sesión institucional no está habilitado. Verificar `GET /api/v1/auth/options` para conocer las capacidades disponibles.
 
 ## Correo, carrera e institución
 
@@ -59,17 +61,17 @@ python -m snackup.cli reset-master-password --email EMAIL
 
 La recuperación revoca sus sesiones. No hay cuentas ni contraseñas predeterminadas, endpoint público de bootstrap o elevación a maestro desde el registro.
 
-La API estará en `SNACKUP_PUBLIC_ORIGIN/api/v1/`; en desarrollo, `/api/docs` muestra la documentación generada. El cliente debe usar ese mismo origen exacto, también en el encabezado `Origin` del login/refresh/logout. Los healthchecks son `/health/live` y `/health/ready`.
+La API V3 estará en `SNACKUP_PUBLIC_ORIGIN/api/v1/`, y la compatibilidad anterior en `/api/legacy/v1/`; en desarrollo, `/api/docs` muestra el contrato V3. Web utiliza el mismo origen exacto y `Origin` en login/refresh/logout. V3 nativo omite `Origin` y utiliza refresh en JSON; el contrato anterior continúa exigiendo `Origin`. Los healthchecks son `/health/live` y `/health/ready`. Socket.IO V3 se conecta a `/socket.io`; los paneles anteriores conservan `/api/legacy/v1/realtime`.
 
 ## Correo y configuración pendiente
 
-Configurar `SNACKUP_SMTP_HOST`, puerto, remitente y credenciales privadas. Producción requiere TLS en puerto 465 o STARTTLS. La aplicación no inventa un envío exitoso cuando SMTP no está disponible: deshabilita el autorregistro anunciado y rechaza las operaciones que lo necesitan. Dar de alta cuentas desde el maestro también inicia verificación por correo. Los enlaces expiran y se consumen una sola vez; cambiar el correo retira su verificación y revoca sesiones.
+Configurar `SNACKUP_SMTP_HOST`, puerto, remitente y credenciales privadas. Producción requiere TLS en puerto 465 o STARTTLS. La aplicación no inventa un envío exitoso cuando SMTP no está disponible: deshabilita el autorregistro anunciado y rechaza las operaciones que lo necesitan. El alta anterior desde el maestro inicia verificación por correo; el alta atómica V3 de Cocina utiliza provisión administrativa con contraseña inicial explícita y comprobación privada de identidad. Los enlaces expiran y se consumen una sola vez; cambiar el correo en el contrato anterior retira su verificación y revoca sesiones.
 
 Solicitar a la universidad: acceso de despliegue, sistema operativo, dominio y DNS, posibilidad de exponer 80/443, salida SMTP, valores institucionales autorizados, padrón/API y política de actualización/bajas. El servidor solicitado de 6–8 vCPU, 16 GB de RAM, SSD de 100–200 GB y red de 100 Mbps o más es una referencia de dimensionamiento; debe confirmarse antes de desplegar.
 
 ## Despliegue con Docker Compose
 
-El despliegue propuesto usa PostgreSQL **17**, Redis **7.4** y Caddy **2**. Sus etiquetas mantienen la versión mayor seleccionada y reciben actualizaciones de mantenimiento; registrar los digests exactos al liberar una versión y probar las actualizaciones. [Política oficial de soporte de PostgreSQL](https://www.postgresql.org/support/versioning/).
+El despliegue propuesto usa PostgreSQL **17**, Redis **7.4** y Caddy **2.11.7**. Las etiquetas de PostgreSQL/Redis mantienen la serie seleccionada y reciben actualizaciones de mantenimiento; registrar los digests exactos al liberar una versión y probar las actualizaciones. [Política oficial de soporte de PostgreSQL](https://www.postgresql.org/support/versioning/).
 
 La API y el proxy corren como UID/GID `10001`, sin privilegios de root y con raíz de solo lectura. PostgreSQL y Redis usan sus imágenes oficiales, volúmenes persistentes y una red interna sin puertos publicados. La API usa un rol SQL distinto del administrador, sin `SUPERUSER`, `CREATEDB` ni `CREATEROLE`; puede administrar sus tablas para aplicar migraciones. El proxy conserva certificados en sus propios volúmenes y publica solamente 80/443. El directorio de imágenes se conserva en el volumen `media`.
 
@@ -98,15 +100,32 @@ docker compose run --rm --no-deps -v /ruta/privada/padron.csv:/input/padron.csv:
 
 Revisar el resultado y repetir sin `--dry-run` para persistirlo. El padrón debe ser legible por el usuario del contenedor. El uso de [`service_healthy`](https://docs.docker.com/compose/how-tos/startup-order/) y la [red interna](https://docs.docker.com/reference/compose-file/networks/) no sustituye controles de firewall o acceso al host.
 
-### Frontend opcional del mismo origen
+### Tres aplicaciones en contenedores separados
 
-El Dockerfile no fabrica ni descarga una compilación Flutter. Primero preparar el frontend revisado, con backend REST, sin `REVIEW_MODE`, URL base `/api/v1/` y `index.html` presente. Definir `SNACKUP_FRONTEND_DIR` como su ruta absoluta en el host y aplicar el override:
+El despliegue conjunto utiliza `compose.yaml` más `deploy/compose.apps.yaml`.
+Construye la PWA de alumnos desde `codex/usuarios-pwa` y el portal desde
+`codex/entrega-paneles-rest`, cada uno en su imagen. El proxy dirige `/` a
+alumnos, `/paneles/` al portal y `/api/*`, `/socket.io/*` y `/media/*` a la API.
+Los tres comparten el mismo origen público para conservar cookies y reglas de
+`Origin`. Los enlaces de recuperación se dirigen a la pantalla existente del
+portal en `/paneles/#/reset-password`.
+
+Seguir [la guía de despliegue de las tres aplicaciones](DESPLIEGUE_TRES_APPS.md)
+para clonar las ramas, construir y arrancar en el orden correcto. La PWA de
+alumnos aún usa Firebase; contenerizarla no la conecta automáticamente a REST.
+
+### Montaje histórico de un frontend compilado
+
+El Dockerfile no fabrica ni descarga una compilación Flutter. Primero preparar el portal anterior revisado, con backend REST, sin `REVIEW_MODE`, URL base `/api/legacy/v1/` y `index.html` presente. Una app nueva que implemente V3 utiliza `/api/v1/`. Definir `SNACKUP_FRONTEND_DIR` como la ruta absoluta del build en el host y aplicar el override:
 
 ```bash
 docker compose -f compose.yaml -f deploy/compose.frontend.yaml up -d api proxy
 ```
 
-El montaje es de solo lectura; la API sirve esos archivos y Caddy mantiene el mismo origen HTTPS para web, REST, imágenes y WebSocket. Un directorio inexistente no se crea silenciosamente. [Comportamiento del proxy Caddy](https://caddyserver.com/docs/caddyfile/directives/reverse_proxy).
+Este override se conserva solo para instalaciones anteriores. No combinarlo
+con `deploy/compose.apps.yaml`: la nueva instalación sirve los frontends desde
+sus propios contenedores. El montaje histórico es de solo lectura; un directorio
+inexistente no se crea silenciosamente. [Comportamiento del proxy Caddy](https://caddyserver.com/docs/caddyfile/directives/reverse_proxy).
 
 ### Ajuste inicial y operación
 
@@ -123,13 +142,17 @@ Antes de aceptar producción, restaurar el dump con `pg_restore --exit-on-error 
 ## Pruebas y evidencia
 
 ```bash
-python -m ruff check snackup tests deploy load
+python -m ruff check snackup tests tools deploy load
 python -m pytest -q --junitxml=reports/pytest-local.xml
+python tools/export_prisma_reference.py --check
+python tools/export_v3_openapi.py --check
 python -m alembic check
 ```
 
 Sin `SNACKUP_TEST_DATABASE_URL`, la suite funcional usa SQLite; las pruebas que necesitan PostgreSQL se omiten explícitamente. Configurar esa variable con una **base de pruebas exclusiva** para que la suite cree y elimine sus esquemas de ensayo. `SNACKUP_TEST_REDIS_URL` debe apuntar a un Redis de pruebas; habilita las comprobaciones del broker real. Nunca usar credenciales ni direcciones productivas para ejecutar la suite.
 
-El [workflow de backend](../.github/workflows/backend.yml) instala el lock exacto, corre lint, aplica/verifica migraciones, ejecuta la suite con PostgreSQL/Redis, construye las imágenes y valida Caddy. También arranca un stack Compose aislado hasta el estado saludable de la API, con el rol SQL de aplicación, y elimina sus volúmenes de prueba al terminar. Publica los XML de pruebas y el reporte de respuestas contrastadas con el contrato. La existencia del workflow no significa que una ejecución haya pasado: verificar el resultado y el commit en GitHub Actions. En este entorno local no se dispone de Docker/PostgreSQL; la construcción y compatibilidad real se comprobarán en CI o en el servidor de integración.
+El [workflow de backend](../.github/workflows/backend.yml) instala el lock exacto, corre lint, valida Prisma y OpenAPI, aplica/verifica migraciones, ejecuta la suite con PostgreSQL/Redis, construye las imágenes y valida Caddy. También arranca un stack Compose aislado hasta el estado saludable de la API, con el rol SQL de aplicación, y elimina sus volúmenes de prueba al terminar. Publica los XML de pruebas y los reportes de respuestas contrastadas con los contratos. La existencia del workflow no significa que una ejecución haya pasado: verificar el resultado y el commit en GitHub Actions. Las ejecuciones concretas y sus límites están en [VALIDACION_V3.md](VALIDACION_V3.md).
+
+Para actualizar una instalación existente, leer primero [el procedimiento de migración V3](API_V3_FASTAPI.md#8-migración-y-actualización-de-una-instalación-existente). La revisión `0002_v3` preserva los datos anteriores y requiere respaldo verificado y ventana sin escrituras. El rollback restaura ese respaldo; el downgrade automático que perdería datos está bloqueado.
 
 La metodología y comandos de carga están en [load/README.md](load/README.md). El escenario está desactivado por defecto, requiere confirmación explícita de destino aislado y credenciales externas; no se lanza automáticamente contra ningún servidor. Entregar el reporte medido antes de afirmar soporte para 1,000 alumnos.

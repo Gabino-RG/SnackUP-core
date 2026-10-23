@@ -1,0 +1,745 @@
+// SnackUP - referencia PostgreSQL / Prisma ORM 7 del backend Python/FastAPI.
+// GENERADO: python tools/export_prisma_reference.py. Verificar: añadir --check.
+// Fuente de autoridad: snackup/*.py (Base.metadata) + migrations/ (Alembic).
+// No usar Prisma Migrate ni db push sobre esta base; Prisma no integra el runtime.
+// Vocabulario adaptado del schema.prisma suministrado; @map/@@map conservan el SQL real.
+// No se inventan enums PostgreSQL, unicidades globales, columnas agregadas ni FK históricas.
+// Los IDs opacos de entidades/FK son TEXT. El outbox conserva su secuencia interna Int.
+// Los defaults/onupdate de Python se documentan y NO se transforman en DEFAULT SQL.
+// SQLAlchemy JSON corresponde a @db.Json, no al JsonB que Prisma usaría por omisión.
+// TIMESTAMP WITH TIME ZONE sin precisión explícita conserva la precisión PostgreSQL 6.
+// Los CHECK y los dos índices parciales se documentan al pie de su modelo; Alembic los mantiene.
+// No se declara generator: este archivo permite validar/consultar la referencia sin generar cliente Node.
+// Prisma 7 ubica URLs de conexión en prisma.config.ts; validate no necesita conexión.
+// Referencias: https://www.prisma.io/docs/orm/v7/reference/prisma-schema-reference
+// https://www.prisma.io/docs/orm/v7/prisma-schema/data-model/database-mapping
+
+datasource db {
+  provider     = "postgresql"
+  relationMode = "foreignKeys"
+}
+
+
+// rol es VARCHAR: user -> ALUMNO, business -> COCINA, admin -> ADMIN; pending solo pertenece al flujo legacy.
+// negocioId NO es único global: uq_active_business_operator limita solo operadores activos y aprobados.
+// esMaestro conserva la protección administrativa existente; no es un cuarto rol público V3.
+model Usuario {
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=new_id().
+  id String @id @map("id") @db.Text
+  correo String @unique @map("email") @db.VarChar(254)
+  nombre String @map("display_name") @db.VarChar(160)
+  passwordHash String @map("password_hash") @db.VarChar(256)
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default="pending".
+  rol String @map("role") @db.VarChar(16)
+  negocioId String? @map("business_id") @db.Text
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=false.
+  estaActivo Boolean @map("is_active") @db.Boolean
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=false.
+  esMaestro Boolean @map("is_master") @db.Boolean
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default="pending".
+  estadoAprobacion String @map("approval_status") @db.VarChar(16)
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=false.
+  correoVerificado Boolean @map("email_verified") @db.Boolean
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=1.
+  version Int @map("version") @db.Integer
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=1.
+  versionAutenticacion Int @map("auth_version") @db.Integer
+  numeroDeControl String? @unique(map: "uq_users_numero_de_control") @map("numero_de_control") @db.VarChar(100)
+  avatarUrl String? @map("avatar_url") @db.VarChar(1000)
+  verificadoInstitucionalAt DateTime? @map("institutional_verified_at") @db.Timestamptz(6)
+  ultimoLoginAt DateTime? @map("last_login_at") @db.Timestamptz(6)
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=utcnow().
+  createdAt DateTime @map("created_at") @db.Timestamptz(6)
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=utcnow(); onupdate=utcnow().
+  updatedAt DateTime @map("updated_at") @db.Timestamptz(6)
+
+  calificacionesNegocio CalificacionNegocio[] @relation("reviews_user_id")
+  clavesIdempotencia ClaveIdempotencia[] @relation("idempotency_records_user_id")
+  decisionesEmitidas DecisionAcceso[] @relation("access_decisions_actor_id")
+  decisionesRecibidas DecisionAcceso[] @relation("access_decisions_user_id")
+  dispositivos Dispositivo[] @relation("devices_user_id")
+  entregasPush EntregaPush[] @relation("push_deliveries_user_id")
+  eventosAuditoria EventoAuditoriaCuenta[] @relation("account_audit_events_actor_id")
+  eventosPedido EventoPedido[] @relation("order_transitions_actor_id")
+  eventosSeguimiento EventoSeguimiento[] @relation("followup_events_actor_id")
+  medios Medio[] @relation("media_files_owner_id")
+  negocio Negocio? @relation("users_business_id", fields: [negocioId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  pedidos Pedido[] @relation("orders_student_id")
+  refreshTokens RefreshToken[] @relation("refresh_sessions_user_id")
+  resenas Resena[] @relation("product_reviews_user_id")
+  solicitudAcceso SolicitudAcceso? @relation("access_requests_user_id")
+  solicitudesRevisadas SolicitudAcceso[] @relation("access_requests_reviewed_by")
+  tokensVerificacion TokenVerificacion[] @relation("verification_tokens_user_id")
+
+  // SQL/Alembic, índice parcial: UNIQUE INDEX uq_active_business_operator (business_id) WHERE role = 'business' AND is_active = true AND approval_status = 'approved'.
+  // No convertir este predicado a @unique/@@unique global en Prisma.
+  // SQL/Alembic, CHECK [ck_master_role]: NOT is_master OR role = 'admin'.
+  // SQL/Alembic, CHECK [ck_user_approval]: approval_status IN ('approved','pending','rejected').
+  // SQL/Alembic, CHECK [ck_user_business_role]: role = 'business' OR business_id IS NULL.
+  // SQL/Alembic, CHECK [ck_user_role]: role IN ('admin','business','user','pending').
+  @@map("users")
+}
+
+
+model Carrera {
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=new_id().
+  id String @id @map("id") @db.Text
+  nombre String @map("name") @db.VarChar(160)
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=true.
+  estaActivo Boolean @map("is_active") @db.Boolean
+
+  calificacionesNegocio CalificacionNegocio[] @relation("reviews_career_id")
+  grupos GrupoAcademico[] @relation("academic_groups_career_id")
+  registrosInstitucionales RegistroInstitucional[] @relation("academic_records_career_id")
+
+  @@map("careers")
+}
+
+
+model GrupoAcademico {
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=new_id().
+  id String @id @map("id") @db.Text
+  carreraId String @map("career_id") @db.Text
+  nombre String @map("name") @db.VarChar(160)
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=true.
+  estaActivo Boolean @map("is_active") @db.Boolean
+
+  calificacionesNegocio CalificacionNegocio[] @relation("reviews_group_id")
+  carrera Carrera @relation("academic_groups_career_id", fields: [carreraId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  registrosInstitucionales RegistroInstitucional[] @relation("academic_records_group_id")
+
+  @@index([carreraId], map: "ix_academic_groups_career_id")
+  @@map("academic_groups")
+}
+
+
+// Padrón autorizado local. tipo student/staff y matrícula no los determina el cliente.
+// La vinculación con Usuario usa correo en la aplicación; no existe una FK por correo en SQL.
+model RegistroInstitucional {
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=new_id().
+  id String @id @map("id") @db.Text
+  correo String @unique @map("email") @db.VarChar(254)
+  identificadorInstitucional String @map("institutional_id") @db.VarChar(100)
+  nombre String @map("display_name") @db.VarChar(160)
+  tipo String @map("kind") @db.VarChar(16)
+  carreraId String? @map("career_id") @db.Text
+  grupoId String? @map("group_id") @db.Text
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=true.
+  estaActivo Boolean @map("is_active") @db.Boolean
+  fuente String @map("source") @db.VarChar(200)
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=utcnow(); onupdate=utcnow().
+  updatedAt DateTime @map("updated_at") @db.Timestamptz(6)
+
+  carrera Carrera? @relation("academic_records_career_id", fields: [carreraId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  grupo GrupoAcademico? @relation("academic_records_group_id", fields: [grupoId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([tipo, identificadorInstitucional], map: "uq_roster_identity")
+  // SQL/Alembic, CHECK [ck_roster_group_career]: group_id IS NULL OR career_id IS NOT NULL.
+  // SQL/Alembic, CHECK [ck_roster_kind]: kind IN ('student','staff').
+  // SQL/Alembic, CHECK [ck_student_career]: kind != 'student' OR career_id IS NOT NULL.
+  @@map("academic_records")
+}
+
+
+model SolicitudAcceso {
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=new_id().
+  id String @id @map("id") @db.Text
+  usuarioId String @unique @map("user_id") @db.Text
+  correo String @map("email") @db.VarChar(254)
+  nombre String @map("display_name") @db.VarChar(160)
+  rolSolicitado String @map("requested_role") @db.VarChar(16)
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default="".
+  contextoSolicitud String @map("request_context") @db.VarChar(400)
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default="password".
+  proveedor String @map("provider") @db.VarChar(16)
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=false.
+  correoVerificado Boolean @map("email_verified") @db.Boolean
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default="pending".
+  estadoAprobacion String @map("approval_status") @db.VarChar(16)
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=1.
+  version Int @map("version") @db.Integer
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=utcnow().
+  createdAt DateTime @map("created_at") @db.Timestamptz(6)
+  revisorId String? @map("reviewed_by") @db.Text
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default="".
+  nota String @map("note") @db.VarChar(500)
+  decididoAt DateTime? @map("decided_at") @db.Timestamptz(6)
+
+  decision DecisionAcceso? @relation("access_decisions_request_id")
+  revisor Usuario? @relation("access_requests_reviewed_by", fields: [revisorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  usuario Usuario @relation("access_requests_user_id", fields: [usuarioId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([estadoAprobacion], map: "ix_access_requests_approval_status")
+  // SQL/Alembic, CHECK [ck_request_approval]: approval_status IN ('pending','approved','rejected').
+  // SQL/Alembic, CHECK [ck_requested_role]: requested_role IN ('admin','business').
+  @@map("access_requests")
+}
+
+
+model DecisionAcceso {
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=new_id().
+  id String @id @map("id") @db.Text
+  solicitudId String @unique(map: "uq_access_decision_request") @map("request_id") @db.Text
+  usuarioId String @map("user_id") @db.Text
+  actorId String @map("actor_id") @db.Text
+  decision String @map("decision") @db.VarChar(20)
+  rol String @map("role") @db.VarChar(20)
+  negocioId String? @map("business_id") @db.Text
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default="".
+  nota String @map("note") @db.VarChar(500)
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=utcnow().
+  createdAt DateTime @map("created_at") @db.Timestamptz(6)
+
+  actor Usuario @relation("access_decisions_actor_id", fields: [actorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  negocio Negocio? @relation("access_decisions_business_id", fields: [negocioId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  solicitud SolicitudAcceso @relation("access_decisions_request_id", fields: [solicitudId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  usuario Usuario @relation("access_decisions_user_id", fields: [usuarioId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("access_decisions")
+}
+
+
+// datosRegistro contiene solo la intención temporal y, en recuperación pending, un hash; nunca contraseña plana.
+// El consumo borra la intención; tokenHash almacena el hash de un token de un solo uso.
+model TokenVerificacion {
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=new_id().
+  id String @id @map("id") @db.Text
+  usuarioId String @map("user_id") @db.Text
+  correo String @map("email") @db.VarChar(254)
+  proposito String @map("purpose") @db.VarChar(16)
+  tokenHash String @unique @map("token_hash") @db.VarChar(64)
+  expiraAt DateTime @map("expires_at") @db.Timestamptz(6)
+  utilizadoAt DateTime? @map("used_at") @db.Timestamptz(6)
+  datosRegistro Json? @map("registration_data") @db.Json
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=utcnow().
+  createdAt DateTime @map("created_at") @db.Timestamptz(6)
+
+  usuario Usuario @relation("verification_tokens_user_id", fields: [usuarioId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([expiraAt], map: "ix_verification_tokens_expiry")
+  @@index([usuarioId], map: "ix_verification_tokens_user_id")
+  // SQL/Alembic, CHECK [ck_verification_purpose]: purpose IN ('verify','reset').
+  @@map("verification_tokens")
+}
+
+
+// tokenHash conserva solo el hash; familiaId permite revocar todos los sucesores ante replay.
+// familiaId es una agrupación lógica sin tabla/FK propia; reemplazadoPor sí tiene FK autorreferencial.
+model RefreshToken {
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=new_id().
+  id String @id @map("id") @db.Text
+  usuarioId String @map("user_id") @db.Text
+  familiaId String @map("family_id") @db.Text
+  tokenHash String @unique @map("token_hash") @db.VarChar(64)
+  versionAutenticacion Int @map("auth_version") @db.Integer
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=utcnow().
+  createdAt DateTime @map("created_at") @db.Timestamptz(6)
+  expiraAt DateTime @map("expires_at") @db.Timestamptz(6)
+  rotadoAt DateTime? @map("rotated_at") @db.Timestamptz(6)
+  revocadoAt DateTime? @map("revoked_at") @db.Timestamptz(6)
+  dispositivoId String? @map("device_id") @db.Text
+  reemplazadoPorId String? @map("replaced_by_id") @db.Text
+
+  dispositivo Dispositivo? @relation("refresh_sessions_device_id", fields: [dispositivoId], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "fk_refresh_sessions_device_id")
+  reemplazadoPor RefreshToken? @relation("refresh_sessions_replaced_by_id", fields: [reemplazadoPorId], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "fk_refresh_sessions_replaced_by_id")
+  tokensReemplazados RefreshToken[] @relation("refresh_sessions_replaced_by_id")
+  usuario Usuario @relation("refresh_sessions_user_id", fields: [usuarioId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([expiraAt], map: "ix_refresh_sessions_expiry")
+  @@index([familiaId], map: "ix_refresh_sessions_family_id")
+  @@index([usuarioId], map: "ix_refresh_sessions_user_id")
+  @@index([usuarioId, revocadoAt], map: "ix_refresh_sessions_user_revoked")
+  @@map("refresh_sessions")
+}
+
+
+// El token crudo es privado. La unicidad SQL recae en tokenHash, no en un índice sobre token TEXT.
+// familiaSesionId es una asociación lógica sin FK; logout elimina solo dispositivos de esa familia.
+model Dispositivo {
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=new_id().
+  id String @id @map("id") @db.Text
+  usuarioId String @map("user_id") @db.Text
+  token String @map("token") @db.Text
+  tokenHash String @unique @map("token_hash") @db.VarChar(64)
+  plataforma String @map("platform") @db.VarChar(16)
+  proveedor String @map("provider") @db.VarChar(16)
+  familiaSesionId String @map("session_family_id") @db.Text
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=utcnow().
+  ultimaActividadAt DateTime @map("last_active_at") @db.Timestamptz(6)
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=utcnow().
+  createdAt DateTime @map("created_at") @db.Timestamptz(6)
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=utcnow(); onupdate=utcnow().
+  updatedAt DateTime @map("updated_at") @db.Timestamptz(6)
+
+  entregasPush EntregaPush[] @relation("push_deliveries_device_id")
+  refreshTokens RefreshToken[] @relation("refresh_sessions_device_id")
+  usuario Usuario @relation("devices_user_id", fields: [usuarioId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([familiaSesionId], map: "ix_devices_session_family_id")
+  @@index([usuarioId], map: "ix_devices_user_id")
+  // SQL/Alembic, CHECK [ck_device_platform]: platform IN ('android','ios','web').
+  // SQL/Alembic, CHECK [ck_device_platform_provider]: provider = 'fcm' OR (provider = 'apns' AND platform = 'ios') OR (provider = 'webpush' AND platform = 'web').
+  // SQL/Alembic, CHECK [ck_device_provider]: provider IN ('fcm','apns','webpush').
+  @@map("devices")
+}
+
+
+// averageRating, totalRatings y totalOrders son agregados del DTO; no existen columnas cacheadas.
+// ownerId del DTO deriva de la cuenta Cocina activa y aprobada; no existe administradorId en businesses.
+// cuentasCocina es una relación plural en SQL; la restricción de operador vigente es parcial.
+model Negocio {
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=new_id().
+  id String @id @map("id") @db.Text
+  nombre String @map("name") @db.VarChar(160)
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default="".
+  categoria String @map("category") @db.VarChar(80)
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default="".
+  descripcion String @map("description") @db.VarChar(2000)
+  imagenUrl String? @map("image_url") @db.VarChar(2048)
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default="America/Mexico_City".
+  zonaHoraria String @map("timezone") @db.VarChar(80)
+  cafeteriaId String @map("cafeteria_id") @db.VarChar(120)
+  nombreCafeteria String @map("cafeteria_name") @db.VarChar(160)
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=true.
+  estaActivo Boolean @map("is_active") @db.Boolean
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=false.
+  estaAbierto Boolean @map("is_open") @db.Boolean
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=1.
+  version Int @map("version") @db.Integer
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=1.
+  siguienteNumeroPedido Int @map("next_order_number") @db.Integer
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=utcnow().
+  createdAt DateTime @map("created_at") @db.Timestamptz(6)
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=utcnow().
+  updatedAt DateTime @map("updated_at") @db.Timestamptz(6)
+
+  calificaciones CalificacionNegocio[] @relation("reviews_business_id")
+  cuentasCocina Usuario[] @relation("users_business_id")
+  decisionesAcceso DecisionAcceso[] @relation("access_decisions_business_id")
+  eventosSeguimiento EventoSeguimiento[] @relation("followup_events_business_id")
+  medios Medio[] @relation("media_files_business_id")
+  pedidos Pedido[] @relation("orders_business_id")
+  platillos Platillo[] @relation("products_business_id")
+  seguimientos SeguimientoOpinion[] @relation("followups_business_id")
+
+  @@index([estaActivo], map: "ix_businesses_is_active")
+  // SQL/Alembic, CHECK [sin nombre en metadata; PostgreSQL asigna el nombre]: next_order_number >= 1.
+  // SQL/Alembic, CHECK [sin nombre en metadata; PostgreSQL asigna el nombre]: version >= 1.
+  @@map("businesses")
+}
+
+
+// averageRating y totalRatings/totalResenas se calculan desde product_reviews; no son columnas.
+// stock NULL significa sin límite; disponibilidadManual conserva la pausa del operador al devolver stock.
+// categoria es texto libre, sin enum PostgreSQL de categorías.
+model Platillo {
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=new_id().
+  id String @id @map("id") @db.Text
+  negocioId String @map("business_id") @db.Text
+  nombre String @map("name") @db.VarChar(160)
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default="".
+  descripcion String @map("description") @db.VarChar(2000)
+  categoria String @map("category") @db.VarChar(120)
+  subcategoria String? @map("subcategory") @db.VarChar(80)
+  tiempoPreparacion Int? @map("preparation_minutes") @db.Integer
+  calorias Int? @map("calories") @db.Integer
+  precio Decimal @map("price") @db.Decimal(12, 2)
+  stock Int? @map("stock") @db.Integer
+  imagenUrl String? @map("image_url") @db.VarChar(2048)
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=true.
+  estaDisponible Boolean @map("is_available") @db.Boolean
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=true.
+  disponibilidadManual Boolean @map("manual_available") @db.Boolean
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=false.
+  esDestacado Boolean @map("is_featured") @db.Boolean
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=false.
+  estaEliminado Boolean @map("is_deleted") @db.Boolean
+  eliminadoAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=1.
+  version Int @map("version") @db.Integer
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=utcnow().
+  createdAt DateTime @map("created_at") @db.Timestamptz(6)
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=utcnow().
+  updatedAt DateTime @map("updated_at") @db.Timestamptz(6)
+
+  detallesPedido DetallePedido[] @relation("order_items_product_id")
+  negocio Negocio @relation("products_business_id", fields: [negocioId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  resenas Resena[] @relation("product_reviews_product_id")
+
+  @@index([negocioId, estaDisponible], map: "ix_products_business_available")
+  @@index([negocioId, estaEliminado, categoria], map: "ix_products_business_catalog")
+  // SQL/Alembic, CHECK [sin nombre en metadata; PostgreSQL asigna el nombre]: price >= 0.01 AND price <= 10000.
+  // SQL/Alembic, CHECK [sin nombre en metadata; PostgreSQL asigna el nombre]: stock IS NULL OR stock != 0 OR NOT is_available.
+  // SQL/Alembic, CHECK [sin nombre en metadata; PostgreSQL asigna el nombre]: stock IS NULL OR stock >= 0.
+  // SQL/Alembic, CHECK [sin nombre en metadata; PostgreSQL asigna el nombre]: version >= 1.
+  // SQL/Alembic, CHECK [ck_product_calories]: calories IS NULL OR calories >= 0.
+  // SQL/Alembic, CHECK [ck_product_preparation_minutes]: preparation_minutes IS NULL OR preparation_minutes >= 0.
+  @@map("products")
+}
+
+
+// estado conserva pending/accepted/preparing/ready/completed/cancelled como VARCHAR con CHECK.
+// isRated/fueCalificado se calcula por la existencia de reviews; no es una columna.
+// codigoQr admite códigos históricos de hasta 32 caracteres; solo longitud 6 tiene unicidad parcial global.
+// canceladoPorId y verificadoPorId son identificadores históricos TEXT sin FK, como en el ORM.
+// stockRestaurado y DetallePedido.cantidadReservada previenen devoluciones duplicadas del inventario.
+// subtotal permanece nullable para preservar filas históricas durante la transición.
+model Pedido {
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=new_id().
+  id String @id @map("id") @db.Text
+  negocioId String @map("business_id") @db.Text
+  alumnoId String @map("student_id") @db.Text
+  numeroPedido Int @map("order_number") @db.Integer
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=1.
+  version Int @map("version") @db.Integer
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default="pending".
+  estado String @map("status") @db.VarChar(20)
+  nombreAlumnoSnapshot String @map("customer_name") @db.VarChar(160)
+  numeroControlSnapshot String? @map("customer_institutional_id") @db.VarChar(100)
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default="cash".
+  metodoPago String @map("payment_method") @db.VarChar(30)
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default="pay_at_pickup".
+  estadoPago String @map("payment_status") @db.VarChar(30)
+  total Decimal @map("total") @db.Decimal(14, 2)
+  subtotal Decimal? @map("subtotal") @db.Decimal(14, 2)
+  codigoQr String @map("pickup_code") @db.VarChar(32)
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=utcnow().
+  createdAt DateTime @map("created_at") @db.Timestamptz(6)
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=utcnow().
+  updatedAt DateTime @map("updated_at") @db.Timestamptz(6)
+  recogidaProgramadaAt DateTime? @map("scheduled_pickup_time") @db.Timestamptz(6)
+  aceptadoAt DateTime? @map("accepted_at") @db.Timestamptz(6)
+  preparandoAt DateTime? @map("preparing_at") @db.Timestamptz(6)
+  listoAt DateTime? @map("ready_at") @db.Timestamptz(6)
+  entregadoAt DateTime? @map("completed_at") @db.Timestamptz(6)
+  canceladoAt DateTime? @map("cancelled_at") @db.Timestamptz(6)
+  motivoCancelacion String? @map("cancel_reason") @db.VarChar(60)
+  notasCancelacion String? @map("cancel_notes") @db.VarChar(500)
+  canceladoPorId String? @map("cancelled_by") @db.Text
+  canceladoPorRol String? @map("cancelled_by_role") @db.VarChar(16)
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=false.
+  stockRestaurado Boolean @map("stock_restored") @db.Boolean
+  metodoVerificacion String? @map("verification_method") @db.VarChar(10)
+  verificadoPorId String? @map("verified_by") @db.Text
+  verificadoAt DateTime? @map("verified_at") @db.Timestamptz(6)
+
+  alumno Usuario @relation("orders_student_id", fields: [alumnoId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  calificacionNegocio CalificacionNegocio? @relation("reviews_order_id")
+  clavesIdempotencia ClaveIdempotencia[] @relation("idempotency_records_order_id")
+  detalles DetallePedido[] @relation("order_items_order_id")
+  eventos EventoPedido[] @relation("order_transitions_order_id")
+  negocio Negocio @relation("orders_business_id", fields: [negocioId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  resenas Resena[] @relation("product_reviews_order_id")
+
+  @@unique([negocioId, numeroPedido], map: "uq_business_order_number")
+  @@index([negocioId, estado, createdAt, id], map: "ix_orders_business_active")
+  @@index([negocioId, canceladoAt], map: "ix_orders_business_cancelled")
+  @@index([negocioId, entregadoAt], map: "ix_orders_business_completed")
+  @@index([negocioId, estado, updatedAt, id], map: "ix_orders_business_updated")
+  @@index([alumnoId, createdAt, id], map: "ix_orders_student_created")
+  @@index([alumnoId, estado], map: "ix_orders_student_status")
+  // SQL/Alembic, índice parcial: UNIQUE INDEX uq_orders_v3_pickup_code (pickup_code) WHERE length(pickup_code) = 6.
+  // No convertir este predicado a @unique/@@unique global en Prisma.
+  // SQL/Alembic, CHECK [sin nombre en metadata; PostgreSQL asigna el nombre]: order_number >= 1 AND version >= 1 AND total >= 0.
+  // SQL/Alembic, CHECK [sin nombre en metadata; PostgreSQL asigna el nombre]: status IN ('pending','accepted','preparing','ready','completed','cancelled').
+  @@map("orders")
+}
+
+
+// nombreSnapshot/precioUnitario son snapshots de venta; cantidadReservada registra la reserva real.
+model DetallePedido {
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=new_id().
+  id String @id @map("id") @db.Text
+  pedidoId String @map("order_id") @db.Text
+  platilloId String @map("product_id") @db.Text
+  nombreSnapshot String @map("name") @db.VarChar(160)
+  cantidad Int @map("quantity") @db.Integer
+  precioUnitario Decimal @map("price") @db.Decimal(12, 2)
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default="".
+  notas String @map("notes") @db.VarChar(500)
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=0.
+  cantidadReservada Int @map("reserved_quantity") @db.Integer
+
+  pedido Pedido @relation("order_items_order_id", fields: [pedidoId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  platillo Platillo @relation("order_items_product_id", fields: [platilloId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([pedidoId], map: "ix_order_items_order_id")
+  @@index([platilloId], map: "ix_order_items_product_id")
+  // SQL/Alembic, CHECK [sin nombre en metadata; PostgreSQL asigna el nombre]: quantity > 0 AND price >= 0.
+  // SQL/Alembic, CHECK [sin nombre en metadata; PostgreSQL asigna el nombre]: reserved_quantity >= 0 AND reserved_quantity <= quantity.
+  @@map("order_items")
+}
+
+
+model EventoPedido {
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=new_id().
+  id String @id @map("id") @db.Text
+  pedidoId String @map("order_id") @db.Text
+  actorId String @map("actor_id") @db.Text
+  estadoAnterior String? @map("from_status") @db.VarChar(20)
+  estadoNuevo String @map("to_status") @db.VarChar(20)
+  version Int @map("version") @db.Integer
+  accion String? @map("action") @db.VarChar(48)
+  actorRol String? @map("actor_role") @db.VarChar(16)
+  datos Json? @map("payload") @db.Json
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=utcnow().
+  createdAt DateTime @map("created_at") @db.Timestamptz(6)
+
+  actor Usuario @relation("order_transitions_actor_id", fields: [actorId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  pedido Pedido @relation("order_transitions_order_id", fields: [pedidoId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([pedidoId, version], map: "uq_order_transition_version")
+  @@index([pedidoId], map: "ix_order_transitions_order_id")
+  @@map("order_transitions")
+}
+
+
+// Reseña de producto comprado: unicidad por pedidoId + platilloId, distinta de reviews.
+model Resena {
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=new_id().
+  id String @id @map("id") @db.Text
+  pedidoId String @map("order_id") @db.Text
+  platilloId String @map("product_id") @db.Text
+  alumnoId String @map("user_id") @db.Text
+  puntuacion Int @map("rating") @db.Integer
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default="".
+  comentario String @map("comment") @db.Text
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=utcnow().
+  createdAt DateTime @map("created_at") @db.Timestamptz(6)
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=utcnow(); onupdate=utcnow().
+  updatedAt DateTime @map("updated_at") @db.Timestamptz(6)
+
+  alumno Usuario @relation("product_reviews_user_id", fields: [alumnoId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  pedido Pedido @relation("product_reviews_order_id", fields: [pedidoId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  platillo Platillo @relation("product_reviews_product_id", fields: [platilloId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([pedidoId, platilloId], map: "uq_product_review_order_product")
+  @@index([platilloId, createdAt, id], map: "ix_product_reviews_product_created")
+  @@index([alumnoId], map: "ix_product_reviews_user")
+  // SQL/Alembic, CHECK [ck_product_review_rating]: rating BETWEEN 1 AND 5.
+  @@map("product_reviews")
+}
+
+
+// Tabla histórica reviews = calificación del negocio, con carrera/grupo y seguimiento administrativo.
+// puntuacion es nullable por compatibilidad histórica; los nuevos DTO exigen un entero 1..5.
+model CalificacionNegocio {
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=new_id().
+  id String @id @map("id") @db.Text
+  pedidoId String @unique(map: "uq_review_order") @map("order_id") @db.Text
+  alumnoId String @map("user_id") @db.Text
+  negocioId String @map("business_id") @db.Text
+  puntuacion Int? @map("rating") @db.Integer
+  puntuacionComida Int? @map("food_rating") @db.Integer
+  puntuacionServicio Int? @map("service_rating") @db.Integer
+  carreraId String? @map("career_id") @db.Text
+  grupoId String? @map("group_id") @db.Text
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default="".
+  nombreCarreraSnapshot String @map("career_name") @db.VarChar(200)
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default="".
+  nombreGrupoSnapshot String @map("group_name") @db.VarChar(200)
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default="".
+  comentario String @map("comment") @db.Text
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=utcnow().
+  createdAt DateTime @map("created_at") @db.Timestamptz(6)
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=utcnow(); onupdate=utcnow().
+  updatedAt DateTime @map("updated_at") @db.Timestamptz(6)
+
+  alumno Usuario @relation("reviews_user_id", fields: [alumnoId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  carrera Carrera? @relation("reviews_career_id", fields: [carreraId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  grupo GrupoAcademico? @relation("reviews_group_id", fields: [grupoId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  negocio Negocio @relation("reviews_business_id", fields: [negocioId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  pedido Pedido @relation("reviews_order_id", fields: [pedidoId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  seguimiento SeguimientoOpinion? @relation("followups_review_id")
+
+  @@index([negocioId, createdAt, id], map: "ix_reviews_business_created")
+  // SQL/Alembic, CHECK [ck_review_food_rating]: food_rating IS NULL OR food_rating BETWEEN 1 AND 5.
+  // SQL/Alembic, CHECK [ck_review_rating]: rating IS NULL OR rating BETWEEN 1 AND 5.
+  // SQL/Alembic, CHECK [ck_review_service_rating]: service_rating IS NULL OR service_rating BETWEEN 1 AND 5.
+  @@map("reviews")
+}
+
+
+model SeguimientoOpinion {
+  calificacionId String @id @map("review_id") @db.Text
+  negocioId String @map("business_id") @db.Text
+  estado String @map("status") @db.VarChar(20)
+  responsable String @map("assignee") @db.VarChar(120)
+  nota String @map("note") @db.Text
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=1.
+  version Int @map("version") @db.Integer
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=utcnow().
+  updatedAt DateTime @map("updated_at") @db.Timestamptz(6)
+
+  calificacion CalificacionNegocio @relation("followups_review_id", fields: [calificacionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  eventos EventoSeguimiento[] @relation("followup_events_review_id")
+  negocio Negocio @relation("followups_business_id", fields: [negocioId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([updatedAt, calificacionId], map: "ix_followups_updated")
+  // SQL/Alembic, CHECK [ck_followup_status]: status IN ('pending', 'in_review', 'resolved').
+  // SQL/Alembic, CHECK [ck_followup_version]: version >= 1.
+  @@map("followups")
+}
+
+
+model EventoSeguimiento {
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=new_id().
+  id String @id @map("id") @db.Text
+  calificacionId String @map("review_id") @db.Text
+  negocioId String @map("business_id") @db.Text
+  actorId String @map("actor_id") @db.Text
+  estado String @map("status") @db.VarChar(20)
+  responsable String @map("assignee") @db.VarChar(120)
+  nota String @map("note") @db.Text
+  version Int @map("version") @db.Integer
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=utcnow().
+  updatedAt DateTime @map("updated_at") @db.Timestamptz(6)
+
+  actor Usuario @relation("followup_events_actor_id", fields: [actorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  negocio Negocio @relation("followup_events_business_id", fields: [negocioId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  seguimiento SeguimientoOpinion @relation("followup_events_review_id", fields: [calificacionId], references: [calificacionId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([calificacionId, version], map: "uq_followup_event_version")
+  @@index([calificacionId, version], map: "ix_followup_events_review_version")
+  // SQL/Alembic, CHECK [ck_followup_event_status]: status IN ('pending', 'in_review', 'resolved').
+  // SQL/Alembic, CHECK [ck_followup_event_version]: version >= 1.
+  @@map("followup_events")
+}
+
+
+// propietarioId nullable preserva uploads legacy cuyo autor individual no está documentado.
+// La URL pública deriva de public_origin + '/media/' + claveAlmacenamiento; no hay columna url.
+model Medio {
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=new_id().
+  id String @id @map("id") @db.Text
+  negocioId String? @map("business_id") @db.Text
+  propietarioId String? @map("owner_id") @db.Text
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default="product".
+  proposito String @map("purpose") @db.VarChar(16)
+  claveAlmacenamiento String @unique @map("filename") @db.VarChar(80)
+  tipoMime String @map("mime_type") @db.VarChar(30)
+  tamanoBytes Int @map("size") @db.Integer
+  ancho Int? @map("width") @db.Integer
+  alto Int? @map("height") @db.Integer
+  eliminadoAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=utcnow().
+  createdAt DateTime @map("created_at") @db.Timestamptz(6)
+
+  negocio Negocio? @relation("media_files_business_id", fields: [negocioId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  propietario Usuario? @relation("media_files_owner_id", fields: [propietarioId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_media_files_owner_id")
+
+  @@index([negocioId], map: "ix_media_files_business_id")
+  @@index([propietarioId], map: "ix_media_files_owner_id")
+  @@map("media_files")
+}
+
+
+// El bloqueo/transacción SQL completa la solicitud; no existen columnas estado ni codigoHttp.
+// pedidoId NO es único global en SQL; solo usuarioId + clave tiene unicidad.
+// respuesta es un DTO privado y nunca debe publicarse como evento o registro de acceso.
+model ClaveIdempotencia {
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=new_id().
+  id String @id @map("id") @db.Text
+  usuarioId String @map("user_id") @db.Text
+  clave String @map("key") @db.VarChar(128)
+  hashSolicitud String @map("payload_hash") @db.VarChar(64)
+  pedidoId String @map("order_id") @db.Text
+  respuesta Json @map("response_json") @db.Json
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=utcnow().
+  createdAt DateTime @map("created_at") @db.Timestamptz(6)
+  expiraAt DateTime? @map("expires_at") @db.Timestamptz(6)
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=utcnow().
+  updatedAt DateTime @map("updated_at") @db.Timestamptz(6)
+
+  pedido Pedido @relation("idempotency_records_order_id", fields: [pedidoId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  usuario Usuario @relation("idempotency_records_user_id", fields: [usuarioId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([usuarioId, clave], map: "uq_user_order_idempotency")
+  @@map("idempotency_records")
+}
+
+
+// Auditoría de seguridad sin contraseñas, tokens ni códigos de retiro; recursoId es una referencia polimórfica sin FK.
+model EventoAuditoriaCuenta {
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=new_id().
+  id String @id @map("id") @db.Text
+  actorId String? @map("actor_id") @db.Text
+  accion String @map("action") @db.VarChar(80)
+  tipoRecurso String @map("target_type") @db.VarChar(32)
+  recursoId String @map("target_id") @db.Text
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=dict().
+  datos Json @map("data") @db.Json
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=utcnow().
+  createdAt DateTime @map("created_at") @db.Timestamptz(6)
+
+  actor Usuario? @relation("account_audit_events_actor_id", fields: [actorId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([actorId], map: "ix_account_audit_events_actor_id")
+  @@index([tipoRecurso, recursoId], map: "ix_account_audit_target")
+  @@map("account_audit_events")
+}
+
+
+// id es el consecutivo SQL interno; eventoId es el identificador público estable para deduplicación.
+// La publicación registra intentos, error y próximo intento; payloads de eventos excluyen credenciales y pickupCode.
+model EventoSalida {
+  id Int @id @default(autoincrement()) @map("id") @db.Integer
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=new_id().
+  eventoId String @unique @map("event_id") @db.VarChar(32)
+  canal String @map("topic") @db.Text
+  tipo String @map("event_type") @db.VarChar(80)
+  datos Json @map("data") @db.Json
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=utcnow().
+  createdAt DateTime @map("created_at") @db.Timestamptz(6)
+  publicadoAt DateTime? @map("published_at") @db.Timestamptz(6)
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=0.
+  intentosPublicacion Int @map("publish_attempts") @db.Integer
+  ultimoError String? @map("last_error") @db.VarChar(80)
+  proximoIntentoAt DateTime? @map("next_attempt_at") @db.Timestamptz(6)
+
+  entregasPush EntregaPush[] @relation("push_deliveries_outbox_event_id")
+
+  @@index([proximoIntentoAt], map: "ix_outbox_events_next_attempt_at")
+  @@index([publicadoAt], map: "ix_outbox_events_published_at")
+  @@index([canal], map: "ix_outbox_events_topic")
+  @@map("outbox_events")
+}
+
+
+// Una entrega durable por evento de outbox y dispositivo, con reintentos, reserva y resultado del proveedor.
+// eventoSalidaId referencia el entero interno de outbox; eventoId duplica el ID público sin otra FK.
+// sent significa aceptación del proveedor, no lectura o presentación por el sistema operativo.
+model EntregaPush {
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=new_id().
+  id String @id @map("id") @db.Text
+  eventoSalidaId Int @map("outbox_event_id") @db.Integer
+  eventoId String @map("event_id") @db.Text
+  dispositivoId String? @map("device_id") @db.Text
+  usuarioId String @map("user_id") @db.Text
+  datos Json @map("payload") @db.Json
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default="pending".
+  estado String @map("state") @db.VarChar(16)
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=0.
+  intentos Int @map("attempts") @db.Integer
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=utcnow().
+  proximoIntentoAt DateTime @map("next_attempt_at") @db.Timestamptz(6)
+  bloqueadoHasta DateTime? @map("locked_until") @db.Timestamptz(6)
+  reservaId String? @map("lease_id") @db.Text
+  ultimoError String? @map("last_error") @db.VarChar(80)
+  mensajeProveedorId String? @map("provider_message_id") @db.Text
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=utcnow().
+  createdAt DateTime @map("created_at") @db.Timestamptz(6)
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=utcnow(); onupdate=utcnow().
+  updatedAt DateTime @map("updated_at") @db.Timestamptz(6)
+  enviadoAt DateTime? @map("sent_at") @db.Timestamptz(6)
+
+  dispositivo Dispositivo? @relation("push_deliveries_device_id", fields: [dispositivoId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  eventoSalida EventoSalida @relation("push_deliveries_outbox_event_id", fields: [eventoSalidaId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  usuario Usuario @relation("push_deliveries_user_id", fields: [usuarioId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([eventoSalidaId, dispositivoId], map: "uq_push_event_device")
+  @@index([estado, proximoIntentoAt], map: "ix_push_due")
+  // SQL/Alembic, CHECK [ck_push_attempts]: attempts >= 0.
+  // SQL/Alembic, CHECK [ck_push_state]: state IN ('pending','sending','retry','unconfigured','sent','dead','cancelled').
+  @@map("push_deliveries")
+}

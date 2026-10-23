@@ -13,13 +13,13 @@ from snackup.operation_models import Order, OrderItem, Product
 
 
 def create_order(client, header, key=None, quantity=1):
-    return client.post('/api/v1/student/orders', headers={**header, 'Idempotency-Key': key or uuid4().hex},
+    return client.post('/api/legacy/v1/student/orders', headers={**header, 'Idempotency-Key': key or uuid4().hex},
                        json={'businessId': 'business-1', 'items': [{'productId': 'product-1', 'quantity': quantity}], 'paymentMethod': 'cash'})
 
 
 def test_student_kitchen_admin_roundtrip(client, app, tokens):
     student, operator, admin = tokens['student'], tokens['operator'], tokens['master']
-    profile = client.get('/api/v1/users/me', headers=student)
+    profile = client.get('/api/legacy/v1/users/me', headers=student)
     assert profile.status_code == 200
     created = create_order(client, student)
     assert created.status_code == 201, created.text
@@ -27,40 +27,40 @@ def test_student_kitchen_admin_roundtrip(client, app, tokens):
     key = order['id']
     pickup = order['pickupCode']
     assert len(pickup) >= 8
-    denied = client.get('/api/v1/student/orders/' + key, headers=tokens['other-student'])
+    denied = client.get('/api/legacy/v1/student/orders/' + key, headers=tokens['other-student'])
     assert denied.status_code in {403, 404}
-    kitchen = client.get('/api/v1/businesses/business-1/orders/active', headers=operator)
+    kitchen = client.get('/api/legacy/v1/businesses/business-1/orders/active', headers=operator)
     assert kitchen.status_code == 200
     assert kitchen.json()['data'][0]['id'] == key
     assert 'pickupCode' not in kitchen.json()['data'][0]
     assert 'customerNumeroDeControl' not in kitchen.json()['data'][0]
-    assert client.get('/api/v1/orders/' + key, headers=admin).status_code == 403
-    assert client.get('/api/v1/orders/' + key, headers=tokens['other-operator']).status_code in {403, 404}
+    assert client.get('/api/legacy/v1/orders/' + key, headers=admin).status_code == 403
+    assert client.get('/api/legacy/v1/orders/' + key, headers=tokens['other-operator']).status_code in {403, 404}
     for action in ['accept', 'start', 'ready']:
-        result = client.post(f'/api/v1/orders/{key}/{action}', headers=operator, json={'expectedVersion': order['version']})
+        result = client.post(f'/api/legacy/v1/orders/{key}/{action}', headers=operator, json={'expectedVersion': order['version']})
         assert result.status_code == 200, result.text
         order = result.json()
-    result = client.post(f'/api/v1/orders/{key}/complete', headers=operator,
+    result = client.post(f'/api/legacy/v1/orders/{key}/complete', headers=operator,
                          json={'expectedVersion': order['version'], 'method': 'manual', 'code': pickup})
     assert result.status_code == 200, result.text
     assert result.json()['status'] == 'completed'
-    assert client.post(f'/api/v1/orders/{key}/complete', headers=operator,
+    assert client.post(f'/api/legacy/v1/orders/{key}/complete', headers=operator,
                        json={'expectedVersion': order['version'], 'method': 'manual', 'code': pickup}).status_code == 409
-    review = client.post(f'/api/v1/student/orders/{key}/review', headers=student, json={'rating': 5, 'comment': 'Buena atención'})
+    review = client.post(f'/api/legacy/v1/student/orders/{key}/review', headers=student, json={'rating': 5, 'comment': 'Buena atención'})
     assert review.status_code == 201, review.text
     assert review.json()['career'] == 'Desarrollo de Software'
-    reviews = client.get('/api/v1/admin/reviews', headers=admin).json()
+    reviews = client.get('/api/legacy/v1/admin/reviews', headers=admin).json()
     assert reviews['pagination']['total'] == 1
     rid = reviews['data'][0]['id']
-    followup = client.put(f'/api/v1/admin/reviews/{rid}/followup', headers=admin,
+    followup = client.put(f'/api/legacy/v1/admin/reviews/{rid}/followup', headers=admin,
                           json={'status': 'resolved', 'assignee': 'Responsable', 'note': 'Revisado', 'expectedVersion': 0})
     assert followup.status_code == 200, followup.text
-    saved = client.get(f'/api/v1/admin/reviews/{rid}/followup', headers=admin)
+    saved = client.get(f'/api/legacy/v1/admin/reviews/{rid}/followup', headers=admin)
     assert saved.status_code == 200 and saved.json()['status'] == 'resolved'
-    history = client.get(f'/api/v1/admin/reviews/{rid}/followup/history', headers=admin).json()
+    history = client.get(f'/api/legacy/v1/admin/reviews/{rid}/followup/history', headers=admin).json()
     assert history['pagination']['total'] == 1
     today = datetime.now(ZoneInfo('America/Mexico_City')).date().isoformat()
-    summary = client.get(f'/api/v1/businesses/business-1/stats?from={today}&to={today}', headers=operator)
+    summary = client.get(f'/api/legacy/v1/businesses/business-1/stats?from={today}&to={today}', headers=operator)
     assert summary.status_code == 200, summary.text
     assert summary.json()['totalSold'] == 35.5
     with app.state.db.sessions() as db:
@@ -85,20 +85,20 @@ def test_order_idempotency_and_atomic_failure(client, app, tokens):
 
 def test_operator_catalog_changes_reach_student_without_cross_local_access(client, tokens):
     operator = tokens['operator']
-    shops = client.get('/api/v1/admin/businesses', headers=tokens['master'])
+    shops = client.get('/api/legacy/v1/admin/businesses', headers=tokens['master'])
     assert shops.status_code == 200 and shops.json()['pagination']['total'] == 2
-    update = client.patch('/api/v1/businesses/business-1', headers=operator,
+    update = client.patch('/api/legacy/v1/businesses/business-1', headers=operator,
                           json={'name': 'Cafetería actualizada', 'category': 'Comida', 'description': 'Horario habitual', 'expectedVersion': 1})
     assert update.status_code == 200
     draft = {'name': 'Nuevo platillo', 'description': 'Preparado al momento', 'category': 'Comida',
              'price': 40.25, 'stock': 3, 'imageUrl': None, 'isAvailable': True, 'isFeatured': False}
-    assert client.post('/api/v1/businesses/business-2/products', headers=operator, json=draft).status_code in {403, 404}
-    created = client.post('/api/v1/businesses/business-1/products', headers=operator, json=draft)
+    assert client.post('/api/legacy/v1/businesses/business-2/products', headers=operator, json=draft).status_code in {403, 404}
+    created = client.post('/api/legacy/v1/businesses/business-1/products', headers=operator, json=draft)
     assert created.status_code == 201, created.text
-    products = client.get('/api/v1/businesses/business-1/products', headers=operator)
+    products = client.get('/api/legacy/v1/businesses/business-1/products', headers=operator)
     assert products.status_code == 200
     assert {p['id'] for p in products.json()['data']} == {'product-1', created.json()['id']}
-    student_catalog = client.get('/api/v1/student/businesses/business-1/products', headers=tokens['student'])
+    student_catalog = client.get('/api/legacy/v1/student/businesses/business-1/products', headers=tokens['student'])
     assert student_catalog.status_code == 200
     assert created.json()['id'] in {p['id'] for p in student_catalog.json()['data']}
 
@@ -130,21 +130,21 @@ def test_last_unit_concurrent_purchase(app, client, tokens):
 
 def test_websocket_isolation_and_revocation(client, app, tokens):
     origin = {'Origin': app.state.settings.public_origin}
-    with client.websocket_connect('/api/v1/realtime', headers=origin) as ws:
+    with client.websocket_connect('/api/legacy/v1/realtime', headers=origin) as ws:
         ws.send_json({'action': 'auth', 'token': tokens['operator']['Authorization'].removeprefix('Bearer ')})
         ws.send_json({'action': 'subscribe', 'topics': ['business:business-1:orders']})
         assert ws.receive_json()['type'] == 'subscribed'
         ws.send_json({'action': 'subscribe', 'topics': ['business:business-2:orders']})
         assert ws.receive_json()['type'] == 'unauthorized'
-    with client.websocket_connect('/api/v1/realtime', headers=origin) as ws:
+    with client.websocket_connect('/api/legacy/v1/realtime', headers=origin) as ws:
         ws.send_json({'action': 'auth', 'token': tokens['master']['Authorization'].removeprefix('Bearer ')})
         assert ws.receive_json()['type'] == 'unauthorized'
 
 
 def test_error_privacy_and_origin(client):
-    response = client.post('/api/v1/auth/login', json={'email': 'bad', 'password': 'private-password'}, headers={'Origin': 'http://evil.example'})
+    response = client.post('/api/legacy/v1/auth/login', json={'email': 'bad', 'password': 'private-password'}, headers={'Origin': 'http://evil.example'})
     assert response.status_code == 403
-    response = client.post('/api/v1/auth/login', json={'email': 'bad', 'password': 'private-password'}, headers={'Origin': 'http://testserver'})
+    response = client.post('/api/legacy/v1/auth/login', json={'email': 'bad', 'password': 'private-password'}, headers={'Origin': 'http://testserver'})
     assert response.status_code == 422
     assert 'private-password' not in response.text
     assert response.headers['Cache-Control'] == 'no-store'

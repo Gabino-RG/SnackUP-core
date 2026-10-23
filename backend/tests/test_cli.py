@@ -42,7 +42,7 @@ def test_private_master_recovery_hashes_password_and_revokes_tokens(app, client,
     assert cli.main(['reset-master-password', '--email', 'master@staff.example.edu'], app.state.settings) == 0
     output = capsys.readouterr().out
     assert 'Another-Test' not in output
-    assert client.get('/api/v1/users/me', headers=tokens['master']).status_code == 401
+    assert client.get('/api/legacy/v1/users/me', headers=tokens['master']).status_code == 401
     with app.state.db.sessions() as db:
         user = db.get(User, 'master')
         assert password_matches('Another-Test-Password-934!', user.password_hash)

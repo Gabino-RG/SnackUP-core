@@ -100,6 +100,6 @@ def test_production_rejects_development_settings_without_leaking_secret():
 
 
 def test_unknown_api_routes_do_not_fall_through_to_html(client):
-    response = client.get('/api/v1/does-not-exist')
+    response = client.get('/api/legacy/v1/does-not-exist')
     assert response.status_code == 404
     assert response.json()['error']['code'] == 'NOT_FOUND'
