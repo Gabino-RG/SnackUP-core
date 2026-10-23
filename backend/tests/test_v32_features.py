@@ -6,7 +6,7 @@ import re
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import func, select
+from sqlalchemy import event, func, select
 
 from snackup.admin_models import Review
 from snackup.db import OutboxEvent
@@ -309,3 +309,30 @@ def test_voucher_failure_rolls_back_order_number_and_inventory(client, tokens, a
     next_order = buy(client, tokens, paymentMethod='Tarjeta')
     assert next_order.status_code == 201 and next_order.json()['orderNumber'] == 2
     assert client.get('/api/legacy/v1/student/orders', headers=tokens['student']).status_code == 200
+
+
+@pytest.mark.parametrize('scheduled,status,code', [
+    (None, 409, 'BUSINESS_CLOSED'),
+    ('2026-10-23T12:06:00-06:00', 422, 'INVALID_SCHEDULE'),
+])
+def test_order_time_rules_use_clock_after_lock_wait(client, tokens, app, clock, scheduled, status, code):
+    assert client.patch('/api/v1/businesses/business-1/closing-schedule', headers=tokens['operator'],
+                        json={'autoCloseEnabled': True, 'closeTimeLocal': '13:00'}).status_code == 200
+    waited = []
+
+    def finish_product_lock_wait(connection, cursor, statement, parameters, context, executemany):
+        if 'FROM products' in statement and 'products.id IN' in statement:
+            waited.append(True)
+            clock[0] += timedelta(minutes=2 if scheduled else 60)
+
+    event.listen(app.state.db.engine, 'after_cursor_execute', finish_product_lock_wait)
+    try:
+        response = buy(client, tokens, scheduledPickupTime=scheduled)
+    finally:
+        event.remove(app.state.db.engine, 'after_cursor_execute', finish_product_lock_wait)
+    assert waited and response.status_code == status, response.text
+    assert response.json()['error']['code'] == code
+    with app.state.db.sessions() as db:
+        assert db.scalar(select(func.count()).select_from(Order)) == 0
+        assert db.get(Business, 'business-1').next_order_number == 1
+        assert db.get(Product, 'product-1').stock == 10

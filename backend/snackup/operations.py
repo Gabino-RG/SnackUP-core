@@ -571,14 +571,6 @@ def create_order_transaction(body, request: Request, db: Session, user: User,
                   .execution_options(populate_existing=True))
     require(b is not None and b.is_active, 404, "NOT_FOUND", "Local no encontrado.")
     from .v32_services import closing_at, validate_schedule
-    now = utcnow()
-    # A due worker cannot be bypassed during its one-minute interval. This guard
-    # does not commit a side effect for a rejected purchase; the worker closes it.
-    day = now.astimezone(ZoneInfo(b.timezone)).date()
-    deadline = closing_at(b, day)
-    require(deadline is None or deadline > now or b.last_auto_close_date == day,
-            409, "BUSINESS_CLOSED", "Ya pasó la hora de cierre del local.")
-    scheduled = validate_schedule(b, body.scheduledPickupTime if canonical else None, now)
     require(b.is_open, 409, "BUSINESS_CLOSED", "El local no está recibiendo pedidos.")
     product_ids = sorted(item.productId for item in body.items)
     products = db.scalars(select(Product).where(Product.id.in_(product_ids), Product.business_id == b.id)
@@ -607,9 +599,16 @@ def create_order_transaction(body, request: Request, db: Session, user: User,
     if canonical and total != body.expectedTotal:
         raise ApiError(409, "PRICE_CHANGED", "El precio cambió. Revisa el total antes de confirmar.",
                        {"currentTotal": float(total)})
-    now = utcnow()
     academic = db.scalar(select(AcademicRecord).where(AcademicRecord.email == user.email,
                          AcademicRecord.kind == "student", AcademicRecord.is_active.is_(True)))
+    # Validate time after acquiring every row lock: contention may cross closing
+    # time or shorten the pickup lead time. Rejection must leave no reservations.
+    now = utcnow()
+    day = now.astimezone(ZoneInfo(b.timezone)).date()
+    deadline = closing_at(b, day)
+    require(deadline is None or deadline > now or b.last_auto_close_date == day,
+            409, "BUSINESS_CLOSED", "Ya pasó la hora de cierre del local.")
+    scheduled = validate_schedule(b, body.scheduledPickupTime if canonical else None, now)
     values = dict(business_id=b.id, student_id=user.id, order_number=b.next_order_number,
                   customer_name=user.display_name, customer_institutional_id=academic.institutional_id if academic else None,
                   total=total, subtotal=total, created_at=now, updated_at=now,
