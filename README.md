@@ -1,5 +1,14 @@
 # SnackUP · backend independiente
 
+**Actualización del 23/10/2026:** el despliegue solicitado usa ahora **un contenedor
+para backend, PWA de usuarios y Cocina/Administración**, más PostgreSQL persistente.
+Consulta [el arranque unificado](backend/DESPLIEGUE_CONTENEDOR_UNICO.md) y
+[la auditoría de los adjuntos FastAPI V3.2](backend/AUDITORIA_FASTAPI_V3_2_ACTUAL.md).
+Hay rutas y reglas pendientes: no se sustituyeron los modelos ni se declara
+terminada la migración Firebase → REST. Las secciones siguientes describen la
+separación de código y el despliegue anterior; sus imágenes individuales siguen
+disponibles para desarrollo.
+
 Esta rama contiene la API **Python / FastAPI**, modelos **SQLAlchemy 2.x**,
 migraciones **Alembic**, PostgreSQL, Redis y tiempo real. El esquema Prisma es
 una referencia generada del modelo SQL; no se ejecuta un segundo ORM ni un

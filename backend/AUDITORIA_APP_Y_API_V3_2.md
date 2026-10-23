@@ -1,5 +1,10 @@
 # SnackUP: auditoría de la app y cobertura de API V3.2
 
+**Actualización:** [AUDITORIA_FASTAPI_V3_2_ACTUAL.md](AUDITORIA_FASTAPI_V3_2_ACTUAL.md)
+coteja los adjuntos Python y corrige §7.2: siete de las diez rutas administrativas
+se montan actualmente en `/api/v1` como extensiones; tres permanecen solo en legacy.
+También reemplaza la topología de contenedores por el requisito nuevo.
+
 Fecha: 23 de octubre de 2026.
 
 **Estado: auditoría de código y propuesta de contrato. No se ha implementado V3.2 en esta revisión.**

@@ -1,0 +1,123 @@
+name: Contenedor unico SnackUP
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/auditoria-v32-contenedor-unico, codex/backend-api-v3-fastapi]
+    paths: ['backend/**', '.github/workflows/unified-container.yml']
+permissions:
+  contents: read
+concurrency:
+  group: unified-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  unified:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      COMPOSE_PROJECT_NAME: snackup-unified-ci-${{ github.run_id }}-${{ github.run_attempt }}
+      COMPOSE_FILE: ${{ github.workspace }}/backend/compose.unified.yaml:${{ github.workspace }}/backend/deploy/unified/compose.ci.yaml
+      SNACKUP_DOMAIN: snackup.example.test
+      TLS_ACME_EMAIL: ci@snackup.example.test
+      POSTGRES_DB: snackup_unified_ci
+      POSTGRES_USER: postgres_ci
+      SNACKUP_DB_USER: snackup_ci
+      SNACKUP_INSTITUTION_ID: ci-institution
+      SNACKUP_INSTITUTION_NAME: Synthetic CI Institution
+      SNACKUP_CAFETERIA_ID: ci-cafeteria
+      SNACKUP_CAFETERIA_NAME: Synthetic CI Cafeteria
+      SNACKUP_ADMIN_EMAIL_DOMAINS: snackup.example.test
+      SNACKUP_STUDENT_EMAIL_DOMAINS: snackup.example.test
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: docker/setup-compose-action@v2
+        with:
+          version: latest
+      - uses: docker/setup-buildx-action@v3
+      - name: Prepare ephemeral credentials
+        run: |
+          python - <<'PY'
+          import os, secrets
+          with open(os.environ['GITHUB_ENV'], 'a') as target:
+              for name in ['POSTGRES_PASSWORD', 'SNACKUP_DB_PASSWORD', 'SNACKUP_SECRET_KEY']:
+                  value = secrets.token_hex(32)
+                  print('::add-mask::' + value)
+                  target.write(f'{name}={value}\n')
+          PY
+          mkdir -p reports/unified
+      - name: Validate exactly one application container plus PostgreSQL
+        run: |
+          docker compose --env-file /dev/null config --quiet
+          python - <<'PY'
+          import json, subprocess
+          config = json.loads(subprocess.check_output(['docker', 'compose', '--env-file', '/dev/null', 'config', '--format', 'json']))
+          assert set(config['services']) == {'app', 'db'}
+          assert not config['services']['db'].get('ports')
+          ports = config['services']['app']['ports']
+          assert len(ports) == 1 and ports[0]['host_ip'] == '127.0.0.1'
+          assert str(ports[0]['published']) == '18080'
+          env = config['services']['app']['environment']
+          assert env['SNACKUP_REDIS_URL'].startswith('unix:///')
+          assert env['SNACKUP_PASSWORD_RESET_FRONTEND_PATH'] == '/paneles/'
+          assert env['SNACKUP_PUBLIC_ORIGIN'] == 'https://snackup.example.test'
+          PY
+      - name: Build the single image from pinned frontend commits
+        run: docker compose --env-file /dev/null build app
+      - name: Start all components and run HTTP and Socket.IO smoke
+        run: |
+          test "$(docker image inspect --format '{{.Config.User}}' snackup-unified:local)" = '10001:10001'
+          docker compose --env-file /dev/null up -d --no-build --wait --wait-timeout 180
+          python - <<'PY'
+          from pathlib import Path
+          pinned = [line for line in Path('requirements.lock').read_text().splitlines() if line.startswith('websockets==')]
+          assert len(pinned) == 1
+          Path('reports/unified/smoke-requirements.txt').write_text(pinned[0] + '\n')
+          PY
+          python -m pip install -r reports/unified/smoke-requirements.txt
+          python deploy/smoke_apps.py --report reports/unified/smoke.json
+      - name: Verify a child failure restarts the complete application
+        run: |
+          docker compose --env-file /dev/null exec -T app redis-cli -s /tmp/snackup-redis.sock SHUTDOWN
+          python - <<'PY'
+          import json, subprocess, time
+          container = subprocess.check_output(['docker', 'compose', 'ps', '--all', '-q', 'app'], text=True).strip()
+          for attempt in range(90):
+              state = json.loads(subprocess.check_output(['docker', 'inspect', container]))[0]
+              if state['RestartCount'] >= 1 and state['State'].get('Health', {}).get('Status') == 'healthy':
+                  break
+              time.sleep(1)
+          else:
+              raise SystemExit('Application did not recover after Redis stopped')
+          PY
+          python deploy/smoke_apps.py --report reports/unified/smoke-after-restart.json
+      - name: Collect redacted diagnostics
+        if: always()
+        run: |
+          python - <<'PY'
+          import os, subprocess
+          from pathlib import Path
+          target = Path('reports/unified')
+          target.mkdir(parents=True, exist_ok=True)
+          for filename, tail in [('status.txt', ['ps', '--all']), ('containers.log', ['logs', '--no-color', '--tail', '150'])]:
+              result = subprocess.run(['docker', 'compose', '--env-file', '/dev/null', *tail], capture_output=True, text=True)
+              output = result.stdout + result.stderr
+              for name in ['POSTGRES_PASSWORD', 'SNACKUP_DB_PASSWORD', 'SNACKUP_SECRET_KEY']:
+                  if os.environ.get(name):
+                      output = output.replace(os.environ[name], '[REDACTED]')
+              (target / filename).write_text(output)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unified-container-${{ github.run_id }}-${{ github.run_attempt }}
+          path: backend/reports/unified
+      - name: Remove only this disposable CI project
+        if: always()
+        run: docker compose --env-file /dev/null down --volumes --remove-orphans
