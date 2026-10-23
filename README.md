@@ -32,6 +32,7 @@ pendientes; Docker no realiza esa migración. `main` y el respaldo
 - [OpenAPI V3](backend/contracts/v3.openapi.json) y [mapa Prisma](backend/schema.prisma).
 - [Contrato de paneles](backend/contracts/panels.openapi.json) y [tiempo real legacy](docs/integracion/REALTIME.md).
 - [Evidencia de validación V3](backend/VALIDACION_V3.md).
+- [Resultados de separación, contenedores e integración](docs/VALIDACION_SEPARACION.md).
 
 Las integraciones nuevas utilizan `/api/v1/`. El portal actual mantiene
 `/api/legacy/v1/`; cambiarle solo el prefijo rompería roles, payloads y respuestas.

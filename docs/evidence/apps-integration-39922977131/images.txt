@@ -1,0 +1,4 @@
+[snackup-backend:apps-ci] sha256:79240346c92c4b1c3399e5a354e300e0598ef03ba2cddcbbe7ddfd373e51e71c
+[snackup-usuarios:apps-ci] sha256:9c53d7f945059fd6b032bc698bad35aff101e96f4d0d7f958eccfc709e2c3088
+[snackup-cocina:apps-ci] sha256:24aacf4450f61efd17c1a26abc5ed9923499f22ae25cc6c594ed05cc89614c66
+[snackup-proxy:apps-ci] sha256:d7e8c98ac12e9e46982ccd6757b1fb38ba423c9d04c3836b03af3d856e29f181

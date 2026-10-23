@@ -1,0 +1,14 @@
+{
+  "backend": {
+    "ref": "refs/heads/codex/backend-api-v3-fastapi",
+    "sha": "88bc0b77ae713784a37eed3ec26b2cd8335322e2"
+  },
+  "usuarios": {
+    "ref": "refs/heads/codex/usuarios-pwa",
+    "sha": "a00d0bf4ecdae74a89f3afbe8ec3d0758efb8884"
+  },
+  "paneles": {
+    "ref": "refs/heads/codex/entrega-paneles-rest",
+    "sha": "19c81fdee29600d66d9dcb1a4f109a78aeba51f6"
+  }
+}
