@@ -115,10 +115,10 @@ jobs:
       - uses: docker/setup-buildx-action@v3
       - name: Validate the composed CI deployment without printing environment values
         run: |
-          docker compose --env-file /dev/null config --quiet
+          docker compose --env-file /dev/null --profile tools config --quiet
           python - <<'PY'
           import json, os, pathlib, subprocess
-          result = subprocess.run(['docker', 'compose', '--env-file', '/dev/null', 'config', '--format', 'json'], check=True, capture_output=True, text=True)
+          result = subprocess.run(['docker', 'compose', '--env-file', '/dev/null', '--profile', 'tools', 'config', '--format', 'json'], check=True, capture_output=True, text=True)
           config = json.loads(result.stdout)
           services = config['services']
           assert config['name'] == os.environ['COMPOSE_PROJECT_NAME']
