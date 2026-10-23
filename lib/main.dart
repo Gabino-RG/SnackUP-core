@@ -36,13 +36,13 @@ void main() async {
   // Configuración de notificaciones (solo intentamos si ya se inicializó)
   try {
     FirebaseMessaging messaging = FirebaseMessaging.instance;
-    await messaging.requestPermission(
-      alert: true, badge: true, sound: true,
-    );
+    await messaging.requestPermission(alert: true, badge: true, sound: true);
   } catch (e) {
-    print('Nota: Las notificaciones pueden no estar configuradas en Web o dieron error: $e');
+    print(
+      'Nota: Las notificaciones pueden no estar configuradas en Web o dieron error: $e',
+    );
   }
-  
+
   runApp(const SnackUpApp());
 }
 
@@ -58,31 +58,32 @@ class SnackUpApp extends StatelessWidget {
       // --- TEMA GLOBAL OPTIMIZADO ---
       theme: ThemeData(
         useMaterial3: true,
-        fontFamily: 'Quicksand',
+        scaffoldBackgroundColor: AppColors.background,
+        fontFamily: 'Lato',
 
         // COLOR SCHEME MEJORADO
         colorScheme: ColorScheme.fromSeed(
           seedColor: AppColors.primary,
           brightness: Brightness.light,
-          
+
           // Primarios
           primary: AppColors.primary,
           onPrimary: Colors.white,
-          
+
           // Secundarios
           secondary: AppColors.accent,
-          onSecondary: Colors.white,
-          
+          onSecondary: AppColors.primary,
+
           // Terciarios
           tertiary: AppColors.tertiary,
           onTertiary: Colors.white,
-          
+
           // Fondos y superficies
           background: AppColors.background,
           onBackground: AppColors.textPrimary,
           surface: AppColors.componentBase,
           onSurface: AppColors.textPrimary,
-          
+
           // Variantes modernas
           surfaceVariant: AppColors.componentBase.withOpacity(0.6),
           outline: AppColors.borders,
@@ -93,11 +94,9 @@ class SnackUpApp extends StatelessWidget {
           // Display (Pantallas principales)
           displayLarge: AppText.h1,
           displayMedium: AppText.h1.copyWith(fontSize: 24), // H2
-          
           // Headlines
           headlineMedium: AppText.h3,
           headlineSmall: AppText.h3.copyWith(fontSize: 18), // H4
-          
           // Titles
           titleLarge: AppText.h3.copyWith(fontWeight: FontWeight.w700),
           titleMedium: AppText.body.copyWith(
@@ -108,12 +107,12 @@ class SnackUpApp extends StatelessWidget {
             fontSize: 14,
             fontWeight: FontWeight.w500,
           ),
-          
+
           // Body
           bodyLarge: AppText.body,
           bodyMedium: AppText.body.copyWith(fontSize: 14),
           bodySmall: AppText.notes,
-          
+
           // Labels (Botones, Chips)
           labelLarge: AppText.body.copyWith(
             fontWeight: FontWeight.w600,
@@ -161,7 +160,7 @@ class SnackUpApp extends StatelessWidget {
         filledButtonTheme: FilledButtonThemeData(
           style: FilledButton.styleFrom(
             backgroundColor: AppColors.accent,
-            foregroundColor: Colors.white,
+            foregroundColor: AppColors.primary,
             textStyle: AppText.body.copyWith(
               fontWeight: FontWeight.w600,
               fontSize: 16,
@@ -177,9 +176,7 @@ class SnackUpApp extends StatelessWidget {
         textButtonTheme: TextButtonThemeData(
           style: TextButton.styleFrom(
             foregroundColor: AppColors.primary,
-            textStyle: AppText.body.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
+            textStyle: AppText.body.copyWith(fontWeight: FontWeight.w600),
             padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
@@ -193,7 +190,7 @@ class SnackUpApp extends StatelessWidget {
           elevation: 0,
           surfaceTintColor: Colors.transparent,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.all(Radius.circular(16)),
+            borderRadius: BorderRadius.all(Radius.circular(24)),
           ),
         ),
 
@@ -211,10 +208,7 @@ class SnackUpApp extends StatelessWidget {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(
-              color: AppColors.primary,
-              width: 2,
-            ),
+            borderSide: const BorderSide(color: AppColors.primary, width: 2),
           ),
           errorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
@@ -242,9 +236,7 @@ class SnackUpApp extends StatelessWidget {
             horizontal: 16,
             vertical: 12,
           ),
-          titleTextStyle: AppText.body.copyWith(
-            fontWeight: FontWeight.w500,
-          ),
+          titleTextStyle: AppText.body.copyWith(fontWeight: FontWeight.w500),
           subtitleTextStyle: AppText.notes,
         ),
 
@@ -281,7 +273,8 @@ class SnackUpApp extends StatelessWidget {
         ),
       ),
 
-      home: const AuthWrapper(), // Asegúrate de que AuthWrapper esté en auth_gate.dart
+      home:
+          const AuthWrapper(), // Asegúrate de que AuthWrapper esté en auth_gate.dart
     );
   }
 }

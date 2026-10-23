@@ -85,6 +85,7 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
+  fake_cloud_firestore: 2.5.2
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -104,6 +105,8 @@ flutter:
     - family: Lato
       fonts:
         # La ruta es la carpeta 'Lato' y luego el archivo
+        - asset: assets/fonts/Lato/Lato-Regular.ttf
+          weight: 400
         - asset: assets/fonts/Lato/Lato-Bold.ttf
           weight: 700
         # (Puedes añadir los otros pesos de Lato si los necesitas, ej. Lato-Regular.ttf)

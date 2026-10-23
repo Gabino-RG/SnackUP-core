@@ -8,7 +8,13 @@ import 'package:snackup/theme/app_colors.dart';
 import 'package:snackup/theme/app_text.dart';
 
 class ProfileOrdersScreen extends StatefulWidget {
-  const ProfileOrdersScreen({super.key});
+  final int initialTab;
+  final bool favoritesOnly;
+  const ProfileOrdersScreen({
+    super.key,
+    this.initialTab = 0,
+    this.favoritesOnly = false,
+  });
 
   @override
   State<ProfileOrdersScreen> createState() => _ProfileOrdersScreenState();
@@ -24,7 +30,11 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(
+      length: 3,
+      vsync: this,
+      initialIndex: widget.initialTab,
+    );
 
     _allOrdersStream = FirebaseFirestore.instance
         .collection('orders')
@@ -48,6 +58,7 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
 
   @override
   Widget build(BuildContext context) {
+    if (widget.favoritesOnly) return Scaffold(body: _buildFavoritesTab());
     return Scaffold(
       appBar: AppBar(
         backgroundColor: AppColors.background,
@@ -58,10 +69,7 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
           child: Container(
             decoration: BoxDecoration(
               border: Border(
-                bottom: BorderSide(
-                  color: AppColors.borders,
-                  width: 1,
-                ),
+                bottom: BorderSide(color: AppColors.borders, width: 1),
               ),
             ),
             child: TabBar(
@@ -105,21 +113,23 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
         if (snapshot.hasError) {
           return _buildErrorState('Error al cargar pedidos activos');
         }
-        
+
         if (snapshot.connectionState == ConnectionState.waiting) {
           return _buildLoadingState('Cargando pedidos activos...');
         }
-        
+
         final activeDocs = snapshot.data!.docs.where((doc) {
           final status = (doc.data() as Map<String, dynamic>)['status'];
-          return status == 'pending' || status == 'preparing' || status == 'ready';
+          return status == 'pending' ||
+              status == 'preparing' ||
+              status == 'ready';
         }).toList();
-        
+
         if (activeDocs.isEmpty) {
           return _buildEmptyState(
             icon: Icons.pending_actions_rounded,
             title: 'No tienes pedidos activos',
-            subtitle: 'Los pedidos que hagas aparecerán aquí'
+            subtitle: 'Los pedidos que hagas aparecerán aquí',
           );
         }
 
@@ -142,21 +152,21 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
         if (snapshot.hasError) {
           return _buildErrorState('Error al cargar historial');
         }
-        
+
         if (snapshot.connectionState == ConnectionState.waiting) {
           return _buildLoadingState('Cargando historial...');
         }
-        
+
         final historyDocs = snapshot.data!.docs.where((doc) {
           final status = (doc.data() as Map<String, dynamic>)['status'];
           return status == 'completed' || status == 'cancelled';
         }).toList();
-        
+
         if (historyDocs.isEmpty) {
           return _buildEmptyState(
             icon: Icons.history_rounded,
             title: 'No hay historial de pedidos',
-            subtitle: 'Tu historial de pedidos aparecerá aquí'
+            subtitle: 'Tu historial de pedidos aparecerá aquí',
           );
         }
 
@@ -179,16 +189,16 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
         if (snapshot.hasError) {
           return _buildErrorState('Error al cargar favoritos');
         }
-        
+
         if (snapshot.connectionState == ConnectionState.waiting) {
           return _buildLoadingState('Cargando favoritos...');
         }
-        
+
         if (snapshot.data!.docs.isEmpty) {
           return _buildEmptyState(
             icon: Icons.favorite_border_rounded,
             title: 'No tienes favoritos',
-            subtitle: 'Guarda tus productos favoritos para acceder rápido'
+            subtitle: 'Guarda tus productos favoritos para acceder rápido',
           );
         }
 
@@ -210,13 +220,11 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
     final String numeroDeControl = order['userNumeroDeControl'] ?? '0000';
     final double totalPrice = order['totalPrice'] ?? 0.0;
     final List<dynamic> items = order['items'] ?? [];
-    final Timestamp? createdAt = order['createdAt'] as Timestamp?;
-
     // Determinar paso actual del stepper
     int currentStep = 0;
     String statusText = 'Recibido';
     Color statusColor = AppColors.primary;
-    
+
     if (status == 'preparing') {
       currentStep = 1;
       statusText = 'Preparando';
@@ -234,17 +242,25 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
           "Recibido",
           textStyle: TextStyle(
             fontWeight: currentStep >= 0 ? FontWeight.bold : FontWeight.normal,
-            color: currentStep >= 0 ? AppColors.primary : AppColors.textSecondary,
+            color: currentStep >= 0
+                ? AppColors.primary
+                : AppColors.textSecondary,
           ),
         ),
         iconWidget: Container(
           width: 32,
           height: 32,
           decoration: BoxDecoration(
-            color: currentStep >= 0 ? AppColors.primary : AppColors.componentBase,
+            color: currentStep >= 0
+                ? AppColors.primary
+                : AppColors.componentBase,
             shape: BoxShape.circle,
           ),
-          child: Icon(Icons.receipt_long_rounded, color: currentStep >= 0 ? Colors.white : AppColors.textSecondary, size: 16),
+          child: Icon(
+            Icons.receipt_long_rounded,
+            color: currentStep >= 0 ? Colors.white : AppColors.textSecondary,
+            size: 16,
+          ),
         ),
       ),
       StepperData(
@@ -252,17 +268,25 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
           "Preparando",
           textStyle: TextStyle(
             fontWeight: currentStep >= 1 ? FontWeight.bold : FontWeight.normal,
-            color: currentStep >= 1 ? AppColors.tertiary : AppColors.textSecondary,
+            color: currentStep >= 1
+                ? AppColors.tertiary
+                : AppColors.textSecondary,
           ),
         ),
         iconWidget: Container(
           width: 32,
           height: 32,
           decoration: BoxDecoration(
-            color: currentStep >= 1 ? AppColors.tertiary : AppColors.componentBase,
+            color: currentStep >= 1
+                ? AppColors.tertiary
+                : AppColors.componentBase,
             shape: BoxShape.circle,
           ),
-          child: Icon(Icons.restaurant_rounded, color: currentStep >= 1 ? Colors.white : AppColors.textSecondary, size: 16),
+          child: Icon(
+            Icons.restaurant_rounded,
+            color: currentStep >= 1 ? Colors.white : AppColors.textSecondary,
+            size: 16,
+          ),
         ),
       ),
       StepperData(
@@ -270,17 +294,25 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
           "¡Listo!",
           textStyle: TextStyle(
             fontWeight: currentStep >= 2 ? FontWeight.bold : FontWeight.normal,
-            color: currentStep >= 2 ? AppColors.success : AppColors.textSecondary,
+            color: currentStep >= 2
+                ? AppColors.success
+                : AppColors.textSecondary,
           ),
         ),
         iconWidget: Container(
           width: 32,
           height: 32,
           decoration: BoxDecoration(
-            color: currentStep >= 2 ? AppColors.success : AppColors.componentBase,
+            color: currentStep >= 2
+                ? AppColors.success
+                : AppColors.componentBase,
             shape: BoxShape.circle,
           ),
-          child: Icon(Icons.check_circle_rounded, color: currentStep >= 2 ? Colors.white : AppColors.textSecondary, size: 16),
+          child: Icon(
+            Icons.check_circle_rounded,
+            color: currentStep >= 2 ? Colors.white : AppColors.textSecondary,
+            size: 16,
+          ),
         ),
       ),
     ];
@@ -299,7 +331,10 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: statusColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
@@ -361,7 +396,10 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.success,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -399,7 +437,9 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
     final bool isCompleted = status == 'completed';
     final Color statusColor = isCompleted ? AppColors.success : AppColors.error;
     final String statusText = isCompleted ? 'Completado' : 'Cancelado';
-    final IconData statusIcon = isCompleted ? Icons.check_circle_rounded : Icons.cancel_rounded;
+    final IconData statusIcon = isCompleted
+        ? Icons.check_circle_rounded
+        : Icons.cancel_rounded;
 
     return Material(
       color: AppColors.background,
@@ -416,15 +456,11 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
                 color: statusColor.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(
-                statusIcon,
-                color: statusColor,
-                size: 24,
-              ),
+              child: Icon(statusIcon, color: statusColor, size: 24),
             ),
-            
+
             const SizedBox(width: 16),
-            
+
             // INFORMACIÓN DEL PEDIDO
             Expanded(
               child: Column(
@@ -456,7 +492,7 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
                 ],
               ),
             ),
-            
+
             // BOTONES DE ACCIÓN
             Row(
               mainAxisSize: MainAxisSize.min,
@@ -506,37 +542,31 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
     );
   }
 
-  // NUEVA FUNCIÓN: Navegar a pantalla de calificación
-  void _rateOrder(BuildContext context, String orderId, String businessId) {
-    // Obtener nombre del negocio para mostrar en la pantalla de calificación
-    FirebaseFirestore.instance
-        .collection('businesses')
-        .doc(businessId)
-        .get()
-        .then((businessDoc) {
-      final businessName = businessDoc.data()?['name'] ?? 'El Negocio';
-      
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => RateOrderScreen(
-            orderId: orderId,
-            businessId: businessId,
-            businessName: businessName,
-          ),
+  Future<void> _rateOrder(
+    BuildContext context,
+    String orderId,
+    String businessId,
+  ) async {
+    String name = 'Cafetería';
+    try {
+      final business = await FirebaseFirestore.instance
+          .collection('businesses')
+          .doc(businessId)
+          .get();
+      name = business.data()?['name'] as String? ?? name;
+    } catch (_) {
+      // Rating is still available if the cafeteria name cannot be loaded.
+    }
+    if (!context.mounted) return;
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => RateOrderScreen(
+          orderId: orderId,
+          businessId: businessId,
+          businessName: name,
         ),
-      );
-    }).catchError((error) {
-      // Si hay error al obtener el nombre, usar uno por defecto
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => RateOrderScreen(
-            orderId: orderId,
-            businessId: businessId,
-            businessName: 'El Negocio',
-          ),
-        ),
-      );
-    });
+      ),
+    );
   }
 
   Widget _buildFavoriteCard(QueryDocumentSnapshot doc) {
@@ -565,7 +595,9 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
                 child: Image.network(
-                  imageUrl.isNotEmpty ? imageUrl : 'https://via.placeholder.com/100',
+                  imageUrl.isNotEmpty
+                      ? imageUrl
+                      : 'https://via.placeholder.com/100',
                   fit: BoxFit.cover,
                   errorBuilder: (context, error, stackTrace) {
                     return Container(
@@ -580,9 +612,9 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
                 ),
               ),
             ),
-            
+
             const SizedBox(width: 16),
-            
+
             // INFORMACIÓN DEL FAVORITO
             Expanded(
               child: Column(
@@ -597,7 +629,10 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
                   ),
                   const SizedBox(height: 4),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.success.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(6),
@@ -625,9 +660,9 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
                 ],
               ),
             ),
-            
+
             const SizedBox(width: 12),
-            
+
             // BOTÓN DE AÑADIR AL CARRITO
             IconButton(
               icon: Container(
@@ -652,7 +687,10 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
   }
 
   Widget _buildOrderItemsSummary(List<dynamic> items) {
-    final totalItems = items.fold<int>(0, (sum, item) => sum + (item['quantity'] as int? ?? 1));
+    final totalItems = items.fold<int>(
+      0,
+      (sum, item) => sum + (item['quantity'] as int? ?? 1),
+    );
     final itemsSummary = items
         .map((item) => '${item['quantity']}x ${item['name']}')
         .take(2)
@@ -671,17 +709,13 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
         const SizedBox(height: 8),
         Text(
           itemsSummary,
-          style: AppText.body.copyWith(
-            color: AppColors.textPrimary,
-          ),
+          style: AppText.body.copyWith(color: AppColors.textPrimary),
         ),
         if (items.length > 2) ...[
           const SizedBox(height: 4),
           Text(
             '+ ${items.length - 2} productos más',
-            style: AppText.notes.copyWith(
-              color: AppColors.textSecondary,
-            ),
+            style: AppText.notes.copyWith(color: AppColors.textSecondary),
           ),
         ],
         const SizedBox(height: 4),
@@ -702,7 +736,10 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
     if (userId == null || items.isEmpty) return;
 
     try {
-      final cartRef = FirebaseFirestore.instance.collection('users').doc(userId).collection('cart');
+      final cartRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('cart');
       final productsRef = FirebaseFirestore.instance.collection('products');
       final batch = FirebaseFirestore.instance.batch();
       int itemsAdded = 0;
@@ -711,7 +748,8 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
         if (item is Map<String, dynamic> && item.containsKey('productId')) {
           final productDoc = await productsRef.doc(item['productId']).get();
 
-          if (productDoc.exists && (productDoc.data()?['isAvailable'] ?? false)) {
+          if (productDoc.exists &&
+              (productDoc.data()?['isAvailable'] ?? false)) {
             final productData = productDoc.data()!;
             final docRef = cartRef.doc(item['productId']);
             batch.set(docRef, {
@@ -736,16 +774,22 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
             content: Text('$itemsAdded item(s) añadidos al carrito!'),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('No se pudo reordenar. Los productos pueden no estar disponibles.'),
+            content: const Text(
+              'No se pudo reordenar. Los productos pueden no estar disponibles.',
+            ),
             backgroundColor: AppColors.warning,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         );
       }
@@ -755,13 +799,18 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
           content: Text('Error al reordenar: ${e.toString()}'),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       );
     }
   }
 
-  Future<void> _addFavoriteToCart(BuildContext context, DocumentSnapshot doc) async {
+  Future<void> _addFavoriteToCart(
+    BuildContext context,
+    DocumentSnapshot doc,
+  ) async {
     final userId = FirebaseAuth.instance.currentUser?.uid;
     if (userId == null) return;
 
@@ -784,10 +833,14 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
       if (!productDoc.exists || !(productDoc.data()?['isAvailable'] ?? false)) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Este producto no está disponible actualmente.'),
+            content: const Text(
+              'Este producto no está disponible actualmente.',
+            ),
             backgroundColor: AppColors.warning,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         );
         return;
@@ -812,7 +865,9 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
           content: Text('"${favData['name']}" añadido al carrito.'),
           backgroundColor: AppColors.success,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       );
     } catch (e) {
@@ -821,7 +876,9 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
           content: Text('Error al añadir al carrito: ${e.toString()}'),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       );
     }
@@ -843,9 +900,7 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
             const SizedBox(height: 16),
             Text(
               message,
-              style: AppText.h3.copyWith(
-                color: AppColors.textPrimary,
-              ),
+              style: AppText.h3.copyWith(color: AppColors.textPrimary),
               textAlign: TextAlign.center,
             ),
           ],
@@ -863,9 +918,7 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
           const SizedBox(height: 16),
           Text(
             message,
-            style: AppText.body.copyWith(
-              color: AppColors.textSecondary,
-            ),
+            style: AppText.body.copyWith(color: AppColors.textSecondary),
           ),
         ],
       ),
@@ -899,17 +952,13 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
             const SizedBox(height: 24),
             Text(
               title,
-              style: AppText.h3.copyWith(
-                color: AppColors.textPrimary,
-              ),
+              style: AppText.h3.copyWith(color: AppColors.textPrimary),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 12),
             Text(
               subtitle,
-              style: AppText.body.copyWith(
-                color: AppColors.textSecondary,
-              ),
+              style: AppText.body.copyWith(color: AppColors.textSecondary),
               textAlign: TextAlign.center,
             ),
           ],

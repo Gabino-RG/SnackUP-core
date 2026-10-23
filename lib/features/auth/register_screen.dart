@@ -35,11 +35,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
 
     try {
-      UserCredential userCredential =
-          await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-      );
+      UserCredential userCredential = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(
+            email: _emailController.text.trim(),
+            password: _passwordController.text.trim(),
+          );
 
       if (userCredential.user != null) {
         String uid = userCredential.user!.uid;
@@ -63,7 +63,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (mounted) {
         Navigator.of(context).pop();
       }
-
     } on FirebaseAuthException catch (e) {
       setState(() {
         _isLoading = false;
@@ -407,7 +406,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           height: 24,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
                           ),
                         ),
                       ),
@@ -417,7 +418,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       onPressed: _register,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.accent,
-                        foregroundColor: Colors.white,
+                        foregroundColor: AppColors.primary,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
@@ -434,7 +435,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             'Crear Mi Cuenta',
                             style: AppText.body.copyWith(
                               fontWeight: FontWeight.w600,
-                              color: Colors.white,
+                              color: AppColors.primary,
                               fontSize: 16,
                             ),
                           ),

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'business_login_screen.dart';
+
 import 'register_screen.dart';
 import 'package:snackup/theme/app_colors.dart';
 import 'package:snackup/theme/app_text.dart';
@@ -24,7 +24,7 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() => _errorMessage = 'Por favor, llena ambos campos');
       return;
     }
-    
+
     setState(() {
       _isLoading = true;
       _errorMessage = '';
@@ -38,13 +38,22 @@ class _LoginScreenState extends State<LoginScreen> {
     } on FirebaseAuthException catch (e) {
       setState(() {
         _isLoading = false;
-        if (e.code == 'user-not-found' || e.code == 'wrong-password' || e.code == 'invalid-credential') {
+        if (e.code == 'user-not-found' ||
+            e.code == 'wrong-password' ||
+            e.code == 'invalid-credential') {
           _errorMessage = 'Correo o contraseña incorrectos';
         } else {
           _errorMessage = 'Ocurrió un error. Intenta de nuevo.';
         }
       });
     }
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
   }
 
   void _togglePasswordVisibility() {
@@ -235,7 +244,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         height: 24,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.white,
+                          ),
                         ),
                       ),
                     ),
@@ -311,10 +322,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   decoration: BoxDecoration(
                     border: Border(
-                      top: BorderSide(
-                        color: AppColors.borders,
-                        width: 1,
-                      ),
+                      top: BorderSide(color: AppColors.borders, width: 1),
                     ),
                   ),
                   child: Column(
@@ -322,13 +330,15 @@ class _LoginScreenState extends State<LoginScreen> {
                       // BOTÓN DE REGISTRO
                       FilledButton.tonal(
                         onPressed: () {
-                          Navigator.of(context).push(MaterialPageRoute(
-                            builder: (context) => const RegisterScreen(),
-                          ));
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => const RegisterScreen(),
+                            ),
+                          );
                         },
                         style: FilledButton.styleFrom(
                           backgroundColor: AppColors.accent.withOpacity(0.1),
-                          foregroundColor: AppColors.accent,
+                          foregroundColor: AppColors.primary,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -343,45 +353,13 @@ class _LoginScreenState extends State<LoginScreen> {
                               'Crear Cuenta Nueva',
                               style: AppText.body.copyWith(
                                 fontWeight: FontWeight.w600,
-                                color: AppColors.accent,
+                                color: AppColors.primary,
                               ),
                             ),
                           ],
                         ),
                       ),
                       const SizedBox(height: 12),
-                      // BOTÓN PARA NEGOCIOS
-                      OutlinedButton(
-                        onPressed: () {
-                          Navigator.of(context).push(MaterialPageRoute(
-                            builder: (context) => const BusinessLoginScreen(),
-                          ));
-                        },
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.textSecondary,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          side: BorderSide(
-                            color: AppColors.borders,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.business_center_rounded, size: 18),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Acceso para Negocios',
-                              style: AppText.body.copyWith(
-                                fontWeight: FontWeight.w500,
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
                     ],
                   ),
                 ),
