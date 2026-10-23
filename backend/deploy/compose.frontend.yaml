@@ -1,0 +1,12 @@
+# Add only after preparing a reviewed frontend build with index.html.
+services:
+  api:
+    environment:
+      SNACKUP_WEB_DIR: /srv/web
+    volumes:
+      - type: bind
+        source: ${SNACKUP_FRONTEND_DIR:?Configure absolute SNACKUP_FRONTEND_DIR}
+        target: /srv/web
+        read_only: true
+        bind:
+          create_host_path: false

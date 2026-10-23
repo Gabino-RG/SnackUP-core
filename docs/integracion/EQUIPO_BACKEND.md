@@ -1,6 +1,19 @@
 # Empezar aquí: equipo de backend y asistente de IA
 
-Entrega de **Administración y Cocina/Local de SnackUP**, 20 de octubre de 2026.
+Entrega de **Administración y Cocina/Local de SnackUP**, actualizada el 22 de octubre de 2026.
+
+**El desarrollo del backend ya se realiza en este repositorio.** Comenzar por
+[`backend/README.md`](../../backend/README.md) para instalación, migraciones,
+cuenta maestra, padrón, pruebas y despliegue. El stack implementado es
+FastAPI + SQLAlchemy + PostgreSQL + Redis. El contrato de los 43 endpoints del
+portal se conserva; las rutas nuevas del alumno están documentadas por separado
+en [`backend/API_ALUMNOS.md`](../../backend/API_ALUMNOS.md).
+
+El correo se contrasta con un padrón autorizado para obtener identidad, carrera y
+grupo; no se deducen estos datos de un formato de correo aún desconocido. Verificar
+el buzón no concede acceso administrativo. Falta recibir servidor, dominio, SMTP
+y datos institucionales. El objetivo actual es **1,000 alumnos simultáneos** más
+operadores; las referencias históricas a 500 no constituyen una medición de capacidad.
 
 **Rama de entrega:** [`codex/entrega-paneles-rest`](https://github.com/Gabino-RG/SnackUP-core/tree/codex/entrega-paneles-rest).
 **Base de respaldo conservada:** `respaldo/2026-10-13-antes-restablecimiento`, commit `006ef99`.
@@ -24,7 +37,7 @@ automáticas, contraseñas, generador de pedidos o inicializadores de ejemplos.
 
 ## Leer en este orden
 
-1. [Guía de integración](README.md): alcance, conexión, compilación y decisiones pendientes.
+1. [Backend implementado](../../backend/README.md) y [guía del frontend](README.md): instalación, alcance y pendientes.
 2. [Contrato OpenAPI 3.1](openapi.json): 43 operaciones, entradas, respuestas y permisos.
 3. [Manual completo](https://github.com/Gabino-RG/SnackUP-core/blob/6fbe5d6260b76d35960fe2e165b738766e4b81b4/docs/MANUAL_BACKEND_PANELES.md): reglas y explicación de los flujos (también incluido en el paquete).
 4. [Protocolo WebSocket](REALTIME.md): mensajes realmente consumidos por Cocina.
@@ -44,8 +57,8 @@ cd SnackUP-core
 git rev-parse HEAD
 ```
 
-Registrar el SHA que se recibió. Desarrollar el backend en su repositorio acordado
-o en una rama de trabajo propia. No sobrescribir la rama de respaldo ni fusionar
+Registrar el SHA que se recibió. Continuar el backend en `backend/`, sobre la rama
+de entrega o una rama de trabajo derivada. No sobrescribir la rama de respaldo ni fusionar
 cambios en `main` como parte de esta integración sin una instrucción del responsable.
 No usar simplemente el ZIP de la rama predeterminada: esa rama contiene una versión
 anterior de la aplicación.
@@ -186,7 +199,12 @@ respaldo ni publiques o fusiones cambios en main sin autorización del responsab
 
 Entrega código, migraciones, configuración sin secretos, instrucciones HTTPS,
 pruebas por endpoint, resultados de la matriz de aceptación y límites pendientes.
-No afirmes 500 sesiones ni funcionamiento real de correo, Google, SQL o WSS sin
-evidencia del entorno definitivo. No reveles contraseñas ni tokens en el reporte.
+Continúa la implementación existente en backend/ (FastAPI, PostgreSQL, Redis).
+Lee también backend/README.md, backend/API_ALUMNOS.md y sus pruebas. No copies
+scripts/review como servidor productivo. El correo enlaza un padrón autorizado;
+la carrera no se inventa ni la clasificación staff concede permisos de SnackUP.
+El objetivo actualizado es 1,000 alumnos simultáneos más operadores. No afirmes
+esa capacidad ni funcionamiento de correo, Google o WSS en producción sin evidencia
+del entorno definitivo. No reveles contraseñas ni tokens en el reporte.
 Si no puedes leer el código, indícalo y solicita acceso; no simules que lo revisaste.
 ```

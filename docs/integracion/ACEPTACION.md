@@ -1,7 +1,9 @@
 # Aceptación de la conexión al backend
 
-Estado inicial de esta matriz: **pendiente en el backend definitivo**.
-Las pruebas con Python/SQLite y respuestas simuladas no sustituyen esta aceptación.
+Estado de esta matriz: **aceptación en servidor institucional pendiente**.
+La implementación SQL está en [`backend/`](../../backend/README.md), con pruebas
+automáticas de API, permisos y concurrencia. Consultar su workflow para el commit
+recibido. Las pruebas locales y el simulador no sustituyen la aceptación del despliegue.
 Registrar para cada caso: commit frontend/backend, entorno, fecha, resultado y evidencia.
 Usar cuentas autorizadas de prueba. No utilizar la base productiva para carga o fallos.
 
@@ -32,11 +34,13 @@ Usar cuentas autorizadas de prueba. No utilizar la base productiva para carga o 
 | Contraseñas | Correo real, token de un uso/caducado y revocación al cambiar; respuesta genérica de recuperación. |
 | Google, si se habilita | OIDC validado en servidor; nuevo usuario queda pendiente; nunca concede rol por correo o fragmento URL. |
 | Dispositivos | Acceso, filtros, formularios y entrega revisados en escritorio, tablet y móvil; cámara en HTTPS con permiso. |
-| Capacidad | Medir objetivo de 500 sesiones con hardware/datos/carga definidos, p95, errores, integridad y comportamiento sin WSS. |
+| Capacidad | Medir objetivo actualizado de 1,000 alumnos simultáneos más operadores, con hardware/datos/carga definidos, p95, errores, integridad y comportamiento sin WSS. |
 | Operación | Certificados, respaldo/restauración SQL+medios, logs sin secretos, migraciones y procedimiento de maestro documentados. |
 
-Decisiones a cerrar: stack y motor SQL, dominio/HTTPS, correo, OAuth, respaldo
-manual por matrícula, pagos/conciliación, conservación de datos y capacidad real.
+Implementado: FastAPI/PostgreSQL, entrega mediante código de pedido y efectivo al
+recoger (sin afirmar cobro conciliado). Google está deshabilitado. Decisiones a
+cerrar: dominio/HTTPS, acceso y formato de padrón institucional, correo, futura
+pasarela de pagos si se requiere, conservación de datos y capacidad real.
 No implementar silenciosamente múltiples operadores por local o rutas diferentes:
 esos cambios afectan el contrato del frontend y requieren revisión conjunta.
 

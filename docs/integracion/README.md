@@ -3,6 +3,12 @@
 **Equipo de backend y asistente de IA:** comenzar por [EQUIPO_BACKEND.md](EQUIPO_BACKEND.md).
 Incluye orden de trabajo, entregables y un bloque de instrucciones listo para copiar.
 
+**Actualización del 22 de octubre de 2026:** el backend se desarrolla en este mismo
+repositorio, en [`backend/`](../../backend/README.md), con FastAPI, PostgreSQL y Redis.
+Su instalación y pruebas son independientes del simulador `scripts/review`.
+El objetivo actualizado es **1,000 alumnos simultáneos**, pendiente de medición en
+el servidor asignado. Las menciones a 500 sesiones en manuales anteriores son históricas.
+
 Versión de entrega: **1.0.0 para integración**, preparada el 20 de octubre de 2026.
 Base recuperada: `respaldo/2026-10-13-antes-restablecimiento`, commit `006ef99`.
 El SHA de esta entrega, su compilador y sus huellas están en `VERSION.json` del ZIP.
@@ -23,9 +29,10 @@ cuentas, no muestra contraseñas de prueba y no ofrece generar pedidos ficticios
 El repositorio conserva el resto de la aplicación para no perder trabajo anterior.
 La creación de pedidos y opiniones por alumnos se integra por separado con el backend.
 
-**Estado:** frontend preparado para integración. Todavía no hay un backend definitivo
-conectado ni una certificación de operación productiva. La autenticación, las
-transacciones SQL, Google, correo y capacidad deberán validarse con ese servidor.
+**Estado:** frontend preparado para integración y backend implementado en `backend/`.
+La instalación en el servidor institucional, la conexión de la interfaz del alumno,
+el correo real y la capacidad siguen pendientes. Google permanece deshabilitado.
+Consultar los resultados del workflow de backend para el commit recibido.
 El servidor Python/SQLite de `scripts/review` se utiliza exclusivamente para pruebas.
 
 ## Conexión acordada
@@ -134,9 +141,10 @@ no se atribuye a este trabajo una ejecución remota que todavía no se haya real
 
 ## Límites que deben cerrar con backend
 
-El contrato refleja el cliente disponible. La capacidad de 500 sesiones no está
-certificada. Google y correo necesitan servicios reales; no habilitarlos como si
-estuvieran operativos. El respaldo de entrega manual por matrícula, la política de
-pagos y la retención de datos requieren acuerdo con el equipo. El historial de
+El contrato refleja el cliente disponible. La capacidad objetivo de 1,000 alumnos
+simultáneos no está certificada. Google está deshabilitado; el envío SMTP requiere
+configuración institucional. El backend verifica la entrega con el código del
+pedido, admite efectivo al recoger y no implementa conciliación bancaria. La
+retención de datos y los futuros medios de pago requieren acuerdo. El historial de
 seguimientos muestra hasta 50 eventos; el monitor avisa de opiniones parciales.
 Revisar `ACEPTACION.md` antes de declarar conectado o productivo el sistema.
