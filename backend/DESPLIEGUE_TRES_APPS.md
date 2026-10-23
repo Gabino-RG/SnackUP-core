@@ -51,6 +51,14 @@ Redis solo pertenecen a la red interna `data`. El proxy publica 80/443, conserva
 sus certificados en volúmenes y tiene una IP interna explícita que la API
 reconoce como proxy de confianza.
 
+La red `edge` usa `SNACKUP_EDGE_SUBNET=172.30.8.0/28` y reserva la asignación
+dinámica a `SNACKUP_EDGE_IP_RANGE=172.30.8.8/29`. La IP fija del proxy,
+`SNACKUP_PROXY_IP=172.30.8.2`, queda fuera de ese rango para que la API o los
+frontends no la reciban al arrancar primero. Si se personaliza la red, ajustar
+las tres variables: el rango debe pertenecer a la subred y la IP del proxy
+debe ser una dirección utilizable de esa subred, fuera del rango y distinta de
+la puerta de enlace. Uvicorn conserva la confianza exclusivamente en esa IP.
+
 La app de alumnos aún no tiene pantalla de restablecimiento de contraseña.
 El despliegue conjunto fija `SNACKUP_PASSWORD_RESET_FRONTEND_PATH=/paneles/`
 para que los correos abran `https://DOMINIO/paneles/#/reset-password?token=…`.
@@ -154,6 +162,9 @@ para construir; no son un identificador inmutable de una liberación.
 Conservar volúmenes SQL, Redis, medios y certificados al actualizar. `down`
 detiene servicios; **no usar `down --volumes` sobre datos reales**. La limpieza
 con volúmenes en CI se limita al proyecto efímero de prueba.
+Si la red ya existía antes de configurar el rango dinámico, recrearla en una
+ventana de mantenimiento mediante `down` sin `--volumes` y el posterior arranque,
+usando los mismos dos archivos Compose y nombre de proyecto.
 
 ## 6. Qué verifica cada entrega
 
@@ -182,5 +193,7 @@ workflow preparado de una ejecución que haya terminado correctamente.
 
 - [Docker: combinación de archivos Compose y resolución de rutas](https://docs.docker.com/compose/how-tos/multiple-compose-files/merge/).
 - [Docker: orden de arranque y healthchecks](https://docs.docker.com/compose/how-tos/startup-order/).
+- [Docker: IPAM y rango de asignación dinámica en Compose](https://docs.docker.com/reference/compose-file/networks/#ipam).
+- [Docker: direcciones estáticas fuera del rango dinámico para evitar colisiones](https://docs.docker.com/reference/cli/docker/network/connect/#network-implications-of-stopping-pausing-or-restarting-containers).
 - [Caddy: eliminación del prefijo con handle_path](https://caddyserver.com/docs/caddyfile/directives/handle_path).
 - [Flutter: compilación y publicación web](https://docs.flutter.dev/deployment/web).

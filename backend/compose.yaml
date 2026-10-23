@@ -158,6 +158,7 @@ networks:
     ipam:
       config:
         - subnet: ${SNACKUP_EDGE_SUBNET:-172.30.8.0/28}
+          ip_range: ${SNACKUP_EDGE_IP_RANGE:-172.30.8.8/29}
   data:
     internal: true
 

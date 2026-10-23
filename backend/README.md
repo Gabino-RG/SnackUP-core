@@ -77,7 +77,7 @@ La API y el proxy corren como UID/GID `10001`, sin privilegios de root y con ra�
 
 1. Instalar Docker Engine y Compose en el servidor asignado. Crear `.env` privado y completar todas las variables exigidas por Compose. Usar contraseñas distintas para `POSTGRES_PASSWORD` (administrador), `SNACKUP_DB_PASSWORD` (aplicación), `REDIS_PASSWORD` y `SNACKUP_SECRET_KEY`; generar valores hexadecimales aleatorios evita problemas de codificación en las URL. No utilizar los valores públicos del workflow de CI.
 2. Configurar `SNACKUP_DOMAIN` con el dominio real, `TLS_ACME_EMAIL` con el contacto autorizado y DNS apuntando al servidor. Caddy obtiene y renueva TLS cuando ese dominio es accesible. Si la universidad termina TLS en otro proxy, adaptar esa capa con su equipo; no publicar una copia HTTP como solución final.
-3. Comprobar que `SNACKUP_EDGE_SUBNET` no colisiona con la red de la universidad/VPN y que `SNACKUP_PROXY_IP` pertenece a esa subred. Uvicorn solo confía en los encabezados reenviados por esa IP; no sustituirla por `*`. La API tiene salida de red para SMTP, pero no expone su puerto 8000 al host.
+3. Comprobar que `SNACKUP_EDGE_SUBNET` no colisiona con la red de la universidad/VPN. Configurar `SNACKUP_EDGE_IP_RANGE` dentro de esa subred y `SNACKUP_PROXY_IP` como una dirección utilizable de la subred, fuera del rango dinámico y distinta de la puerta de enlace. Los valores predeterminados son `172.30.8.0/28`, `172.30.8.8/29` y `172.30.8.2`, respectivamente. Así la API y los frontends no reciben la IP fija del proxy al arrancar primero. Uvicorn solo confía en los encabezados reenviados por esa IP; no sustituirla por `*`. La API tiene salida de red para SMTP, pero no expone su puerto 8000 al host.
 4. Desde `backend/`, desplegar en este orden:
 
 ```bash
@@ -91,6 +91,8 @@ docker compose exec api python -m snackup.cli create-master --email EMAIL --name
 ```
 
 `depends_on` espera healthchecks de SQL/Redis y el proxy espera la API lista. Las migraciones son un paso explícito, no se ejecutan en cada worker. La primera inicialización de PostgreSQL crea el rol de aplicación con `deploy/init-db.sh`; cambiar contraseñas en `.env` posteriormente **no cambia automáticamente las credenciales del volumen existente**. Coordinar su rotación en SQL/Redis y los servicios.
+
+Docker asigna las direcciones dinámicas desde [`ipam.config.ip_range`](https://docs.docker.com/reference/compose-file/networks/#ipam). Si cambia una subred personalizada, ajustar conjuntamente las tres variables anteriores. Para aplicar el rango a una red ya creada, recrear la red durante una ventana de mantenimiento con `docker compose down` y el posterior arranque; conservar los mismos archivos Compose y nombre de proyecto y ejecutar `down` **sin `--volumes`** para mantener los datos.
 
 Para importar un padrón externo sin copiarlo al repositorio o a la imagen:
 

@@ -117,7 +117,7 @@ jobs:
         run: |
           docker compose --env-file /dev/null --profile tools config --quiet
           python - <<'PY'
-          import json, os, pathlib, subprocess
+          import ipaddress, json, os, pathlib, subprocess
           result = subprocess.run(['docker', 'compose', '--env-file', '/dev/null', '--profile', 'tools', 'config', '--format', 'json'], check=True, capture_output=True, text=True)
           config = json.loads(result.stdout)
           services = config['services']
@@ -137,6 +137,14 @@ jobs:
           assert ports[0]['protocol'] == 'tcp'
           assert all(not service.get('ports') for name, service in services.items() if name != 'proxy')
           assert config['networks']['data']['internal'] is True
+          edge_ipam = config['networks']['edge']['ipam']['config'][0]
+          edge_subnet = ipaddress.ip_network(edge_ipam['subnet'])
+          dynamic_pool = ipaddress.ip_network(edge_ipam['ip_range'])
+          proxy_ip = ipaddress.ip_address(services['proxy']['networks']['edge']['ipv4_address'])
+          assert dynamic_pool.subnet_of(edge_subnet) and proxy_ip in edge_subnet
+          assert proxy_ip not in dynamic_pool, 'Dynamic allocation must not consume the fixed proxy IP'
+          api_command = services['api']['command']
+          assert api_command[api_command.index('--forwarded-allow-ips') + 1] == str(proxy_ip)
           assert services['usuarios']['build']['args']['WEB_BASE_HREF'] == '/'
           assert services['cocina']['build']['args']['WEB_BASE_HREF'] == '/paneles/'
           assert services['cocina']['build']['args']['API_BASE_URL'] == '/api/legacy/v1/'
