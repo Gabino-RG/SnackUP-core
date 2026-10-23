@@ -1,5 +1,9 @@
 # Validación del contenedor único de SnackUP
 
+> Evidencia histórica de la infraestructura anterior a la implementación V3.2.
+> El resultado vigente y sus pruebas están en
+> [VALIDACION_BACKEND_V32.md](VALIDACION_BACKEND_V32.md).
+
 Fecha: 23 de octubre de 2026.
 
 **Resultado: construcción y arranque de la imagen unificada aprobados en CI.**
