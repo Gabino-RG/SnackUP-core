@@ -44,7 +44,7 @@ def test_legacy_and_v3_catalog_share_the_three_featured_limit(app, client, token
         'json': {'name': 'V3', 'category': 'Comida', 'price': 20.0, 'isFeatured': True}})
     legacy = ('POST', '/api/legacy/v1/businesses/business-1/products', {'headers': tokens['operator'],
         'json': {'name': 'Legacy', 'description': '', 'category': 'Comida', 'price': 20.0, 'imageUrl': None,
-                 'isAvailable': True, 'isFeatured': True}})
+                 'isAvailable': True, 'isFeatured': True, 'stock': None}})
     result = concurrent(app, canonical, legacy)
     assert sorted(x.status_code for x in result) == [201, 409], [x.text for x in result]
     with app.state.db.sessions() as db:
