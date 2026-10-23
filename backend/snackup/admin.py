@@ -339,13 +339,17 @@ def followup_history(id: str, page: int = Query(1, ge=1), limit: int = Query(20,
 @router.post("/student/orders/{id}/review", status_code=201, operation_id="createStudentReview")
 def create_student_review(id: str, data: dict = Body(...), actor: User = Depends(require_student),
                            db: Session = Depends(get_db, scope="function")):
+    return create_review_record(id, data, actor, db)
+
+
+def create_review_record(id, data, actor, db, *, minimum=1):
     require(set(data) <= {"rating", "foodRating", "serviceRating", "comment"}, 422,
             "INVALID_INPUT", "La carrera y el grupo se obtienen del padrón institucional.")
-    require(type(data.get("rating")) is int and 1 <= data["rating"] <= 5,
+    require(type(data.get("rating")) is int and minimum <= data["rating"] <= 5,
             422, "INVALID_INPUT", "La calificación debe ser un entero del 1 al 5.")
     for field in ("foodRating", "serviceRating"):
         value = data.get(field)
-        require(value is None or (type(value) is int and 1 <= value <= 5), 422,
+        require(value is None or (type(value) is int and minimum <= value <= 5), 422,
                 "INVALID_INPUT", "Las calificaciones deben ser enteros del 1 al 5 o null.")
     comment = data.get("comment", "")
     require(isinstance(comment, str) and len(comment) <= 2000, 422, "INVALID_INPUT", "El comentario admite hasta 2000 caracteres.")

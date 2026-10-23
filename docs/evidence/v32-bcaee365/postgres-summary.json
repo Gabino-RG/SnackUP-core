@@ -1,0 +1,20 @@
+{
+  "commit": "bcaee365462b80afc9c4740d9be60cbc3262cd41",
+  "tree": "a500691ebc9744771e14dfa15fde5c2134d67f61",
+  "workflowRun": 40015736002,
+  "artifactId": 12528497096,
+  "scope": "CI with PostgreSQL 17 and Redis; Caddy executable tests run in local suite",
+  "name": "pytest",
+  "errors": "0",
+  "failures": "0",
+  "skipped": "6",
+  "tests": "267",
+  "time": "153.660",
+  "timestamp": "2026-10-23T20:00:49.770936+00:00",
+  "hostname": "runnervm8k3b6",
+  "passed": 261,
+  "skipReasons": {
+    "CADDY_BIN is required for the real proxy test; CI runs the complete Docker image": 6
+  },
+  "productionDataUsed": false
+}

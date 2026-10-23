@@ -25,7 +25,7 @@ log = logging.getLogger('snackup.http')
 
 
 def create_app(settings: Settings | None = None):
-    from . import admin, identity, operations, realtime, v3_admin, v3_identity, v3_operations, v3_media, v3_reviews, push
+    from . import admin, identity, operations, realtime, v3_admin, v3_identity, v3_operations, v3_media, v3_reviews, push, v32_api, v32_chat
     from .push import install_push
     from .socketio_gateway import install_socketio
 
@@ -58,7 +58,7 @@ def create_app(settings: Settings | None = None):
             app.state.limiter.close()
             database.dispose()
 
-    app = FastAPI(title='SnackUP API V3 · FastAPI', version='3.1.0', lifespan=lifespan,
+    app = FastAPI(title='SnackUP API V3 · FastAPI', version='3.2.0', lifespan=lifespan,
                   description='Contrato canónico V3 en /api/v1. Compatibilidad de paneles anteriores en /api/legacy/v1. '
                               'Registro institucional requiere verificación de correo antes de emitir una sesión. '
                               'Pagos son métodos registrados; no se procesa cobro. Tiempo real Socket.IO: /socket.io.',
@@ -155,7 +155,7 @@ def create_app(settings: Settings | None = None):
         log.info('%s %s %d %.0fms', request.method, path, response.status_code, (time.monotonic() - started) * 1000)
         return response
 
-    for router in (v3_identity.router, v3_admin.router, v3_operations.router, v3_media.router, v3_reviews.router, push.router):
+    for router in (v32_api.router, v32_chat.router, v3_identity.router, v3_admin.router, v3_operations.router, v3_media.router, v3_reviews.router, push.router):
         app.include_router(router, prefix='/api/v1')
     # Keep the established panels' strict lower-case DTOs explicitly versioned.
     # They do not override or dilute the canonical V3 roles, errors or payloads.
@@ -164,7 +164,7 @@ def create_app(settings: Settings | None = None):
     from fastapi import APIRouter
     administrative_extensions = APIRouter(tags=['Administración institucional'])
     for route in admin.router.routes:
-        if (route.path == '/institution' or route.path.startswith(('/admin/reviews', '/admin/followups', '/admin/academic-catalog'))):
+        if (route.path in {'/institution', '/admin/access-requests', '/admin/access-requests/{id}/decision'} or (route.path == '/admin/users' and 'POST' in route.methods) or route.path.startswith(('/admin/reviews', '/admin/followups', '/admin/academic-catalog'))):
             administrative_extensions.routes.append(route)
     app.include_router(administrative_extensions, prefix='/api/v1')
     install_push(app)

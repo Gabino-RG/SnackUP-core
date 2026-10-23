@@ -6,7 +6,7 @@ from sqlalchemy import create_engine, pool
 
 from snackup.config import Settings
 from snackup.db import Base
-from snackup import admin_models, identity_models, operation_models, push_models, review_models  # noqa: F401
+from snackup import admin_models, identity_models, operation_models, push_models, review_models, v32_models  # noqa: F401
 
 config = context.config
 if config.config_file_name:

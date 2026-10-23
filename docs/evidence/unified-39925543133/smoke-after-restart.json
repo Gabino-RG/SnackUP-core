@@ -1,0 +1,252 @@
+{
+  "version": 1,
+  "timestamp": "2026-10-23T08:36:52.550612+00:00",
+  "destination": "http://127.0.0.1:18080",
+  "host": "snackup.example.test",
+  "origin": "https://snackup.example.test",
+  "success": true,
+  "checks": [
+    {
+      "method": "GET",
+      "path": "/health/live",
+      "status": 200,
+      "contentType": "application/json",
+      "bytes": 15,
+      "sha256": "a29ee2b15c494311c52521766e44af56a3ad2248e7a8ab465e5206463c13d288",
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/health/ready",
+      "status": 200,
+      "contentType": "application/json",
+      "bytes": 18,
+      "sha256": "31bf75f4c0a97cc1f7b60df824fa390b3be9ba014f29b63c87c698ba63d9a9fd",
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "bytes": 4375,
+      "sha256": "e8b1abeb3117027a00a6a3c8220e1ddc6907da2f05beac90aa4bc096e56705af",
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/__ci_deep_link__",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "bytes": 4375,
+      "sha256": "e8b1abeb3117027a00a6a3c8220e1ddc6907da2f05beac90aa4bc096e56705af",
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/__ci_missing_asset__.js",
+      "status": 404,
+      "contentType": "",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/flutter_bootstrap.js",
+      "status": 200,
+      "contentType": "text/javascript; charset=utf-8",
+      "bytes": 8886,
+      "sha256": "a7ad8519e9ed7237a3a8284cd9ba5eadd1e0e00206f1fb4c26833cb1c61c4cf1",
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/main.dart.js",
+      "status": 200,
+      "contentType": "text/javascript; charset=utf-8",
+      "bytes": 3111601,
+      "sha256": "570f8647d0d8805cb1da45764770a3f1cef9eb210ec7d4a05227feb774bc7989",
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/manifest.json",
+      "status": 200,
+      "contentType": "application/json",
+      "bytes": 949,
+      "sha256": "bf27854579b112a2c856a9cc917a1e1fcbf190299484982b279b1c5057622d6f",
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/icons/Icon-192.png",
+      "status": 200,
+      "contentType": "image/png",
+      "bytes": 71073,
+      "sha256": "efc04e811abbb1a2dc32cf8c12c41fd7e292713a1d9fe129fafd36d20043d80a",
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/pwa.js",
+      "status": 200,
+      "contentType": "text/javascript; charset=utf-8",
+      "bytes": 1230,
+      "sha256": "6931d0a35d59c2b09ab98cc2c52b5920318383966b342c13002fd5fc91bea441",
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/snackup_service_worker.js",
+      "status": 200,
+      "contentType": "text/javascript; charset=utf-8",
+      "bytes": 1693,
+      "sha256": "11e6d4d467091ec59da87318195bceef54a554df9a3d7bac72574e0149d29bfa",
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/offline.html",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "bytes": 851,
+      "sha256": "f37a1fe993d54ba7b5f717828ef40dd55a9c73571321608f3d1c4218b45dcb98",
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/paneles",
+      "status": 308,
+      "contentType": "",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/paneles/",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "bytes": 3782,
+      "sha256": "c3467ed6e28d38fd091feb7d32b9a30ce310df0deb99b7c83002cca374bd28f3",
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/paneles/__ci_deep_link__",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "bytes": 3782,
+      "sha256": "c3467ed6e28d38fd091feb7d32b9a30ce310df0deb99b7c83002cca374bd28f3",
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/paneles/__ci_missing_asset__.js",
+      "status": 404,
+      "contentType": "",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/paneles/flutter_bootstrap.js",
+      "status": 200,
+      "contentType": "text/javascript; charset=utf-8",
+      "bytes": 9008,
+      "sha256": "ece2442e365db45cb020a7d504de5c3a65b1bbe997ec80a07e15c18549977bd8",
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/paneles/main.dart.js",
+      "status": 200,
+      "contentType": "text/javascript; charset=utf-8",
+      "bytes": 3205621,
+      "sha256": "169f1b7864bf3fa8d864180952fa858fd8bd20ce1f13d99d71905c563bb016c7",
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/paneles/manifest.json",
+      "status": 200,
+      "contentType": "application/json",
+      "bytes": 916,
+      "sha256": "54c6fc340cef485a82382878182304d6a113cb35637e3162dafd08f1cd4b3bdd",
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/paneles/icons/Icon-192.png",
+      "status": 200,
+      "contentType": "image/png",
+      "bytes": 71073,
+      "sha256": "efc04e811abbb1a2dc32cf8c12c41fd7e292713a1d9fe129fafd36d20043d80a",
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/options",
+      "status": 200,
+      "contentType": "application/json",
+      "bytes": 69,
+      "sha256": "2595ac3400b105febfe42b203a82d806aed950cefe788b49381c037cba972662",
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/legacy/v1/auth/options",
+      "status": 200,
+      "contentType": "application/json",
+      "bytes": 69,
+      "sha256": "2595ac3400b105febfe42b203a82d806aed950cefe788b49381c037cba972662",
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/__ci_missing__",
+      "status": 404,
+      "contentType": "application/json",
+      "bytes": 76,
+      "sha256": "10451ebda42ffdf423ccd4c2048aea401edfe6803f155ae4edc0ec002cc19739",
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/legacy/v1/__ci_missing__",
+      "status": 404,
+      "contentType": "application/json",
+      "bytes": 76,
+      "sha256": "10451ebda42ffdf423ccd4c2048aea401edfe6803f155ae4edc0ec002cc19739",
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/media/__ci_missing__.webp",
+      "status": 404,
+      "contentType": "application/json",
+      "bytes": 76,
+      "sha256": "10451ebda42ffdf423ccd4c2048aea401edfe6803f155ae4edc0ec002cc19739",
+      "ok": true
+    },
+    {
+      "method": "GET",
+      "path": "/socket.io/?EIO=4&transport=websocket",
+      "status": 400,
+      "contentType": "application/json",
+      "bytes": 39,
+      "sha256": "7367e903bb87b6cd828c72eee8a7903bf632dda845414b6c48586cce36e1b065",
+      "ok": true
+    },
+    {
+      "method": "WEBSOCKET",
+      "path": "/socket.io/?EIO=4&transport=websocket",
+      "ok": true,
+      "status": 101,
+      "engineIO": "open",
+      "socketIO": "UNAUTHENTICATED"
+    }
+  ]
+}

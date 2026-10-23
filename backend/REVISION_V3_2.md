@@ -1,5 +1,7 @@
 # SnackUP: revisión de API V3.2 y esquema revisado
 
+> Actualización posterior: [implementación V3.2](IMPLEMENTACION_V3_2.md). Este documento conserva la revisión previa; los faltantes de backend identificados se implementan en la nueva entrega.
+
 Fecha de revisión: 23 de octubre de 2026.
 
 **Estado: análisis y propuesta previa a implementación.** Este informe no declara implementada V3.2. Se conserva la implementación anterior y se pausa su publicación mientras se resuelven las discrepancias que el usuario pidió conocer antes de aplicar cambios.

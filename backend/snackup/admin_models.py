@@ -12,9 +12,9 @@ class Review(Base):
     __tablename__ = "reviews"
     __table_args__ = (
         UniqueConstraint("order_id", name="uq_review_order"),
-        CheckConstraint("rating IS NULL OR rating BETWEEN 1 AND 5", name="ck_review_rating"),
-        CheckConstraint("food_rating IS NULL OR food_rating BETWEEN 1 AND 5", name="ck_review_food_rating"),
-        CheckConstraint("service_rating IS NULL OR service_rating BETWEEN 1 AND 5", name="ck_review_service_rating"),
+        CheckConstraint("rating IS NULL OR rating BETWEEN 0 AND 5", name="ck_review_rating"),
+        CheckConstraint("food_rating IS NULL OR food_rating BETWEEN 0 AND 5", name="ck_review_food_rating"),
+        CheckConstraint("service_rating IS NULL OR service_rating BETWEEN 0 AND 5", name="ck_review_service_rating"),
         Index("ix_reviews_business_created", "business_id", "created_at", "id"),
     )
     id: Mapped[str] = mapped_column(Text, primary_key=True, default=new_id)

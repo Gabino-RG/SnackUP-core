@@ -1,3 +1,9 @@
+# Topología anterior
+
+El requisito vigente es un contenedor de aplicación. Usar
+[DESPLIEGUE_CONTENEDOR_UNICO.md](DESPLIEGUE_CONTENEDOR_UNICO.md) y
+`compose.unified.yaml`; este documento conserva la alternativa anterior.
+
 # SnackUP: tres ramas y tres aplicaciones Docker
 
 ## 1. Qué se separó

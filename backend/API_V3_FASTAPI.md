@@ -1,5 +1,7 @@
 # SnackUP V3: implementación en Python y FastAPI
 
+> Actualización posterior: [implementación V3.2](IMPLEMENTACION_V3_2.md). Este documento conserva la revisión previa; los faltantes de backend identificados se implementan en la nueva entrega.
+
 Esta guía describe el backend implementado a partir de `SnackUP_API_V3_Consolidada.md` (versión documental 3.1, 22 de octubre de 2026) y del `schema.prisma` adjunto. La adaptación conserva **Python, FastAPI, SQLAlchemy, Alembic, PostgreSQL y Redis**. Socket.IO se incorpora mediante su servidor Python ASGI. Prisma se entrega como mapa relacional completo, con nombres en español, y no participa en las escrituras de la aplicación.
 
 El contrato ejecutable es [contracts/v3.openapi.json](contracts/v3.openapi.json). Los esquemas de entrada rechazan campos no reconocidos; las respuestas y errores se documentan con sus formas reales. `/api/docs` y `/api/openapi.json` están disponibles en desarrollo. En producción se distribuye el archivo versionado del contrato.

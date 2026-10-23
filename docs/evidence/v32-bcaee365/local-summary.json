@@ -1,0 +1,24 @@
+{
+  "commit": "bcaee365462b80afc9c4740d9be60cbc3262cd41",
+  "tree": "a500691ebc9744771e14dfa15fde5c2134d67f61",
+  "scope": "Local suite on SQLite with real Redis and Caddy; PostgreSQL tests skipped",
+  "name": "pytest",
+  "errors": "0",
+  "failures": "0",
+  "skipped": "32",
+  "tests": "267",
+  "time": "98.432",
+  "timestamp": "2026-10-23T20:59:38.863174+01:00",
+  "hostname": "90dd577c6661",
+  "passed": 235,
+  "skipReasons": {
+    "PostgreSQL row locking test": 3,
+    "PostgreSQL is required to prove row locking across concurrent sessions": 1,
+    "Real PostgreSQL is required to verify transaction locks": 23,
+    "Real PostgreSQL is required to verify administrative revocation under a row lock": 1,
+    "Real PostgreSQL is required to verify revocation while waiting on a row lock": 1,
+    "Set SNACKUP_TEST_DATABASE_URL to exercise PostgreSQL migration.": 2,
+    "PostgreSQL required for real row-lock concurrency": 1
+  },
+  "productionDataUsed": false
+}

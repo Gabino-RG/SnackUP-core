@@ -885,7 +885,7 @@
             "anyOf": [
               {
                 "type": "integer",
-                "minimum": 1,
+                "minimum": 0,
                 "maximum": 5
               },
               {
@@ -897,7 +897,7 @@
             "anyOf": [
               {
                 "type": "integer",
-                "minimum": 1,
+                "minimum": 0,
                 "maximum": 5
               },
               {
@@ -909,7 +909,7 @@
             "anyOf": [
               {
                 "type": "integer",
-                "minimum": 1,
+                "minimum": 0,
                 "maximum": 5
               },
               {
@@ -1182,9 +1182,11 @@
             "type": "string",
             "enum": [
               "cash",
-              "Transferencia"
+              "Transferencia",
+              "Tarjeta",
+              "ValeComida"
             ],
-            "description": "Adaptador legacy: efectivo sigue siendo cash. Transferencia conserva el método de una orden V3; no representa cobro confirmado."
+            "description": "Adaptador legacy: efectivo sigue siendo cash; los demás métodos conservan su etiqueta V3.2. Ninguno representa cobro confirmado."
           },
           "total": {
             "type": "number",
