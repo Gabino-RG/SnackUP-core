@@ -162,6 +162,16 @@ PostgreSQL/Redis. Los workflows de frontend construyen sus imágenes y validan
 su servicio HTTP, healthcheck, prefijos y proxy. La configuración conjunta
 se valida con ambos archivos Compose y Caddy.
 
+El workflow [apps-integration.yml](../.github/workflows/apps-integration.yml)
+descarga las tres ramas y registra sus SHA, construye las cuatro imágenes
+(tres aplicaciones y el proxy), aplica las migraciones y arranca los seis
+servicios en un proyecto efímero. Comprueba las dos interfaces, recursos y
+prefijos, rutas de API y el upgrade/rechazo sin credenciales de Socket.IO.
+`deploy/compose.apps.ci.yaml` utiliza HTTP solo en el proxy de esa prueba y
+publica únicamente `127.0.0.1:18080`; no se usa para producción. Su limpieza
+elimina únicamente el proyecto de CI identificado por la ejecución. Los
+artefactos registran las fuentes exactas y el resultado, sin cuerpos privados.
+
 Esas comprobaciones no sustituyen una prueba de extremo a extremo del alumno
 contra FastAPI, porque ese cliente aún usa Firebase. Tampoco acreditan 1,000
 usuarios simultáneos ni entrega real SMTP/push. Consultar resultados por commit

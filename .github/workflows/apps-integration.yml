@@ -1,0 +1,255 @@
+name: Integración de API, alumnos y paneles
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/backend-api-v3-fastapi]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/apps-integration.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: apps-integration-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    defaults:
+      run:
+        shell: bash
+        working-directory: backend-source/backend
+    env:
+      COMPOSE_PROJECT_NAME: snackup-apps-${{ github.run_id }}-${{ github.run_attempt }}
+      COMPOSE_FILE: ${{ github.workspace }}/backend-source/backend/compose.yaml:${{ github.workspace }}/backend-source/backend/deploy/compose.apps.yaml:${{ github.workspace }}/backend-source/backend/deploy/compose.apps.ci.yaml
+      SNACKUP_USERS_CONTEXT: ${{ github.workspace }}/snackup-usuarios
+      SNACKUP_PANELS_CONTEXT: ${{ github.workspace }}/snackup-cocina
+      SNACKUP_DOMAIN: snackup.example.test
+      TLS_ACME_EMAIL: ci@snackup.example.test
+      # Synthetic data only. The prepare step generates disposable credentials.
+      POSTGRES_DB: snackup_apps_ci
+      POSTGRES_USER: postgres_ci
+      SNACKUP_DB_USER: snackup_ci
+      SNACKUP_INSTITUTION_ID: institution-ci
+      SNACKUP_INSTITUTION_NAME: Synthetic CI Institution
+      SNACKUP_CAFETERIA_ID: cafeteria-ci
+      SNACKUP_CAFETERIA_NAME: Synthetic CI Cafeteria
+      SNACKUP_ADMIN_EMAIL_DOMAINS: snackup.example.test
+      SNACKUP_STUDENT_EMAIL_DOMAINS: snackup.example.test
+      SNACKUP_PUSH_ENABLED: 'false'
+      SNACKUP_WORKERS: '2'
+      SNACKUP_SMTP_HOST: ''
+      SNACKUP_SMTP_USER: ''
+      SNACKUP_SMTP_PASSWORD: ''
+      SNACKUP_SMTP_FROM: ''
+      DOCKER_BUILD_RECORD_UPLOAD: 'false'
+    steps:
+      - name: Checkout backend at the triggering commit
+        uses: actions/checkout@v4
+        with:
+          path: backend-source
+          persist-credentials: false
+      - name: Checkout alumnos branch beside the backend
+        uses: actions/checkout@v4
+        with:
+          ref: codex/usuarios-pwa
+          path: snackup-usuarios
+          persist-credentials: false
+      - name: Checkout paneles branch beside the backend
+        uses: actions/checkout@v4
+        with:
+          ref: codex/entrega-paneles-rest
+          path: snackup-cocina
+          persist-credentials: false
+      - name: Record exact sources and prepare evidence
+        id: prepare
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib, secrets, subprocess
+          root = pathlib.Path(os.environ['GITHUB_WORKSPACE'])
+          evidence = pathlib.Path(os.environ['RUNNER_TEMP']) / 'apps-integration-evidence'
+          evidence.mkdir(parents=True, exist_ok=True)
+          with open(os.environ['GITHUB_ENV'], 'a') as environment:
+              for key in ['POSTGRES_PASSWORD', 'SNACKUP_DB_PASSWORD', 'REDIS_PASSWORD', 'SNACKUP_SECRET_KEY']:
+                  value = 'ci-only-' + secrets.token_hex(32)
+                  print('::add-mask::' + value)
+                  environment.write(f'{key}={value}\n')
+          refs = {}
+          for name, checkout, ref in [
+              ('backend', 'backend-source', os.environ['GITHUB_REF']),
+              ('usuarios', 'snackup-usuarios', 'refs/heads/codex/usuarios-pwa'),
+              ('paneles', 'snackup-cocina', 'refs/heads/codex/entrega-paneles-rest'),
+          ]:
+              sha = subprocess.check_output(['git', '-C', str(root / checkout), 'rev-parse', 'HEAD'], text=True).strip()
+              refs[name] = {'ref': ref, 'sha': sha}
+          (evidence / 'sources.json').write_text(json.dumps(refs, indent=2) + '\n')
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
+              summary.write('## Fuentes exactas de la integración\n\n| App | Ref | SHA |\n|---|---|---|\n')
+              for name, value in refs.items():
+                  summary.write(f"| {name} | `{value['ref']}` | `{value['sha']}` |\n")
+              summary.write('\nInstalación CI vacía y sintética; sin SMTP, push ni credenciales de usuarios.\n')
+          PY
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install only the locked WebSocket smoke dependency
+        run: |
+          rg '^websockets==' requirements.lock > "$RUNNER_TEMP/apps-smoke-requirements.txt"
+          test "$(wc -l < "$RUNNER_TEMP/apps-smoke-requirements.txt")" -eq 1
+          python -m pip install --disable-pip-version-check -r "$RUNNER_TEMP/apps-smoke-requirements.txt"
+      - name: Set up Compose with explicit override support
+        uses: docker/setup-compose-action@v2
+        with:
+          version: latest
+      - uses: docker/setup-buildx-action@v3
+      - name: Validate the composed CI deployment without printing environment values
+        run: |
+          docker compose --env-file /dev/null config --quiet
+          python - <<'PY'
+          import json, os, pathlib, subprocess
+          result = subprocess.run(['docker', 'compose', '--env-file', '/dev/null', 'config', '--format', 'json'], check=True, capture_output=True, text=True)
+          config = json.loads(result.stdout)
+          services = config['services']
+          assert config['name'] == os.environ['COMPOSE_PROJECT_NAME']
+          for name in ['api', 'migrate']:
+              env = services[name]['environment']
+              assert env['SNACKUP_ENVIRONMENT'] == 'production'
+              assert env['SNACKUP_PUBLIC_ORIGIN'] == 'https://snackup.example.test'
+              assert env['SNACKUP_PASSWORD_RESET_FRONTEND_PATH'] == '/paneles/'
+              assert env['SNACKUP_ENABLE_TEST_MAILBOX'] == 'false'
+              assert env['SNACKUP_PUSH_ENABLED'] == 'false'
+              assert not env['SNACKUP_SMTP_HOST']
+          assert services['proxy']['environment']['SNACKUP_DOMAIN'] == 'http://snackup.example.test'
+          ports = services['proxy']['ports']
+          assert len(ports) == 1 and ports[0]['host_ip'] == '127.0.0.1'
+          assert ports[0]['target'] == 8080 and str(ports[0]['published']) == '18080'
+          assert ports[0]['protocol'] == 'tcp'
+          assert all(not service.get('ports') for name, service in services.items() if name != 'proxy')
+          assert config['networks']['data']['internal'] is True
+          assert services['usuarios']['build']['args']['WEB_BASE_HREF'] == '/'
+          assert services['cocina']['build']['args']['WEB_BASE_HREF'] == '/paneles/'
+          assert services['cocina']['build']['args']['API_BASE_URL'] == '/api/legacy/v1/'
+          versions = subprocess.check_output(['docker', 'version', '--format', '{{.Client.Version}} / {{.Server.Version}}'], text=True)
+          versions += subprocess.check_output(['docker', 'compose', 'version'], text=True)
+          versions += subprocess.check_output(['docker', 'buildx', 'version'], text=True)
+          (pathlib.Path(os.environ['RUNNER_TEMP']) / 'apps-integration-evidence' / 'tool-versions.txt').write_text(versions)
+          print('Validated production API settings, HTTP-only CI proxy, private data services and frontend prefixes.')
+          PY
+      - name: Build API image
+        uses: docker/build-push-action@v6
+        with:
+          context: backend-source/backend
+          load: true
+          push: false
+          pull: true
+          tags: snackup-backend:apps-ci
+          cache-from: type=gha,scope=apps-integration-api
+          cache-to: type=gha,mode=max,scope=apps-integration-api,ignore-error=true
+      - name: Build alumnos image
+        uses: docker/build-push-action@v6
+        with:
+          context: snackup-usuarios
+          load: true
+          push: false
+          pull: true
+          tags: snackup-usuarios:apps-ci
+          build-args: WEB_BASE_HREF=/
+          cache-from: type=gha,scope=apps-integration-usuarios-root
+          cache-to: type=gha,mode=max,scope=apps-integration-usuarios-root,ignore-error=true
+      - name: Build paneles image
+        uses: docker/build-push-action@v6
+        with:
+          context: snackup-cocina
+          load: true
+          push: false
+          pull: true
+          tags: snackup-cocina:apps-ci
+          build-args: |
+            WEB_BASE_HREF=/paneles/
+            API_BASE_URL=/api/legacy/v1/
+          cache-from: type=gha,scope=apps-integration-paneles-prefix
+          cache-to: type=gha,mode=max,scope=apps-integration-paneles-prefix,ignore-error=true
+      - name: Build common proxy image
+        uses: docker/build-push-action@v6
+        with:
+          context: backend-source/backend
+          file: backend-source/backend/deploy/proxy.Dockerfile
+          load: true
+          push: false
+          pull: true
+          tags: snackup-proxy:apps-ci
+          build-args: CADDY_CONFIG=deploy/Caddy.apps
+          cache-from: type=gha,scope=apps-integration-proxy
+          cache-to: type=gha,mode=max,scope=apps-integration-proxy,ignore-error=true
+      - name: Migrate and start the isolated deployment
+        timeout-minutes: 5
+        run: |
+          for image in snackup-backend:apps-ci snackup-usuarios:apps-ci snackup-cocina:apps-ci snackup-proxy:apps-ci; do
+            test "$(docker image inspect --format '{{.Config.User}}' "$image")" = '10001:10001'
+            docker image inspect --format '{{.RepoTags}} {{.Id}}' "$image"
+          done > "$RUNNER_TEMP/apps-integration-evidence/images.txt"
+          docker compose --env-file /dev/null up -d --wait --wait-timeout 90 db redis
+          python - <<'PY'
+          import os, pathlib, subprocess, sys
+          process = subprocess.run(['docker', 'compose', '--env-file', '/dev/null', 'run', '--no-deps', '--rm', 'migrate'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=90)
+          output = process.stdout
+          for key in ['POSTGRES_PASSWORD', 'SNACKUP_DB_PASSWORD', 'REDIS_PASSWORD', 'SNACKUP_SECRET_KEY']:
+              output = output.replace(os.environ[key], '[REDACTED]')
+          (pathlib.Path(os.environ['RUNNER_TEMP']) / 'apps-integration-evidence' / 'migration.log').write_text(output)
+          print(output, end='')
+          sys.exit(process.returncode)
+          PY
+          docker compose --env-file /dev/null up -d --no-build --wait --wait-timeout 120 api usuarios cocina proxy
+      - name: Exercise the common origin, both interfaces and WebSocket upgrade
+        timeout-minutes: 3
+        run: |
+          python deploy/smoke_apps.py --report "$RUNNER_TEMP/apps-integration-evidence/smoke.json"
+      - name: Collect safe diagnostics
+        if: always() && steps.prepare.outcome == 'success'
+        timeout-minutes: 2
+        run: |
+          python - <<'PY'
+          import json, os, pathlib, subprocess
+          evidence = pathlib.Path(os.environ['RUNNER_TEMP']) / 'apps-integration-evidence'
+          secrets = [os.environ[name] for name in ['POSTGRES_PASSWORD', 'SNACKUP_DB_PASSWORD', 'REDIS_PASSWORD', 'SNACKUP_SECRET_KEY']]
+          commands = {
+              'compose-status.txt': ['docker', 'compose', '--env-file', '/dev/null', 'ps', '--all'],
+              'containers.log': ['docker', 'compose', '--env-file', '/dev/null', 'logs', '--no-color', '--timestamps', '--tail', '500', 'api', 'usuarios', 'cocina', 'proxy', 'db', 'redis'],
+              'disk-space.txt': ['df', '-h'],
+          }
+          for filename, command in commands.items():
+              try:
+                  process = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=25)
+                  output = process.stdout
+              except Exception as error:
+                  output = f'Diagnostic unavailable: {type(error).__name__}\n'
+              for secret in secrets:
+                  output = output.replace(secret, '[REDACTED]')
+              (evidence / filename).write_text(output)
+          report = evidence / 'smoke.json'
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
+              if report.exists():
+                  data = json.loads(report.read_text())
+                  summary.write(f"\n## Smoke del proxy común\n\nResultado: **{'aprobado' if data['success'] else 'falló'}**; {len(data['checks'])} solicitudes registradas.\n")
+              else:
+                  summary.write('\nNo se completó el smoke HTTP; consultar el paso fallido y los artefactos.\n')
+              summary.write('\nEsto valida construcción y conexión entre contenedores; no certifica carga, SMTP, credenciales reales ni migración de la app de alumnos a REST.\n')
+          PY
+      - name: Remove only this ephemeral Compose project and its volumes
+        if: always() && steps.prepare.outcome == 'success'
+        timeout-minutes: 2
+        run: |
+          [[ "$COMPOSE_PROJECT_NAME" =~ ^snackup-apps-[0-9]+-[0-9]+$ ]]
+          docker compose --env-file /dev/null down --volumes --remove-orphans --timeout 10
+      - name: Upload integration evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: apps-integration-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/apps-integration-evidence/
+          if-no-files-found: warn
+          retention-days: 14
