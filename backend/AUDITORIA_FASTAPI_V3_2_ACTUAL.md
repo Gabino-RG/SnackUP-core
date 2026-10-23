@@ -11,7 +11,7 @@ No sustituye el análisis funcional detallado de esos documentos.
 
 | Fuente | Revisión inspeccionada |
 |---|---|
-| Backend | `88bc0b77ae713784a37eed3ec26b2cd8335322e2`, `backend/snackup/` |
+| Backend | `1c3459bfd58a083acf4a1638c5013db93873f057`, `backend/snackup/`; su código coincide con `88bc0b7`, la revisión siguiente añadió evidencia documental |
 | Alumnos original | `b7abff6593e84dda69ad2909abbf699dd17ff890`, `lib/` |
 | PWA empaquetada de alumnos | `a00d0bf4ecdae74a89f3afbe8ec3d0758efb8884`; mismo código Dart de main |
 | Cocina/Administración | `19c81fdee29600d66d9dcb1a4f109a78aeba51f6`, `app/lib/` |
@@ -128,6 +128,17 @@ Se preparó el cambio independiente y explícitamente solicitado de infraestruct
 Instrucciones y límites: [DESPLIEGUE_CONTENEDOR_UNICO.md](DESPLIEGUE_CONTENEDOR_UNICO.md).
 
 ## 6. Validación
+
+Prueba local del cambio: **209 aprobadas y 26 omitidas por requerir PostgreSQL**,
+sin fallos, con Redis TCP local y Caddy real. Las ocho pruebas nuevas verifican
+supervisión, señales, separación de interfaces y conservación de rutas/errores.
+Ruff, `export_prisma_reference.py --check`, `export_v3_openapi.py --check` y
+validación del Caddyfile de producción también aprobaron.
+
+La conexión Unix de Redis y los montajes del contenedor se prueban en CI: este
+entorno local no permite sockets Unix. Un fallo inicial de dos tests push se
+resolvió instalando `socksio` en el entorno de pruebas, requerido por el proxy de
+esta sesión; no se modificó la lógica del producto para hacer pasar esas pruebas.
 
 Los resultados locales y los resultados del workflow se registran por separado.
 Las pruebas existentes validan V3, no los flujos V3.2 que siguen ausentes.

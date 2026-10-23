@@ -31,6 +31,9 @@ RUN flutter build web --release --no-pub --no-web-resources-cdn --pwa-strategy=n
     && python3 /tools/check_web_build.py build/web --base /paneles/ --mode rest
 
 FROM caddy:2.11.7-alpine AS caddy
+# COPY preserves file capabilities. With cap_drop=ALL, a binary carrying
+# cap_net_bind_service can fail execve(EPERM), even on our unprivileged ports.
+RUN if [ -n "$(getcap /usr/bin/caddy)" ]; then setcap -r /usr/bin/caddy; fi
 FROM python:3.12-slim-bookworm AS runtime
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 \
     SNACKUP_MEDIA_DIR=/data/media XDG_DATA_HOME=/data/caddy XDG_CONFIG_HOME=/tmp/caddy \

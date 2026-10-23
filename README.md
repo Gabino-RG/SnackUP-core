@@ -5,9 +5,8 @@ para backend, PWA de usuarios y Cocina/Administración**, más PostgreSQL persis
 Consulta [el arranque unificado](backend/DESPLIEGUE_CONTENEDOR_UNICO.md) y
 [la auditoría de los adjuntos FastAPI V3.2](backend/AUDITORIA_FASTAPI_V3_2_ACTUAL.md).
 Hay rutas y reglas pendientes: no se sustituyeron los modelos ni se declara
-terminada la migración Firebase → REST. Las secciones siguientes describen la
-separación de código y el despliegue anterior; sus imágenes individuales siguen
-disponibles para desarrollo.
+terminada la migración Firebase → REST. Las imágenes individuales anteriores
+siguen disponibles para desarrollo.
 
 Esta rama contiene la API **Python / FastAPI**, modelos **SQLAlchemy 2.x**,
 migraciones **Alembic**, PostgreSQL, Redis y tiempo real. El esquema Prisma es
@@ -16,15 +15,16 @@ segundo sistema de migraciones.
 
 ## Las tres aplicaciones
 
-| Aplicación | Rama | Código y contenedor |
+| Aplicación | Rama | Código de origen |
 | --- | --- | --- |
-| Backend | [`codex/backend-api-v3-fastapi`](https://github.com/Gabino-RG/SnackUP-core/tree/codex/backend-api-v3-fastapi) | `backend/`, imagen `snackup-backend` |
-| Alumnos / PWA | [`codex/usuarios-pwa`](https://github.com/Gabino-RG/SnackUP-core/tree/codex/usuarios-pwa) | Flutter en `lib/`, imagen `snackup-usuarios` |
-| Cocina / Administración | [`codex/entrega-paneles-rest`](https://github.com/Gabino-RG/SnackUP-core/tree/codex/entrega-paneles-rest) | Flutter en `app/`, imagen `snackup-cocina` |
+| Backend | [`codex/backend-api-v3-fastapi`](https://github.com/Gabino-RG/SnackUP-core/tree/codex/backend-api-v3-fastapi) | `backend/` |
+| Alumnos / PWA | [`codex/usuarios-pwa`](https://github.com/Gabino-RG/SnackUP-core/tree/codex/usuarios-pwa) | Flutter en `lib/` |
+| Cocina / Administración | [`codex/entrega-paneles-rest`](https://github.com/Gabino-RG/SnackUP-core/tree/codex/entrega-paneles-rest) | Flutter en `app/` |
 
-Cada aplicación se construye desde su propia rama. PostgreSQL, Redis y el proxy
-HTTPS son servicios separados del despliegue. Esta rama ya no incluye el código
-Flutter; la rama de paneles conserva el portal y su contrato de compatibilidad.
+Cada aplicación conserva su rama. `compose.unified.yaml` combina los tres orígenes
+en la imagen `snackup-unified`; incluye Redis y el proxy HTTPS en ese contenedor.
+PostgreSQL conserva un servicio persistente separado. Los contextos frontend se
+fijan por commit; no es necesario copiar sus fuentes a la rama del backend.
 
 La rama de alumnos parte de `main` (`b7abff6`) y todavía utiliza Firebase. Su
 conexión a la API y la retirada de la interfaz histórica de Cocina siguen
@@ -34,7 +34,8 @@ pendientes; Docker no realiza esa migración. `main` y el respaldo
 ## Lectura y puesta en marcha
 
 - [Instalación, operación y respaldos](backend/README.md).
-- [Desplegar las tres aplicaciones con Docker Compose](backend/DESPLIEGUE_TRES_APPS.md).
+- [Desplegar las tres aplicaciones en un contenedor](backend/DESPLIEGUE_CONTENEDOR_UNICO.md).
+- [Auditoría actual de los adjuntos FastAPI V3.2](backend/AUDITORIA_FASTAPI_V3_2_ACTUAL.md).
 - [Auditoría de funciones existentes frente a V3.2](backend/AUDITORIA_APP_Y_API_V3_2.md).
 - [Discrepancias del documento y esquema V3.2](backend/REVISION_V3_2.md).
 - [Implementación V3 y decisiones técnicas](backend/API_V3_FASTAPI.md).

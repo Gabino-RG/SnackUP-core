@@ -23,7 +23,11 @@ class Processes:
         self.stopping = False
 
     def start(self, name, command):
-        child = subprocess.Popen(command, cwd=ROOT, start_new_session=True)
+        try:
+            child = subprocess.Popen(command, cwd=ROOT, start_new_session=True)
+        except OSError as error:
+            print(f'Could not launch {name}: {type(error).__name__}', file=sys.stderr)
+            raise
         self.children.append((name, child))
         return child
 

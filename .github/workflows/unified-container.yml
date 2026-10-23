@@ -73,6 +73,7 @@ jobs:
       - name: Start all components and run HTTP and Socket.IO smoke
         run: |
           test "$(docker image inspect --format '{{.Config.User}}' snackup-unified:local)" = '10001:10001'
+          docker run --rm --cap-drop ALL --security-opt no-new-privileges:true --entrypoint caddy snackup-unified:local version
           docker compose --env-file /dev/null up -d --no-build --wait --wait-timeout 180
           python - <<'PY'
           from pathlib import Path
