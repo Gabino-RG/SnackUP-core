@@ -1,0 +1,23 @@
+# Only sources required for this web image enter the build context.
+**
+!Dockerfile
+!pubspec.yaml
+!pubspec.lock
+!lib/
+!lib/**
+!assets/
+!assets/**
+!web/
+!web/**
+!deploy/
+!deploy/**
+**/.env
+**/.env.*
+**/*service-account*.json
+**/*serviceAccount*.json
+**/credentials.json
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
+**/__pycache__/

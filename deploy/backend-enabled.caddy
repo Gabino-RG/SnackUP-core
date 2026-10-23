@@ -1,0 +1,4 @@
+# The upstream is validated before Caddy reads this file. URI and method survive.
+reverse_proxy {$SNACKUP_API_UPSTREAM} {
+	header_up Host {hostport}
+}

@@ -1,4 +1,29 @@
-# SnackUP-Core `v1.0`
+# SnackUP · usuarios / PWA
+
+Rama `codex/usuarios-pwa`, derivada del `main` real en `b7abff6`. Tiene su propio
+Dockerfile, contenedor `snackup-usuarios` y workflow de construcción.
+
+- [Construir y ejecutar la PWA](deploy/README.md).
+- [Backend independiente](https://github.com/Gabino-RG/SnackUP-core/tree/codex/backend-api-v3-fastapi).
+- [Cocina y Administración](https://github.com/Gabino-RG/SnackUP-core/tree/codex/entrega-paneles-rest).
+- [Despliegue de las tres aplicaciones](https://github.com/Gabino-RG/SnackUP-core/blob/codex/backend-api-v3-fastapi/backend/DESPLIEGUE_TRES_APPS.md).
+- [Auditoría para la integración REST](https://github.com/Gabino-RG/SnackUP-core/blob/codex/backend-api-v3-fastapi/backend/AUDITORIA_APP_Y_API_V3_2.md).
+
+Esta versión conserva la integración existente con Firebase y las pantallas
+históricas de Cocina que el propietario retirará en otro cambio. Docker no
+sustituye sus repositorios por FastAPI. La PWA permite instalación y una página
+genérica sin conexión; las operaciones con datos requieren conexión.
+
+El contenedor compila con Flutter 3.32.0 fijado por digest y sirve los archivos
+con Caddy 2.11.7 como usuario sin privilegios. No incluye el SDK en producción.
+`main`, `develop` y la rama de respaldo se mantienen sin cambios.
+
+## Documento heredado de main
+
+Las notas siguientes describen el proyecto Firebase original. Para construir
+esta rama con versiones verificables, usar las instrucciones de `deploy/README.md`.
+La condición de producción y la capacidad requieren validación del entorno.
+
 
 ![SnackUP Banner](https://img.shields.io/badge/SnackUP-Official_Production_Repo-orange?style=for-the-badge&logo=fastapi)
 [![Flutter Version](https://img.shields.io/badge/Flutter-3.29.0%2B-02569B?style=flat&logo=flutter)](https://flutter.dev)

@@ -1,0 +1,3 @@
+header Content-Type application/json
+header Cache-Control no-store
+respond `{"error":{"code":"BACKEND_NOT_CONFIGURED","message":"Configura el servidor de la API para esta ruta."}}` 503

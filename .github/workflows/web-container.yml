@@ -1,0 +1,46 @@
+name: Contenedor PWA alumnos
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/usuarios-pwa]
+  pull_request:
+    paths: ['lib/**', 'assets/**', 'web/**', 'pubspec.*', 'deploy/**', 'Dockerfile', '.dockerignore', 'compose.yaml', '.github/workflows/web-container.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check worker isolation and registration
+        run: node deploy/test_pwa.cjs
+      - uses: docker/setup-buildx-action@v3
+      - name: Build production web image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          push: false
+          tags: snackup-usuarios:ci
+          build-args: WEB_BASE_HREF=/
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Boot non-root image and verify routes
+        run: |
+          test "$(docker inspect --format '{{.Config.User}}' snackup-usuarios:ci)" = '10001:10001'
+          docker compose config --quiet
+          docker run -d --name usuarios-smoke --read-only --tmpfs /tmp --cap-drop ALL --security-opt no-new-privileges -p 127.0.0.1:18080:8080 snackup-usuarios:ci
+          trap 'docker logs usuarios-smoke; docker rm -f usuarios-smoke' EXIT
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:18080/healthz > /dev/null; then break; fi
+            sleep 1
+          done
+          docker exec usuarios-smoke sh -c '! command -v flutter && ! command -v dart'
+          python3 deploy/smoke_http.py --pwa

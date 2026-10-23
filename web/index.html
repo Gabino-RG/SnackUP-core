@@ -1,5 +1,5 @@
 <!DOCTYPE html><html><head>
-  <base href="/">
+  <base href="$FLUTTER_BASE_HREF">
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="SnackUp App">
@@ -139,6 +139,13 @@
     firebase.initializeApp(firebaseConfig);
   </script>
 
-  <script src="main.dart.js" type="application/javascript"></script>
+  <script>
+    window.addEventListener('flutter-first-frame', function () {
+      removeSplashFromWeb();
+      document.querySelector('.loading-container')?.remove();
+    }, {once: true});
+  </script>
+  <script src="pwa.js" defer></script>
+  <script src="flutter_bootstrap.js" async></script>
 
 </body></html>

@@ -1,7 +1,9 @@
 {
     "name": "SnackUp",
     "short_name": "SnackUp",
+    "id": ".",
     "start_url": ".",
+    "scope": ".",
     "display": "standalone",
     "background_color": "#4a54df",
     "theme_color": "#4a54df",
