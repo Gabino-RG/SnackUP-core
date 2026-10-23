@@ -1,25 +1,45 @@
-# SnackUP
+# SnackUP · Cocina y Administración
 
-Aplicación de cafetería universitaria. Esta rama contiene los paneles web REST de
-Administración y Cocina/Local, y el backend SQL para identidad, catálogo, pedidos,
-inventario, entrega, opiniones y seguimiento.
+Esta rama contiene el portal Flutter REST de **Cocina/Local y Administración**.
+El backend tiene su propia rama, `codex/backend-api-v3-fastapi`; su código ya no
+está incluido aquí. La app de alumnos se construye en `codex/usuarios-pwa`.
 
-- [Instalar y ejecutar el backend](backend/README.md).
-- [API del alumno e identidad institucional](backend/API_ALUMNOS.md).
-- [Integrar los paneles existentes](docs/integracion/EQUIPO_BACKEND.md).
-- [Contrato de los 43 endpoints de paneles](docs/integracion/openapi.json).
-- [Pruebas del backend](https://github.com/Gabino-RG/SnackUP-core/actions/workflows/backend.yml).
-- [Compilación del frontend](https://github.com/Gabino-RG/SnackUP-core/actions/workflows/paneles-entrega.yml).
+| Aplicación | Rama | Despliegue |
+| --- | --- | --- |
+| Cocina / Administración | [`codex/entrega-paneles-rest`](https://github.com/Gabino-RG/SnackUP-core/tree/codex/entrega-paneles-rest) | [Contenedor del portal](deploy/README.md) |
+| Backend | [`codex/backend-api-v3-fastapi`](https://github.com/Gabino-RG/SnackUP-core/tree/codex/backend-api-v3-fastapi) | [Instalación y tres contenedores](https://github.com/Gabino-RG/SnackUP-core/blob/codex/backend-api-v3-fastapi/backend/DESPLIEGUE_TRES_APPS.md) |
+| Alumnos / PWA | [`codex/usuarios-pwa`](https://github.com/Gabino-RG/SnackUP-core/tree/codex/usuarios-pwa) | [Contenedor de alumnos](https://github.com/Gabino-RG/SnackUP-core/blob/codex/usuarios-pwa/deploy/README.md) |
 
-Backend: Python/FastAPI, PostgreSQL, Redis y WebSocket. Frontend de paneles: Flutter,
-entrada `app/lib/main_portal_api.dart`, API `/api/v1/` en el mismo origen HTTPS.
-El código histórico del alumno aún necesita conectarse a la nueva API REST.
+La entrada de esta imagen es `app/lib/main_portal_api.dart`, con
+`BACKEND=rest`, `REVIEW_MODE=false` y API de compatibilidad
+`/api/legacy/v1/`. No inicia Firebase. El resto del código histórico se conserva
+como referencia y para evitar perder trabajo; no se incluye como otra app en
+el contenedor del portal.
 
-La instalación institucional, SMTP, dominio y padrón autorizado están pendientes.
-El objetivo es 1,000 alumnos simultáneos más operadores; debe medirse con la carga
-real antes de anunciar capacidad. `backend/load/` contiene el protocolo de carga.
-Google está deshabilitado y los pedidos admiten efectivo al recoger, sin pasarela.
+El despliegue conjunto publica alumnos en `/` y este portal en `/paneles/`,
+compilado con `WEB_BASE_HREF=/paneles/`. Cada uno tiene su proceso Caddy y su
+imagen. API, PostgreSQL, Redis y el proxy HTTPS son servicios independientes.
 
-Rama de entrega: `codex/entrega-paneles-rest`. Se conserva el respaldo
-`respaldo/2026-10-13-antes-restablecimiento` en `006ef99`. El servidor de
-`scripts/review` sigue siendo una herramienta de revisión de la interfaz.
+## Integración y validación
+
+- [Construir y ejecutar el contenedor](deploy/README.md).
+- [Contrato de los 43 endpoints del portal](docs/integracion/openapi.json).
+- [Integrar el portal con el backend separado](docs/integracion/EQUIPO_BACKEND.md).
+- [Protocolo WebSocket de compatibilidad](docs/integracion/REALTIME.md).
+- [Auditoría de funciones existentes y contrato V3.2](https://github.com/Gabino-RG/SnackUP-core/blob/codex/backend-api-v3-fastapi/backend/AUDITORIA_APP_Y_API_V3_2.md).
+- [Workflow del contenedor](.github/workflows/web-container.yml).
+- [Compilación y recorrido visual del portal](.github/workflows/paneles-entrega.yml).
+
+Cambiar la URL a `/api/v1/` no migra el portal: la API canónica utiliza otros
+roles, DTO y Socket.IO. Se conserva el adaptador legacy hasta hacer esa
+integración de forma explícita. Los códigos de entrega admiten el formato nuevo
+de seis caracteres y el histórico de ocho; no se usa matrícula para entregar.
+
+El servidor `scripts/review` sirve únicamente para revisión de interfaz y
+pruebas con datos ficticios. La instalación institucional, SMTP, dominio y
+padrón están pendientes. La capacidad de 1,000 alumnos simultáneos necesita
+medición. Consultar los resultados por commit en GitHub Actions; un workflow
+preparado no acredita por sí solo un build correcto.
+
+El respaldo `respaldo/2026-10-13-antes-restablecimiento` sigue en `006ef99`.
+`main` se mantiene sin cambios.

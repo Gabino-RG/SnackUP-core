@@ -55,12 +55,13 @@ jobs:
         env:
           SNACKUP_PRODUCTION_BUILD: '1'
           SNACKUP_SCREENSHOTS: build/delivery/browser
+          SNACKUP_API_PREFIX: /api/legacy/v1/
         run: |
-          python scripts/review/review_server.py --no-browser --web app/build/portal-entrega --data "$RUNNER_TEMP/snackup-delivery-data" > "$RUNNER_TEMP/snackup-delivery.log" 2>&1 &
+          python scripts/review/review_server.py --no-browser --api-prefix /api/legacy/v1/ --web app/build/portal-entrega --data "$RUNNER_TEMP/snackup-delivery-data" > "$RUNNER_TEMP/snackup-delivery.log" 2>&1 &
           FIXTURE_PID=$!
           trap 'kill "$FIXTURE_PID" 2>/dev/null || true' EXIT
           for i in {1..30}; do
-            if curl --fail --silent http://localhost:8791/api/v1/auth/options > /dev/null; then break; fi
+            if curl --fail --silent http://localhost:8791/api/legacy/v1/auth/options > /dev/null; then break; fi
             sleep 1
           done
           export SNACKUP_PLAYWRIGHT="$RUNNER_TEMP/snackup-ui/node_modules/playwright"

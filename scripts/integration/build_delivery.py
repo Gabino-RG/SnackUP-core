@@ -26,7 +26,7 @@ DOCS = [
 README = '''SNACKUP - ENTREGA FRONTEND ADMINISTRACION Y COCINA
 
 1. Lee documentos/README.md y documentos/ACEPTACION.md.
-2. Implementa la API de documentos/openapi.json en /api/v1/.
+2. Conecta la API de documentos/openapi.json en /api/legacy/v1/.
 3. Sirve web/ en la raiz del mismo origen HTTPS que la API.
 4. Conserva rutas API y /media/ fuera del fallback de la web.
 5. Ejecuta las pruebas de aceptacion con cuentas autorizadas del backend.
@@ -54,18 +54,18 @@ def sha(data):
 
 def validate_api(value):
     uri = urlsplit(value)
-    if value == '/api/v1/':
+    if value == '/api/legacy/v1/':
         return value
     if (uri.scheme != 'https' or not uri.hostname or uri.username or uri.password
             or uri.query or uri.fragment or not uri.path.endswith('/')):
-        raise ValueError('API must be /api/v1/ or an absolute HTTPS URL ending in /, without credentials/query/fragment.')
+        raise ValueError('API must be /api/legacy/v1/ or an absolute HTTPS URL ending in /, without credentials/query/fragment.')
     return value
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--flutter', default=shutil.which('flutter') or 'flutter')
-    parser.add_argument('--api-base-url', default='/api/v1/')
+    parser.add_argument('--api-base-url', default='/api/legacy/v1/')
     parser.add_argument('--output', type=Path, default=ROOT / 'build/delivery/SnackUP-Paneles-Frontend.zip')
     args = parser.parse_args()
     api = validate_api(args.api_base_url)

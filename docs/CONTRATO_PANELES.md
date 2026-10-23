@@ -1,6 +1,6 @@
 # Contrato de integración de los paneles
 
-Complementa `api_v3_agnostica.md` aportado por el equipo. Base `/api/v1/`, JSON UTF-8, fechas UTC y dinero numérico en MXN. Los importes se muestran en centavos enteros dentro del frontend; el servidor calcula totales y conserva snapshots de cada pedido. Todas las operaciones requieren el rol y el local del token verificados por el backend.
+Complementa `api_v3_agnostica.md` aportado por el equipo. Base `/api/legacy/v1/`, JSON UTF-8, fechas UTC y dinero numérico en MXN. Los importes se muestran en centavos enteros dentro del frontend; el servidor calcula totales y conserva snapshots de cada pedido. Todas las operaciones requieren el rol y el local del token verificados por el backend.
 
 ## Cocina — rutas v3
 

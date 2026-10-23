@@ -48,7 +48,7 @@ jobs:
         run: flutter test --coverage
 
       - name: Build integrated review package frontend
-        run: flutter build web --no-web-resources-cdn --target lib/main.dart --dart-define=BACKEND=rest --dart-define=REVIEW_MODE=true --output build/portal-review
+        run: flutter build web --no-web-resources-cdn --target lib/main.dart --dart-define=BACKEND=rest --dart-define=REVIEW_MODE=true --dart-define=API_BASE_URL=/api/v1/ --output build/portal-review
 
       - name: Preserve review frontend
         uses: actions/upload-artifact@v4

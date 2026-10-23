@@ -2,12 +2,12 @@
 
 Entrega de **Administración y Cocina/Local de SnackUP**, actualizada el 22 de octubre de 2026.
 
-**El desarrollo del backend ya se realiza en este repositorio.** Comenzar por
-[`backend/README.md`](../../backend/README.md) para instalación, migraciones,
+**El backend se desarrolla en la rama independiente `codex/backend-api-v3-fastapi`.** Comenzar por
+[`backend/README.md`](https://github.com/Gabino-RG/SnackUP-core/blob/codex/backend-api-v3-fastapi/backend/README.md) para instalación, migraciones,
 cuenta maestra, padrón, pruebas y despliegue. El stack implementado es
 FastAPI + SQLAlchemy + PostgreSQL + Redis. El contrato de los 43 endpoints del
 portal se conserva; las rutas nuevas del alumno están documentadas por separado
-en [`backend/API_ALUMNOS.md`](../../backend/API_ALUMNOS.md).
+en [`backend/API_ALUMNOS.md`](https://github.com/Gabino-RG/SnackUP-core/blob/codex/backend-api-v3-fastapi/backend/API_ALUMNOS.md).
 
 El correo se contrasta con un padrón autorizado para obtener identidad, carrera y
 grupo; no se deducen estos datos de un formato de correo aún desconocido. Verificar
@@ -37,7 +37,7 @@ automáticas, contraseñas, generador de pedidos o inicializadores de ejemplos.
 
 ## Leer en este orden
 
-1. [Backend implementado](../../backend/README.md) y [guía del frontend](README.md): instalación, alcance y pendientes.
+1. [Backend implementado](https://github.com/Gabino-RG/SnackUP-core/blob/codex/backend-api-v3-fastapi/backend/README.md) y [guía del frontend](README.md): instalación, alcance y pendientes.
 2. [Contrato OpenAPI 3.1](openapi.json): 43 operaciones, entradas, respuestas y permisos.
 3. [Manual completo](https://github.com/Gabino-RG/SnackUP-core/blob/6fbe5d6260b76d35960fe2e165b738766e4b81b4/docs/MANUAL_BACKEND_PANELES.md): reglas y explicación de los flujos (también incluido en el paquete).
 4. [Protocolo WebSocket](REALTIME.md): mensajes realmente consumidos por Cocina.
@@ -57,8 +57,8 @@ cd SnackUP-core
 git rev-parse HEAD
 ```
 
-Registrar el SHA que se recibió. Continuar el backend en `backend/`, sobre la rama
-de entrega o una rama de trabajo derivada. No sobrescribir la rama de respaldo ni fusionar
+Registrar el SHA que se recibió. Clonar por separado `codex/backend-api-v3-fastapi`
+para continuar el backend en su carpeta `backend/`. La rama de entrega contiene el portal. No sobrescribir la rama de respaldo ni fusionar
 cambios en `main` como parte de esta integración sin una instrucción del responsable.
 No usar simplemente el ZIP de la rama predeterminada: esa rama contiene una versión
 anterior de la aplicación.
@@ -67,7 +67,7 @@ anterior de la aplicación.
 
 | Ubicación | Contrato que determina |
 | --- | --- |
-| `app/lib/main_portal_api.dart` | Entrada exclusiva al portal web REST y base `/api/v1/`. |
+| `app/lib/main_portal_api.dart` | Entrada exclusiva al portal web REST y base `/api/legacy/v1/`. |
 | `app/lib/api/rest_session.dart` | Login, cookie de renovación, perfil, expiración y logout. |
 | `app/lib/api/access_repository.dart` | Opciones de acceso, solicitud de cuenta y entrada Google. |
 | `app/lib/operations/operations_repository.dart` | Locales, cuentas, cocina, historial y ventas. |
@@ -105,7 +105,7 @@ debe compilarse con `REVIEW_MODE=false`. No migrar ni eliminar por accidente las
 7. **Servicios complementarios.** WebSocket autorizado por local; recuperación por
    correo; Google solo cuando OAuth esté implementado y configurado. Mientras tanto,
    devolver `googleEnabled=false`.
-8. **Integración y aceptación.** Servir frontend y `/api/v1/` en el mismo origen HTTPS,
+8. **Integración y aceptación.** Servir frontend y `/api/legacy/v1/` en el mismo origen HTTPS,
    comprobar todas las filas de la matriz y registrar resultados y límites reales.
 
 Reglas transversales: JSON camelCase, importes numéricos en MXN, fechas con zona,
@@ -129,7 +129,7 @@ se conservan 30 días; guardar la entrega o reconstruirla desde el SHA.
 
 No se requieren cambios visuales para empezar la integración. No colocar secretos
 en `dart-define`: esas opciones son parte del JavaScript público. La configuración
-por defecto espera `/api/v1/` en el mismo origen y evita recompilar por cada dominio.
+por defecto espera `/api/legacy/v1/` en el mismo origen y evita recompilar por cada dominio.
 
 ## Evidencia ya disponible y alcance
 
@@ -199,7 +199,8 @@ respaldo ni publiques o fusiones cambios en main sin autorización del responsab
 
 Entrega código, migraciones, configuración sin secretos, instrucciones HTTPS,
 pruebas por endpoint, resultados de la matriz de aceptación y límites pendientes.
-Continúa la implementación existente en backend/ (FastAPI, PostgreSQL, Redis).
+Continúa el backend en su rama codex/backend-api-v3-fastapi, carpeta backend/
+(FastAPI, PostgreSQL, Redis). No vuelvas a añadir backend/ a la rama de paneles.
 Lee también backend/README.md, backend/API_ALUMNOS.md y sus pruebas. No copies
 scripts/review como servidor productivo. El correo enlaza un padrón autorizado;
 la carrera no se inventa ni la clasificación staff concede permisos de SnackUP.

@@ -24,7 +24,7 @@ Desde `app`, para desarrollo:
 
 ```bash
 flutter pub get
-flutter run -d chrome --dart-define=BACKEND=rest --dart-define=API_BASE_URL=https://servidor-de-la-universidad.example/api/v1/
+flutter run -d chrome --dart-define=BACKEND=rest --dart-define=API_BASE_URL=https://servidor-de-la-universidad.example/api/legacy/v1/
 ```
 
 El dominio anterior es un ejemplo: sustituirlo por el servidor del equipo.
@@ -36,9 +36,9 @@ Para servir frontend y API bajo el mismo origen en el servidor local:
 flutter build web --no-web-resources-cdn --target lib/main.dart --dart-define=BACKEND=rest --output build/portal-api
 ```
 
-Sin `API_BASE_URL`, el portal utiliza `/api/v1/` del mismo servidor que sirve
+Sin `API_BASE_URL`, el portal utiliza `/api/legacy/v1/` del mismo servidor que sirve
 la página. El servidor web debe servir los archivos de `build/portal-api` y
-dirigir `/api/v1/` al backend. No abrir `index.html` mediante `file://`.
+dirigir `/api/legacy/v1/` al backend. No abrir `index.html` mediante `file://`.
 No usar `localhost` como dirección del servidor para otros dispositivos.
 La configuración por defecto de la entrada anterior sigue siendo Firebase;
 la selección REST sucede antes de inicializar Firebase y no utiliza sus SDK
@@ -98,7 +98,7 @@ credenciales. Estas opciones no se cambian desde el frontend.
 Las rutas están centralizadas en `AdminApiRoutes`. No están definidas en v3
 y requieren acuerdo con el backend definitivo. La API de revisión las implementa con datos ficticios.
 
-| Operación | Ruta debajo de `/api/v1/` | Respuesta |
+| Operación | Ruta debajo de `/api/legacy/v1/` | Respuesta |
 | --- | --- | --- |
 | Locales | `GET admin/businesses?page=1&limit=200` | `{data: Business[], pagination}` |
 | Opiniones | `GET admin/reviews?page=1&limit=200` | `{data: Review[], pagination}` |

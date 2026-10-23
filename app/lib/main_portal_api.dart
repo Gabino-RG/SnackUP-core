@@ -39,7 +39,7 @@ class _PortalLauncherState extends State<_PortalLauncher> {
         _resetToken = fragment!.queryParameters['token'];
       const configured = String.fromEnvironment(
         'API_BASE_URL',
-        defaultValue: '/api/v1/',
+        defaultValue: '/api/legacy/v1/',
       );
       final base = apiBaseUri(Uri.base.resolve(configured));
       _session = RestSession(

@@ -1,0 +1,19 @@
+name: snackup-cocina
+services:
+  cocina:
+    image: snackup-cocina:local
+    build:
+      context: .
+      args:
+        WEB_BASE_HREF: ${WEB_BASE_HREF:-/}
+    environment:
+      SNACKUP_API_UPSTREAM: ${SNACKUP_API_UPSTREAM:-}
+    ports:
+      - '${SNACKUP_BIND_ADDRESS:-127.0.0.1}:${SNACKUP_COCINA_PORT:-8082}:8080'
+    restart: unless-stopped
+    init: true
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    stop_grace_period: 15s

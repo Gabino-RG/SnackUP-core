@@ -87,7 +87,7 @@ void main() {
             d = {'id': 'b1', 'name': 'Central', 'isOpen': true, 'version': 1};
           } else if (request.url.path.endsWith('/complete')) {
             attempts++;
-            expect(jsonDecode(request.body)['code'], '4821');
+            expect(jsonDecode(request.body)['code'], 'A9K3F1');
             delivered = true;
             d = orderData(status: 'completed', version: 2);
           } else {
@@ -126,7 +126,7 @@ void main() {
       expect(attempts, 0);
       await tester.enterText(
         find.byKey(const ValueKey('delivery-code')),
-        '4821',
+        'A9K3F1',
       );
       await tester.tap(find.text('Confirmar entrega'));
       await tester.pumpAndSettle();

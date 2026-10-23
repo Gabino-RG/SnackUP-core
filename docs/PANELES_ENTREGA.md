@@ -83,4 +83,8 @@ Consulta `CONTRATO_PANELES.md`. Se mantiene la rama `test/api-aaa-sonarqube`. Co
 flutter build web --no-web-resources-cdn --target lib/main.dart --dart-define=BACKEND=rest --output build/portal-api
 ```
 
-Sin `REVIEW_MODE` desaparecen el botón de acceso de prueba, las credenciales de ejemplo y el generador de pedidos. El alta del Local de prueba pertenece exclusivamente a `review_server.py`; el frontend no crea cuentas ni omite la autenticación. Por defecto utiliza `/api/v1/` en el mismo origen; `API_BASE_URL` permite configurar otro servidor al compilar. El navegador no se conecta directamente a SQL. El backend mantiene la autorización, transacciones, verificación de correos, OAuth, revocaciones y controles de capacidad. Los dominios institucionales y el catálogo académico se obtienen del backend; los grupos no se deducen de las opiniones.
+Sin `REVIEW_MODE` desaparecen el botón de acceso de prueba, las credenciales de ejemplo y el generador de pedidos. El alta del Local de prueba pertenece exclusivamente a `review_server.py`; el frontend no crea cuentas ni omite la autenticación. Para el backend real utiliza `/api/legacy/v1/` en el mismo origen; `API_BASE_URL` permite configurar otro servidor al compilar. El navegador no se conecta directamente a SQL. El backend mantiene la autorización, transacciones, verificación de correos, OAuth, revocaciones y controles de capacidad. Los dominios institucionales y el catálogo académico se obtienen del backend; los grupos no se deducen de las opiniones.
+
+El paquete de revisión conserva su fixture local `/api/v1/`: se compila con
+`--dart-define=REVIEW_MODE=true --dart-define=API_BASE_URL=/api/v1/`. Esa fixture
+no implementa el contrato nuevo V3; su prefijo es independiente del servidor real.

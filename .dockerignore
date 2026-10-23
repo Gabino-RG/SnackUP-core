@@ -1,0 +1,24 @@
+# Only the portal sources and runtime configuration enter this image.
+**
+!Dockerfile
+!app/
+!app/pubspec.yaml
+!app/pubspec.lock
+!app/lib/
+!app/lib/**
+!app/assets/
+!app/assets/**
+!app/web/
+!app/web/**
+!deploy/
+!deploy/**
+**/.env
+**/.env.*
+**/*service-account*.json
+**/*serviceAccount*.json
+**/credentials.json
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
+**/__pycache__/

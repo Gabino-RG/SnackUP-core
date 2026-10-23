@@ -12,16 +12,33 @@ import urllib.request
 from review_server import ReviewServer, Store, PASSWORD, REVIEW_LOCAL_EMAIL, REVIEW_LOCAL_ID, REVIEW_DEMO_BATCH, CAMPUS, hash_password
 
 class Client:
-    def __init__(self,url):
-        self.url=url;self.token='';self.cookies=http.cookiejar.CookieJar();self.opener=urllib.request.build_opener(urllib.request.HTTPCookieProcessor(self.cookies))
+    def __init__(self,url,api_prefix='/api/v1/'):
+        self.url=url;self.api_prefix=api_prefix;self.token='';self.cookies=http.cookiejar.CookieJar();self.opener=urllib.request.build_opener(urllib.request.HTTPCookieProcessor(self.cookies))
     def call(self,method,path,data=None,headers=None,raw=None):
-        req=urllib.request.Request(self.url+'/api/v1/'+path,data=raw if raw is not None else json.dumps(data or {}).encode() if method!='GET' else None,
+        req=urllib.request.Request(self.url+self.api_prefix+path,data=raw if raw is not None else json.dumps(data or {}).encode() if method!='GET' else None,
             headers={'Content-Type':'application/json',**({'Authorization':'Bearer '+self.token} if self.token else {}),**(headers or {})},method=method)
         try:res=self.opener.open(req,timeout=10)
         except urllib.error.HTTPError as e:res=e
         body=res.read();return res.status,json.loads(body) if body else None
     def login(self,email='negocio@snackup.test',password=PASSWORD):
         status,body=self.call('POST','auth/login',{'email':email,'password':password});assert status==200,body;self.token=body['tokens']['accessToken'];return body
+
+
+class DeliveryPrefixTests(unittest.TestCase):
+    def test_same_delivery_binary_can_use_legacy_prefix_with_scoped_cookie(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root=Path(temporary);(root/'web').mkdir();(root/'web'/'index.html').write_text('ok')
+            server=ReviewServer(('127.0.0.1',0),root/'web',root/'data',ready_local=False,api_prefix='/api/legacy/v1/')
+            server.store.seed_test_fixtures();server.store.migrate_institution()
+            thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+            try:
+                client=Client(f'http://127.0.0.1:{server.server_port}',api_prefix='/api/legacy/v1/')
+                client.login()
+                self.assertEqual({cookie.path for cookie in client.cookies},{'/api/legacy/v1/auth'})
+                self.assertEqual(client.call('GET','users/me')[0],200)
+                self.assertEqual(client.call('POST','auth/refresh')[0],200)
+            finally:
+                server.shutdown();server.server_close();thread.join();server.store.db.close()
 
 class ReviewTests(unittest.TestCase):
     def setUp(self):

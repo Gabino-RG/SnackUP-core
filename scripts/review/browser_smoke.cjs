@@ -5,6 +5,10 @@ const { chromium } = require(process.env.SNACKUP_PLAYWRIGHT || 'playwright');
 const output = process.env.SNACKUP_SCREENSHOTS || 'build/review-screenshots';
 const productionBuild = process.env.SNACKUP_PRODUCTION_BUILD === '1';
 const reviewUrl = process.env.SNACKUP_REVIEW_URL || 'http://localhost:8791/';
+const apiPrefix = process.env.SNACKUP_API_PREFIX || '/api/v1/';
+if (!['/api/v1/', '/api/legacy/v1/'].includes(apiPrefix)) {
+  throw new Error('Unsupported local fixture API prefix');
+}
 // This test creates disposable fixtures. Never point it at a deployed backend.
 if (!['localhost', '127.0.0.1', '[::1]'].includes(new URL(reviewUrl).hostname)) {
   throw new Error('Browser fixture test requires a loopback server');
@@ -21,7 +25,7 @@ fs.mkdirSync(output, { recursive: true });
   const traceErrors=[];
   const pendingApiRequests=new Set();
   page.on('request', request => {
-    if (new URL(request.url()).pathname.startsWith('/api/v1/')) pendingApiRequests.add(request);
+    if (new URL(request.url()).pathname.startsWith(apiPrefix)) pendingApiRequests.add(request);
   });
   page.on('requestfinished', request => pendingApiRequests.delete(request));
   page.on('requestfailed', request => pendingApiRequests.delete(request));
@@ -32,7 +36,7 @@ fs.mkdirSync(output, { recursive: true });
   }
   page.on('response', response => {
     const url = new URL(response.url());
-    if (!url.pathname.startsWith('/api/v1/')) return;
+    if (!url.pathname.startsWith(apiPrefix)) return;
     const req = response.request();
     traceJobs.push((async()=>{
       let body=null, requestBody=null;
@@ -41,7 +45,7 @@ fs.mkdirSync(output, { recursive: true });
         catch {traceErrors.push(`${req.method()} ${url.pathname} HTTP ${response.status()}: response body could not be captured`);}
       }
       try {requestBody=req.postDataJSON();} catch {}
-      traces.push(redact({method:req.method(),path:url.pathname.slice('/api/v1/'.length)+url.search,status:response.status(),body,requestBody}));
+      traces.push(redact({method:req.method(),path:url.pathname.slice(apiPrefix.length)+url.search,status:response.status(),body,requestBody}));
     })());
   });
   async function drainTraces() {
@@ -60,7 +64,7 @@ fs.mkdirSync(output, { recursive: true });
     }
     if (traceErrors.length) throw new Error('Incomplete API trace: '+traceErrors.join('\n'));
   }
-  page.on('response',r=>{if(r.url().includes('/api/v1/') && r.status()>=400 && !r.url().includes('/auth/refresh'))apiFailures.push(r.status()+' '+new URL(r.url()).pathname);});
+  page.on('response',r=>{if(r.url().includes(apiPrefix) && r.status()>=400 && !r.url().includes('/auth/refresh'))apiFailures.push(r.status()+' '+new URL(r.url()).pathname);});
   async function typeField(label,value){
     const field=page.getByRole('textbox',{name:label,exact:true});
     await field.click();
@@ -221,18 +225,18 @@ fs.mkdirSync(output, { recursive: true });
     if (productionBuild) {
       if (await page.getByRole('button',{name:'Recibir pedido de prueba',exact:true}).count()) throw new Error('Review order generator leaked into delivery');
       // Fixture setup is outside the compiled frontend and uses its own session.
-      const loginResponse=await fetch(new URL('/api/v1/auth/login',reviewUrl),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:'negocio@snackup.test',password:'SnackUP-Prueba-2026'})});
+      const loginResponse=await fetch(new URL(apiPrefix+'auth/login',reviewUrl),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:'negocio@snackup.test',password:'SnackUP-Prueba-2026'})});
       if (!loginResponse.ok) throw new Error('Fixture login failed');
       const token=(await loginResponse.json()).tokens.accessToken;
       const headers={'Content-Type':'application/json','Authorization':'Bearer '+token};
-      const me=await fetch(new URL('/api/v1/users/me',reviewUrl),{headers});
+      const me=await fetch(new URL(apiPrefix+'users/me',reviewUrl),{headers});
       if (!me.ok) throw new Error('Fixture profile failed');
       const businessId=(await me.json()).businessId;
-      const response=await fetch(new URL('/api/v1/review/orders',reviewUrl),{method:'POST',headers,body:JSON.stringify({businessId})});
+      const response=await fetch(new URL(apiPrefix+'review/orders',reviewUrl),{method:'POST',headers,body:JSON.stringify({businessId})});
       if (!response.ok) throw new Error('Fixture order creation failed');
       ticket=await response.json();
     } else {
-      const ticketResponse=page.waitForResponse(r=>r.url().endsWith('/api/v1/review/orders')&&r.request().method()==='POST');
+      const ticketResponse=page.waitForResponse(r=>r.url().endsWith(apiPrefix+'review/orders')&&r.request().method()==='POST');
       await page.getByRole('button',{name:'Recibir pedido de prueba',exact:true}).click();
       ticket=await (await ticketResponse).json();
       await page.getByRole('button',{name:'Ir a cocina',exact:true}).click();

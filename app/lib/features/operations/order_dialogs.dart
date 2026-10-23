@@ -126,7 +126,7 @@ class _OrderActionDialogState extends State<OrderActionDialog> {
                   ),
                 ] else ...[
                   const Text(
-                    'Pide el código de recogida al cliente o escanea su QR. También puedes usar su número de control como respaldo.',
+                    'Pide el código de recogida del pedido al cliente o escanea su QR.',
                   ),
                   const SizedBox(height: 16),
                   TextFormField(

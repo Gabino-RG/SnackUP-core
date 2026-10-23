@@ -50,12 +50,12 @@ void main() {
       final current = KitchenOrder.fromJson(
         orderData(status: 'ready', version: 4),
       );
-      await r.act(current, 'complete', method: 'manual', code: ' 4821 ');
+      await r.act(current, 'complete', method: 'manual', code: ' 12345678 ');
       expect(calls.single.url.path, '/api/v1/orders/o1/complete');
       expect(jsonDecode(calls.single.body), {
         'expectedVersion': 4,
         'method': 'manual',
-        'code': '4821',
+        'code': '12345678',
       });
     },
   );

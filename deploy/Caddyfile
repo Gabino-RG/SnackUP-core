@@ -1,0 +1,39 @@
+{
+	admin off
+	auto_https off
+}
+
+:8080 {
+	root * /srv
+	encode zstd gzip
+	header {
+		-Server
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+		X-Frame-Options DENY
+	}
+	# Preserve API errors and WebSocket upgrades; never turn them into index.html.
+	route {
+		@health path /healthz
+		handle @health {
+			header Cache-Control no-store
+			respond "ok" 200
+		}
+		@backend path /api /api/* /socket.io /socket.io/* /media /media/*
+		handle @backend {
+			import /tmp/snackup-backend.caddy
+		}
+		handle {
+			# Flutter uses stable filenames: revalidate after each deployment.
+			header Cache-Control no-cache
+			@asset path_regexp asset \.[^/]+$
+			handle @asset {
+				file_server
+			}
+			handle {
+				try_files {path} /index.html
+				file_server
+			}
+		}
+	}
+}

@@ -1,7 +1,7 @@
 # Aceptación de la conexión al backend
 
 Estado de esta matriz: **aceptación en servidor institucional pendiente**.
-La implementación SQL está en [`backend/`](../../backend/README.md), con pruebas
+La implementación SQL está en [`backend/`](https://github.com/Gabino-RG/SnackUP-core/blob/codex/backend-api-v3-fastapi/backend/README.md), con pruebas
 automáticas de API, permisos y concurrencia. Consultar su workflow para el commit
 recibido. Las pruebas locales y el simulador no sustituyen la aceptación del despliegue.
 Registrar para cada caso: commit frontend/backend, entorno, fecha, resultado y evidencia.

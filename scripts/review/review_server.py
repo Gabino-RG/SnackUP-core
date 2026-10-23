@@ -359,7 +359,7 @@ class ReviewHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header('Content-Type','application/json; charset=utf-8')
         self.send_header('Content-Length',str(len(raw)))
         if cookie is not None:
-            self.send_header('Set-Cookie',f'snackup_review_refresh={cookie}; HttpOnly; SameSite=Strict; Path=/api/v1/auth; Max-Age={86400 if cookie else 0}')
+            self.send_header('Set-Cookie',f'snackup_review_refresh={cookie}; HttpOnly; SameSite=Strict; Path={self.server.api_prefix}auth; Max-Age={86400 if cookie else 0}')
         self.end_headers()
         if raw:self.wfile.write(raw)
     def refresh_cookie(self):
@@ -401,7 +401,7 @@ class ReviewHandler(http.server.SimpleHTTPRequestHandler):
             self.check_origin()
             parsed=urllib.parse.urlsplit(self.path)
             path=urllib.parse.unquote(parsed.path)
-            if not path.startswith('/api/v1/'):
+            if not path.startswith(self.server.api_prefix):
                 require(method=='GET',405,'METHOD_NOT_ALLOWED')
                 if path.startswith('/media/'):
                     name=path[7:]
@@ -412,7 +412,7 @@ class ReviewHandler(http.server.SimpleHTTPRequestHandler):
                 return super().do_GET()
             query=urllib.parse.parse_qs(parsed.query)
             data={} if method=='GET' else self.body()
-            parts=path[len('/api/v1/'):].strip('/').split('/')
+            parts=path[len(self.server.api_prefix):].strip('/').split('/')
             self._deferring=True
             try:
                 with self.server.store.lock, self.server.store.db:
@@ -682,7 +682,10 @@ class ReviewHandler(http.server.SimpleHTTPRequestHandler):
 class ReviewServer(http.server.ThreadingHTTPServer):
     allow_reuse_address=False
     daemon_threads=True
-    def __init__(self,address,web_root,data_dir,*,ready_local=True):
+    def __init__(self,address,web_root,data_dir,*,ready_local=True,api_prefix='/api/v1/'):
+        if api_prefix not in {'/api/v1/','/api/legacy/v1/'}:
+            raise ValueError('Use an explicitly supported local fixture API prefix')
+        self.api_prefix=api_prefix
         self.web_root=Path(web_root).resolve();self.data_dir=Path(data_dir).resolve();self.store=Store(self.data_dir/'revision.sqlite3')
         if ready_local:
             self.store.ensure_review_local()
@@ -697,9 +700,10 @@ def main():
     parser.add_argument('--port',type=int,default=8791);parser.add_argument('--no-browser',action='store_true')
     parser.add_argument('--web',type=Path,default=Path(__file__).resolve().parent/'web')
     parser.add_argument('--data',type=Path,default=Path(__file__).resolve().parent/'datos')
+    parser.add_argument('--api-prefix',choices=['/api/v1/','/api/legacy/v1/'],default='/api/v1/')
     args=parser.parse_args();require(0<=args.port<=65535)
     if not (args.web/'index.html').is_file():print('Extrae todo el ZIP antes de abrir INICIAR_SNACKUP.cmd.');return 1
-    try:server=ReviewServer(('127.0.0.1',args.port),args.web,args.data)
+    try:server=ReviewServer(('127.0.0.1',args.port),args.web,args.data,api_prefix=args.api_prefix)
     except OSError:print('No se pudo abrir el puerto. Cierra la otra instancia de SnackUP e intenta nuevamente.');return 1
     url=f'http://localhost:{server.server_port}/'
     print('\nSNACKUP | REVISION DE NEGOCIOS Y ADMINISTRACION\nDatos de prueba persistentes en esta PC.\nNo es el backend de producción.\n',flush=True)

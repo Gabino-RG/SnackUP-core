@@ -49,7 +49,7 @@ configuración del servidor y conexión del panel administrativo.
 
 El adaptador RestCatalogRepository recibe:
 
-- baseUri: URL de la API local, incluyendo /api/v1/.
+- baseUri: URL de la API local, incluyendo /api/legacy/v1/.
 - client: cliente HTTP compartido de la aplicación.
 - accessToken: función que obtiene el token de la sesión actual.
 - refreshSession: renovación coordinada con el acceso general.
@@ -60,7 +60,7 @@ real debe proporcionar el businessId autorizado de GET /users/me; no usar el
 selector de locales del modo de ejemplo en el despliegue conectado.
 
 Para alojar frontend y API en el mismo servidor/origen, la URL puede resolverse
-con Uri.base.resolve('/api/v1/'). En equipos de alumnos, localhost apunta al
+con Uri.base.resolve('/api/legacy/v1/'). En equipos de alumnos, localhost apunta al
 equipo del alumno: se utilizará el nombre o IP del servidor del campus.
 El despliegue real requiere HTTPS para la cookie segura de renovación y las
 capacidades del navegador como cámara; el certificado debe ser confiable en
@@ -73,7 +73,7 @@ media están definidos allí; CRUD completo y algunos formatos se remiten a v2.
 Estas decisiones completan los huecos para desarrollar y probar, y deben
 coordinarse con el responsable del backend antes de conexión:
 
-| Operación | Ruta debajo de /api/v1 | Resultado esperado |
+| Operación | Ruta debajo de /api/legacy/v1 | Resultado esperado |
 | --- | --- | --- |
 | Listar | GET /businesses/{businessId}/products | data y pagination |
 | Obtener | GET /products/{id} | Product |
@@ -117,7 +117,7 @@ reintenta una vez tras TOKEN_EXPIRED y renovación exitosa.
 Despliegue objetivo:
 
 1. Los dispositivos acceden al frontend desde la red autorizada.
-2. El servidor local sirve el frontend y dirige /api/v1 a la API.
+2. El servidor local sirve el frontend y dirige /api/legacy/v1 a la API.
 3. La API valida sesión, roles y negocio; consulta la base SQL local.
 4. El servidor mantiene el canal de tiempo real y la gestión de imágenes.
 

@@ -1,0 +1,51 @@
+name: Contenedor Cocina y Administración
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/entrega-paneles-rest]
+  pull_request:
+    paths: ['app/lib/**', 'app/assets/**', 'app/web/**', 'app/pubspec.*', 'deploy/**', 'Dockerfile', '.dockerignore', 'compose.yaml', '.github/workflows/web-container.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - base: /
+            cache: portal-root
+          - base: /paneles/
+            cache: portal-paneles
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build production portal image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          push: false
+          tags: snackup-cocina:ci
+          build-args: WEB_BASE_HREF=${{ matrix.base }}
+          cache-from: type=gha,scope=${{ matrix.cache }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.cache }}
+      - name: Boot non-root image and verify routes
+        env:
+          EXPECTED_BASE: ${{ matrix.base }}
+        run: |
+          test "$(docker inspect --format '{{.Config.User}}' snackup-cocina:ci)" = '10001:10001'
+          docker compose config --quiet
+          docker run -d --name cocina-smoke --read-only --tmpfs /tmp --cap-drop ALL --security-opt no-new-privileges -p 127.0.0.1:18080:8080 snackup-cocina:ci
+          trap 'docker logs cocina-smoke; docker rm -f cocina-smoke' EXIT
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:18080/healthz > /dev/null; then break; fi
+            sleep 1
+          done
+          docker exec cocina-smoke sh -c '! command -v flutter && ! command -v dart'
+          python3 deploy/smoke_http.py --base "$EXPECTED_BASE"

@@ -1,10 +1,16 @@
 # Entrega de frontend: Administración y Cocina
 
+**Compatibilidad V3 (23 de octubre de 2026):** este portal conserva su contrato de paneles en
+`/api/legacy/v1/` y WebSocket nativo `/api/legacy/v1/realtime`. El contrato nuevo
+se publica en `/api/v1/` con Socket.IO en `/socket.io/`; conectar el portal a esa base
+requiere adaptar roles, DTOs y repositorios. La app del alumno y Firebase conservan
+su configuración hasta realizar su integración explícita.
+
 **Equipo de backend y asistente de IA:** comenzar por [EQUIPO_BACKEND.md](EQUIPO_BACKEND.md).
 Incluye orden de trabajo, entregables y un bloque de instrucciones listo para copiar.
 
-**Actualización del 22 de octubre de 2026:** el backend se desarrolla en este mismo
-repositorio, en [`backend/`](../../backend/README.md), con FastAPI, PostgreSQL y Redis.
+**Separación del 23 de octubre de 2026:** el backend se desarrolla en la rama
+`codex/backend-api-v3-fastapi`, carpeta [`backend/`](https://github.com/Gabino-RG/SnackUP-core/blob/codex/backend-api-v3-fastapi/backend/README.md), con FastAPI, PostgreSQL y Redis.
 Su instalación y pruebas son independientes del simulador `scripts/review`.
 El objetivo actualizado es **1,000 alumnos simultáneos**, pendiente de medición en
 el servidor asignado. Las menciones a 500 sesiones en manuales anteriores son históricas.
@@ -24,12 +30,12 @@ El SHA de esta entrega, su compilador y sus huellas están en `VERSION.json` del
 - `VERSION.json` y `SHA256SUMS.txt`: identificación y verificación del paquete.
 
 El binario de entrega entra por `lib/main_portal_api.dart`, con `BACKEND=rest`,
-`REVIEW_MODE=false` y API predeterminada `/api/v1/`. No inicia Firebase, no crea
+`REVIEW_MODE=false` y API predeterminada `/api/legacy/v1/`. No inicia Firebase, no crea
 cuentas, no muestra contraseñas de prueba y no ofrece generar pedidos ficticios.
 El repositorio conserva el resto de la aplicación para no perder trabajo anterior.
 La creación de pedidos y opiniones por alumnos se integra por separado con el backend.
 
-**Estado:** frontend preparado para integración y backend implementado en `backend/`.
+**Estado:** frontend preparado para integración y backend implementado en su rama independiente.
 La instalación en el servidor institucional, la conexión de la interfaz del alumno,
 el correo real y la capacidad siguen pendientes. Google permanece deshabilitado.
 Consultar los resultados del workflow de backend para el commit recibido.
@@ -37,12 +43,16 @@ El servidor Python/SQLite de `scripts/review` se utiliza exclusivamente para pru
 
 ## Conexión acordada
 
+Para contenedores separados, usar [la guía Docker del portal](../../deploy/README.md)
+y compilar con `/paneles/` en el despliegue conjunto. Las instrucciones siguientes
+describen el paquete web histórico que se sirve en la raíz.
+
 Publicar los archivos de `web/` en la raíz de un origen HTTPS. En ese mismo origen,
-el backend atiende `/api/v1/` y los medios se sirven bajo `/media/` o una URL HTTPS
+el backend atiende `/api/legacy/v1/` y los medios se sirven bajo `/media/` o una URL HTTPS
 cargable por el navegador. No abrir `index.html` mediante doble clic.
 
 Por ejemplo, si la universidad asigna `https://cafeteria.example`, la aplicación
-consume `https://cafeteria.example/api/v1/`. Este dominio es ilustrativo.
+consume `https://cafeteria.example/api/legacy/v1/`. Este dominio es ilustrativo.
 No se requiere cambiar el JavaScript compilado para este despliegue de mismo origen.
 El nombre real se elige al publicar el servidor. Las credenciales SQL, secretos JWT,
 correo y OAuth pertenecen al backend; nunca se incorporan a Flutter.
@@ -53,8 +63,8 @@ CORS por sí solo no permite cookies cross-site. Mantener mismo origen es la opc
 de referencia. Ningún dato de conexión a SQL se solicita al usuario del portal.
 
 El ejemplo de Nginx es una referencia que el equipo adapta a sus certificados y
-backend. `/api/v1/` no debe terminar en `index.html`; los errores de API son JSON.
-Se conserva el prefijo `/api/v1/` al enviar peticiones al backend.
+backend. `/api/legacy/v1/` no debe terminar en `index.html`; los errores de API son JSON.
+Se conserva el prefijo `/api/legacy/v1/` al enviar peticiones al backend.
 
 ## Orden de implementación
 
@@ -77,7 +87,7 @@ suplantar operadores. La API debe verificar estas reglas en cada petición.
 ## Contrato y compatibilidad
 
 Abrir `openapi.json` con un visor/importador OpenAPI 3.1. Las rutas son relativas a
-`/api/v1`. Los esquemas definen la forma canónica; algunos parsers admiten sobres
+`/api/legacy/v1`. Los esquemas definen la forma canónica; algunos parsers admiten sobres
 heredados descritos en el manual, pero conviene implementar los objetos canónicos.
 
 - Dinero: números JSON en pesos MXN, hasta dos decimales. No enviar texto ni centavos.
@@ -126,7 +136,7 @@ python scripts/integration/build_delivery.py --output build/delivery/SnackUP-Pan
 REST con revisión deshabilitada, comprueba archivos esenciales y ausencia de marcadores
 de demostración, incluye el código exacto y verifica todas las huellas del ZIP.
 No sobrescribe un ZIP existente: seleccionar otro `--output` para una nueva entrega.
-Admite `--flutter RUTA` y `--api-base-url https://dominio.example/api/v1/`.
+Admite `--flutter RUTA` y `--api-base-url https://dominio.example/api/legacy/v1/`.
 
 El comando `flutter config` prepara el SDK para esta entrega web, igual que el
 workflow. Evita que Flutter regenere archivos nativos de escritorio durante
