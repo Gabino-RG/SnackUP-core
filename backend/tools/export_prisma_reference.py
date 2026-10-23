@@ -15,7 +15,7 @@ import json
 from pathlib import Path
 import sys
 
-from sqlalchemy import (Boolean, CheckConstraint, DateTime, ForeignKeyConstraint,
+from sqlalchemy import (Boolean, CheckConstraint, Date, DateTime, ForeignKeyConstraint,
                         Integer, JSON, Numeric, String, Text, UniqueConstraint)
 
 BACKEND = Path(__file__).resolve().parents[1]
@@ -25,6 +25,12 @@ if str(BACKEND) not in sys.path:
 # Preserve the vocabulary of the supplied V3 schema while mapping every table
 # that exists in the Python implementation, including the legacy workflows.
 MODELS = {
+    "cart_items": "ItemCarrito",
+    "favorites": "Favorito",
+    "meal_voucher_uses": "UsoValeComida",
+    "chats": "ConversacionChat",
+    "chat_messages": "MensajeChat",
+    "chat_closures": "ComprobanteCierreChat",
     "users": "Usuario",
     "careers": "Carrera",
     "academic_groups": "GrupoAcademico",
@@ -107,6 +113,17 @@ FIELD_OVERRIDES = {
 # (referencing table, FK columns): (forward relation, inverse relation).
 # Cardinality comes from actual PK/UNIQUE constraints, never from DTO assumptions.
 RELATIONS = {
+    ("cart_items", "user_id"): ("usuario", "carrito"),
+    ("cart_items", "product_id"): ("platillo", "carritos"),
+    ("favorites", "user_id"): ("usuario", "favoritos"),
+    ("favorites", "product_id"): ("platillo", "favoritos"),
+    ("meal_voucher_uses", "user_id"): ("usuario", "usosVale"),
+    ("meal_voucher_uses", "order_id"): ("pedido", "usoVale"),
+    ("chats", "student_id"): ("alumno", "chats"),
+    ("chats", "business_id"): ("negocio", "chats"),
+    ("chats", "order_id"): ("pedido", "chats"),
+    ("chat_messages", "chat_id"): ("conversacion", "mensajes"),
+    ("chat_messages", "sender_id"): ("remitente", "mensajes"),
     ("academic_groups", "career_id"): ("carrera", "grupos"),
     ("academic_records", "career_id"): ("carrera", "registrosInstitucionales"),
     ("academic_records", "group_id"): ("grupo", "registrosInstitucionales"),
@@ -192,7 +209,7 @@ MODEL_NOTES = {
     "order_items": ["nombreSnapshot/precioUnitario son snapshots de venta; cantidadReservada registra la reserva real."],
     "reviews": [
         "Tabla histórica reviews = calificación del negocio, con carrera/grupo y seguimiento administrativo.",
-        "puntuacion es nullable por compatibilidad histórica; los nuevos DTO exigen un entero 1..5.",
+        "puntuacion es nullable por compatibilidad histórica; los nuevos DTO exigen un entero 0..5.",
     ],
     "product_reviews": ["Reseña de producto comprado: unicidad por pedidoId + platilloId, distinta de reviews."],
     "media_files": [
@@ -238,7 +255,7 @@ HEADER = """// SnackUP - referencia PostgreSQL / Prisma ORM 7 del backend Python
 // Los defaults/onupdate de Python se documentan y NO se transforman en DEFAULT SQL.
 // SQLAlchemy JSON corresponde a @db.Json, no al JsonB que Prisma usaría por omisión.
 // TIMESTAMP WITH TIME ZONE sin precisión explícita conserva la precisión PostgreSQL 6.
-// Los CHECK y los dos índices parciales se documentan al pie de su modelo; Alembic los mantiene.
+// Los CHECK y los índices parciales se documentan al pie de su modelo; Alembic los mantiene.
 // No se declara generator: este archivo permite validar/consultar la referencia sin generar cliente Node.
 // Prisma 7 ubica URLs de conexión en prisma.config.ts; validate no necesita conexión.
 // Referencias: https://www.prisma.io/docs/orm/v7/reference/prisma-schema-reference
@@ -252,7 +269,7 @@ datasource db {
 
 
 def metadata():
-    for module in ("identity_models", "operation_models", "admin_models", "push_models", "review_models"):
+    for module in ("identity_models", "operation_models", "admin_models", "push_models", "review_models", "v32_models"):
         import_module("snackup." + module)
     from snackup.db import Base
     return Base.metadata
@@ -284,6 +301,8 @@ def scalar_type(column):
         return "Int", "@db.Integer"
     if isinstance(datatype, DateTime):
         return "DateTime", "@db.Timestamptz(6)" if datatype.timezone else "@db.Timestamp(6)"
+    if isinstance(datatype, Date):
+        return "DateTime", "@db.Date"
     if isinstance(datatype, Numeric):
         if datatype.precision is None or datatype.scale is None:
             raise ValueError(f"Numeric sin precisión explícita: {column}")

@@ -15,7 +15,7 @@ class ProductReview(Base):
     __tablename__ = 'product_reviews'
     __table_args__ = (
         UniqueConstraint('order_id', 'product_id', name='uq_product_review_order_product'),
-        CheckConstraint('rating BETWEEN 1 AND 5', name='ck_product_review_rating'),
+        CheckConstraint('rating BETWEEN 0 AND 5', name='ck_product_review_rating'),
         Index('ix_product_reviews_product_created', 'product_id', 'created_at', 'id'),
         Index('ix_product_reviews_user', 'user_id'),
     )

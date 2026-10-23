@@ -1,5 +1,7 @@
 """Readiness includes SQL, Redis, the proxy and each frontend's actual HTML."""
 import os
+from pathlib import Path
+import time
 from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 
@@ -18,6 +20,8 @@ def api_ready():
 
 
 def check():
+    if time.time() - Path("/tmp/snackup-jobs-heartbeat").stat().st_mtime > 180:
+        raise RuntimeError("Scheduled jobs are not running")
     if b'"ready"' not in fetch(8081, '/health/ready'):
         raise RuntimeError('API is not ready through the proxy')
     for path, base in [('/', b'<base href="/">'), ('/paneles/', b'<base href="/paneles/">')]:

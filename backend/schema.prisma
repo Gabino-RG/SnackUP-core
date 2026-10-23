@@ -8,7 +8,7 @@
 // Los defaults/onupdate de Python se documentan y NO se transforman en DEFAULT SQL.
 // SQLAlchemy JSON corresponde a @db.Json, no al JsonB que Prisma usaría por omisión.
 // TIMESTAMP WITH TIME ZONE sin precisión explícita conserva la precisión PostgreSQL 6.
-// Los CHECK y los dos índices parciales se documentan al pie de su modelo; Alembic los mantiene.
+// Los CHECK y los índices parciales se documentan al pie de su modelo; Alembic los mantiene.
 // No se declara generator: este archivo permite validar/consultar la referencia sin generar cliente Node.
 // Prisma 7 ubica URLs de conexión en prisma.config.ts; validate no necesita conexión.
 // Referencias: https://www.prisma.io/docs/orm/v7/reference/prisma-schema-reference
@@ -17,6 +17,127 @@
 datasource db {
   provider     = "postgresql"
   relationMode = "foreignKeys"
+}
+
+
+model ItemCarrito {
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=new_id().
+  id String @id @map("id") @db.Text
+  usuarioId String @map("user_id") @db.Text
+  platilloId String @map("product_id") @db.Text
+  cantidad Int @map("quantity") @db.Integer
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default="".
+  notas String @map("notes") @db.VarChar(500)
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=utcnow().
+  createdAt DateTime @map("created_at") @db.Timestamptz(6)
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=utcnow().
+  updatedAt DateTime @map("updated_at") @db.Timestamptz(6)
+
+  platillo Platillo @relation("cart_items_product_id", fields: [platilloId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  usuario Usuario @relation("cart_items_user_id", fields: [usuarioId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([usuarioId, platilloId], map: "uq_cart_user_product")
+  @@index([usuarioId], map: "ix_cart_items_user_id")
+  // SQL/Alembic, CHECK [ck_cart_quantity]: quantity BETWEEN 1 AND 99.
+  @@map("cart_items")
+}
+
+
+model Favorito {
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=new_id().
+  id String @id @map("id") @db.Text
+  usuarioId String @map("user_id") @db.Text
+  platilloId String @map("product_id") @db.Text
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default="".
+  notas String @map("notes") @db.VarChar(500)
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=utcnow().
+  createdAt DateTime @map("created_at") @db.Timestamptz(6)
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=utcnow().
+  updatedAt DateTime @map("updated_at") @db.Timestamptz(6)
+
+  platillo Platillo @relation("favorites_product_id", fields: [platilloId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  usuario Usuario @relation("favorites_user_id", fields: [usuarioId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([usuarioId, platilloId], map: "uq_favorite_user_product")
+  @@index([usuarioId], map: "ix_favorites_user_id")
+  @@map("favorites")
+}
+
+
+model UsoValeComida {
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=new_id().
+  id String @id @map("id") @db.Text
+  usuarioId String @map("user_id") @db.Text
+  pedidoId String @unique @map("order_id") @db.Text
+  localDate DateTime @map("local_date") @db.Date
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default="reserved".
+  estado String @map("state") @db.VarChar(16)
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=utcnow().
+  createdAt DateTime @map("created_at") @db.Timestamptz(6)
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=utcnow().
+  updatedAt DateTime @map("updated_at") @db.Timestamptz(6)
+
+  pedido Pedido @relation("meal_voucher_uses_order_id", fields: [pedidoId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  usuario Usuario @relation("meal_voucher_uses_user_id", fields: [usuarioId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  // SQL/Alembic, índice parcial: UNIQUE INDEX uq_meal_voucher_active_day (user_id, local_date) WHERE state IN ('reserved','consumed').
+  // No convertir este predicado a @unique/@@unique global en Prisma.
+  // SQL/Alembic, CHECK [ck_meal_voucher_state]: state IN ('reserved','consumed','released').
+  @@map("meal_voucher_uses")
+}
+
+
+model ConversacionChat {
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=new_id().
+  id String @id @map("id") @db.Text
+  alumnoId String @map("student_id") @db.Text
+  negocioId String @map("business_id") @db.Text
+  pedidoId String? @map("order_id") @db.Text
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=utcnow().
+  createdAt DateTime @map("created_at") @db.Timestamptz(6)
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=utcnow().
+  lastActivityAt DateTime @map("last_activity_at") @db.Timestamptz(6)
+
+  alumno Usuario @relation("chats_student_id", fields: [alumnoId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  mensajes MensajeChat[] @relation("chat_messages_chat_id")
+  negocio Negocio @relation("chats_business_id", fields: [negocioId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  pedido Pedido? @relation("chats_order_id", fields: [pedidoId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@unique([alumnoId, negocioId], map: "uq_chat_participants")
+  @@index([negocioId], map: "ix_chats_business_id")
+  @@index([lastActivityAt], map: "ix_chats_last_activity_at")
+  @@index([alumnoId], map: "ix_chats_student_id")
+  @@map("chats")
+}
+
+
+model MensajeChat {
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=new_id().
+  id String @id @map("id") @db.Text
+  chatId String @map("chat_id") @db.Text
+  senderId String @map("sender_id") @db.Text
+  senderRole String @map("sender_role") @db.VarChar(16)
+  text String @map("text") @db.VarChar(1000)
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=utcnow().
+  createdAt DateTime @map("created_at") @db.Timestamptz(6)
+
+  conversacion ConversacionChat @relation("chat_messages_chat_id", fields: [chatId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  remitente Usuario @relation("chat_messages_sender_id", fields: [senderId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([chatId, createdAt, id], map: "ix_chat_messages_created")
+  // SQL/Alembic, CHECK [ck_chat_text]: length(text) BETWEEN 1 AND 1000.
+  @@map("chat_messages")
+}
+
+
+model ComprobanteCierreChat {
+  id String @id @map("id") @db.Text
+  studentProof String @map("student_proof") @db.VarChar(64)
+  businessProof String @map("business_proof") @db.VarChar(64)
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=utcnow().
+  closedAt DateTime @map("closed_at") @db.Timestamptz(6)
+
+  @@map("chat_closures")
 }
 
 
@@ -54,6 +175,8 @@ model Usuario {
   updatedAt DateTime @map("updated_at") @db.Timestamptz(6)
 
   calificacionesNegocio CalificacionNegocio[] @relation("reviews_user_id")
+  carrito ItemCarrito[] @relation("cart_items_user_id")
+  chats ConversacionChat[] @relation("chats_student_id")
   clavesIdempotencia ClaveIdempotencia[] @relation("idempotency_records_user_id")
   decisionesEmitidas DecisionAcceso[] @relation("access_decisions_actor_id")
   decisionesRecibidas DecisionAcceso[] @relation("access_decisions_user_id")
@@ -62,7 +185,9 @@ model Usuario {
   eventosAuditoria EventoAuditoriaCuenta[] @relation("account_audit_events_actor_id")
   eventosPedido EventoPedido[] @relation("order_transitions_actor_id")
   eventosSeguimiento EventoSeguimiento[] @relation("followup_events_actor_id")
+  favoritos Favorito[] @relation("favorites_user_id")
   medios Medio[] @relation("media_files_owner_id")
+  mensajes MensajeChat[] @relation("chat_messages_sender_id")
   negocio Negocio? @relation("users_business_id", fields: [negocioId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   pedidos Pedido[] @relation("orders_student_id")
   refreshTokens RefreshToken[] @relation("refresh_sessions_user_id")
@@ -70,6 +195,7 @@ model Usuario {
   solicitudAcceso SolicitudAcceso? @relation("access_requests_user_id")
   solicitudesRevisadas SolicitudAcceso[] @relation("access_requests_reviewed_by")
   tokensVerificacion TokenVerificacion[] @relation("verification_tokens_user_id")
+  usosVale UsoValeComida[] @relation("meal_voucher_uses_user_id")
 
   // SQL/Alembic, índice parcial: UNIQUE INDEX uq_active_business_operator (business_id) WHERE role = 'business' AND is_active = true AND approval_status = 'approved'.
   // No convertir este predicado a @unique/@@unique global en Prisma.
@@ -296,6 +422,14 @@ model Negocio {
   // SQLAlchemy, aplicación (sin DEFAULT SQL): default="".
   descripcion String @map("description") @db.VarChar(2000)
   imagenUrl String? @map("image_url") @db.VarChar(2048)
+  coverImageUrl String? @map("cover_image_url") @db.VarChar(2048)
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=30.
+  pickupTimeoutMinutes Int @map("pickup_timeout_minutes") @db.Integer
+  // SQLAlchemy, aplicación (sin DEFAULT SQL): default=false.
+  autoCloseEnabled Boolean @map("auto_close_enabled") @db.Boolean
+  closeTimeLocal String? @map("close_time_local") @db.VarChar(5)
+  postponedCloseAt DateTime? @map("postponed_close_at") @db.Timestamptz(6)
+  lastAutoCloseDate DateTime? @map("last_auto_close_date") @db.Date
   // SQLAlchemy, aplicación (sin DEFAULT SQL): default="America/Mexico_City".
   zonaHoraria String @map("timezone") @db.VarChar(80)
   cafeteriaId String @map("cafeteria_id") @db.VarChar(120)
@@ -314,6 +448,7 @@ model Negocio {
   updatedAt DateTime @map("updated_at") @db.Timestamptz(6)
 
   calificaciones CalificacionNegocio[] @relation("reviews_business_id")
+  chats ConversacionChat[] @relation("chats_business_id")
   cuentasCocina Usuario[] @relation("users_business_id")
   decisionesAcceso DecisionAcceso[] @relation("access_decisions_business_id")
   eventosSeguimiento EventoSeguimiento[] @relation("followup_events_business_id")
@@ -325,6 +460,8 @@ model Negocio {
   @@index([estaActivo], map: "ix_businesses_is_active")
   // SQL/Alembic, CHECK [sin nombre en metadata; PostgreSQL asigna el nombre]: next_order_number >= 1.
   // SQL/Alembic, CHECK [sin nombre en metadata; PostgreSQL asigna el nombre]: version >= 1.
+  // SQL/Alembic, CHECK [ck_business_close_time]: NOT auto_close_enabled OR close_time_local IS NOT NULL.
+  // SQL/Alembic, CHECK [ck_business_pickup_timeout]: pickup_timeout_minutes BETWEEN 5 AND 180.
   @@map("businesses")
 }
 
@@ -362,7 +499,9 @@ model Platillo {
   // SQLAlchemy, aplicación (sin DEFAULT SQL): default=utcnow().
   updatedAt DateTime @map("updated_at") @db.Timestamptz(6)
 
+  carritos ItemCarrito[] @relation("cart_items_product_id")
   detallesPedido DetallePedido[] @relation("order_items_product_id")
+  favoritos Favorito[] @relation("favorites_product_id")
   negocio Negocio @relation("products_business_id", fields: [negocioId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   resenas Resena[] @relation("product_reviews_product_id")
 
@@ -408,6 +547,7 @@ model Pedido {
   // SQLAlchemy, aplicación (sin DEFAULT SQL): default=utcnow().
   updatedAt DateTime @map("updated_at") @db.Timestamptz(6)
   recogidaProgramadaAt DateTime? @map("scheduled_pickup_time") @db.Timestamptz(6)
+  pickupSoonNotifiedAt DateTime? @map("pickup_soon_notified_at") @db.Timestamptz(6)
   aceptadoAt DateTime? @map("accepted_at") @db.Timestamptz(6)
   preparandoAt DateTime? @map("preparing_at") @db.Timestamptz(6)
   listoAt DateTime? @map("ready_at") @db.Timestamptz(6)
@@ -425,17 +565,21 @@ model Pedido {
 
   alumno Usuario @relation("orders_student_id", fields: [alumnoId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   calificacionNegocio CalificacionNegocio? @relation("reviews_order_id")
+  chats ConversacionChat[] @relation("chats_order_id")
   clavesIdempotencia ClaveIdempotencia[] @relation("idempotency_records_order_id")
   detalles DetallePedido[] @relation("order_items_order_id")
   eventos EventoPedido[] @relation("order_transitions_order_id")
   negocio Negocio @relation("orders_business_id", fields: [negocioId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   resenas Resena[] @relation("product_reviews_order_id")
+  usoVale UsoValeComida? @relation("meal_voucher_uses_order_id")
 
   @@unique([negocioId, numeroPedido], map: "uq_business_order_number")
   @@index([negocioId, estado, createdAt, id], map: "ix_orders_business_active")
   @@index([negocioId, canceladoAt], map: "ix_orders_business_cancelled")
   @@index([negocioId, entregadoAt], map: "ix_orders_business_completed")
   @@index([negocioId, estado, updatedAt, id], map: "ix_orders_business_updated")
+  // SQL/Alembic, índice parcial: INDEX ix_orders_scheduled_alert_due (scheduled_pickup_time) WHERE scheduled_pickup_time IS NOT NULL AND pickup_soon_notified_at IS NULL AND status IN ('pending','accepted','preparing','ready').
+  // No convertir este predicado a @unique/@@unique global en Prisma.
   @@index([alumnoId, createdAt, id], map: "ix_orders_student_created")
   @@index([alumnoId, estado], map: "ix_orders_student_status")
   // SQL/Alembic, índice parcial: UNIQUE INDEX uq_orders_v3_pickup_code (pickup_code) WHERE length(pickup_code) = 6.
@@ -516,13 +660,13 @@ model Resena {
   @@unique([pedidoId, platilloId], map: "uq_product_review_order_product")
   @@index([platilloId, createdAt, id], map: "ix_product_reviews_product_created")
   @@index([alumnoId], map: "ix_product_reviews_user")
-  // SQL/Alembic, CHECK [ck_product_review_rating]: rating BETWEEN 1 AND 5.
+  // SQL/Alembic, CHECK [ck_product_review_rating]: rating BETWEEN 0 AND 5.
   @@map("product_reviews")
 }
 
 
 // Tabla histórica reviews = calificación del negocio, con carrera/grupo y seguimiento administrativo.
-// puntuacion es nullable por compatibilidad histórica; los nuevos DTO exigen un entero 1..5.
+// puntuacion es nullable por compatibilidad histórica; los nuevos DTO exigen un entero 0..5.
 model CalificacionNegocio {
   // SQLAlchemy, aplicación (sin DEFAULT SQL): default=new_id().
   id String @id @map("id") @db.Text
@@ -553,9 +697,9 @@ model CalificacionNegocio {
   seguimiento SeguimientoOpinion? @relation("followups_review_id")
 
   @@index([negocioId, createdAt, id], map: "ix_reviews_business_created")
-  // SQL/Alembic, CHECK [ck_review_food_rating]: food_rating IS NULL OR food_rating BETWEEN 1 AND 5.
-  // SQL/Alembic, CHECK [ck_review_rating]: rating IS NULL OR rating BETWEEN 1 AND 5.
-  // SQL/Alembic, CHECK [ck_review_service_rating]: service_rating IS NULL OR service_rating BETWEEN 1 AND 5.
+  // SQL/Alembic, CHECK [ck_review_food_rating]: food_rating IS NULL OR food_rating BETWEEN 0 AND 5.
+  // SQL/Alembic, CHECK [ck_review_rating]: rating IS NULL OR rating BETWEEN 0 AND 5.
+  // SQL/Alembic, CHECK [ck_review_service_rating]: service_rating IS NULL OR service_rating BETWEEN 0 AND 5.
   @@map("reviews")
 }
 

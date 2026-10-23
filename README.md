@@ -61,3 +61,5 @@ Faltan servidor, dominio, SMTP y padrón autorizados para poner el sistema en
 operación. La capacidad de **1,000 alumnos simultáneos** requiere medir una
 carga realista; las pruebas funcionales no la acreditan. Las instrucciones de
 CI y Docker no equivalen por sí solas a una ejecución exitosa ni a un despliegue.
+
+Backend ampliado: [V3.2 compatible, migración y reglas implementadas](backend/IMPLEMENTACION_V3_2.md).

@@ -23,7 +23,7 @@ from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from .auth import current_user, ensure_account, require_business, require_student
+from .auth import as_utc, current_user, ensure_account, require_business, require_student
 from .common import iso, page_result, require, validate_body, version_check
 from .db import emit_event, get_db, new_id, utcnow
 from .errors import ApiError
@@ -127,6 +127,8 @@ def _product_event(db: Session, product: Product) -> None:
 
 
 def _product_fields(db: Session, b: Business, data: dict, request: Request, current: Product | None = None) -> dict:
+    from .v32_services import enforce_featured_limit
+    enforce_featured_limit(db, b.id, data["isFeatured"], current.id if current else None)
     price = Decimal(str(data["price"]))
     require(price.is_finite() and price == price.quantize(Decimal("0.01")),
             422, "INVALID_PRICE", "El precio admite como máximo dos decimales.")
@@ -186,6 +188,9 @@ def set_business_open(id: str, db: DB, user: Operator, body: dict = Body(...)):
     validate_body("setBusinessOpen", body)
     b = _business(db, user, id, True)
     version_check(b, body["expectedVersion"])
+    from .v32_services import notify_business_closed
+    if b.is_open and not body["isOpen"]:
+        notify_business_closed(db, b)
     b.is_open = body["isOpen"]
     _touch(b)
     emit_event(db, f"business:{b.id}", "business.updated", {"id": b.id, "version": b.version})
@@ -213,7 +218,7 @@ def get_product(id: str, db: DB, user: Operator):
 @router.post("/businesses/{id}/products", status_code=201)
 def create_product(id: str, request: Request, db: DB, user: Operator, body: dict = Body(...)):
     validate_body("createProduct", body)
-    b = _business(db, user, id)
+    b = _business(db, user, id, True)
     p = Product(business_id=b.id, **_product_fields(db, b, body, request))
     db.add(p)
     db.flush()
@@ -224,6 +229,7 @@ def create_product(id: str, request: Request, db: DB, user: Operator, body: dict
 @router.patch("/products/{id}")
 def update_product(id: str, request: Request, db: DB, user: Operator, body: dict = Body(...)):
     validate_body("updateProduct", body)
+    _business(db, user, user.business_id, True)
     p = _product(db, user, id, True)
     version_check(p, body["expectedVersion"])
     b = _business(db, user, p.business_id)
@@ -396,6 +402,17 @@ def transition(db: Session, user: User, id: str, action: str, body: dict, reques
         version_check(order, body["expectedVersion"])
     allowed = {"accept": ("pending",), "start": ("accepted",), "ready": ("preparing",),
                "complete": ("ready",), "cancel": ("pending",) if student else ("pending", "accepted", "preparing")}
+    not_picked_up = canonical and not student and action == "cancel" and body.get("reason") == "not_picked_up"
+    if not_picked_up:
+        require(order.status == "ready", 400, "INVALID_STATUS_TRANSITION")
+        business = db.scalar(select(Business).where(Business.id == order.business_id).with_for_update()
+                             .execution_options(populate_existing=True))
+        current_user(request, db)
+        require(order.ready_at is not None, 422, "READY_TIME_UNAVAILABLE")
+        base_time = max(as_utc(order.ready_at), as_utc(order.scheduled_pickup_time or order.ready_at))
+        require(utcnow() >= base_time + timedelta(minutes=business.pickup_timeout_minutes),
+                422, "PICKUP_TIMEOUT_NOT_REACHED", "Todavía no vence el plazo de recogida.")
+        allowed["cancel"] = ("ready",)
     require(order.status in allowed[action], 400 if canonical else 409, "INVALID_STATUS_TRANSITION",
             "La acción no corresponde al estado actual.")
     new_status = {"accept": "accepted", "start": "preparing", "ready": "ready", "complete": "completed", "cancel": "cancelled"}[action]
@@ -410,6 +427,8 @@ def transition(db: Session, user: User, id: str, action: str, body: dict, reques
                            audit={"actor_id": user.id, "action": "pickup.verification_failed",
                                   "target_type": "order", "target_id": order.id,
                                   "data": {"method": body["method"]}})
+        from .v32_services import consume_voucher
+        consume_voucher(db, order, utcnow())
         order.verification_method, order.verified_by = body["method"], user.id
         order.verified_at = utcnow()
     if action == "cancel":
@@ -424,13 +443,17 @@ def transition(db: Session, user: User, id: str, action: str, body: dict, reques
         db.scalar(select(Business).where(Business.id == order.business_id).with_for_update()
                   .execution_options(populate_existing=True))
         current_user(request, db)
-        _restore_stock(db, order, request)
+        if not not_picked_up:
+            _restore_stock(db, order, request)
         order.cancel_reason = "student_cancelled" if student and not canonical else body["reason"]
         order.cancel_notes = None if student and not canonical else body.get("notes", "").strip() or None
         order.cancelled_by = user.id
         order.cancelled_by_role = "ALUMNO" if student else "COCINA"
     previous = order.status
     order.status = new_status
+    if action == "cancel" and body.get("voucherNotRedeemed"):
+        from .v32_services import release_voucher
+        release_voucher(db, order, user)
     _touch(order)
     setattr(order, new_status + "_at", order.updated_at)
     db.add(OrderTransition(order_id=order.id, actor_id=user.id, from_status=previous,
@@ -547,6 +570,15 @@ def create_order_transaction(body, request: Request, db: Session, user: User,
     b = db.scalar(select(Business).where(Business.id == body.businessId).with_for_update()
                   .execution_options(populate_existing=True))
     require(b is not None and b.is_active, 404, "NOT_FOUND", "Local no encontrado.")
+    from .v32_services import closing_at, validate_schedule
+    now = utcnow()
+    # A due worker cannot be bypassed during its one-minute interval. This guard
+    # does not commit a side effect for a rejected purchase; the worker closes it.
+    day = now.astimezone(ZoneInfo(b.timezone)).date()
+    deadline = closing_at(b, day)
+    require(deadline is None or deadline > now or b.last_auto_close_date == day,
+            409, "BUSINESS_CLOSED", "Ya pasó la hora de cierre del local.")
+    scheduled = validate_schedule(b, body.scheduledPickupTime if canonical else None, now)
     require(b.is_open, 409, "BUSINESS_CLOSED", "El local no está recibiendo pedidos.")
     product_ids = sorted(item.productId for item in body.items)
     products = db.scalars(select(Product).where(Product.id.in_(product_ids), Product.business_id == b.id)
@@ -583,10 +615,17 @@ def create_order_transaction(body, request: Request, db: Session, user: User,
                   total=total, subtotal=total, created_at=now, updated_at=now,
                   version=1, status="pending", payment_method=body.paymentMethod if canonical else "cash",
                   payment_status="pay_at_pickup" if not canonical or body.paymentMethod == "Efectivo" else "unverified",
-                  stock_restored=False)
+                  stock_restored=False, scheduled_pickup_time=scheduled)
     if canonical:
         # A savepoint confines a rare code collision without consuming inventory,
         # the per-local number, or the idempotency key in the outer transaction.
+        # sqlite3 legacy mode does not BEGIN for SELECT/SAVEPOINT. Without this
+        # guard a voucher rejection could leave the newly inserted order behind.
+        # PostgreSQL already starts a real transaction and needs no workaround.
+        if db.get_bind().dialect.name == 'sqlite':
+            connection = db.connection()
+            if not connection.connection.driver_connection.in_transaction:
+                connection.exec_driver_sql('BEGIN')
         for _ in range(8):
             order = Order(id=new_id(), pickup_code=generate_pickup_code(), **values)
             try:
@@ -602,6 +641,9 @@ def create_order_transaction(body, request: Request, db: Session, user: User,
     else:
         order = Order(id=new_id(), pickup_code=f"{secrets.randbelow(100_000_000):08d}", **values)
         db.add(order)
+    if canonical and body.paymentMethod == "ValeComida":
+        from .v32_services import reserve_voucher
+        reserve_voucher(db, order, now)
     b.next_order_number += 1
     # totalOrders is part of the public Business DTO. Its count changes only
     # for a committed new order, so bump the same resource version atomically.

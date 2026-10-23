@@ -7,7 +7,7 @@ import warnings
 from fastapi import APIRouter, Depends, File, Form, Request, Response, UploadFile
 from PIL import Image, ImageOps, UnidentifiedImageError
 from pydantic import BaseModel
-from sqlalchemy import or_, select
+from sqlalchemy import or_, or_, select
 from sqlalchemy.orm import Session
 
 from .auth import current_user, ensure_account
@@ -127,7 +127,7 @@ def delete_media(id: str, request: Request, db: DB, user: Authenticated):
         return Response(status_code=204)
     url = request.app.state.settings.public_origin + '/media/' + row.filename
     used = (db.scalar(select(Product.id).where(Product.image_url == url, Product.is_deleted.is_(False)).limit(1))
-            or db.scalar(select(Business.id).where(Business.image_url == url).limit(1))
+            or db.scalar(select(Business.id).where(or_(Business.image_url == url, Business.cover_image_url == url)).limit(1))
             or db.scalar(select(User.id).where(User.avatar_url == url).limit(1)))
     require(used is None, 409, 'MEDIA_IN_USE', 'Desvincula la imagen del recurso antes de eliminarla.')
     row.deleted_at = utcnow()

@@ -1,9 +1,9 @@
 """Relational catalog and immutable order snapshots; no demonstration fixtures."""
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, Integer, JSON, Numeric, String, Text, UniqueConstraint, text
+from sqlalchemy import Boolean, CheckConstraint, Date, DateTime, ForeignKey, Index, Integer, JSON, Numeric, String, Text, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base, new_id, utcnow
@@ -11,12 +11,20 @@ from .db import Base, new_id, utcnow
 
 class Business(Base):
     __tablename__ = "businesses"
-    __table_args__ = (CheckConstraint("version >= 1"), CheckConstraint("next_order_number >= 1"))
+    __table_args__ = (CheckConstraint("version >= 1"), CheckConstraint("next_order_number >= 1"),
+                      CheckConstraint('pickup_timeout_minutes BETWEEN 5 AND 180', name='ck_business_pickup_timeout'),
+                      CheckConstraint('NOT auto_close_enabled OR close_time_local IS NOT NULL', name='ck_business_close_time'))
     id: Mapped[str] = mapped_column(Text, primary_key=True, default=new_id)
     name: Mapped[str] = mapped_column(String(160))
     category: Mapped[str] = mapped_column(String(80), default="")
     description: Mapped[str] = mapped_column(String(2000), default="")
     image_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
+    cover_image_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
+    pickup_timeout_minutes: Mapped[int] = mapped_column(Integer, default=30)
+    auto_close_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    close_time_local: Mapped[str | None] = mapped_column(String(5), nullable=True)
+    postponed_close_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_auto_close_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     timezone: Mapped[str] = mapped_column(String(80), default="America/Mexico_City")
     cafeteria_id: Mapped[str] = mapped_column(String(120))
     cafeteria_name: Mapped[str] = mapped_column(String(160))
@@ -73,6 +81,9 @@ class Order(Base):
         Index("ix_orders_student_created", "student_id", "created_at", "id"),
         Index("ix_orders_business_updated", "business_id", "status", "updated_at", "id"),
         Index("ix_orders_student_status", "student_id", "status"),
+        Index('ix_orders_scheduled_alert_due', 'scheduled_pickup_time',
+              postgresql_where=text("scheduled_pickup_time IS NOT NULL AND pickup_soon_notified_at IS NULL AND status IN ('pending','accepted','preparing','ready')"),
+              sqlite_where=text("scheduled_pickup_time IS NOT NULL AND pickup_soon_notified_at IS NULL AND status IN ('pending','accepted','preparing','ready')")),
         # Existing eight-digit codes remain valid and are never rewritten.
         Index("uq_orders_v3_pickup_code", "pickup_code", unique=True,
               sqlite_where=text("length(pickup_code) = 6"),
@@ -94,6 +105,7 @@ class Order(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     scheduled_pickup_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    pickup_soon_notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     preparing_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     ready_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

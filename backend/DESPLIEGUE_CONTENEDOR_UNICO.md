@@ -18,7 +18,7 @@ su puerto. Son dos contenedores totales, uno de ellos para las tres aplicaciones
 
 **No representa una migración completa de datos:** la PWA de usuarios sigue
 utilizando Firebase y aún contiene la interfaz Cocina histórica. Su retirada y
-adaptación REST requieren cerrar la [auditoría V3.2](AUDITORIA_FASTAPI_V3_2_ACTUAL.md).
+adaptación REST se describen como pendientes de frontend en [V3.2](IMPLEMENTACION_V3_2.md).
 No anunciar que todos los datos ya están en PostgreSQL.
 
 ## Levantamiento en un servidor nuevo
@@ -45,7 +45,9 @@ dominios institucionales reales y SMTP; el ejemplo no acredita acceso al padrón
 Los campos de secretos vacíos bloquean Compose, no generan credenciales por defecto.
 
 El arranque espera PostgreSQL, abre Redis por un socket Unix privado, aplica
-`alembic upgrade head` una sola vez y después inicia Uvicorn y Caddy. Uvicorn
+`alembic upgrade head` una sola vez y después inicia el proceso `snackup.jobs`, Uvicorn y Caddy. El proceso de tareas
+ejecuta cierres, avisos y limpieza de chats cada minuto, con bloqueo PostgreSQL
+y heartbeat incluido en el healthcheck; no se replica por worker HTTP. Uvicorn
 escucha exclusivamente en loopback y solo confía en ese proxy. Redis no abre TCP.
 El supervisor y sus hijos usan UID/GID 10001, sistema de archivos de imagen de
 solo lectura, `/tmp` temporal y volúmenes de datos. Solo se publican 80/443.

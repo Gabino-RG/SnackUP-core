@@ -1,5 +1,7 @@
 # SnackUP: cotejo de los adjuntos FastAPI V3.2 con las tres aplicaciones
 
+> Actualización posterior: [implementación V3.2](IMPLEMENTACION_V3_2.md). Este documento conserva la revisión previa; los faltantes de backend identificados se implementan en la nueva entrega.
+
 Revisión: 23 de octubre de 2026. **Sí faltan contratos y servicios; no procede declarar V3.2 terminada.**
 
 Este informe actualiza `AUDITORIA_APP_Y_API_V3_2.md` y `REVISION_V3_2.md` con los

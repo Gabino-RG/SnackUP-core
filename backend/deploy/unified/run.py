@@ -105,6 +105,7 @@ def main():
         if migration.returncode:
             raise RuntimeError('Database migration failed; the applications were not started')
         processes.children.remove(('migration', migration))
+        processes.start('jobs', [sys.executable, '-m', 'snackup.jobs'])
         processes.start('api', [sys.executable, '-m', 'uvicorn', 'snackup.main:create_app', '--factory',
                                '--host', '127.0.0.1', '--port', '8000', '--workers', str(workers),
                                '--proxy-headers', '--forwarded-allow-ips', '127.0.0.1', '--no-access-log'])

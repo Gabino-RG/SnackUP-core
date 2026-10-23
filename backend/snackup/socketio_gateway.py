@@ -58,6 +58,14 @@ def sanitized_event(event):
         allowed = {"id", "businessId", "status", "version", "updatedAt", "isRated", "change"}
         if topic.startswith("user:") and kind != "order.updated":
             return None
+    elif kind in {"order.pickup_soon", "order.business_closed"} and topic.endswith(":orders"):
+        if kind == "order.pickup_soon" and not topic.startswith("business:"):
+            return None
+        if kind == "order.business_closed" and not topic.startswith("user:"):
+            return None
+        allowed = {"id", "businessId", "status", "version", "updatedAt", "scheduledPickupTime"}
+    elif kind in {"chat.message", "chat.closed", "chat.opened"} and topic.endswith(":chats"):
+        allowed = {"chatId", "messageId"}
     elif kind == "product.updated" and topic.startswith("business:") and topic.endswith(":products"):
         allowed = {"id", "businessId", "name", "description", "category", "price", "stock", "imageUrl",
                    "isAvailable", "isFeatured", "version", "updatedAt", "deletedAt"}
@@ -102,6 +110,12 @@ class SocketIOGateway:
                 raise ApiError(401, "UNAUTHENTICATED")
             public_businesses = set()
             for topic in topics:
+                if topic.endswith(":chats"):
+                    if identity.role == "user" and topic == f"user:{identity.user_id}:chats":
+                        continue
+                    if identity.role == "business" and topic == f"business:{identity.business_id}:chats":
+                        continue
+                    raise ApiError(403, "FORBIDDEN")
                 if topic.endswith(":orders"):
                     if identity.role == "user" and topic == f"user:{identity.user_id}:orders":
                         continue
@@ -230,7 +244,23 @@ class SocketIOGateway:
             if self.connections.get(sid) is connection:
                 # Per-recipient checks are deliberate: a broad room/Redis emit
                 # could send to a session revoked after it joined the room.
-                await self.sio.emit(event["type"], event, to=sid)
+                delivery = event
+                if event["type"] == "chat.message":
+                    try:
+                        delivery = await asyncio.to_thread(self._chat_message, connection, event)
+                    except Exception:
+                        await self._close(sid)
+                        continue
+                if delivery is not None:
+                    await self.sio.emit(event["type"], delivery, to=sid)
+
+    def _chat_message(self, connection, event):
+        from .v32_chat import realtime_message
+        with self.db.sessions() as db:
+            identity = _identity(db, connection.token, self.settings)
+            if identity != connection.identity:
+                return None
+            return realtime_message(db, identity, event)
 
     async def _event_loop(self):
         while True:

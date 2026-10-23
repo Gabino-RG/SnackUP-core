@@ -44,10 +44,12 @@ def _institutional_extensions(document):
 
     for path, item in document["paths"].items():
         relative = path.removeprefix("/api/v1")
-        if relative != "/institution" and not relative.startswith(("/admin/reviews", "/admin/followups", "/admin/academic-catalog")):
+        if relative not in {"/institution", "/admin/users"} and not relative.startswith(("/admin/reviews", "/admin/followups", "/admin/academic-catalog", "/admin/access-requests")):
             continue
         for method, operation in item.items():
             if method not in METHODS:
+                continue
+            if relative == "/admin/users" and method != "post":
                 continue
             original = source["paths"][relative][method]
             operation["responses"] = rewrite(original["responses"])
@@ -131,8 +133,11 @@ def enrich_openapi(document):
         "topics": {"business:{id}": "Authenticated catalog; COCINA is restricted to its assigned business",
                    "business:{id}:products": "Authenticated catalog; COCINA is restricted to its assigned business",
                    "business:{id}:orders": "COCINA of this business only (alias room_business_{id})",
+                   "user:{id}:chats": "ALUMNO owner only; content loaded only while active",
+                   "business:{id}:chats": "Assigned COCINA only; no ADMIN access",
                    "user:{id}:orders": "ALUMNO whose JWT sub is id only (alias room_user_{id})"},
-        "events": ["business.updated", "product.updated", "order.created", "order.updated"],
+        "events": ["business.updated", "product.updated", "order.created", "order.updated", "order.pickup_soon", "order.business_closed",
+                   "chat.opened", "chat.message", "chat.closed"],
         "envelopeFields": ["id", "type", "topic", "occurredAt", "data"],
         "privateFieldsOmitted": ["pickupCode", "numeroDeControl", "customerNumeroDeControl", "refreshToken"],
         "clientReconciliation": "GET after subscribe ACK and reconnect; no periodic HTTP fallback or replay guarantee",
