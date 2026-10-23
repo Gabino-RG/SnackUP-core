@@ -36,6 +36,7 @@ pendientes; Docker no realiza esa migración. `main` y el respaldo
 - [Instalación, operación y respaldos](backend/README.md).
 - [Desplegar las tres aplicaciones en un contenedor](backend/DESPLIEGUE_CONTENEDOR_UNICO.md).
 - [Auditoría actual de los adjuntos FastAPI V3.2](backend/AUDITORIA_FASTAPI_V3_2_ACTUAL.md).
+- [Validación ejecutada del contenedor único](docs/VALIDACION_CONTENEDOR_UNICO.md).
 - [Auditoría de funciones existentes frente a V3.2](backend/AUDITORIA_APP_Y_API_V3_2.md).
 - [Discrepancias del documento y esquema V3.2](backend/REVISION_V3_2.md).
 - [Implementación V3 y decisiones técnicas](backend/API_V3_FASTAPI.md).
