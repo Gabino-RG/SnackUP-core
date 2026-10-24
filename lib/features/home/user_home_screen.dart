@@ -1,3 +1,4 @@
+import '../user/product_availability.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../theme/app_colors.dart';
@@ -27,7 +28,6 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
       .collection('products')
       .where('isFeatured', isEqualTo: true)
       .where('isAvailable', isEqualTo: true)
-      .limit(5)
       .snapshots();
   void _open(Widget screen) =>
       Navigator.push(context, MaterialPageRoute<void>(builder: (_) => screen));
@@ -121,99 +121,108 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty)
                   return const SizedBox.shrink();
                 return Column(
-                  children: snapshot.data!.docs.take(3).map((doc) {
-                    final promo = doc.data() as Map<String, dynamic>;
-                    return Container(
-                      margin: const EdgeInsets.only(top: 20),
-                      padding: const EdgeInsets.all(22),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'PROMO ESTUDIANTIL',
-                            style: TextStyle(
-                              color: AppColors.tertiary,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 12,
-                            ),
+                  children: snapshot.data!.docs
+                      .where(
+                        (doc) => isProductAvailable(
+                          doc.data() as Map<String, dynamic>,
+                        ),
+                      )
+                      .take(3)
+                      .map((doc) {
+                        final promo = doc.data() as Map<String, dynamic>;
+                        return Container(
+                          margin: const EdgeInsets.only(top: 20),
+                          padding: const EdgeInsets.all(22),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(24),
                           ),
-                          const SizedBox(height: 16),
-                          Row(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                              const Text(
+                                'PROMO ESTUDIANTIL',
+                                style: TextStyle(
+                                  color: AppColors.tertiary,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          promo['name'] ?? 'Promoción',
+                                          style: Theme.of(
+                                            context,
+                                          ).textTheme.titleLarge,
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          promo['description'] ?? '',
+                                          maxLines: 3,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        const SizedBox(height: 12),
+                                        Text(
+                                          '\$${((promo['price'] as num?) ?? 0).toStringAsFixed(2)} MXN',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 20,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  _photo(promo['imageUrl'] ?? ''),
+                                ],
+                              ),
+                              const SizedBox(height: 20),
+                              FilledButton(
+                                onPressed: () {
+                                  final businessId = promo['businessId'];
+                                  if (businessId is String &&
+                                      businessId.isNotEmpty) {
+                                    _open(
+                                      MenuScreen(
+                                        businessId: businessId,
+                                        businessName: 'Menú de la cafetería',
+                                      ),
+                                    );
+                                  } else {
+                                    _open(const SearchScreen());
+                                  }
+                                },
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: AppColors.accent,
+                                  foregroundColor: AppColors.primary,
+                                  minimumSize: const Size(double.infinity, 48),
+                                ),
+                                child: const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Text(
-                                      promo['name'] ?? 'Promoción',
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.titleLarge,
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      promo['description'] ?? '',
-                                      maxLines: 3,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Text(
-                                      '\$${((promo['price'] as num?) ?? 0).toStringAsFixed(2)} MXN',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 20,
+                                    Expanded(
+                                      child: Text(
+                                        'Ver menú de la promoción',
+                                        textAlign: TextAlign.center,
                                       ),
                                     ),
+                                    SizedBox(width: 8),
+                                    Icon(Icons.arrow_forward_rounded),
                                   ],
                                 ),
                               ),
-                              const SizedBox(width: 16),
-                              _photo(promo['imageUrl'] ?? ''),
                             ],
                           ),
-                          const SizedBox(height: 20),
-                          FilledButton(
-                            onPressed: () {
-                              final businessId = promo['businessId'];
-                              if (businessId is String &&
-                                  businessId.isNotEmpty) {
-                                _open(
-                                  MenuScreen(
-                                    businessId: businessId,
-                                    businessName: 'Menú de la cafetería',
-                                  ),
-                                );
-                              } else {
-                                _open(const SearchScreen());
-                              }
-                            },
-                            style: FilledButton.styleFrom(
-                              backgroundColor: AppColors.accent,
-                              foregroundColor: AppColors.primary,
-                              minimumSize: const Size(double.infinity, 48),
-                            ),
-                            child: const Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    'Ver menú de la promoción',
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                                SizedBox(width: 8),
-                                Icon(Icons.arrow_forward_rounded),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }).toList(),
+                        );
+                      })
+                      .toList(),
                 );
               },
             ),
@@ -227,7 +236,13 @@ class _UserHomeScreenState extends State<UserHomeScreen> {
                   );
                 if (!snapshot.hasData)
                   return const Center(child: CircularProgressIndicator());
-                final all = snapshot.data!.docs;
+                final all = snapshot.data!.docs
+                    .where(
+                      (doc) => isProductAvailable(
+                        doc.data() as Map<String, dynamic>,
+                      ),
+                    )
+                    .toList();
                 final categories = <String>{
                   'Todo',
                   ...all.map(

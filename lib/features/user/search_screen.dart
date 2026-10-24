@@ -1,3 +1,4 @@
+import 'product_availability.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -46,13 +47,14 @@ class _SearchScreenState extends State<SearchScreen> {
             .where('isAvailable', isEqualTo: true)
             .where('name_searchable', isGreaterThanOrEqualTo: query)
             .where('name_searchable', isLessThanOrEqualTo: '$query\uf8ff')
-            .limit(20)
             .get();
-        
+
         setState(() {
-          _results = snapshot.docs;
+          _results = snapshot.docs
+              .where((doc) => isProductAvailable(doc.data()))
+              .take(20)
+              .toList();
         });
-        
       } catch (e) {
         print('Error en búsqueda: $e');
         if (mounted) {
@@ -61,7 +63,9 @@ class _SearchScreenState extends State<SearchScreen> {
               content: const Text('Error al realizar la búsqueda'),
               backgroundColor: AppColors.error,
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
           );
         }
@@ -103,19 +107,12 @@ class _SearchScreenState extends State<SearchScreen> {
             decoration: BoxDecoration(
               color: AppColors.primary.withOpacity(0.05),
               border: Border(
-                bottom: BorderSide(
-                  color: AppColors.borders,
-                  width: 1,
-                ),
+                bottom: BorderSide(color: AppColors.borders, width: 1),
               ),
             ),
             child: Row(
               children: [
-                Icon(
-                  Icons.search_rounded,
-                  color: AppColors.primary,
-                  size: 24,
-                ),
+                Icon(Icons.search_rounded, color: AppColors.primary, size: 24),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
@@ -203,9 +200,7 @@ class _SearchScreenState extends State<SearchScreen> {
           ],
 
           // RESULTADOS
-          Expanded(
-            child: _buildResultsContent(),
-          ),
+          Expanded(child: _buildResultsContent()),
         ],
       ),
     );
@@ -248,9 +243,7 @@ class _SearchScreenState extends State<SearchScreen> {
           const SizedBox(height: 24),
           Text(
             'Busca tus productos favoritos',
-            style: AppText.h3.copyWith(
-              color: AppColors.textPrimary,
-            ),
+            style: AppText.h3.copyWith(color: AppColors.textPrimary),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 12),
@@ -276,9 +269,7 @@ class _SearchScreenState extends State<SearchScreen> {
           const SizedBox(height: 16),
           Text(
             'Buscando productos...',
-            style: AppText.body.copyWith(
-              color: AppColors.textSecondary,
-            ),
+            style: AppText.body.copyWith(color: AppColors.textSecondary),
           ),
         ],
       ),
@@ -306,9 +297,7 @@ class _SearchScreenState extends State<SearchScreen> {
           const SizedBox(height: 24),
           Text(
             'No se encontraron resultados',
-            style: AppText.h3.copyWith(
-              color: AppColors.textPrimary,
-            ),
+            style: AppText.h3.copyWith(color: AppColors.textPrimary),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 12),
@@ -354,17 +343,11 @@ class _SearchScreenState extends State<SearchScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           decoration: BoxDecoration(
             color: AppColors.componentBase,
-            border: Border(
-              bottom: BorderSide(color: AppColors.borders),
-            ),
+            border: Border(bottom: BorderSide(color: AppColors.borders)),
           ),
           child: Row(
             children: [
-              Icon(
-                Icons.checklist_rounded,
-                color: AppColors.primary,
-                size: 16,
-              ),
+              Icon(Icons.checklist_rounded, color: AppColors.primary, size: 16),
               const SizedBox(width: 8),
               Text(
                 '${_results.length} producto${_results.length == 1 ? '' : 's'} encontrado${_results.length == 1 ? '' : 's'}',
@@ -406,16 +389,18 @@ class _SearchScreenState extends State<SearchScreen> {
       borderRadius: BorderRadius.circular(16),
       elevation: 1,
       child: InkWell(
-        onTap: isSoldOut ? null : () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => ProductDetailScreen(
-                product: product,
-                productId: doc.id,
-              ),
-            ),
-          );
-        },
+        onTap: isSoldOut
+            ? null
+            : () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => ProductDetailScreen(
+                      product: product,
+                      productId: doc.id,
+                    ),
+                  ),
+                );
+              },
         borderRadius: BorderRadius.circular(16),
         child: Opacity(
           opacity: isSoldOut ? 0.6 : 1.0,
@@ -436,7 +421,9 @@ class _SearchScreenState extends State<SearchScreen> {
                       ClipRRect(
                         borderRadius: BorderRadius.circular(12),
                         child: Image.network(
-                          imageUrl.isNotEmpty ? imageUrl : 'https://via.placeholder.com/100',
+                          imageUrl.isNotEmpty
+                              ? imageUrl
+                              : 'https://via.placeholder.com/100',
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) {
                             return Container(
@@ -455,7 +442,10 @@ class _SearchScreenState extends State<SearchScreen> {
                           top: 4,
                           left: 4,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: AppColors.warning,
                               borderRadius: BorderRadius.circular(6),
@@ -470,9 +460,9 @@ class _SearchScreenState extends State<SearchScreen> {
                     ],
                   ),
                 ),
-                
+
                 const SizedBox(width: 16),
-                
+
                 // INFORMACIÓN DEL PRODUCTO
                 Expanded(
                   child: Column(
@@ -494,7 +484,10 @@ class _SearchScreenState extends State<SearchScreen> {
                           if (isSoldOut) ...[
                             const SizedBox(width: 8),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
                               decoration: BoxDecoration(
                                 color: AppColors.error.withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(6),
@@ -511,7 +504,7 @@ class _SearchScreenState extends State<SearchScreen> {
                           ],
                         ],
                       ),
-                      
+
                       if (description.isNotEmpty) ...[
                         const SizedBox(height: 4),
                         Text(
@@ -523,16 +516,19 @@ class _SearchScreenState extends State<SearchScreen> {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ],
-                      
+
                       const SizedBox(height: 8),
-                      
+
                       Row(
                         children: [
                           // PRECIO
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
                             decoration: BoxDecoration(
-                              color: isSoldOut 
+                              color: isSoldOut
                                   ? AppColors.textSecondary.withOpacity(0.1)
                                   : AppColors.success.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(8),
@@ -541,19 +537,19 @@ class _SearchScreenState extends State<SearchScreen> {
                               '\$${price.toStringAsFixed(2)}',
                               style: AppText.body.copyWith(
                                 fontWeight: FontWeight.w700,
-                                color: isSoldOut 
+                                color: isSoldOut
                                     ? AppColors.textSecondary
                                     : AppColors.success,
                               ),
                             ),
                           ),
-                          
+
                           const Spacer(),
-                          
+
                           // INDICADOR DE NAVEGACIÓN
                           Icon(
                             Icons.chevron_right_rounded,
-                            color: isSoldOut 
+                            color: isSoldOut
                                 ? AppColors.textSecondary.withOpacity(0.3)
                                 : AppColors.textSecondary.withOpacity(0.5),
                             size: 20,

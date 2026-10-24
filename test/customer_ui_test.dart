@@ -28,6 +28,7 @@ void main() {
       'description': 'Salsa verde y pollo deshebrado',
       'price': 55,
       'isAvailable': true,
+      'stock': 8,
       'isFeatured': true,
       'category': 'Desayunos',
     });
@@ -35,6 +36,7 @@ void main() {
       'name': 'Café americano',
       'price': 20,
       'isAvailable': true,
+      'stock': 8,
       'category': 'Bebidas',
     });
     await db.collection('businesses').doc('cafe').set({
@@ -58,6 +60,12 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('Menú del campus'), findsOneWidget);
+    await db.collection('products').doc('food').update({'stock': 0});
+    await tester.pumpAndSettle();
+    expect(find.text('Chilaquiles verdes con pollo'), findsNothing);
+    await db.collection('products').doc('food').update({'stock': 8});
+    await tester.pumpAndSettle();
+    expect(find.text('Chilaquiles verdes con pollo'), findsNWidgets(2));
     expect(tester.takeException(), isNull);
     await tester.runAsync(() async {
       final image =

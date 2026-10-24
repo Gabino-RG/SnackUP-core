@@ -3,6 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../theme/app_colors.dart';
 import 'review_service.dart';
+import 'review_error.dart';
+import 'package:flutter/foundation.dart';
 
 class RateOrderScreen extends StatefulWidget {
   final String orderId;
@@ -11,6 +13,7 @@ class RateOrderScreen extends StatefulWidget {
   final bool restaurant;
   final FirebaseFirestore? firestore;
   final String? userId;
+  final ReviewService? reviewService;
   const RateOrderScreen({
     super.key,
     required this.orderId,
@@ -19,6 +22,7 @@ class RateOrderScreen extends StatefulWidget {
     this.restaurant = false,
     this.firestore,
     this.userId,
+    this.reviewService,
   });
   @override
   State<RateOrderScreen> createState() => _RateOrderScreenState();
@@ -32,6 +36,7 @@ class _RateOrderScreenState extends State<RateOrderScreen> {
   int _rating = 0;
   bool _anonymous = false;
   bool _saving = false;
+  String? _error;
 
   FirebaseFirestore get _db => widget.firestore ?? FirebaseFirestore.instance;
   String? get _userId =>
@@ -71,9 +76,14 @@ class _RateOrderScreenState extends State<RateOrderScreen> {
 
   Future<void> _submit() async {
     final userId = _userId;
-    if (userId == null ||
-        (!widget.restaurant && _productId == null) ||
-        _rating == 0) {
+    if (userId == null) {
+      setState(
+        () => _error =
+            'Tu sesión ya no está activa. Inicia sesión de nuevo para valorar.',
+      );
+      return;
+    }
+    if ((!widget.restaurant && _productId == null) || _rating == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -85,9 +95,12 @@ class _RateOrderScreenState extends State<RateOrderScreen> {
       );
       return;
     }
-    setState(() => _saving = true);
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
     try {
-      await ReviewService(_db).save(
+      await (widget.reviewService ?? ReviewService(_db)).save(
         orderId: widget.orderId,
         productId: widget.restaurant ? null : _productId!,
         userId: userId,
@@ -103,15 +116,18 @@ class _RateOrderScreenState extends State<RateOrderScreen> {
         const SnackBar(content: Text('¡Gracias! Tu valoración se guardó.')),
       );
       if (Navigator.of(context).canPop()) Navigator.of(context).pop();
-    } catch (_) {
-      if (mounted)
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'No se pudo guardar. Revisa tu conexión e intenta de nuevo.',
-            ),
-          ),
-        );
+    } catch (error, stackTrace) {
+      if (kDebugMode) {
+        debugPrint('Error al guardar valoración: $error');
+        debugPrintStack(stackTrace: stackTrace);
+      }
+      if (mounted) {
+        final message = reviewErrorMessage(error);
+        setState(() => _error = message);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -146,8 +162,11 @@ class _RateOrderScreenState extends State<RateOrderScreen> {
       future: _items,
       builder: (context, snapshot) {
         if (snapshot.hasError)
-          return const Center(
-            child: Text('No se pudo cargar el pedido entregado.'),
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: SelectableText(reviewErrorMessage(snapshot.error!)),
+            ),
           );
         if (!snapshot.hasData)
           return const Center(child: CircularProgressIndicator());
@@ -297,6 +316,13 @@ class _RateOrderScreenState extends State<RateOrderScreen> {
                     ],
                   ),
                 ),
+                if (_error != null)
+                  _card(
+                    SelectableText(
+                      _error!,
+                      style: const TextStyle(color: AppColors.error),
+                    ),
+                  ),
                 FilledButton(
                   onPressed: _saving ? null : _submit,
                   style: FilledButton.styleFrom(
