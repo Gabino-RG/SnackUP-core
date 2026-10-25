@@ -1,3 +1,5 @@
+> Documento histórico de la versión Firebase. El cliente actual utiliza FastAPI; no ejecutar instrucciones de publicación en Firebase. Ver [integración actual](integracion-api.md).
+
 # Rama de clientes de SnackUP
 
 Rama: `codex/cliente-campus`, basada en `origin/main`. El checkout original y sus cambios locales se conservaron por separado.

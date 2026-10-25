@@ -1,0 +1,14 @@
+.git
+.dart_tool
+build
+legacy
+.env
+.env.*
+**/*.log
+**/*.pyc
+**/__pycache__
+backend-install.txt
+api-tests.txt
+api-browser-tests.txt
+analysis-api.txt
+backend-smoke-run.txt

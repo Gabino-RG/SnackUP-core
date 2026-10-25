@@ -1,0 +1,24 @@
+{
+  "backendCommit": "1c3459bfd58a083acf4a1638c5013db93873f057",
+  "flutter": "3.32.4",
+  "dart": "3.8.1",
+  "flutterTests": {
+    "passed": 16,
+    "scope": "Mock HTTP requests and Flutter widgets"
+  },
+  "backendSmoke": {
+    "passed": 24,
+    "scope": "Pinned backend with synthetic data and disposable SQLite"
+  },
+  "analyzer": {
+    "errors": 0,
+    "warnings": 0,
+    "informationalNotices": 51
+  },
+  "webBuild": "passed; static Firebase-bootstrap check passed",
+  "chromeTests": "not completed in local SDK; not claimed as passed",
+  "nativeBuilds": "not run",
+  "dockerBuild": "not run",
+  "productionDeployment": "not performed",
+  "firebaseAccessOrChanges": "none"
+}

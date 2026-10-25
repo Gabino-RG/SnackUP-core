@@ -1,0 +1,35 @@
+{
+  "backendRef": "1c3459b",
+  "database": "disposable SQLite, synthetic identities",
+  "checksPassed": 24,
+  "checks": [
+    "login-student",
+    "student-role",
+    "web-refresh-only-in-cookie",
+    "v3-businesses",
+    "v3-products",
+    "v3-order-create",
+    "idempotent-retry-same-order",
+    "single-stock-reservation",
+    "legacy-history-accepts-v3-session",
+    "login-kitchen",
+    "kitchen-accept",
+    "kitchen-start",
+    "kitchen-ready",
+    "student-pickup-code",
+    "kitchen-delivery",
+    "restaurant-rating",
+    "food-review",
+    "duplicate-review-rejected",
+    "product-reviews-list",
+    "public-review-does-not-expose-identity",
+    "authoritative-completed-rated-order",
+    "login-student",
+    "cookie-refresh",
+    "cookie-logout"
+  ],
+  "limitations": [
+    "No production server or real student data used",
+    "Does not test PostgreSQL concurrency, SMTP delivery or browser Socket.IO"
+  ]
+}

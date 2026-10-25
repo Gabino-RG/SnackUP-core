@@ -1,106 +1,54 @@
-# SnackUP-Core `v1.0`
+# SnackUP · cliente de alumnos
 
-![SnackUP Banner](https://img.shields.io/badge/SnackUP-Official_Production_Repo-orange?style=for-the-badge&logo=fastapi)
-[![Flutter Version](https://img.shields.io/badge/Flutter-3.29.0%2B-02569B?style=flat&logo=flutter)](https://flutter.dev)
-[![Firebase](https://img.shields.io/badge/Backend-Firebase-FFCA28?style=flat&logo=firebase&logoColor=black)](https://firebase.google.com)
+Rama `codex/cliente-campus`. La aplicación activa utiliza la API FastAPI de `codex/backend-api-v3-fastapi` (`1c3459b`), con azul marino, lima y celeste. No incorpora pantallas de personal.
 
-Bienvenido al repositorio central de **SnackUP**. Esta es la versión profesional destinada a producción, optimizada para escalabilidad y rendimiento.
+**Firebase queda aparte:** no se importaron datos, no se cambiaron reglas ni se publicaron modificaciones en `snackup-8fe96`. El cliente activo no inicializa Firebase ni lee/escribe Firestore. La implementación anterior se conserva como texto de referencia en `legacy/firebase/`.
 
----
+## Ejecutar con la API
 
-## ⚠️ Regla de Oro (Políticas de Git)
+Las cuentas, productos y pedidos deben existir en la base SQL del backend; una cuenta de Firebase no se convierte automáticamente en una cuenta de la API. El backend necesita su configuración, migraciones, padrón y correo según las instrucciones de su propia rama.
 
-> **Prohibido hacer push directo a `main` o `develop`.**
-> Todo cambio debe integrarse mediante **Pull Request (PR)** y requiere al menos **1 aprobación** de un socio para ser fusionado.
+### Web, un mismo origen
 
----
+Con Flutter instalado:
 
-## 🛠️ Stack Tecnológico
-
-| Componente | Tecnología | Detalle |
-| :--- | :--- | :--- |
-| **Framework** | Flutter 3.29.0+ | UI Multiplataforma |
-| **Lenguaje** | Dart (SDK >=3.8.0) | Tipado fuerte |
-| **Backend** | Firebase | Firestore, Auth, Storage |
-| **Estado** | Provider | ChangeNotifiers |
-
----
-
-## 📋 Requisitos Previos
-
-Para que el proyecto compile a la primera, es **obligatorio**:
-
-1. **Actualizar Flutter:**
-
-```bash
-flutter upgrade
-```
-
-Verifica con `flutter --version` que estés en la 3.29.0 o superior.
-
-2. **Firebase CLI:**
-
-```bash
-npm install -g firebase-tools
-firebase login
-```
-
----
-
-## ⚙️ Configuración Inicial
-
-Si es la primera vez que clonas el repo, sigue este orden exacto:
-
-1. **Obtener dependencias:**
-
-```bash
+```shell
 flutter pub get
+flutter build web --pwa-strategy=none
 ```
 
-2. **Vincular Firebase:**
+Para desarrollo local, iniciar el backend por separado en `http://127.0.0.1:8000`, con `SNACKUP_PUBLIC_ORIGIN=http://localhost:8080`. Después, con **Node.js 20 o posterior**:
 
-```bash
-flutterfire configure
+```shell
+node tools/serve_api_web.mjs --backend=http://127.0.0.1:8000 --port=8080
 ```
 
-Selecciona el proyecto **snackup-official** cuando el terminal te lo solicite.
+Abrir `http://localhost:8080`. El proxy sirve `build/web`, `/api/*`, `/media/*` y Socket.IO bajo el mismo origen, necesario para las cookies y los permisos de origen. Este servidor es solo para desarrollo local; producción debe usar HTTPS y el proxy de despliegue del backend. No se necesita publicar nada en Firebase.
 
-3. **Limpieza (Solo si algo falla):**
+La API predeterminada de web es `/api/v1/` en el mismo sitio. Una dirección explícita se configura al compilar:
 
-```bash
-flutter clean && flutter pub get
+```shell
+flutter build web --pwa-strategy=none --dart-define=API_BASE_URL=https://tu-dominio/api/v1/
 ```
 
----
+El dominio es un ejemplo, no una API desplegada. Mantener frontend y API en el mismo origen. `API_BASE_URL` cambia el destino HTTP, no configura CORS ni el origen autorizado del servidor.
 
-## 🌿 Flujo de Trabajo (GitFlow Pro)
+### App nativa
 
-Para mantener el código limpio y profesional, seguimos este estándar:
-
-| Acción | Rama / Prefijo | Ejemplo de Commit |
-| :--- | :--- | :--- |
-| **Nueva Mejora** | `feat/` | `feat: add qr scanner integration` |
-| **Arreglo de Bug** | `fix/` | `fix: resolve login timeout` |
-| **Refactor** | `refactor/` | `refactor: optimize provider logic` |
-
-> [!TIP]
-> **Antes de empezar cualquier tarea:** Asegúrate de estar al día ejecutando `git pull origin develop` para evitar conflictos de merge.
-
----
-
-## 📁 Estructura del Proyecto
-
-```text
-lib/
-├── models/      # Definición de datos (Data classes)
-├── services/    # Lógica de Firebase y APIs externas
-├── providers/   # Manejo de estado global (ChangeNotifiers)
-├── screens/     # Pantallas principales de la UI
-└── widgets/     # Componentes reutilizables
+```shell
+flutter run --dart-define=API_BASE_URL=https://tu-dominio/api/v1/
 ```
 
----
+En el emulador Android, desarrollo puede utilizar `http://10.0.2.2:8000/api/v1/`. HTTP se permite solo en el manifiesto de depuración de Android. Producción requiere HTTPS. Los builds nativos no se han validado en un dispositivo real en esta entrega.
 
-<p align="center">
-Desarrollado con ❤️ por el equipo de <strong>SnackUP</strong>
-</p>
+## Comprobación
+
+```shell
+flutter analyze --no-fatal-infos
+flutter test
+flutter test --platform chrome test/api_integration_test.dart
+```
+
+Ver [integración, compatibilidad y límites](docs/integracion-api.md), [contrato fijado](docs/api/backend-v3.openapi.json) y [prueba local del backend](docs/evidence/api-client/backend-smoke.json).
+
+Los cambios se revisan en ramas y mediante PR; no hacer push directo ni fusionar en `main` o `develop`.

@@ -1,0 +1,25 @@
+{
+  "checks": [
+    "build assets present",
+    "Firebase bootstrap absent",
+    "base href substituted",
+    "Flutter bootstrap referenced"
+  ],
+  "entrypoint": "lib/main.dart -> lib/student_api/student_root.dart",
+  "firebaseLoaded": false,
+  "buildFiles": {
+    "index.html": {
+      "bytes": 2180,
+      "sha256": "07b9323179def79f1a4d7f4478864592f5bdf2e5bfc12ba0eb6e7f214e42a044"
+    },
+    "flutter_bootstrap.js": {
+      "bytes": 8885,
+      "sha256": "47226c64767a165ef2e121119f7e5d20b86e612b7c170eec938c7df44ee6d6e3"
+    },
+    "main.dart.js": {
+      "bytes": 2848308,
+      "sha256": "197cb39e7618bab4918d90acb7e39759e972753be634be869457013d30a5ee41"
+    }
+  },
+  "scope": "Static build verification only; not a deployed-server or browser end-to-end test"
+}

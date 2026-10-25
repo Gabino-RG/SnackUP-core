@@ -1,3 +1,5 @@
+> Documento histórico de la versión Firebase. El cliente actual utiliza FastAPI; no ejecutar instrucciones de publicación en Firebase. Ver [integración actual](integracion-api.md).
+
 # Publicar los permisos de las valoraciones
 
 Las reglas compartidas del proyecto no contienen permisos para `reviews` ni `restaurant_reviews`. Por eso Firestore rechaza las escrituras aunque el dispositivo tenga internet. El mensaje anterior atribuía cualquier excepción a la conexión.
