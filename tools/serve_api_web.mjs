@@ -11,7 +11,7 @@ if (!fs.existsSync(path.join(root,'index.html'))) throw new Error('Primero gener
 if (!['http:','https:'].includes(backend.protocol) || backend.username || backend.password) throw new Error('URL de backend inválida.');
 const transport = backend.protocol === 'https:' ? https : http;
 const apiPath = url => ['/api/','/media/','/socket.io/','/health/'].some(prefix => url.startsWith(prefix));
-const headers = req => ({...req.headers, host:backend.host});
+const headers = req => ({...req.headers});
 const fail = res => { if (!res.headersSent) { res.writeHead(502,{'content-type':'application/json','cache-control':'no-store'}); res.end(JSON.stringify({error:{code:'API_UNAVAILABLE',message:'El backend no está disponible.'}})); } else res.destroy(); };
 const mime = {'.html':'text/html; charset=utf-8','.js':'application/javascript','.json':'application/json','.wasm':'application/wasm','.css':'text/css','.png':'image/png','.svg':'image/svg+xml','.woff2':'font/woff2','.ttf':'font/ttf','.otf':'font/otf'};
 const server = http.createServer((req,res) => {

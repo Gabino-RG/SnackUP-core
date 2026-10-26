@@ -62,3 +62,5 @@ Pods/
 
 # Mac
 .DS_Store
+# Local demo data, credentials and processes
+.local/

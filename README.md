@@ -4,6 +4,10 @@ Rama `codex/cliente-campus`. La aplicación activa utiliza la API FastAPI de `co
 
 **Firebase queda aparte:** no se importaron datos, no se cambiaron reglas ni se publicaron modificaciones en `snackup-8fe96`. El cliente activo no inicializa Firebase ni lee/escribe Firestore. La implementación anterior se conserva como texto de referencia en `legacy/firebase/`.
 
+## Prueba local con base de datos propia
+
+Abre `INICIAR-SNACKUP-LOCAL.cmd` y entra a http://localhost:8080. Crea una base SQLite con datos ficticios, sin utilizar Firebase. El acceso se guarda en `.local/snackup-demo/ACCESO-LOCAL.txt`. Consulta [las instrucciones locales](docs/local-demo.md) para simular entregas y detener la app.
+
 ## Ejecutar con la API
 
 Las cuentas, productos y pedidos deben existir en la base SQL del backend; una cuenta de Firebase no se convierte automáticamente en una cuenta de la API. El backend necesita su configuración, migraciones, padrón y correo según las instrucciones de su propia rama.
