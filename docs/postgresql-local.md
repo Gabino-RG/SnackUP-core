@@ -11,7 +11,7 @@ Se requieren Git, Python 3.11 o posterior, Node 20 o posterior, Flutter y Postgr
 | Campo | Valor |
 | --- | --- |
 | Servidor | `127.0.0.1` |
-| Puerto | `55432` |
+| Puerto | `55432` por defecto; si está ocupado, otro disponible entre `55432` y `55463` |
 | Base | `snackup_local` |
 | Usuario | `snackup_local` |
 | Contraseña | Generada, guardada únicamente en `.local/snackup-demo/postgresql.json` |

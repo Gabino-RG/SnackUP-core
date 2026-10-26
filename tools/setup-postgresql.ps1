@@ -8,6 +8,10 @@ if (!(Test-Path -LiteralPath $demoPython)) {
 & $demoPython -m pip install -r (Join-Path $PSScriptRoot 'requirements-postgresql-local.txt')
 if ($LASTEXITCODE -ne 0) { throw 'No se pudo preparar el conector de PostgreSQL.' }
 & $demoPython (Join-Path $PSScriptRoot 'postgresql_demo.py')
-if ($LASTEXITCODE -ne 0) { throw 'No se pudo preparar PostgreSQL local.' }
+if ($LASTEXITCODE -ne 0) {
+    $pgLog = Join-Path $demoRoot '.local\snackup-demo\postgres.log'
+    if (Test-Path -LiteralPath $pgLog) { Get-Content -LiteralPath $pgLog -Tail 15 | Write-Host }
+    throw "No se pudo preparar PostgreSQL local. El detalle aparece arriba y en $pgLog"
+}
 & $demoPython (Join-Path $PSScriptRoot 'local_demo_backend.py') --init-only
 if ($LASTEXITCODE -ne 0) { throw 'No se pudo crear el esquema de SnackUP en PostgreSQL.' }

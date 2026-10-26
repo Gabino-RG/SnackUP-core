@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import secrets
+import socket
 import subprocess
 
 from sqlalchemy import create_engine, text
@@ -26,6 +27,20 @@ def url(config, database=None):
 
 def load():
     return json.loads(CONFIG.read_text(encoding='utf-8'))
+
+
+def available_port(preferred):
+    """Never stop another cluster just to reuse its port."""
+    for port in dict.fromkeys([preferred, *range(55432, 55464)]):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+            if hasattr(socket, 'SO_EXCLUSIVEADDRUSE'):
+                probe.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+            try:
+                probe.bind(('127.0.0.1', port))
+            except OSError:
+                continue
+            return port
+    raise RuntimeError('No hay un puerto disponible entre 55432 y 55463 para PostgreSQL de SnackUP.')
 
 
 def ensure_server():
@@ -56,6 +71,11 @@ def ensure_server():
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                             creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
     if status.returncode:
+        selected_port = available_port(config['port'])
+        if selected_port != config['port']:
+            print('El puerto ' + str(config['port']) + ' esta ocupado. Esta copia usara ' + str(selected_port) + '.')
+            config['port'] = selected_port
+            CONFIG.write_text(json.dumps(config, indent=2), encoding='utf-8')
         run([binary / 'pg_ctl.exe', '-D', data, '-l', PRIVATE / 'postgres.log',
              '-o', '-h 127.0.0.1 -p ' + str(config['port']), '-w', 'start'])
     engine = create_engine(url(config, 'postgres'), isolation_level='AUTOCOMMIT', connect_args={'connect_timeout': 5})
