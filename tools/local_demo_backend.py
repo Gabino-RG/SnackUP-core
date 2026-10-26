@@ -30,10 +30,16 @@ def create_demo():
     # Import all models before applying SQL Server metadata adaptations.
     from snackup import admin_models, push_models, review_models
     database_url = 'sqlite:///' + (PRIVATE / 'demo.db').as_posix()
-    sqlserver = (PRIVATE / 'database.json').exists()
-    if sqlserver:
+    database_config = PRIVATE / 'database.json'
+    engine = json.loads(database_config.read_text(encoding='utf-8-sig')).get('engine') if database_config.exists() else 'sqlite'
+    if engine == 'postgresql':
+        from postgresql_demo import load, url
+        database_url = url(load()).render_as_string(hide_password=False)
+    elif engine == 'sqlserver':
         from sqlserver_demo import prepare_database
         database_url = prepare_database(PRIVATE, Base.metadata)
+    elif engine != 'sqlite':
+        raise ValueError('Motor de base de datos local desconocido.')
     settings = Settings(_env_file=None, environment='test',
         database_url=database_url,
         secret_key=data['secret_key'], public_origin='http://localhost:8080',

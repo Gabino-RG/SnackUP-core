@@ -1,0 +1,31 @@
+{
+  "database": "PostgreSQL (isolated local synthetic demo)",
+  "checksPassed": 21,
+  "checks": [
+    "real-postgresql-database",
+    "exclusive-snackup-cluster",
+    "23-backend-tables",
+    "login-student",
+    "business-catalog",
+    "sold-out-product-hidden",
+    "create-order",
+    "idempotent-order-retry",
+    "single-inventory-reservation",
+    "login-kitchen",
+    "order-accept",
+    "order-start",
+    "order-ready",
+    "pickup-code-when-ready",
+    "order-delivered",
+    "restaurant-stars-and-comment",
+    "food-stars-and-comment",
+    "duplicate-food-review-rejected",
+    "completed-and-rated-order",
+    "order-history",
+    "reviews-persist-in-postgresql"
+  ],
+  "limitations": [
+    "Does not test browser interactions or multi-server concurrency."
+  ],
+  "backendRef": "1c3459bfd58a083acf4a1638c5013db93873f057"
+}

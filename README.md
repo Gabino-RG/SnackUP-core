@@ -1,12 +1,12 @@
 # SnackUP · cliente de alumnos
 
-Rama `codex/cliente-campus`. La aplicación activa utiliza la API FastAPI de `codex/backend-api-v3-fastapi` (`1c3459b`), con azul marino, lima y celeste. No incorpora pantallas de personal.
+Rama `codex/cliente-postgresql`. La aplicación activa utiliza la API FastAPI de `codex/backend-api-v3-fastapi` (`1c3459b`), con azul marino, lima y celeste. No incorpora pantallas de personal.
 
 **Firebase queda aparte:** no se importaron datos, no se cambiaron reglas ni se publicaron modificaciones en `snackup-8fe96`. El cliente activo no inicializa Firebase ni lee/escribe Firestore. La implementación anterior se conserva como texto de referencia en `legacy/firebase/`.
 
 ## Prueba local con base de datos propia
 
-**SQL Server:** abre `INICIAR-SNACKUP-SQLSERVER.cmd`. Usa la instancia exclusiva `(localdb)\SnackUP` y la base `SnackUP_Local`. En esta computadora falta reiniciar Windows para activar la corrección del disco antes del primer arranque. Consulta [las instrucciones de SQL Server](docs/sqlserver-local.md).
+**PostgreSQL (opción activa):** abre `INICIAR-SNACKUP-POSTGRESQL.cmd`. Usa los ejecutables instalados para preparar una instancia exclusiva en `127.0.0.1:55432` y la base `snackup_local`, sin modificar otras bases. Consulta [las instrucciones de PostgreSQL](docs/postgresql-local.md).
 
 Abre `INICIAR-SNACKUP-LOCAL.cmd` y entra a http://localhost:8080. Crea una base SQLite con datos ficticios, sin utilizar Firebase. El acceso se guarda en `.local/snackup-demo/ACCESO-LOCAL.txt`. Consulta [las instrucciones locales](docs/local-demo.md) para simular entregas y detener la app.
 

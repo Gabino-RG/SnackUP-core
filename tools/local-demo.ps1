@@ -81,12 +81,17 @@ if (!(Test-Path -LiteralPath $dependencyMarker)) {
     Set-Content -LiteralPath $dependencyMarker -Value 'backend 1c3459b' -Encoding utf8
 }
 if (Test-Path -LiteralPath (Join-Path $demoPrivate 'database.json')) {
+    $sqlConfig = Get-Content -Raw (Join-Path $demoPrivate 'database.json') | ConvertFrom-Json
+    if ($sqlConfig.engine -eq 'postgresql') {
+        & $demoPython (Join-Path $PSScriptRoot 'postgresql_demo.py')
+        if ($LASTEXITCODE -ne 0) { throw 'No se pudo iniciar PostgreSQL de SnackUP.' }
+    }
+    if ($sqlConfig.engine -eq 'sqlserver') {
     & $demoPython -c 'import pyodbc' 2>$null
     if ($LASTEXITCODE -ne 0) {
         & $demoPython -m pip install pyodbc==5.3.0
         if ($LASTEXITCODE -ne 0) { throw 'No se pudo preparar el conector de SQL Server.' }
     }
-    $sqlConfig = Get-Content -Raw (Join-Path $demoPrivate 'database.json') | ConvertFrom-Json
     if ($sqlConfig.server -eq '(localdb)\SnackUP') {
         $sqlLocalDb = Get-Command SqlLocalDB.exe -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty Source
         if (!$sqlLocalDb) {
@@ -98,6 +103,7 @@ if (Test-Path -LiteralPath (Join-Path $demoPrivate 'database.json')) {
         if (!$sqlLocalDb) { throw 'No se encontro SQL Server LocalDB.' }
         & $sqlLocalDb start SnackUP
         if ($LASTEXITCODE -ne 0) { throw 'No se pudo iniciar SQL Server LocalDB SnackUP.' }
+    }
     }
 }
 if (!(Test-Path -LiteralPath (Join-Path $demoRoot 'build\web\index.html'))) {
