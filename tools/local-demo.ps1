@@ -1,4 +1,4 @@
-param([ValidateSet('Start','Stop','Deliver')][string]$Action = 'Start')
+param([ValidateSet('Start','Stop','Deliver','Prepare')][string]$Action = 'Start')
 $ErrorActionPreference = 'Stop'
 $demoRoot = Split-Path -Parent $PSScriptRoot
 $demoPrivate = Join-Path $demoRoot '.local\snackup-demo'
@@ -32,6 +32,16 @@ function Assert-DemoPort([int]$Port, [string]$Script) {
     }
 }
 if ($Action -eq 'Stop') {
+    # A venv launcher can spawn a child Python process that owns the port.
+    # Stop only listeners whose command line names our exact script.
+    foreach ($service in @(@{port=8000;script=(Join-Path $PSScriptRoot 'local_demo_backend.py')}, @{port=8080;script=(Join-Path $PSScriptRoot 'serve_api_web.mjs')})) {
+        foreach ($listener in @(Get-NetTCPConnection -State Listen -LocalPort $service.port -ErrorAction SilentlyContinue)) {
+            $owner = Get-CimInstance Win32_Process -Filter "ProcessId = $($listener.OwningProcess)" -ErrorAction SilentlyContinue
+            if ($owner -and $owner.CommandLine -and $owner.CommandLine.Contains($service.script)) {
+                Stop-Process -Id $listener.OwningProcess -ErrorAction SilentlyContinue
+            }
+        }
+    }
     if (Test-Path -LiteralPath $demoStateFile) {
         $state = Get-Content -Raw -LiteralPath $demoStateFile | ConvertFrom-Json
         foreach ($entry in $state.processes) {
@@ -70,11 +80,35 @@ if (!(Test-Path -LiteralPath $dependencyMarker)) {
     if ($LASTEXITCODE -ne 0) { throw 'No se pudieron preparar las dependencias del backend.' }
     Set-Content -LiteralPath $dependencyMarker -Value 'backend 1c3459b' -Encoding utf8
 }
+if (Test-Path -LiteralPath (Join-Path $demoPrivate 'database.json')) {
+    & $demoPython -c 'import pyodbc' 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        & $demoPython -m pip install pyodbc==5.3.0
+        if ($LASTEXITCODE -ne 0) { throw 'No se pudo preparar el conector de SQL Server.' }
+    }
+    $sqlConfig = Get-Content -Raw (Join-Path $demoPrivate 'database.json') | ConvertFrom-Json
+    if ($sqlConfig.server -eq '(localdb)\SnackUP') {
+        $sqlLocalDb = Get-Command SqlLocalDB.exe -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty Source
+        if (!$sqlLocalDb) {
+            foreach ($version in @('170','160','150')) {
+                $candidate = Join-Path $env:ProgramFiles "Microsoft SQL Server\$version\Tools\Binn\SqlLocalDB.exe"
+                if (Test-Path -LiteralPath $candidate) { $sqlLocalDb = $candidate; break }
+            }
+        }
+        if (!$sqlLocalDb) { throw 'No se encontro SQL Server LocalDB.' }
+        & $sqlLocalDb start SnackUP
+        if ($LASTEXITCODE -ne 0) { throw 'No se pudo iniciar SQL Server LocalDB SnackUP.' }
+    }
+}
 if (!(Test-Path -LiteralPath (Join-Path $demoRoot 'build\web\index.html'))) {
     & flutter build web --pwa-strategy=none --no-web-resources-cdn
     if ($LASTEXITCODE -ne 0) { throw 'No se pudo compilar el cliente web.' }
 }
 $node = Resolve-DemoRuntime 'node' $nodeFallback 20
+if ($Action -eq 'Prepare') {
+    Write-Output 'Dependencias y cliente web preparados; no se iniciaron servicios ni se creo una base SQLite.'
+    exit 0
+}
 $processes = @()
 if (Test-Path -LiteralPath $demoStateFile) { $processes = @((Get-Content -Raw $demoStateFile | ConvertFrom-Json).processes) }
 $backendScript = Join-Path $PSScriptRoot 'local_demo_backend.py'

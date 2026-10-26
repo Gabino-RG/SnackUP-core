@@ -1,4 +1,4 @@
-"""Loopback-only demo backend. All records live in .local/snackup-demo/demo.db."""
+"""Loopback-only demo backend with an isolated local database."""
 import argparse
 import json
 from pathlib import Path
@@ -27,8 +27,15 @@ def create_demo():
     from snackup.identity_models import User, Career, AcademicRecord
     from snackup.operation_models import Business, Product
     data = config()
+    # Import all models before applying SQL Server metadata adaptations.
+    from snackup import admin_models, push_models, review_models
+    database_url = 'sqlite:///' + (PRIVATE / 'demo.db').as_posix()
+    sqlserver = (PRIVATE / 'database.json').exists()
+    if sqlserver:
+        from sqlserver_demo import prepare_database
+        database_url = prepare_database(PRIVATE, Base.metadata)
     settings = Settings(_env_file=None, environment='test',
-        database_url='sqlite:///' + (PRIVATE / 'demo.db').as_posix(),
+        database_url=database_url,
         secret_key=data['secret_key'], public_origin='http://localhost:8080',
         institution_id='demo-local', institution_name='Demostración local',
         cafeteria_id='campus-demo', cafeteria_name='Campus de prueba',
@@ -109,9 +116,14 @@ def complete_last():
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--complete-last', action='store_true')
+    parser.add_argument('--init-only', action='store_true')
     args = parser.parse_args()
     if args.complete_last:
         complete_last()
+    elif args.init_only:
+        app = create_demo()
+        print('Base local preparada: ' + app.state.db.engine.dialect.name)
+        app.state.db.dispose()
     else:
         import uvicorn
         app = create_demo()

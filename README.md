@@ -6,6 +6,8 @@ Rama `codex/cliente-campus`. La aplicación activa utiliza la API FastAPI de `co
 
 ## Prueba local con base de datos propia
 
+**SQL Server:** abre `INICIAR-SNACKUP-SQLSERVER.cmd`. Usa la instancia exclusiva `(localdb)\SnackUP` y la base `SnackUP_Local`. En esta computadora falta reiniciar Windows para activar la corrección del disco antes del primer arranque. Consulta [las instrucciones de SQL Server](docs/sqlserver-local.md).
+
 Abre `INICIAR-SNACKUP-LOCAL.cmd` y entra a http://localhost:8080. Crea una base SQLite con datos ficticios, sin utilizar Firebase. El acceso se guarda en `.local/snackup-demo/ACCESO-LOCAL.txt`. Consulta [las instrucciones locales](docs/local-demo.md) para simular entregas y detener la app.
 
 ## Ejecutar con la API
