@@ -287,6 +287,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('Horario del local · Consulta'), findsOneWidget);
+    expect(find.byType(TextField), findsNothing);
     expect(find.text('Guardar horario'), findsNothing);
     expect(find.text('Guardar espera'), findsNothing);
     expect(find.text('Posponer cierre de hoy'), findsNothing);

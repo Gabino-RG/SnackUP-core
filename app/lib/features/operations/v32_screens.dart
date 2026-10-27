@@ -589,22 +589,37 @@ class _ClosingScreenState extends State<ClosingScreen> {
         Text('Estado: ${_business!['isOpen'] == true ? 'Abierto' : 'Cerrado'}'),
         if (_business!['postponedCloseAt'] != null)
           Text('Cierre pospuesto: ${_business!['postponedCloseAt']}'),
-        SwitchListTile(
-          contentPadding: EdgeInsets.zero,
-          title: const Text('Cierre automático'),
-          value: _enabled,
-          onChanged: widget.readOnly || _busy
-              ? null
-              : (value) => setState(() => _enabled = value),
-        ),
-        TextField(
-          controller: _time,
-          enabled: !widget.readOnly && !_busy,
-          decoration: const InputDecoration(
-            labelText: 'Hora de cierre (HH:mm)',
-            hintText: '18:30',
+        if (widget.readOnly)
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Cierre automático'),
+            subtitle: Text(_enabled ? 'Activado' : 'Desactivado'),
+          )
+        else
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Cierre automático'),
+            value: _enabled,
+            onChanged: widget.readOnly || _busy
+                ? null
+                : (value) => setState(() => _enabled = value),
           ),
-        ),
+        const SizedBox(height: 16),
+        if (widget.readOnly)
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Hora de cierre'),
+            subtitle: Text(_time.text.isEmpty ? 'Sin configurar' : _time.text),
+          )
+        else
+          TextField(
+            controller: _time,
+            enabled: !widget.readOnly && !_busy,
+            decoration: const InputDecoration(
+              labelText: 'Hora de cierre (HH:mm)',
+              hintText: '18:30',
+            ),
+          ),
         if (!widget.readOnly) ...[
           const SizedBox(height: 12),
           FilledButton(
@@ -646,14 +661,22 @@ class _ClosingScreenState extends State<ClosingScreen> {
         const Text(
           'Un pedido listo puede marcarse como no recogido cuando vence este plazo, contado desde la hora más tardía entre “listo” y su recogida programada. No repone existencias.',
         ),
-        TextField(
-          controller: _timeout,
-          enabled: !widget.readOnly && !_busy,
-          keyboardType: TextInputType.number,
-          decoration: const InputDecoration(
-            labelText: 'Espera de recogida (5–180 minutos)',
+        const SizedBox(height: 16),
+        if (widget.readOnly)
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Espera de recogida'),
+            subtitle: Text('${_timeout.text} minutos'),
+          )
+        else
+          TextField(
+            controller: _timeout,
+            enabled: !widget.readOnly && !_busy,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              labelText: 'Espera de recogida (5–180 minutos)',
+            ),
           ),
-        ),
         if (!widget.readOnly)
           FilledButton(
             onPressed: _busy
