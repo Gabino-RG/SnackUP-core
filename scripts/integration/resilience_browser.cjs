@@ -1,13 +1,15 @@
 // Fault injection only against live_backend.py's disposable loopback database.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const {chromium} = require(process.env.SNACKUP_PLAYWRIGHT || 'playwright');
+const engine = process.env.SNACKUP_BROWSER || 'chromium';
+if (!['chromium', 'webkit'].includes(engine)) throw Error('Unsupported test browser');
+const browserType = require(process.env.SNACKUP_PLAYWRIGHT || 'playwright')[engine];
 const origin = process.env.SNACKUP_LIVE_ORIGIN;
 const password = process.env.SNACKUP_LIVE_PASSWORD;
 const fixtures = JSON.parse(process.env.SNACKUP_RESILIENCE_FIXTURES || '{}');
 if (!origin || new URL(origin).hostname !== '127.0.0.1' || !fixtures.readyId) throw Error('Use disposable runner');
 (async () => {
-  const browser = await chromium.launch({headless: true});
+  const browser = await browserType.launch({headless: true});
   const context = await browser.newContext({viewport: {width:1440,height:1050}});
   const page = await context.newPage();
   page.setDefaultTimeout(30000);
@@ -101,7 +103,7 @@ if (!origin || new URL(origin).hostname !== '127.0.0.1' || !fixtures.readyId) th
     checks.push('administrative revocation removes the open Kitchen session and protected controls');
     await page.screenshot({path:'build/live-backend/resilience-recovered.png'});
     assert.deepEqual(errors,[]);
-    fs.writeFileSync('build/live-backend/resilience-browser.json',JSON.stringify({passed:true,checks,errors},null,2));
+    fs.writeFileSync('build/live-backend/resilience-browser.json',JSON.stringify({passed:true,engine,checks,errors},null,2));
     console.log('Resilience browser passed');
   } catch(e) {
     await page.screenshot({path:'build/live-backend/resilience-failure.png'}).catch(()=>{});

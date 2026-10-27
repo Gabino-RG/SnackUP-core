@@ -52,7 +52,9 @@ def prepare(output: Path, repository: Path = ROOT):
     shutil.copyfile(Path(__file__).with_name('backup_unified.sh'), backend / 'backup_unified.sh')
     shutil.copyfile(Path(__file__).parents[1] / 'check_panels_server.py', output / 'check_panels_server.py')
     shutil.copyfile(ROOT / 'docs/integracion/PREPARACION_PRODUCCION_PANELES.md', output / 'ACEPTACION_PANELES.md')
+    shutil.copyfile(ROOT / 'docs/integracion/PREPARACION_PRODUCCION_PANELES.md', output / 'PREPARACION_PRODUCCION_PANELES.md')
     shutil.copyfile(ROOT / 'docs/integracion/PRUEBAS_RESILIENCIA_PANELES.md', output / 'PRUEBAS_RESILIENCIA_PANELES.md')
+    shutil.copyfile(ROOT / 'docs/integracion/GUIA_PERSONAL_PANELES.md', output / 'GUIA_PERSONAL_PANELES.md')
     shutil.copyfile(Path(__file__).with_name('README.md'), output / 'LEEME.md')
     (output / 'versions.json').write_text(json.dumps({'backend': BACKEND, 'panels': PANELS, 'users': USERS,
         'usersStorage': 'Firebase; not certified for SQL integration', 'purpose': 'staging',

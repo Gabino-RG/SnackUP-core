@@ -216,7 +216,12 @@ class _SpecialOrdersScreenState extends State<SpecialOrdersScreen> {
                   },
             icon: const Icon(Icons.chevron_left),
           ),
-          Text('Página $_page de ${_pages == 0 ? 1 : _pages}'),
+          Flexible(
+            child: Text(
+              'Página $_page de ${_pages == 0 ? 1 : _pages}',
+              textAlign: TextAlign.center,
+            ),
+          ),
           IconButton(
             tooltip: 'Página siguiente',
             onPressed: _busy || _page >= _pages
@@ -869,7 +874,21 @@ class _KitchenChatScreenState extends State<KitchenChatScreen>
   }
 
   @override
-  Widget build(BuildContext context) => Column(
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final compact =
+          constraints.maxHeight < 600 ||
+          MediaQuery.textScalerOf(context).scale(14) > 18;
+      if (compact)
+        return SingleChildScrollView(child: _content(context, compact: true));
+      return _content(context, compact: false);
+    },
+  );
+
+  Widget _messageArea({required bool compact, required Widget child}) =>
+      compact ? SizedBox(height: 240, child: child) : Expanded(child: child);
+
+  Widget _content(BuildContext context, {required bool compact}) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       Padding(
@@ -916,7 +935,8 @@ class _KitchenChatScreenState extends State<KitchenChatScreen>
         ),
       ),
       if (_loading || _writing) const LinearProgressIndicator(),
-      Expanded(
+      _messageArea(
+        compact: compact,
         child: _chat == null
             ? ListView(
                 children: [
@@ -952,7 +972,12 @@ class _KitchenChatScreenState extends State<KitchenChatScreen>
                               },
                         icon: const Icon(Icons.chevron_left),
                       ),
-                      Text('Página $_page de ${_pages == 0 ? 1 : _pages}'),
+                      Flexible(
+                        child: Text(
+                          'Página $_page de ${_pages == 0 ? 1 : _pages}',
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
                       IconButton(
                         tooltip: 'Más conversaciones',
                         onPressed: _loading || _page >= _pages

@@ -22,14 +22,21 @@ DOCS = [
     'docs/integracion/REALTIME.md', 'docs/integracion/ACEPTACION.md',
     'docs/integracion/nginx.conf.example', 'docs/MANUAL_BACKEND_PANELES.md',
     'docs/CONTRATO_PANELES.md', 'docs/PORTAL_API_LOCAL.md',
+    'docs/integracion/FUNCIONES_V32_PANELES.md',
+    'docs/integracion/PREPARACION_PRODUCCION_PANELES.md',
+    'docs/integracion/PRUEBAS_RESILIENCIA_PANELES.md',
+    'docs/integracion/GUIA_PERSONAL_PANELES.md',
 ]
 README = '''SNACKUP - ENTREGA FRONTEND ADMINISTRACION Y COCINA
 
 1. Lee documentos/README.md y documentos/ACEPTACION.md.
 2. Conecta la API de documentos/openapi.json en /api/legacy/v1/.
+   V3.2 usa ademas /api/v1/ del mismo backend para chat, horarios y vales.
 3. Sirve web/ en la raiz del mismo origen HTTPS que la API.
 4. Conserva rutas API y /media/ fuera del fallback de la web.
 5. Ejecuta las pruebas de aceptacion con cuentas autorizadas del backend.
+6. Para el personal: documentos/GUIA_PERSONAL_PANELES.md.
+   Limites y pendientes: documentos/PREPARACION_PRODUCCION_PANELES.md.
 
 Esta compilacion usa lib/main_portal_api.dart y REVIEW_MODE=false.
 No incluye servidor productivo, base de datos ni cuentas automaticas.
@@ -107,7 +114,7 @@ def main():
         payload['documentos/' + Path(doc).name] = (ROOT / doc).read_bytes()
     manifest = {
         'product': 'SnackUP - Administración y Cocina',
-        'release': 'frontend-integration-1.0.0',
+        'release': 'panels-v32-release-candidate',
         'created_utc': datetime.now(timezone.utc).isoformat(),
         'branch': branch, 'commit': commit, 'tree': git('rev-parse', 'HEAD^{tree}'),
         'source_zip_sha256': sha(source_zip),

@@ -3,7 +3,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
 const { randomUUID } = require('node:crypto');
-const { chromium } = require(process.env.SNACKUP_PLAYWRIGHT || 'playwright');
+const engine = process.env.SNACKUP_BROWSER || 'chromium';
+if (!['chromium', 'webkit'].includes(engine)) throw Error('Unsupported test browser');
+const browserType = require(process.env.SNACKUP_PLAYWRIGHT || 'playwright')[engine];
 const origin = process.env.SNACKUP_LIVE_ORIGIN;
 const password = process.env.SNACKUP_LIVE_PASSWORD;
 if (!origin || new URL(origin).hostname !== '127.0.0.1' || !password) throw Error('Run live_backend.py');
@@ -14,7 +16,7 @@ for (const name of ['failure.txt', 'failure.png', 'browser-result.json']) {
   if (fs.existsSync(previous)) fs.unlinkSync(previous);
 }
 (async () => {
-  const browser = await chromium.launch({headless: true, executablePath: process.env.SNACKUP_CHROMIUM || undefined});
+  const browser = await browserType.launch({headless: true, executablePath: engine === 'chromium' ? process.env.SNACKUP_CHROMIUM || undefined : undefined});
   const context = await browser.newContext({viewport: {width: 1440, height: 1050}});
   const page = await context.newPage();
   const studentContext = await browser.newContext();
@@ -89,6 +91,9 @@ for (const name of ['failure.txt', 'failure.png', 'browser-result.json']) {
     await page.getByRole('button', {name: 'Aceptar pedido', exact: true}).click();
     await page.getByRole('button', {name: 'Iniciar preparación', exact: true}).waitFor();
     await page.screenshot({path: path.join(output, 'pedido-en-vivo.png')});
+    await page.setViewportSize({width:390,height:844});
+    await text('Preparando (1)').click();
+    await page.screenshot({path: path.join(output, 'cocina-v32-movil.png')});
     const opened = page.waitForResponse(r => r.url().endsWith('/business-1/chats') && r.request().method() === 'POST' && r.status() === 200);
     await page.getByRole('button', {name: 'Chat del pedido', exact: true}).first().click();
     const chat = await (await opened).json();
@@ -96,7 +101,9 @@ for (const name of ['failure.txt', 'failure.png', 'browser-result.json']) {
     const sent = page.waitForResponse(r => r.url().endsWith(`/chats/${chat.id}/messages`) && r.status() === 201);
     await page.getByRole('button', {name: 'Enviar mensaje', exact: true}).click();
     await sent;
+    await page.screenshot({path: path.join(output, 'chat-v32-movil.png')});
     await page.getByRole('button', {name: /Back|Atrás|Volver/}).first().click();
+    await page.setViewportSize({width:1440,height:1050});
     const reply = await studentContext.request.post(origin + `/api/v1/chats/${chat.id}/messages`, {
       headers: {Origin: origin, Authorization: 'Bearer ' + studentToken}, data: {text: 'Respuesta de prueba del alumno'}
     });
@@ -139,9 +146,11 @@ for (const name of ['failure.txt', 'failure.png', 'browser-result.json']) {
     await text('Horario del local · Consulta').waitFor();
     assert.equal(await page.getByRole('button', {name:'Guardar horario',exact:true}).count(), 0);
     await page.screenshot({path: path.join(output, 'horario-admin-v32.png')});
+    await page.setViewportSize({width:390,height:844});
+    await page.screenshot({path: path.join(output, 'horario-admin-v32-movil.png')});
     assert.deepEqual(errors, []);
     assert.deepEqual(failures, []);
-    fs.writeFileSync(path.join(output, 'browser-result.json'), JSON.stringify({passed: true,
+    fs.writeFileSync(path.join(output, 'browser-result.json'), JSON.stringify({passed: true, engine,
       checks: ['Kitchen login', 'role isolation', 'HTTP-only cookie reload', 'WebSocket order.created and Kitchen accept', 'SQL order history',
         'chat send/reply/delete and activity outside chat', 'closing schedule', 'detailed statistics', 'read-only administrative schedule',
         'logout and admin login', 'zero-star review visible', 'desktop and mobile screenshots'], errors, failures}, null, 2));

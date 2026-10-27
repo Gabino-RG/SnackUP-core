@@ -8,6 +8,7 @@ import 'package:snackup/catalog/local_catalog_repository.dart';
 import 'package:snackup/features/operations/business_portal.dart';
 import 'package:snackup/operations/operations_repository.dart';
 import 'operations_repository_test.dart' show orderData;
+import 'v32_features_test.dart' show FakeV32;
 
 void main() {
   testWidgets(
@@ -118,6 +119,7 @@ void main() {
               token: () async => 'a',
               onSignOut: () {},
               enableRealtime: false,
+              v32: FakeV32(),
             ),
           ),
         );

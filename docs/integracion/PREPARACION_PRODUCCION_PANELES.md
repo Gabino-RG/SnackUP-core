@@ -4,6 +4,23 @@ Alcance: paneles Flutter REST y herramientas de entrega. No modifica la app de
 alumnos ni certifica el sistema completo. Backend fijado a `81c76c5`.
 Estado: candidato a validación institucional; no autorizado aún para producción.
 
+## Móvil y PC
+
+Las pruebas de widgets cubren anchos de 320, 390, 768, 844 y 1440 píxeles,
+orientación horizontal, texto al 150% y composición de chat con teclado móvil.
+El chat permite desplazar el contenido cuando falta altura; la paginación se
+adapta al ancho disponible. Se incluyen las seis secciones V3.2 en las pruebas
+del tablero. El recorrido del navegador incluye Cocina y chat a 390 píxeles,
+y Administración y consulta de horarios en móvil y escritorio.
+
+El workflow ejecuta integración y resiliencia con PostgreSQL en Chromium y
+WebKit. Consultar la ejecución del commit entregado para conocer su resultado;
+configurar la matriz no implica haberla aprobado. WebKit automatizado no equivale
+a certificar Safari en un iPhone físico. Completar la aceptación con los equipos
+reales, en especial cámara/QR, teclado, permisos y sonido.
+
+Para el personal: [guía de uso](GUIA_PERSONAL_PANELES.md).
+
 ## Cambios preparados sin servidor
 
 - Cocina muestra un acceso a conversaciones en la barra superior en todas sus
