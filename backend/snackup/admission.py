@@ -4,9 +4,10 @@ from starlette.responses import JSONResponse
 
 
 class DatabaseAdmission:
-    def __init__(self, app, capacity, wait_seconds):
+    def __init__(self, app, capacity, wait_seconds, login_wait_seconds=8):
         self.app = app
         self.capacity, self.wait_seconds = capacity, wait_seconds
+        self.login_wait_seconds = login_wait_seconds
         self._loop = None
         self._slots = None
 
@@ -18,7 +19,7 @@ class DatabaseAdmission:
             self._loop, self._slots = loop, asyncio.Semaphore(self.capacity)
         slots = self._slots
         try:
-            await asyncio.wait_for(slots.acquire(), timeout=self.wait_seconds)
+            await asyncio.wait_for(slots.acquire(), timeout=self.login_wait_seconds if scope['path'].endswith('/auth/login') else self.wait_seconds)
         except TimeoutError:
             response = JSONResponse({'error': {'code': 'SERVICE_BUSY', 'message': 'Servicio ocupado. Reintenta en un momento.'}},
                                     status_code=503, headers={'Retry-After': '1', 'Cache-Control': 'no-store'})

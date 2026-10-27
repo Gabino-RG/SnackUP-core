@@ -82,7 +82,7 @@ def test_catalog_pause_and_cancellation_use_one_business_product_lock_order(app,
     cancellation_pid = []
 
     def interleave(connection, cursor, statement, parameters, context, executemany):
-        sql = statement.lower()
+        sql = statement.lower().replace("for no key update", "for update")
         if 'from products' in sql and 'products.id =' in sql and 'for update' in sql:
             # The catalog owns Business and has not yet locked Product.
             catalog_holds_business.set()
@@ -220,7 +220,7 @@ def test_waiting_mutation_observes_committed_session_family_revocation(app, clie
     waiting = Event()
 
     def observe_lock(connection, cursor, statement, parameters, context, executemany):
-        sql = statement.lower()
+        sql = statement.lower().replace("for no key update", "for update")
         if f'from {table}' in sql and 'for update' in sql:
             waiting.set()
 

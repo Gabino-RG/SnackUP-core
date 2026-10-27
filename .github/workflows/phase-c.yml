@@ -43,6 +43,7 @@ jobs:
             echo 'APP_MEMORY=5g' >> "$GITHUB_ENV"
           else
             echo 'SERVER_CPUS=0-1' >> "$GITHUB_ENV"
+            echo 'PASSWORD_CONCURRENCY=2' >> "$GITHUB_ENV"
             echo 'WORKERS=1' >> "$GITHUB_ENV"
             echo 'DB_MEMORY=1g' >> "$GITHUB_ENV"
             echo 'APP_MEMORY=2300m' >> "$GITHUB_ENV"
@@ -57,6 +58,21 @@ jobs:
           python -m pip install -q -r requirements.lock
           docker compose -f load/phase_c/compose.yaml up -d --build --wait --wait-timeout 180
           python -m load.create_fixtures --confirm-isolated --output /tmp/phase-c-fixtures.json
+      - name: Calibrate Argon2 without changing security parameters
+        run: |
+          docker compose -f load/phase_c/compose.yaml exec -T app python - <<'PYCODE' > reports/phase-c/calibration.json
+          from concurrent.futures import ThreadPoolExecutor
+          import json,time
+          from snackup.auth import PASSWORDS
+          encoded=PASSWORDS.hash('synthetic-calibration-password')
+          results=[]
+          for concurrency in (1,2,4):
+              start=time.perf_counter()
+              with ThreadPoolExecutor(max_workers=concurrency) as pool:
+                  list(pool.map(lambda _:PASSWORDS.verify(encoded,'synthetic-calibration-password'),range(40)))
+              results.append({'concurrency':concurrency,'verifications':40,'elapsedSeconds':time.perf_counter()-start})
+          print(json.dumps({'argon2':{'memoryKiB':19456,'timeCost':2,'parallelism':1},'measurements':results},indent=2))
+          PYCODE
       - name: P0 smoke and idempotent retry
         if: matrix.profile == 'base'
         run: python -m load.phase_c.runner --fixtures /tmp/phase-c-fixtures.json --profile "$PROFILE" --scenario P0 --output reports/phase-c/P0.json $QUICK

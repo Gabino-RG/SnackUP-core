@@ -70,7 +70,7 @@ def create_app(settings: Settings | None = None):
     app.state.password_slots = BoundedSemaphore(settings.password_concurrency)
     from .admission import DatabaseAdmission
     app.add_middleware(DatabaseAdmission, capacity=min(24, max(1, settings.pool_size + settings.max_overflow - 4)),
-                       wait_seconds=settings.admission_wait_seconds)
+                       wait_seconds=settings.admission_wait_seconds, login_wait_seconds=settings.login_wait_seconds)
     app.state.limiter = RateLimiter(settings)
     app.state.events = EventBridge(database, settings)
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=[urlsplit(settings.public_origin).hostname])

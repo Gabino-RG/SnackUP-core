@@ -388,8 +388,8 @@ while True:
                 self.worker_samples.append(json.loads(line))
         finally:
             if process.returncode is None:
-                process.terminate()
-            await process.wait()
+                process.kill()
+            await asyncio.wait_for(process.wait(), timeout=5)
 
     def resource_summary(self):
         by_pid = defaultdict(list)
