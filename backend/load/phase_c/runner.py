@@ -323,6 +323,14 @@ class Run:
                 self.details.update(expectedOrderEvents=len(self.expected_order_events), receivedOrderEvents=len(self.received_order_events))
                 self.check(self.expected_order_events == self.received_order_events, 'P8b order event loss')
                 self.check((quantile(self.samples['order_event'], .95) or math.inf) < 1000, 'P8b event p95')
+                # The student room receives order.updated only. A successful
+                # purchase also publishes one stock change to its 75 readers.
+                unique_products = {(index, event_id) for index, _, _, _, event_id in received}
+                expected_products = self.details['created'] * (count // len(self.operators))
+                self.details.update(expectedProductEvents=expected_products, receivedProductEvents=len(unique_products))
+                self.check(len(unique_products) == expected_products, 'P8b stock event loss')
+                self.samples['product_event'] = [latency for _, _, _, latency, _ in received]
+                self.check((quantile(self.samples['product_event'], .95) or math.inf) < 1000, 'P8b stock event p95')
             if toggle:
                 self.check(expected > 0 and len(unique) == expected, 'P8 event loss')
                 self.samples['product_event'] = [latency for _, business, version, latency, _ in received if (business, version) in changes]
@@ -338,7 +346,6 @@ class Run:
             status, order, _ = await self.purchase(who, metric='kitchen_create')
             self.check(status == 201, 'P9 create failed')
             if status == 201:
-                self.expected_order_events.add((order['id'], order['version']))
                 orders[order['id']] = {'code': order['pickupCode'], 'created': time.monotonic() - max(0, time.time() - datetime.fromisoformat(order['createdAt']).timestamp()), 'prepare': None, 'walk': None, 'who': who}
         async def tablet(operator):
             while not stop.is_set():

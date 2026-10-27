@@ -44,7 +44,7 @@ Redis comparte el contenedor de aplicación y conserva su límite de 256 MiB. Po
 | P8-idle | 300 sockets durante 6 min; cambios con intervalos aleatorios 20–40 s | Cero pérdidas y desconexiones inesperadas |
 | P9 | 90 pedidos/min durante 20 min; hasta 5 min de drenaje | ≥99% entregados, aceptación p95 <10 s, creación p95 <1.5 s |
 | P9-burst | 270 pedidos/min durante 5 min + drenaje | Se lanzan las 1,350 llegadas; mismos criterios |
-| P8b | 300 sockets; tras 2 min empieza P9 durante 20 min | Recepción de cada creación/transición del alumno, p95 evento <1 s, mismos criterios de cocina |
+| P8b | 300 sockets; tras 2 min empieza P9 durante 20 min | Recepción de cada transición del alumno y de cada cambio de stock, p95 evento <1 s, mismos criterios de cocina |
 | P12 | Dos horas reales de 300 lectores y 90 pedidos/min + drenaje | Integridad, cero errores internos/transporte, presupuesto de memoria, eliminación de 2,000 publicaciones vencidas |
 
 Las cocinas son cuatro locales con dos tabletas cada uno, consultando cada dos segundos. Los alumnos con pedidos activos consultan cada cinco segundos. Preparar tarda 20–60 s y caminar 5–30 s. Los conflictos de versión 409 entre tabletas son esperados. Los tokens se renuevan mediante la API; los sockets reciben un token cuya vigencia cubre toda la prueba. P8 conserva la conexión durante toda la medición para probar también el silencio prolongado; no simula reconexiones voluntarias cada diez minutos.
