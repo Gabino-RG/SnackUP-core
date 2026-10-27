@@ -32,7 +32,20 @@ for (const name of ['failure.txt', 'failure.png', 'browser-result.json']) {
       await page.waitForTimeout(50);
     }
   }
-  page.on('pageerror', e => errors.push(e.message));
+  page.on('pageerror', e => {
+    const detail = `${e.name}: ${e.message}\n${e.stack || '(no stack)'}`;
+    errors.push(detail);
+    console.error('Browser exception:', detail);
+  });
+  await page.addInitScript(() => {
+    window.addEventListener('error', e => console.error('Window error detail',
+      e.message, e.filename, e.lineno, e.colno, String(e.error), e.error?.stack));
+    window.addEventListener('unhandledrejection', e => console.error('Unhandled rejection detail',
+      String(e.reason), e.reason?.name, e.reason?.message, e.reason?.stack));
+  });
+  page.on('console', e => {
+    if (e.type() === 'error') console.error('Browser console:', e.text());
+  });
   page.on('response', r => {
     const p = new URL(r.url()).pathname;
     if (p.startsWith('/api/') && r.status() >= 400 && !(p.endsWith('/auth/refresh') && r.status() === 401)) {
