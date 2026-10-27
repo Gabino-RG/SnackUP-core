@@ -19,11 +19,12 @@ from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Body, Depends, File, Form, Header, Query, Request, Response, UploadFile
 from PIL import Image, UnidentifiedImageError
 from pydantic import BaseModel, ConfigDict, Field, StrictInt
-from sqlalchemy import and_, case, func, or_, select
+from sqlalchemy import and_, case, func, or_, select, text
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, lazyload
+from sqlalchemy.orm.attributes import set_committed_value
 
-from .auth import as_utc, current_user, ensure_account, require_business, require_student
+from .auth import as_utc, current_user, require_business, require_student
 from .common import iso, page_result, require, validate_body, version_check
 from .db import emit_event, get_db, new_id, utcnow
 from .errors import ApiError
@@ -556,7 +557,6 @@ def create_order_transaction(body, request: Request, db: Session, user: User,
     user = current_user(request, db)
     require(user.is_active and user.role == "user" and user.email_verified and user.approval_status == "approved",
             403, "FORBIDDEN", "La cuenta no está autorizada para comprar.")
-    ensure_account(user, db)
     previous = db.scalar(select(IdempotencyRecord).where(IdempotencyRecord.user_id == user.id,
                                                          IdempotencyRecord.key == idempotency_key))
     if previous:
@@ -566,6 +566,10 @@ def create_order_transaction(body, request: Request, db: Session, user: User,
     require(len({item.productId for item in body.items}) == len(body.items), 400 if canonical else 422,
             "INVALID_ITEMS" if canonical else "DUPLICATE_PRODUCT",
             "Agrupa las cantidades de cada producto en un solo renglón.")
+    # Roster imports take this same User lock, so attribution is stable while
+    # we hold it. Read it before locking the contended business/products.
+    academic = db.scalar(select(AcademicRecord).where(AcademicRecord.email == user.email,
+                         AcademicRecord.kind == "student", AcademicRecord.is_active.is_(True)))
     # Counter/version updates never change a Business key. NO KEY UPDATE still
     # serializes numbering and excludes catalog writes, while allowing stock
     # returns to hold KEY SHARE on this business without waiting on the counter.
@@ -601,8 +605,6 @@ def create_order_transaction(body, request: Request, db: Session, user: User,
     if canonical and total != body.expectedTotal:
         raise ApiError(409, "PRICE_CHANGED", "El precio cambió. Revisa el total antes de confirmar.",
                        {"currentTotal": float(total)})
-    academic = db.scalar(select(AcademicRecord).where(AcademicRecord.email == user.email,
-                         AcademicRecord.kind == "student", AcademicRecord.is_active.is_(True)))
     # Validate time after acquiring every row lock: contention may cross closing
     # time or shorten the pickup lead time. Rejection must leave no reservations.
     now = utcnow()
@@ -617,7 +619,24 @@ def create_order_transaction(body, request: Request, db: Session, user: User,
                   version=1, status="pending", payment_method=body.paymentMethod if canonical else "cash",
                   payment_status="pay_at_pickup" if not canonical or body.paymentMethod == "Efectivo" else "unverified",
                   stock_restored=False, scheduled_pickup_time=scheduled)
-    if canonical:
+    if canonical and db.get_bind().dialect.name == 'postgresql':
+        from sqlalchemy.dialects.postgresql import insert
+        # One statement replaces SAVEPOINT/INSERT/RELEASE for the only expected
+        # conflict. The partial unique index still arbitrates across businesses;
+        # other integrity failures abort the outer transaction normally.
+        for _ in range(8):
+            statement = insert(Order).values(id=new_id(), pickup_code=generate_pickup_code(), **values)
+            statement = statement.on_conflict_do_nothing(index_elements=[Order.pickup_code],
+                index_where=text('length(pickup_code) = 6')).returning(Order).options(lazyload(Order.items))
+            order = db.scalars(statement).first()
+            if order is not None:
+                # Newly inserted rows cannot have items yet. Avoid a SELECT and
+                # an early autoflush of the business/outbox when appending them.
+                set_committed_value(order, 'items', [])
+                break
+        else:
+            raise ApiError(503, "CODE_GENERATION_UNAVAILABLE", "No fue posible crear el pedido. Intenta nuevamente.")
+    elif canonical:
         # A savepoint confines a rare code collision without consuming inventory,
         # the per-local number, or the idempotency key in the outer transaction.
         # sqlite3 legacy mode does not BEGIN for SELECT/SAVEPOINT. Without this
@@ -628,7 +647,7 @@ def create_order_transaction(body, request: Request, db: Session, user: User,
             if not connection.connection.driver_connection.in_transaction:
                 connection.exec_driver_sql('BEGIN')
         for _ in range(8):
-            order = Order(id=new_id(), pickup_code=generate_pickup_code(), **values)
+            order = Order(id=new_id(), pickup_code=generate_pickup_code(), items=[], **values)
             try:
                 with db.begin_nested():
                     db.add(order)
@@ -640,7 +659,7 @@ def create_order_transaction(body, request: Request, db: Session, user: User,
         else:
             raise ApiError(503, "CODE_GENERATION_UNAVAILABLE", "No fue posible crear el pedido. Intenta nuevamente.")
     else:
-        order = Order(id=new_id(), pickup_code=f"{secrets.randbelow(100_000_000):08d}", **values)
+        order = Order(id=new_id(), pickup_code=f"{secrets.randbelow(100_000_000):08d}", items=[], **values)
         db.add(order)
     if canonical and body.paymentMethod == "ValeComida":
         from .v32_services import reserve_voucher

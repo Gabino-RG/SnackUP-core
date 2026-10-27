@@ -208,7 +208,8 @@ class Run:
                 self.check(status == 201, f'P4 {rate}/s creation')
                 if status == 201:
                     self.check((await self.cancel(who, order))[0] == 200, f'P4 {rate}/s cancellation')
-            await self.arrival(rate, 180 if not self.args.quick else 20, one)
+            # The last step exposed failures missed by a 20-second burst.
+            await self.arrival(rate, 180 if not self.args.quick or rate == 40 else 20, one)
             self.check(quantile(self.samples[f'create_{rate}'], .95) < 1500, f'P4 {rate}/s p95')
 
     async def p7(self):

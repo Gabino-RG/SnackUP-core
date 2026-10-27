@@ -647,7 +647,10 @@ def create_order(body: CreateOrderInput, request: Request, db: DB, actor: Studen
         key = str(UUID(idempotency_key))
     except (ValueError, AttributeError):
         raise ApiError(422, "INVALID_IDEMPOTENCY_KEY", "Idempotency-Key debe contener un UUID.") from None
-    return create_order_transaction(body, request, db, actor, key, canonical=True, serializer=order_dto)
+    # A newly created pending order cannot have a review. Avoid querying that
+    # table while the purchase still owns its stock and numbering locks.
+    return create_order_transaction(body, request, db, actor, key, canonical=True,
+                                    serializer=lambda order, session, user: order_dto(order, session, user, rated_ids=set()))
 
 
 @router.get("/orders/{id}", operation_id="v3GetOrder",
