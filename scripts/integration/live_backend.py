@@ -5,7 +5,7 @@ Usage: python scripts/integration/live_backend.py --backend ../SnackUP-backend-v
 """
 import argparse
 from datetime import timedelta
-from contextlib import ExitStack
+from contextlib import ExitStack, contextmanager
 import json
 import os
 from pathlib import Path
@@ -16,8 +16,30 @@ import sys
 import tempfile
 import threading
 import time
+from urllib.parse import urlsplit, urlunsplit
+from uuid import uuid4
 
 BACKEND_REVISION = '81c76c5eda9ba6315fbf1dcd1a69599f8906db5e'
+
+
+@contextmanager
+def isolated_database(root):
+    admin_url = os.environ.get('SNACKUP_TEST_POSTGRES_ADMIN_URL')
+    if not admin_url:
+        yield 'sqlite:///' + (root / 'test.db').as_posix()
+        return
+    parsed = urlsplit(admin_url)
+    if parsed.scheme != 'postgresql' or parsed.hostname not in ('127.0.0.1', 'localhost') or parsed.query:
+        raise ValueError('PostgreSQL test service must be loopback, without query parameters')
+    import psycopg
+    from psycopg import sql
+    name = 'snackup_test_' + uuid4().hex
+    with psycopg.connect(admin_url, autocommit=True) as admin:
+        admin.execute(sql.SQL('CREATE DATABASE {}').format(sql.Identifier(name)))
+        try:
+            yield urlunsplit(parsed._replace(scheme='postgresql+psycopg', path='/' + name))
+        finally:
+            admin.execute(sql.SQL('DROP DATABASE {} WITH (FORCE)').format(sql.Identifier(name)))
 
 
 def main():
@@ -26,6 +48,7 @@ def main():
     parser.add_argument('--flutter', default='flutter')
     parser.add_argument('--web', type=Path, help='Compiled /paneles/ build for the browser smoke test')
     parser.add_argument('--node', default='node')
+    parser.add_argument('--resilience', action='store_true', help='Also exercise concurrent requests, closure and browser network failures')
     args = parser.parse_args()
     backend = args.backend.resolve()
     revision = subprocess.check_output(['git', '-C', str(backend), 'rev-parse', 'HEAD'], text=True).strip()
@@ -55,9 +78,10 @@ def main():
     with tempfile.TemporaryDirectory(prefix='snackup-live-') as folder, ExitStack() as cleanup:
         cleanup.callback(listener.close)
         root = Path(folder)
+        database_url = cleanup.enter_context(isolated_database(root))
         password = secrets.token_urlsafe(32)
         settings = Settings(_env_file=None, environment='test',
-            secret_key=secrets.token_urlsafe(48), database_url='sqlite:///' + (root / 'test.db').as_posix(),
+            secret_key=secrets.token_urlsafe(48), database_url=database_url,
             public_origin=origin, redis_url='', background_events=True, push_enabled=False,
             media_dir=root / 'media', web_dir=None, smtp_host='', smtp_from='',
             admin_email_domains='staff.example.edu', student_email_domains='students.example.edu')
@@ -109,6 +133,13 @@ def main():
             if result.returncode == 0 and args.web:
                 result = subprocess.run([args.node, 'scripts/integration/live_browser.cjs'],
                     cwd=Path(__file__).resolve().parents[2], env=env, timeout=240)
+            if result.returncode == 0 and args.resilience:
+                from resilience_scenarios import run
+                fixtures = run(app, settings, origin, password)
+                if args.web:
+                    env['SNACKUP_RESILIENCE_FIXTURES'] = json.dumps(fixtures)
+                    result = subprocess.run([args.node, 'scripts/integration/resilience_browser.cjs'],
+                        cwd=Path(__file__).resolve().parents[2], env=env, timeout=180)
         finally:
             server.should_exit = True
             worker.join(timeout=15)

@@ -10,6 +10,69 @@ import 'package:snackup/operations/operations_repository.dart';
 import 'operations_repository_test.dart' show orderData;
 
 void main() {
+  testWidgets(
+    'uncertain delivery and failed reconciliation cannot be submitted again',
+    (tester) async {
+      tester.view.physicalSize = const Size(1440, 1050);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      var offline = false, sends = 0;
+      final api = ApiClient(
+        baseUri: Uri.parse('https://test.example/api/v1/'),
+        client: MockClient((r) async {
+          if (r.url.path.endsWith('/complete')) {
+            sends++;
+            offline = true;
+          }
+          if (offline)
+            throw http.ClientException('connection lost after commit');
+          return http.Response(
+            jsonEncode(
+              r.url.path.endsWith('/businesses/b1')
+                  ? {'id': 'b1', 'name': 'Local', 'isOpen': true, 'version': 1}
+                  : {
+                      'data': [orderData(status: 'ready')],
+                    },
+            ),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        }),
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: BusinessPortal(
+            businessId: 'b1',
+            catalog: LocalCatalogRepository(MemoryCatalogStore()),
+            repository: OperationsRepository(api),
+            token: () async => 'token',
+            onSignOut: () {},
+            enableRealtime: false,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Verificar entrega'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const ValueKey('delivery-code')),
+        'A9K3F1',
+      );
+      await tester.tap(find.text('Confirmar entrega'));
+      await tester.pumpAndSettle();
+      final button = tester.widget<FilledButton>(
+        find.widgetWithText(FilledButton, 'Confirmar entrega'),
+      );
+      expect(
+        button.onPressed,
+        isNull,
+        reason: 'An uncertain result must require returning to the board',
+      );
+      expect(sends, 1);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
   for (final width in [320.0, 768.0, 1440.0]) {
     testWidgets(
       'peak kitchen fits ${width.toInt()}px and builds visible cards lazily',

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../operations/models.dart';
 import '../../operations/kitchen_controller.dart';
+import '../../api/api_client.dart';
 
 class OrderActionDialog extends StatefulWidget {
   const OrderActionDialog({
@@ -50,9 +51,23 @@ class _OrderActionDialogState extends State<OrderActionDialog> {
         setState(() {
           _error = operationsMessage(e);
           // Keep the code/note, but never replay an action on a stale card.
-          _mustReload = !widget.controller.orders.any(
-            (o) => o.id == widget.order.id && o.version == widget.order.version,
-          );
+          _mustReload =
+              widget.controller.stale ||
+              (e is ApiException &&
+                  const [
+                    'NETWORK',
+                    'TIMEOUT',
+                    'INVALID_RESPONSE',
+                  ].contains(e.code)) ||
+              !widget.controller.orders.any(
+                (o) =>
+                    o.id == widget.order.id &&
+                    o.version == widget.order.version,
+              );
+          if (_mustReload) {
+            _error =
+                '$_error Vuelve al tablero y actualiza para comprobar el resultado antes de repetir.';
+          }
         });
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -174,7 +189,7 @@ class _OrderActionDialogState extends State<OrderActionDialog> {
       actions: [
         TextButton(
           onPressed: _saving ? null : () => Navigator.pop(context),
-          child: Text(_mustReload ? 'Volver al tablero actualizado' : 'Volver'),
+          child: Text(_mustReload ? 'Volver y comprobar el pedido' : 'Volver'),
         ),
         FilledButton(
           onPressed: _saving || _mustReload ? null : _save,
