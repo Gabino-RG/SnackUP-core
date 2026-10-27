@@ -48,7 +48,9 @@ El arranque espera PostgreSQL, abre Redis por un socket Unix privado, aplica
 `alembic upgrade head` una sola vez y después inicia el proceso `snackup.jobs`, Uvicorn y Caddy. El proceso de tareas
 ejecuta cierres, avisos y limpieza de chats cada minuto, con bloqueo PostgreSQL
 y heartbeat incluido en el healthcheck; no se replica por worker HTTP. Uvicorn
-escucha exclusivamente en loopback y solo confía en ese proxy. Redis no abre TCP.
+ejecuta cada worker en un puerto loopback propio (8000–8007), y Caddy distribuye
+peticiones y sockets con `least_conn`. Uvicorn conserva conexiones HTTP 130 s y
+Caddy 30 s. Solo se confía en ese proxy. Redis no abre TCP.
 El supervisor y sus hijos usan UID/GID 10001, sistema de archivos de imagen de
 solo lectura, `/tmp` temporal y volúmenes de datos. Solo se publican 80/443.
 
@@ -61,6 +63,39 @@ docker compose -f compose.unified.yaml exec app python -m snackup.cli --help
 No pasar contraseñas a argumentos de shell. Los comandos y permisos del CLI se
 describen en [README.md](README.md). Push necesita las credenciales/montajes de su
 proveedor; el ejemplo lo deja deshabilitado y no prueba envíos externos.
+
+## Ajustes incorporados después de la prueba de carga
+
+La composición transmite las variables de rendimiento de `.env` a la aplicación:
+
+| Variable | Predeterminado | Uso |
+|---|---|---|
+| `SNACKUP_POOL_TIMEOUT_SECONDS` | 2 | Espera máxima por conexión SQL |
+| `SNACKUP_ADMISSION_WAIT_SECONDS` | 5 | Cola asíncrona antes del handler |
+| `SNACKUP_LOGIN_WAIT_SECONDS` | 8 | Cola de las olas de login |
+| `SNACKUP_PASSWORD_CONCURRENCY` | 4 | Hilos dedicados a Argon2 por worker |
+| `SNACKUP_OUTBOX_RETENTION_DAYS` | 7 | Antigüedad de publicaciones eliminables |
+| `SNACKUP_OUTBOX_CLEANUP_BATCH` | 1000 | Máximo de publicaciones purgadas por minuto |
+
+El pool sigue siendo 10 + 5 por worker. La admisión permite 11 peticiones HTTP
+simultáneas por worker con esos valores y reserva cuatro plazas para tareas
+auxiliares. La espera de admisión no retiene un hilo ni una conexión SQL; al
+agotarse responde 503 con `Retry-After: 1`. El frontend debe conservar la misma
+clave de idempotencia cuando reintente la creación del mismo pedido.
+
+La batería de carga mide tres workers en el perfil base de cuatro CPU, y un
+worker con dos hilos Argon2 en el perfil de dos CPU. Esas son configuraciones de
+medición, no detección automática de hardware: definir `SNACKUP_WORKERS` y
+`SNACKUP_PASSWORD_CONCURRENCY` según el perfil elegido. No modificar los
+parámetros criptográficos de Argon2 para ocultar un límite de capacidad.
+
+La purga afecta exclusivamente publicaciones antiguas del outbox; conserva
+pedidos, transiciones, datos académicos, publicaciones pendientes y cualquier
+publicación con push todavía pendiente. La reconexión real de Redis obliga a
+los sockets afectados a reconectar y recuperar el estado por REST.
+
+Protocolo reproducible: [pruebas de Fase C](load/phase_c/README.md). Las pruebas
+siguen sin desplegar el servicio en producción ni migrar Firestore.
 
 ## Fuentes y construcción reproducible
 

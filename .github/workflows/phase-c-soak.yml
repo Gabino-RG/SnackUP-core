@@ -6,7 +6,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: phase-c-soak-${{ github.ref }}
+  group: phase-c-soak-${{ github.ref }}-${{ contains(github.event.head_commit.message, '[phase-c-full]') && 'full' || 'quick' }}
   cancel-in-progress: true
 jobs:
   soak:
