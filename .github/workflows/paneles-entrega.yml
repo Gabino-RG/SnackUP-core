@@ -10,6 +10,7 @@ on:
       - 'docs/integracion/**'
       - 'scripts/integration/**'
       - 'scripts/review/**'
+      - 'deploy/**'
       - '.github/workflows/paneles-entrega.yml'
 
 permissions:
@@ -73,6 +74,7 @@ jobs:
           node-version: '22'
       - name: Validate contract and local fixture
         run: |
+          python -m unittest discover -s deploy -p test_check_panels_server.py
           python -m pip install -r scripts/integration/requirements.txt
           python scripts/integration/check_contract.py --review --report build/delivery/contract-report.json
       - name: Flutter tests and analysis

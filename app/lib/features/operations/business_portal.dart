@@ -14,6 +14,7 @@ import 'history_screen.dart';
 import 'record_editor.dart';
 import '../../operations/v32_repository.dart';
 import 'v32_screens.dart';
+import 'chat_activity_button.dart';
 
 class BusinessPortal extends StatefulWidget {
   const BusinessPortal({
@@ -236,6 +237,12 @@ class _BusinessPortalState extends State<BusinessPortal>
           ),
           backgroundColor: Colors.white,
           actions: [
+            if (widget.v32 != null)
+              ChatActivityButton(
+                key: ValueKey(widget.businessId),
+                repository: widget.v32!,
+                businessId: widget.businessId,
+              ),
             IconButton(
               tooltip: _sound
                   ? 'Silenciar pedidos'

@@ -96,10 +96,13 @@ for (const name of ['failure.txt', 'failure.png', 'browser-result.json']) {
     const sent = page.waitForResponse(r => r.url().endsWith(`/chats/${chat.id}/messages`) && r.status() === 201);
     await page.getByRole('button', {name: 'Enviar mensaje', exact: true}).click();
     await sent;
+    await page.getByRole('button', {name: /Back|Atrás|Volver/}).first().click();
     const reply = await studentContext.request.post(origin + `/api/v1/chats/${chat.id}/messages`, {
       headers: {Origin: origin, Authorization: 'Bearer ' + studentToken}, data: {text: 'Respuesta de prueba del alumno'}
     });
     assert.equal(reply.status(), 201);
+    await page.getByRole('button', {name: 'Actividad en chats: revisar conversaciones', exact: true}).click();
+    await text('Pedido ' + chat.orderId).click();
     await text('Respuesta de prueba del alumno').waitFor();
     await page.screenshot({path: path.join(output, 'chat-v32.png')});
     await page.getByRole('button', {name: 'Cerrar y borrar', exact: true}).click();
@@ -140,7 +143,7 @@ for (const name of ['failure.txt', 'failure.png', 'browser-result.json']) {
     assert.deepEqual(failures, []);
     fs.writeFileSync(path.join(output, 'browser-result.json'), JSON.stringify({passed: true,
       checks: ['Kitchen login', 'role isolation', 'HTTP-only cookie reload', 'WebSocket order.created and Kitchen accept', 'SQL order history',
-        'chat send/reply/delete', 'closing schedule', 'detailed statistics', 'read-only administrative schedule',
+        'chat send/reply/delete and activity outside chat', 'closing schedule', 'detailed statistics', 'read-only administrative schedule',
         'logout and admin login', 'zero-star review visible', 'desktop and mobile screenshots'], errors, failures}, null, 2));
     console.log('Real-backend browser smoke passed. Screenshots: ' + output);
   } catch (error) {

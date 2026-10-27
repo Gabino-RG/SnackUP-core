@@ -86,10 +86,12 @@ No hay usuario ni contraseña por defecto.
    con el proceso de tareas activo, posposición, pedido no recogido y liberación
    de vale con datos de prueba. Administración solo consulta los horarios y no
    puede entrar a conversaciones. El chat se actualiza cada 10 segundos con la
-   vista abierta; no hay avisos de chat fuera de ella.
+   vista abierta; la barra superior indica actividad desde otras secciones cada
+   15 segundos. No hay avisos con el navegador cerrado.
 6. Reiniciar el piloto y verificar persistencia; realizar respaldo y restauración
    en otro entorno. El volumen de Docker por sí solo no constituye un respaldo.
-7. Validar por separado la app de alumnos contra SQL y medir la carga prevista.
+7. Medir la carga prevista coordinando tráfico sintético de la API con su
+   responsable; la app de alumnos queda fuera de esta entrega de paneles.
 
 Guardar resultados, versiones, navegador/dispositivo y errores de cada caso.
 Las pruebas locales del frontend están documentadas en la rama de paneles en
@@ -107,3 +109,7 @@ docker compose --env-file .env -f compose.unified.yaml -p snackup-piloto stop
 No compartir `.env`, tokens, códigos de recogida ni datos del padrón en reportes.
 Para volver a una versión anterior con cambios de esquema, seguir el procedimiento
 de restauración probado del backend; no basta con cambiar la imagen.
+
+Consultar `ACEPTACION_PANELES.md` para criterios de salida y comprobación HTTPS.
+Para respaldar este Compose usar `backend/backup_unified.sh`: el script original
+del backend está orientado al Compose separado y su servicio `api`.

@@ -49,6 +49,9 @@ def prepare(output: Path, repository: Path = ROOT):
               f'SNACKUP_PANELS_CONTEXT={REMOTE}#{PANELS}', f'SNACKUP_USERS_CONTEXT={REMOTE}#{USERS}']
     (backend / '.env.example').write_text('\n'.join(lines) + '\n', encoding='utf-8', newline='\n')
     shutil.copyfile(Path(__file__).with_name('configure.py'), backend / 'configure.py')
+    shutil.copyfile(Path(__file__).with_name('backup_unified.sh'), backend / 'backup_unified.sh')
+    shutil.copyfile(Path(__file__).parents[1] / 'check_panels_server.py', output / 'check_panels_server.py')
+    shutil.copyfile(ROOT / 'docs/integracion/PREPARACION_PRODUCCION_PANELES.md', output / 'ACEPTACION_PANELES.md')
     shutil.copyfile(Path(__file__).with_name('README.md'), output / 'LEEME.md')
     (output / 'versions.json').write_text(json.dumps({'backend': BACKEND, 'panels': PANELS, 'users': USERS,
         'usersStorage': 'Firebase; not certified for SQL integration', 'purpose': 'staging',

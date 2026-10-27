@@ -65,6 +65,24 @@ class FakeV32 extends V32Repository {
   };
 }
 
+class RecoveringChat extends FakeV32 {
+  bool offline = true;
+  @override
+  Future<List<Map<String, dynamic>>> messages(String id) async {
+    if (offline) throw const ApiException('Sin conexión de prueba');
+    return super.messages(id);
+  }
+}
+
+class UncertainSend extends FakeV32 {
+  int sends = 0;
+  @override
+  Future<void> send(String id, String text) async {
+    sends++;
+    throw const ApiException('Entrega incierta');
+  }
+}
+
 class DelayedChat extends FakeV32 {
   final pending = Completer<List<Map<String, dynamic>>>();
   int reads = 0;
@@ -76,23 +94,70 @@ class DelayedChat extends FakeV32 {
 }
 
 void main() {
-  testWidgets('late poll cannot restore conversation content after changing view', (tester) async {
-    final repo = DelayedChat();
-    await tester.pumpWidget(MaterialApp(home: Scaffold(body: KitchenChatScreen(repository: repo, businessId: 'b', orderId: 'order'))));
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField), 'borrador');
-    await tester.tap(find.text('Conversaciones'));
-    await tester.pumpAndSettle();
-    await tester.pump(const Duration(seconds: 10));
-    await tester.tap(find.text('Confirmar'));
-    await tester.pumpAndSettle();
-    repo.pending.complete([{'id': 'late', 'text': 'Mensaje tardío', 'senderRole': 'ALUMNO', 'createdAt': '2026-10-26T12:00:00Z'}]);
-    await tester.pumpAndSettle();
-    expect(find.text('Mensaje tardío'), findsNothing);
-    expect(find.text('Enviar mensaje'), findsNothing);
-    expect(find.text('No hay conversaciones activas.'), findsOneWidget);
-    await tester.pumpWidget(const SizedBox());
-  });
+  testWidgets(
+    'successful polls preserve uncertain delivery warning and never resend',
+    (tester) async {
+      final repo = UncertainSend();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: KitchenChatScreen(
+              repository: repo,
+              businessId: 'b',
+              orderId: 'order',
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'Mensaje pendiente');
+      await tester.tap(find.text('Enviar mensaje'));
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 10));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Entrega incierta'), findsOneWidget);
+      expect(find.text('Mensaje pendiente'), findsOneWidget);
+      expect(repo.sends, 1);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+  testWidgets(
+    'late poll cannot restore conversation content after changing view',
+    (tester) async {
+      final repo = DelayedChat();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: KitchenChatScreen(
+              repository: repo,
+              businessId: 'b',
+              orderId: 'order',
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'borrador');
+      await tester.tap(find.text('Conversaciones'));
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 10));
+      await tester.tap(find.text('Confirmar'));
+      await tester.pumpAndSettle();
+      repo.pending.complete([
+        {
+          'id': 'late',
+          'text': 'Mensaje tardío',
+          'senderRole': 'ALUMNO',
+          'createdAt': '2026-10-26T12:00:00Z',
+        },
+      ]);
+      await tester.pumpAndSettle();
+      expect(find.text('Mensaje tardío'), findsNothing);
+      expect(find.text('Enviar mensaje'), findsNothing);
+      expect(find.text('No hay conversaciones activas.'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
   test(
     'canonical session is limited to the configured same-origin V3 namespace',
     () async {
@@ -181,6 +246,30 @@ void main() {
       expect((await repo.messages('c')).map((m) => m['id']), ['1', '2']);
     },
   );
+  testWidgets('chat recovers from a failed poll and clears the old error', (
+    tester,
+  ) async {
+    final repo = RecoveringChat();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: KitchenChatScreen(
+            repository: repo,
+            businessId: 'b',
+            orderId: 'order',
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Sin conexión de prueba'), findsOneWidget);
+    repo.offline = false;
+    await tester.pump(const Duration(seconds: 10));
+    await tester.pumpAndSettle();
+    expect(find.text('Sin conexión de prueba'), findsNothing);
+    expect(find.text('Mensaje privado de prueba'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  });
   testWidgets('administration can inspect schedule but has no write actions', (
     tester,
   ) async {

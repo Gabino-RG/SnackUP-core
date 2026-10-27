@@ -14,8 +14,10 @@ En el menú **Operación** aparecen cuatro secciones:
   backend mantiene una conversación activa por alumno/local, hasta 1,000
   mensajes y caducidad tras 24 horas de inactividad. El panel consulta por HTTP
   cada 10 segundos únicamente con la vista abierta y la aplicación visible;
-  también permite actualizar manualmente. No implementa Socket.IO para chat ni
-  notificaciones de mensajes cuando la vista está cerrada. Los pedidos conservan
+  también permite actualizar manualmente. La barra superior de Cocina muestra
+  actividad de chats desde otras secciones mediante metadatos cada 15 segundos,
+  con pausa en segundo plano y reintentos espaciados. No usa Socket.IO para chat
+  ni notificaciones del sistema con el navegador cerrado. Los pedidos conservan
   su WebSocket nativo. No se guarda texto del chat en almacenamiento del navegador.
 - **Horarios:** activar/desactivar cierre automático, configurar HH:mm, posponer
   el cierre de hoy y ajustar espera de recogida entre 5 y 180 minutos. Los cambios
@@ -70,3 +72,5 @@ Ejecutar `flutter test` y el runner `scripts/integration/live_backend.py` descri
 en [validación del backend](VALIDACION_BACKEND_V32.md). Las capturas y el resultado
 del navegador quedan en `build/live-backend/`. La prueba no certifica capacidad de
 mil alumnos, SMTP, DNS ni despliegue productivo. No se invoca la UI de alumnos.
+
+Preparación y pruebas pendientes del servidor: [producción de paneles](PREPARACION_PRODUCCION_PANELES.md).

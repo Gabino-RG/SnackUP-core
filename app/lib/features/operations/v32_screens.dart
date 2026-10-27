@@ -698,6 +698,7 @@ class _KitchenChatScreenState extends State<KitchenChatScreen>
   List<Map<String, dynamic>> _chats = [], _messages = [];
   String? _chat, _error;
   bool _loading = false, _writing = false, _visible = true;
+  bool _loadFailed = false;
   int _page = 1, _pages = 0, _revision = 0;
   @override
   void initState() {
@@ -751,17 +752,24 @@ class _KitchenChatScreenState extends State<KitchenChatScreen>
         final data = await widget.repository.chats(widget.businessId, _page);
         if (mounted && revision == _revision)
           setState(() {
+            if (_loadFailed) _error = null;
+            _loadFailed = false;
             _chats = (data['data'] as List).map(object).toList();
             _pages = integer(object(data['pagination']), 'totalPages');
           });
       } else {
         final messages = await widget.repository.messages(selected);
         if (mounted && revision == _revision)
-          setState(() => _messages = messages);
+          setState(() {
+            if (_loadFailed) _error = null;
+            _loadFailed = false;
+            _messages = messages;
+          });
       }
     } catch (e) {
       if (mounted && revision == _revision)
         setState(() {
+          _loadFailed = true;
           _error = v32Message(e);
           if (e is ApiException && e.code == 'CHAT_NOT_FOUND') {
             _chat = null;
@@ -805,6 +813,7 @@ class _KitchenChatScreenState extends State<KitchenChatScreen>
       return;
     setState(() {
       _writing = true;
+      _loadFailed = false;
       _error = null;
     });
     try {
