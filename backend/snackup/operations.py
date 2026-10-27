@@ -435,12 +435,11 @@ def transition(db: Session, user: User, id: str, action: str, body: dict, reques
         if not student:
             require(body["reason"] != "other" or bool(body.get("notes", "").strip()), 422,
                     "INVALID_CANCEL_REASON", "Describe el motivo de cancelación.")
-        # Catalog edits and purchases acquire Business before Products. Follow
-        # that order here too: PostgreSQL may recheck the order's foreign key
-        # after an autoflush, so holding Product while waiting on Business can
-        # otherwise deadlock a catalog edit. No order attributes are dirtied
-        # until the inventory locks and final authorization have completed.
-        db.scalar(select(Business).where(Business.id == order.business_id).with_for_update()
+        # Keep Business before Products to exclude catalog FOR UPDATE edits.
+        # Cancellation does not change the business: KEY SHARE is sufficient
+        # and can coexist with purchases' NO KEY UPDATE counter lock. Product
+        # locks still serialize stock changes; Order prevents double returns.
+        db.scalar(select(Business).where(Business.id == order.business_id).with_for_update(read=True, key_share=True)
                   .execution_options(populate_existing=True))
         current_user(request, db)
         if not not_picked_up:
@@ -567,7 +566,10 @@ def create_order_transaction(body, request: Request, db: Session, user: User,
     require(len({item.productId for item in body.items}) == len(body.items), 400 if canonical else 422,
             "INVALID_ITEMS" if canonical else "DUPLICATE_PRODUCT",
             "Agrupa las cantidades de cada producto en un solo renglón.")
-    b = db.scalar(select(Business).where(Business.id == body.businessId).with_for_update()
+    # Counter/version updates never change a Business key. NO KEY UPDATE still
+    # serializes numbering and excludes catalog writes, while allowing stock
+    # returns to hold KEY SHARE on this business without waiting on the counter.
+    b = db.scalar(select(Business).where(Business.id == body.businessId).with_for_update(key_share=True)
                   .execution_options(populate_existing=True))
     require(b is not None and b.is_active, 404, "NOT_FOUND", "Local no encontrado.")
     from .v32_services import closing_at, validate_schedule

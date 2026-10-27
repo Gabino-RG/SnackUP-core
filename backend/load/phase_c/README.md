@@ -26,7 +26,7 @@ El generador exige `ALLOW_LOAD=YES`, `SNACKUP_ENVIRONMENT=test`, host SQL loopba
 | Base | 4 | 3 | 5 GiB / 2 GiB | 4 |
 | Pesimista | 2 | 1 | 2300 MiB / 1 GiB | 2 |
 
-Redis comparte el contenedor de aplicación y conserva su límite de 256 MiB. Pool SQL de 10 + 5 por worker; la admisión reserva cuatro plazas para tareas auxiliares. Los runners tienen cuatro CPU y el generador comparte la máquina con los contenedores; no reproducen la laptop de QA con turbo desactivado y generador separado. Las comparaciones son evidencia funcional y de capacidad de esta máquina, no una garantía de rendimiento del servidor de TI. Argon2 mantiene 19,456 KiB, dos iteraciones y paralelismo uno.
+Redis comparte el contenedor de aplicación y conserva su límite de 256 MiB. Pool SQL de 10 + 5 por worker; la admisión reserva cuatro plazas para tareas auxiliares. Los runners tienen cuatro CPU y el generador comparte CPU con los contenedores en el perfil base. En el perfil pesimista el servidor usa CPU 0–1 y el generador CPU 2–3; no reproducen la laptop de QA con turbo desactivado y generador separado. Las comparaciones son evidencia funcional y de capacidad de esta máquina, no una garantía de rendimiento del servidor de TI. Argon2 mantiene 19,456 KiB, dos iteraciones y paralelismo uno.
 
 ## Escenarios completos
 
@@ -37,7 +37,7 @@ Redis comparte el contenedor de aplicación y conserva su límite de 256 MiB. Po
 | P4 | Un local/producto, crear y cancelar a 2/5/10/20/40 por segundo, 180 s cada escalón | Sin pérdidas de llegadas, p95 creación <1.5 s |
 | P5 | 200 compradores simultáneos, stock 50 | Exactamente 50×201 y 150×422 |
 | P6 | 50 alumnos ×10 reintentos simultáneos por clave | 50 pedidos, respuestas 201 idénticas; 503 de admisión permitido |
-| P7 | 10/s durante 30 s, 20/s durante 240 s, 10/s durante 30 s | 5,400 logins, todos exitosos, p95 <1.5 s |
+| P7 | Rampa lineal 0→20/s durante 30 s, 20/s durante 240 s, bajada 20→0/s durante 30 s | 5,400 logins, todos exitosos, p95 <1.5 s |
 | P7b | Tres olas de 200, separadas por 30 s | ≥99% por ola, cero 500, RSS <400 MiB por worker y objetivo propuesto p95 <3 s |
 | P8 | 300 sockets durante 20 min; cuatro operadores cambian disponibilidad cada 5 s detrás de Caddy | Sin pérdida de eventos, p95 <1 s, CPU máxima entre workers <2× mínima |
 | P8-1000 | 1,000 sockets durante 5 min | Sin pérdida, p95 <2 s y balance de CPU |

@@ -153,6 +153,21 @@ class Run:
         self.details.setdefault('arrivals', []).append({'rate': rate, 'seconds': seconds, 'launched': len(tasks),
                                                       'elapsed': time.monotonic() - start})
 
+    async def arrival_ramp(self, start_rate, end_rate, seconds, function):
+        count = round((start_rate + end_rate) * seconds / 2)
+        slope = (end_rate - start_rate) / seconds
+        started = time.monotonic()
+        tasks = []
+        for index in range(count):
+            # Invert the integral of a linear rate, using interval midpoints.
+            at = (math.sqrt(start_rate**2 + 2*slope*(index+.5)) - start_rate) / slope
+            await asyncio.sleep(max(0, started + at - time.monotonic()))
+            tasks.append(asyncio.create_task(function(index)))
+        await asyncio.gather(*tasks)
+        await asyncio.sleep(max(0, started + seconds - time.monotonic()))
+        self.details.setdefault('arrivals', []).append({'startRate': start_rate, 'endRate': end_rate,
+            'seconds': seconds, 'launched': count, 'elapsed': time.monotonic() - started})
+
     async def p0(self):
         async def iteration(i):
             who = self.students[i % 5]
@@ -205,9 +220,9 @@ class Run:
         if self.args.quick:
             await self.arrival(20, 30, login)
         else:
-            await self.arrival(10, 30, login)
+            await self.arrival_ramp(0, 20, 30, login)
             await self.arrival(20, 240, login)
-            await self.arrival(10, 30, login)
+            await self.arrival_ramp(20, 0, 30, login)
         self.check(quantile(self.samples['login'], .95) < 1500, 'P7 p95')
 
     async def p7b(self):
@@ -231,7 +246,7 @@ class Run:
                              '/api/v1/users/me/orders/active?limit=20'):
                     status, _, _ = await self.request('GET', path, who, metric if time.monotonic() >= steady_at else metric + '_ramp')
                     self.check(status == 200, metric + ' HTTP failure')
-                await asyncio.sleep(self.random.uniform(5, 10))
+                await asyncio.sleep(min(self.random.uniform(5, 10), max(0, until - time.monotonic())))
         await asyncio.gather(*(user(who) for who in self.students[:count]))
 
     async def p2(self):
@@ -324,7 +339,7 @@ class Run:
             self.check(status == 201, 'P9 create failed')
             if status == 201:
                 self.expected_order_events.add((order['id'], order['version']))
-                orders[order['id']] = {'code': order['pickupCode'], 'created': time.monotonic(), 'prepare': None, 'walk': None, 'who': who}
+                orders[order['id']] = {'code': order['pickupCode'], 'created': time.monotonic() - max(0, time.time() - datetime.fromisoformat(order['createdAt']).timestamp()), 'prepare': None, 'walk': None, 'who': who}
         async def tablet(operator):
             while not stop.is_set():
                 status, page, _ = await self.request('GET', f"/api/v1/businesses/{operator['businessId']}/orders/active?limit=100", operator, 'kitchen_read')
@@ -343,8 +358,7 @@ class Run:
                         if time.monotonic() >= state['prepare']:
                             action = 'ready'
                     elif order['status'] == 'ready':
-                        state['walk'] = state['walk'] or time.monotonic() + self.random.uniform(5, 30)
-                        if time.monotonic() >= state['walk']:
+                        if state['walk'] is not None and time.monotonic() >= state['walk']:
                             action = 'complete'
                     if action:
                         data = {'expectedVersion': order['version']}
@@ -364,8 +378,12 @@ class Run:
                 # One poll per student with an active order, every five seconds.
                 active = {state['who']['email']: state['who'] for oid, state in orders.items() if oid not in done}
                 async def poll(who):
-                    status, _, _ = await self.request('GET', '/api/v1/users/me/orders/active?limit=20', who, 'student_read')
+                    status, page, _ = await self.request('GET', '/api/v1/users/me/orders/active?limit=20', who, 'student_read')
                     self.check(status == 200, 'P9 student read')
+                    for order in page.get('data', []):
+                        state = orders.get(order['id'])
+                        if state and order['status'] == 'ready' and state['walk'] is None:
+                            state['walk'] = time.monotonic() + self.random.uniform(5, 30)
                 await asyncio.gather(*(poll(who) for who in active.values()))
                 await asyncio.sleep(5)
         tasks = [asyncio.create_task(tablet(op)) for op in self.operators for _ in range(2)]
@@ -543,6 +561,10 @@ def main():
     mode.add_argument('--quick', action='store_true')
     mode.add_argument('--full', action='store_true')
     args = parser.parse_args()
+    if args.profile == 'pessimistic':
+        # The two remaining runner CPUs generate load without consuming the
+        # two CPUs reserved for the app and PostgreSQL containers.
+        os.sched_setaffinity(0, {2, 3})
     return asyncio.run(Run(args).run())
 
 

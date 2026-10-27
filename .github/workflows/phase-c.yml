@@ -57,7 +57,7 @@ jobs:
           python - <<'PY'
           import json, os, platform
           from pathlib import Path
-          Path('reports/phase-c/environment.json').write_text(json.dumps({'commit':os.environ['GITHUB_SHA'],'profile':os.environ['PROFILE'],'runnerCpu':os.cpu_count(),'platform':platform.platform(),'generatorSharesRunner':True,'serverCpu':4 if os.environ['PROFILE']=='base' else 2,'postgres':'17-alpine','fixtureStudents':1000,'businesses':4,'quick':os.environ['QUICK']=='--quick'},indent=2))
+          Path('reports/phase-c/environment.json').write_text(json.dumps({'commit':os.environ['GITHUB_SHA'],'profile':os.environ['PROFILE'],'runnerCpu':os.cpu_count(),'platform':platform.platform(),'generatorSharesRunner':True,'generatorSharesCpu':os.environ['PROFILE']=='base','cpuModel':next((line.split(':',1)[1].strip() for line in Path('/proc/cpuinfo').read_text().splitlines() if line.startswith('model name')),None),'serverCpu':4 if os.environ['PROFILE']=='base' else 2,'postgres':'17-alpine','fixtureStudents':1000,'businesses':4,'quick':os.environ['QUICK']=='--quick'},indent=2))
           PY
       - name: Build and start actual supervisor proxy API jobs Redis and PostgreSQL
         run: |

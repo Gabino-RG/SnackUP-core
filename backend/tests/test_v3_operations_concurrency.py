@@ -58,6 +58,32 @@ def test_concurrent_cancellations_without_expected_version_restore_once(app, cli
         assert db.scalar(select(func.count()).select_from(OrderTransition)) == 2
 
 
+def test_stock_return_can_progress_while_another_purchase_locks_business_counter(app, client, tokens):
+    require_postgres(app)
+    created = purchase(client, tokens, items=[{'productId': 'product-1', 'quantity': 2}], expectedTotal=71)
+    assert created.status_code == 201, created.text
+    def cancel():
+        peer = TestClient(app, base_url=app.state.settings.public_origin)
+        try:
+            return peer.post('/api/v1/orders/' + created.json()['id'] + '/cancel',
+                             headers=tokens['operator'], json={'reason': 'cannot_prepare'})
+        finally:
+            peer.close()
+    with app.state.db.sessions() as blocker, ThreadPoolExecutor(max_workers=1) as pool:
+        blocker.scalar(select(Business).where(Business.id == 'business-1').with_for_update(key_share=True))
+        future = pool.submit(cancel)
+        try:
+            # Would block under the old exclusive Business lock, despite this
+            # transaction not holding the Product needed by the cancellation.
+            response = future.result(timeout=5)
+        finally:
+            blocker.rollback()
+    assert response.status_code == 200, response.text
+    with app.state.db.sessions() as db:
+        assert db.get(Product, 'product-1').stock == 10
+        assert db.get(Order, created.json()['id']).stock_restored
+
+
 def test_manual_pause_racing_stock_return_always_preserves_pause(app, client, tokens):
     require_postgres(app)
     created = purchase(client, tokens, items=[{'productId': 'product-1', 'quantity': 10}], expectedTotal=355)
