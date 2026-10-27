@@ -5,6 +5,7 @@ import 'package:snackup/api/api_client.dart';
 import 'package:snackup/api/rest_session.dart';
 import 'package:snackup/operations/models.dart';
 import 'package:snackup/operations/operations_repository.dart';
+import 'package:snackup/operations/v32_repository.dart';
 import 'package:snackup/catalog/catalog.dart';
 import 'package:snackup/catalog/rest_catalog_repository.dart';
 import 'package:snackup/features/admin/data/rest_admin_repository.dart';
@@ -60,6 +61,7 @@ void main() {
     for (final session in sessions) {
       session.dispose();
     }
+    sessions.clear();
   });
   test(
     'real V3.2 purchase -> Kitchen -> zero review -> Administration followup',
@@ -256,6 +258,177 @@ void main() {
       await kitchen.signOut();
       expect(kitchen.phase, PortalSessionPhase.signedOut);
       expect(kitchen.logoutPending, isFalse);
+    },
+  );
+  test(
+    'V3.2 staff features use canonical API with legacy sessions and enforce permissions',
+    () async {
+      final kitchen = await login('operator', 'staff');
+      final admin = await login('master', 'staff');
+      final student = await login('student', 'students');
+      ApiClient canonical(RestSession session) => ApiClient(
+        baseUri: canonicalApiBase(base),
+        client: SessionHttpClient(session, canonical: true),
+      );
+      final repo = V32Repository(canonical(kitchen));
+      final otherKitchen = await login('operator2', 'staff');
+      final otherRepo = V32Repository(canonical(otherKitchen));
+      final expired = object(
+        ((await otherRepo.orders('business-2'))['data'] as List).single,
+      );
+      await expectLater(
+        repo.notCollected(expired, voucherNotRedeemed: false),
+        throwsA(isA<ApiException>()),
+      );
+      await otherRepo.notCollected(expired, voucherNotRedeemed: false);
+      expect(
+        (await canonical(
+          otherKitchen,
+        ).json('GET', 'orders/expired-order'))['status'],
+        'cancelled',
+      );
+      expect(
+        (await canonical(
+          otherKitchen,
+        ).json('GET', 'products/product-2'))['stock'],
+        5,
+      );
+      final adminRepo = V32Repository(canonical(admin));
+      final studentApi = canonical(student);
+      var b = await repo.business('business-1');
+      await repo.closing('business-1', b['version'], true, '23:50');
+      b = await repo.business('business-1');
+      expect(b['autoCloseEnabled'], true);
+      expect(
+        (await adminRepo.business('business-1'))['closeTimeLocal'],
+        '23:50',
+      );
+      await expectLater(
+        adminRepo.closing('business-1', b['version'], false, '23:50'),
+        throwsA(isA<ApiException>().having((e) => e.status, 'status', 403)),
+      );
+      final today = campusNow();
+      final later = DateTime.utc(today.year, today.month, today.day, 29, 55);
+      // Scheduling a closing later in today's campus day is deterministic except
+      // during the last five minutes; the rejection is still checked by the API.
+      if (later.isAfter(DateTime.now().toUtc())) {
+        await repo.postpone('business-1', b['version'], later);
+        b = await repo.business('business-1');
+        expect(DateTime.parse(b['postponedCloseAt']).toUtc(), later);
+      }
+      await repo.timeout('business-1', b['version'], 5);
+      b = await repo.business('business-1');
+      expect(b['pickupTimeoutMinutes'], 5);
+      await repo.closing('business-1', b['version'], false, '23:50');
+      final old = OperationsRepository(api(kitchen));
+      await old.setOpen(await old.business('business-1'), true);
+      final purchase = await studentApi.json(
+        'POST',
+        'orders',
+        headers: {'Idempotency-Key': 'b3142faa-87d9-41ae-b5c6-204c7576b831'},
+        body: {
+          'businessId': 'business-1',
+          'items': [
+            {'productId': 'product-1', 'quantity': 1},
+          ],
+          'paymentMethod': 'ValeComida',
+          'expectedTotal': 35.5,
+        },
+      );
+      final chat = await repo.openChat('business-1', purchase['id']);
+      expect((await repo.chats('business-1', 1))['data'], isNotEmpty);
+      await repo.send(chat['id'], 'Tu pedido está en preparación.');
+      await studentApi.json(
+        'POST',
+        'chats/${chat['id']}/messages',
+        body: {'text': 'Gracias, voy en camino.'},
+      );
+      expect((await repo.messages(chat['id'])).map((m) => m['senderRole']), [
+        'COCINA',
+        'ALUMNO',
+      ]);
+      await expectLater(
+        adminRepo.messages(chat['id']),
+        throwsA(isA<ApiException>()),
+      );
+      await expectLater(
+        adminRepo.chats('business-1', 1),
+        throwsA(isA<ApiException>()),
+      );
+      await repo.closeChat(chat['id']);
+      await expectLater(
+        repo.messages(chat['id']),
+        throwsA(
+          isA<ApiException>().having((e) => e.code, 'code', 'CHAT_NOT_FOUND'),
+        ),
+      );
+      var order = await old.order(purchase['id'], 'business-1');
+      order = await old.act(order, 'cancel', reason: 'product_unavailable');
+      await repo.releaseVoucher(
+        object(await canonical(kitchen).json('GET', 'orders/${order.id}')),
+      );
+      final secondVoucher = await studentApi.json(
+        'POST',
+        'orders',
+        headers: {'Idempotency-Key': 'b3142faa-87d9-41ae-b5c6-204c7576b833'},
+        body: {
+          'businessId': 'business-1',
+          'items': [
+            {'productId': 'product-1', 'quantity': 1},
+          ],
+          'paymentMethod': 'ValeComida',
+          'expectedTotal': 35.5,
+        },
+      );
+      order = await old.order(secondVoucher['id'], 'business-1');
+      order = await old.act(order, 'accept');
+      order = await old.act(order, 'start');
+      order = await old.act(order, 'ready');
+      final active = (await repo.orders('business-1'))['data'] as List;
+      final current = object(active.singleWhere((o) => o['id'] == order.id));
+      await expectLater(
+        repo.notCollected(current, voucherNotRedeemed: false),
+        throwsA(
+          isA<ApiException>().having(
+            (e) => e.code,
+            'code',
+            'PICKUP_TIMEOUT_NOT_REACHED',
+          ),
+        ),
+      );
+      // Cash orders must never pass the meal-voucher release operation.
+      final cash = await studentApi.json(
+        'POST',
+        'orders',
+        headers: {'Idempotency-Key': 'b3142faa-87d9-41ae-b5c6-204c7576b832'},
+        body: {
+          'businessId': 'business-1',
+          'items': [
+            {'productId': 'product-1', 'quantity': 1},
+          ],
+          'paymentMethod': 'Efectivo',
+          'expectedTotal': 35.5,
+        },
+      );
+      await expectLater(
+        repo.releaseVoucher(object(cash)),
+        throwsA(isA<ApiException>()),
+      );
+      await old.act(
+        await old.order(cash['id'], 'business-1'),
+        'cancel',
+        reason: 'product_unavailable',
+      );
+      final stats = await repo.stats(
+        'business-1',
+        dayKey(campusNow()),
+        dayKey(campusNow()),
+      );
+      expect(stats['daily'], isNotEmpty);
+      expect(stats['paymentMethods'], isA<List>());
+      expect(stats['topProducts'], isA<List>());
+      // Leave the existing browser fixture's expected closed business state.
+      await old.setOpen(await old.business('business-1'), false);
     },
   );
 }

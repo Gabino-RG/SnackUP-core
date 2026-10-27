@@ -45,8 +45,10 @@ for (const name of ['failure.txt', 'failure.png', 'browser-result.json']) {
   }
   async function field(label, value) {
     await page.getByRole('textbox', {name: label, exact: true}).click();
+    // Flutter activates its DOM text editor on the following frame.
+    await page.waitForTimeout(100);
     await page.keyboard.press('Control+A');
-    await page.keyboard.type(value);
+    await page.keyboard.type(value, {delay: 15});
     await page.keyboard.press('Tab');
   }
   async function login(user) {
@@ -87,6 +89,36 @@ for (const name of ['failure.txt', 'failure.png', 'browser-result.json']) {
     await page.getByRole('button', {name: 'Aceptar pedido', exact: true}).click();
     await page.getByRole('button', {name: 'Iniciar preparación', exact: true}).waitFor();
     await page.screenshot({path: path.join(output, 'pedido-en-vivo.png')});
+    const opened = page.waitForResponse(r => r.url().endsWith('/business-1/chats') && r.request().method() === 'POST' && r.status() === 200);
+    await page.getByRole('button', {name: 'Chat del pedido', exact: true}).first().click();
+    const chat = await (await opened).json();
+    await field('Mensaje al alumno', 'Mensaje de Cocina desde navegador');
+    const sent = page.waitForResponse(r => r.url().endsWith(`/chats/${chat.id}/messages`) && r.status() === 201);
+    await page.getByRole('button', {name: 'Enviar mensaje', exact: true}).click();
+    await sent;
+    const reply = await studentContext.request.post(origin + `/api/v1/chats/${chat.id}/messages`, {
+      headers: {Origin: origin, Authorization: 'Bearer ' + studentToken}, data: {text: 'Respuesta de prueba del alumno'}
+    });
+    assert.equal(reply.status(), 201);
+    await text('Respuesta de prueba del alumno').waitFor();
+    await page.screenshot({path: path.join(output, 'chat-v32.png')});
+    await page.getByRole('button', {name: 'Cerrar y borrar', exact: true}).click();
+    await page.getByRole('button', {name: 'Confirmar', exact: true}).click();
+    await text('No hay conversaciones activas.').waitFor();
+    assert.equal(await page.getByText('Respuesta de prueba del alumno', {exact:true}).count(), 0);
+    await page.getByRole('button', {name: /Back|Atrás|Volver/}).first().click();
+    await text('Operación').click();
+    await text('Horarios').click();
+    await page.getByRole('textbox', {name: 'Hora de cierre (HH:mm)', exact: true}).waitFor();
+    await field('Hora de cierre (HH:mm)', '23:50');
+    const closing = page.waitForResponse(r => r.url().endsWith('/business-1/closing-schedule') && r.status() === 200);
+    await page.getByRole('button', {name: 'Guardar horario', exact: true}).click();
+    await closing;
+    await text('Configuración guardada.').waitFor();
+    await page.screenshot({path: path.join(output, 'horarios-v32.png')});
+    await text('Estadísticas').click();
+    await text('Productos más vendidos').waitFor();
+    await page.screenshot({path: path.join(output, 'estadisticas-v32.png')});
     await page.getByRole('button', {name: /Historial/}).click();
     await text('Historial de pedidos').waitFor();
     await text('student').waitFor();
@@ -98,10 +130,17 @@ for (const name of ['failure.txt', 'failure.png', 'browser-result.json']) {
     await page.screenshot({path: path.join(output, 'administracion.png')});
     await page.setViewportSize({width: 390, height: 844});
     await page.screenshot({path: path.join(output, 'administracion-movil.png')});
+    await page.setViewportSize({width:1440,height:1050});
+    await page.getByRole('button', {name:'Gestionar locales y cuentas',exact:true}).click();
+    await page.getByRole('button', {name:'Consultar horario de Cafetería 1',exact:true}).click();
+    await text('Horario del local · Consulta').waitFor();
+    assert.equal(await page.getByRole('button', {name:'Guardar horario',exact:true}).count(), 0);
+    await page.screenshot({path: path.join(output, 'horario-admin-v32.png')});
     assert.deepEqual(errors, []);
     assert.deepEqual(failures, []);
     fs.writeFileSync(path.join(output, 'browser-result.json'), JSON.stringify({passed: true,
       checks: ['Kitchen login', 'role isolation', 'HTTP-only cookie reload', 'WebSocket order.created and Kitchen accept', 'SQL order history',
+        'chat send/reply/delete', 'closing schedule', 'detailed statistics', 'read-only administrative schedule',
         'logout and admin login', 'zero-star review visible', 'desktop and mobile screenshots'], errors, failures}, null, 2));
     console.log('Real-backend browser smoke passed. Screenshots: ' + output);
   } catch (error) {

@@ -378,14 +378,19 @@ class RestSession extends ChangeNotifier {
 
 /// One refresh for simultaneous expirations. Network failures never replay writes.
 class SessionHttpClient extends http.BaseClient {
-  SessionHttpClient(this.session) : _generation = session.generation;
+  SessionHttpClient(this.session, {bool canonical = false})
+    : _generation = session.generation,
+      _baseUri = canonical
+          ? canonicalApiBase(session.api.baseUri)
+          : session.api.baseUri;
+  final Uri _baseUri;
   final RestSession session;
   final int _generation;
   bool _closed = false;
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
-    if (_closed || !belongsToApi(session.api.baseUri, request.url)) {
+    if (_closed || !belongsToApi(_baseUri, request.url)) {
       throw const ApiException(
         'La solicitud no pertenece a la API configurada.',
         code: 'CONFIGURATION',

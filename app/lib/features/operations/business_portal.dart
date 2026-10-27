@@ -12,6 +12,8 @@ import '../admin/admin_theme.dart';
 import 'order_dialogs.dart';
 import 'history_screen.dart';
 import 'record_editor.dart';
+import '../../operations/v32_repository.dart';
+import 'v32_screens.dart';
 
 class BusinessPortal extends StatefulWidget {
   const BusinessPortal({
@@ -22,6 +24,7 @@ class BusinessPortal extends StatefulWidget {
     required this.token,
     required this.onSignOut,
     this.enableRealtime = true,
+    this.v32,
   });
   final String businessId;
   final CatalogRepository catalog;
@@ -29,6 +32,7 @@ class BusinessPortal extends StatefulWidget {
   final Future<String> Function() token;
   final VoidCallback onSignOut;
   final bool enableRealtime;
+  final V32Repository? v32;
   @override
   State<BusinessPortal> createState() => _BusinessPortalState();
 }
@@ -43,19 +47,21 @@ class _BusinessPortalState extends State<BusinessPortal>
   bool _sound = false, _live = false, _visible = true;
   String _search = '';
   final _searchField = TextEditingController();
-  static const _labels = [
+  List<String> get _labels => [
     'Cocina',
     'Productos',
     'Historial',
     'Resumen',
     'Mi local',
+    if (widget.v32 != null) 'Operación',
   ];
-  static const _icons = [
+  List<IconData> get _icons => [
     Icons.restaurant_menu,
     Icons.inventory_2_outlined,
     Icons.receipt_long_outlined,
     Icons.bar_chart,
     Icons.storefront,
+    if (widget.v32 != null) Icons.chat_outlined,
   ];
   @override
   void initState() {
@@ -364,6 +370,10 @@ class _BusinessPortalState extends State<BusinessPortal>
                           repository: widget.repository,
                           businessId: widget.businessId,
                           summaryOnly: true,
+                        ),
+                        5 => V32OperationsScreen(
+                          repository: widget.v32!,
+                          businessId: widget.businessId,
                         ),
                         _ => _settings(),
                       },
@@ -678,6 +688,27 @@ class _BusinessPortalState extends State<BusinessPortal>
               style: const TextStyle(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 14),
+            if (widget.v32 != null)
+              OutlinedButton.icon(
+                icon: const Icon(Icons.chat_outlined),
+                label: const Text('Chat del pedido'),
+                onPressed: disabled
+                    ? null
+                    : () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => Scaffold(
+                            appBar: AppBar(
+                              title: Text('Chat · Pedido #${o.number}'),
+                            ),
+                            body: KitchenChatScreen(
+                              repository: widget.v32!,
+                              businessId: widget.businessId,
+                              orderId: o.id,
+                            ),
+                          ),
+                        ),
+                      ),
+              ),
             FilledButton(
               onPressed: disabled ? null : () => _action(o),
               child: Text(

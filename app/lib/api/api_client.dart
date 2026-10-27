@@ -21,6 +21,18 @@ Uri apiBaseUri(Uri uri) {
 bool belongsToApi(Uri base, Uri url) =>
     url.origin == base.origin && url.path.startsWith(base.path) && url.userInfo.isEmpty;
 
+Uri canonicalApiBase(Uri legacy) {
+  if (!legacy.path.endsWith('/api/legacy/v1/')) {
+    throw const ApiException(
+      'Esta configuración no admite las funciones V3.2.',
+      code: 'CONFIGURATION',
+    );
+  }
+  return legacy.replace(
+    path: legacy.path.replaceFirst(RegExp(r'/legacy/v1/$'), '/v1/'),
+  );
+}
+
 String responseErrorCode(http.Response response) {
   try {
     final body = jsonDecode(utf8.decode(response.bodyBytes));

@@ -14,6 +14,7 @@ import '../operations/admin_management.dart';
 import '../admin/admin_dashboard_screen.dart';
 import '../admin/admin_theme.dart';
 import '../admin/data/rest_admin_repository.dart';
+import '../../operations/v32_repository.dart';
 
 class RestPortalApp extends StatefulWidget {
   const RestPortalApp({
@@ -34,6 +35,8 @@ class RestPortalApp extends StatefulWidget {
 
 class _RestPortalAppState extends State<RestPortalApp> {
   SessionHttpClient? _client;
+  SessionHttpClient? _canonicalClient;
+  V32Repository? _v32;
   RestCatalogRepository? _catalog;
   RestAdminRepository? _admin;
   OperationsRepository? _operations;
@@ -49,6 +52,18 @@ class _RestPortalAppState extends State<RestPortalApp> {
   void _prepareDataSession() {
     if (_dataGeneration == widget.session.generation) return;
     _client?.close();
+    _canonicalClient?.close();
+    _v32 = null;
+    if (!const bool.fromEnvironment('REVIEW_MODE') &&
+        widget.session.api.baseUri.path.endsWith('/api/legacy/v1/')) {
+      _canonicalClient = SessionHttpClient(widget.session, canonical: true);
+      _v32 = V32Repository(
+        ApiClient(
+          baseUri: canonicalApiBase(widget.session.api.baseUri),
+          client: _canonicalClient!,
+        ),
+      );
+    }
     _dataGeneration = widget.session.generation;
     _client = SessionHttpClient(widget.session);
     _catalog = RestCatalogRepository(
@@ -67,6 +82,7 @@ class _RestPortalAppState extends State<RestPortalApp> {
   @override
   void dispose() {
     _client?.close();
+    _canonicalClient?.close();
     super.dispose();
   }
 
@@ -110,6 +126,7 @@ class _RestPortalAppState extends State<RestPortalApp> {
               businessId: account.businessId!,
               catalog: _catalog!,
               repository: _operations!,
+              v32: _v32,
               token: session.accessToken,
               onSignOut: session.signOut,
             );
@@ -138,6 +155,7 @@ class _RestPortalAppState extends State<RestPortalApp> {
                         MaterialPageRoute(
                           builder: (_) => AdminManagement(
                             repository: _operations!,
+                            v32: _v32,
                             currentUserId: account.id,
                             canManageAccounts: true,
                             createAccountOnOpen: true,
@@ -150,6 +168,7 @@ class _RestPortalAppState extends State<RestPortalApp> {
                   MaterialPageRoute(
                     builder: (_) => AdminManagement(
                       repository: _operations!,
+                      v32: _v32,
                       currentUserId: account.id,
                       canManageAccounts: account.canManageAccounts,
                     ),

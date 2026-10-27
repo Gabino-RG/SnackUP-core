@@ -23,6 +23,7 @@ un servicio separado. El contenedor del portal también puede construirse por se
 
 ## Integración y validación
 
+- [Chat, cierres, vales y estadísticas V3.2 de los paneles](docs/integracion/FUNCIONES_V32_PANELES.md).
 - [Preparar el paquete e instalar el piloto en un servidor nuevo](deploy/staging/README.md).
 - [Validación con el backend V3.2 y pasos para actualizar el despliegue](docs/integracion/VALIDACION_BACKEND_V32.md).
 - [Construir y ejecutar el contenedor](deploy/README.md).

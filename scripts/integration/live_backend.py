@@ -4,6 +4,7 @@ Never accepts a remote URL or an existing database. All identities are synthetic
 Usage: python scripts/integration/live_backend.py --backend ../SnackUP-backend-v32/backend
 """
 import argparse
+from datetime import timedelta
 from contextlib import ExitStack
 import json
 import os
@@ -43,9 +44,9 @@ def main():
     from snackup.main import create_app
     from snackup.config import Settings
     from snackup.auth import hash_password
-    from snackup.db import Base
+    from snackup.db import Base, utcnow
     from snackup.identity_models import User, Career, AcademicGroup, AcademicRecord
-    from snackup.operation_models import Business, Product
+    from snackup.operation_models import Business, Product, Order, OrderItem
 
     # Reserve the socket before starting to avoid port selection races.
     listener = socket.socket()
@@ -75,6 +76,7 @@ def main():
                 cafeteria_id='cafeteria', cafeteria_name='Cafetería universitaria') for i in (1, 2)])
             db.flush()
             for name, role, business in [('master', 'admin', None), ('operator', 'business', 'business-1'),
+                                         ('operator2', 'business', 'business-2'),
                                          ('student', 'user', None)]:
                 email = name + ('@students.example.edu' if role == 'user' else '@staff.example.edu')
                 db.add(User(id=name, email=email, display_name=name, password_hash=hashed,
@@ -84,6 +86,13 @@ def main():
                     db.add(AcademicRecord(email=email, institutional_id='SYNTHETIC-1', display_name=name,
                         kind='student', career_id='career-1', group_id='group-1', source='isolated integration'))
             db.add(Product(id='product-1', business_id='business-1', name='Torta', category='Comida', price='35.50', stock=10))
+            db.add(Product(id='product-2', business_id='business-2', name='Pedido antiguo de prueba', category='Comida', price='10.00', stock=5))
+            db.flush()
+            expired = Order(id='expired-order', business_id='business-2', student_id='student', order_number=1,
+                customer_name='student', total='10.00', pickup_code='00000000', status='ready',
+                ready_at=utcnow() - timedelta(hours=2), created_at=utcnow() - timedelta(hours=3))
+            expired.items = [OrderItem(product_id='product-2', name='Pedido antiguo de prueba', quantity=1, price='10.00', reserved_quantity=1)]
+            db.add(expired)
         server = uvicorn.Server(uvicorn.Config(app, log_level='warning', access_log=False))
         worker = threading.Thread(target=server.run, kwargs={'sockets': [listener]}, daemon=True)
         worker.start()

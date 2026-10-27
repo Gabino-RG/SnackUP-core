@@ -1,8 +1,13 @@
 # Conexión de Cocina y Administración con el backend entregado
 
-Alcance acordado el 26 de octubre de 2026: conectar y validar las pantallas
+Alcance inicial acordado el 26 de octubre de 2026: conectar y validar las pantallas
 actuales. No incorpora pantallas nuevas de chat, cierres programados, liberación
 de vales ni cancelación por pedido no recogido.
+
+**Ampliación posterior autorizada:** se incorporaron las funciones correspondientes
+a nuestros paneles. Consultar [funciones V3.2](FUNCIONES_V32_PANELES.md) para conocer
+las pantallas, permisos, actualización del chat y pruebas adicionales. El alcance
+anterior describe la primera entrega, no el estado actual.
 
 ## Versiones y rutas
 

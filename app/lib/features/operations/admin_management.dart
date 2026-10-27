@@ -6,6 +6,8 @@ import '../../operations/operations_repository.dart';
 import '../../operations/kitchen_controller.dart';
 import '../../operations/portal_configuration.dart';
 import 'record_editor.dart';
+import '../../operations/v32_repository.dart';
+import 'v32_screens.dart';
 
 class AdminManagement extends StatefulWidget {
   const AdminManagement({
@@ -14,8 +16,10 @@ class AdminManagement extends StatefulWidget {
     required this.currentUserId,
     this.canManageAccounts = false,
     this.createAccountOnOpen = false,
+    this.v32,
   });
   final OperationsRepository repository;
+  final V32Repository? v32;
   final String currentUserId;
   final bool canManageAccounts, createAccountOnOpen;
   @override
@@ -404,10 +408,32 @@ class _AdminManagementState extends State<AdminManagement> {
             subtitle: Text(
               '${b.category} · ${b.isActive ? (b.isOpen ? 'Abierto' : 'Cerrado') : 'Inactivo'}',
             ),
-            trailing: IconButton(
-              tooltip: 'Editar ${b.name}',
-              onPressed: () => _business(b),
-              icon: const Icon(Icons.edit_outlined),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (widget.v32 != null)
+                  IconButton(
+                    tooltip: 'Consultar horario de ${b.name}',
+                    icon: const Icon(Icons.schedule),
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => Scaffold(
+                          appBar: AppBar(title: Text(b.name)),
+                          body: ClosingScreen(
+                            repository: widget.v32!,
+                            businessId: b.id,
+                            readOnly: true,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                IconButton(
+                  tooltip: 'Editar ${b.name}',
+                  onPressed: () => _business(b),
+                  icon: const Icon(Icons.edit_outlined),
+                ),
+              ],
             ),
           ),
         );
