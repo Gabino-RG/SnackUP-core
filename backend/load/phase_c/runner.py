@@ -49,6 +49,7 @@ class Run:
         self.failures, self.details, self.monitor = [], {}, []
         self.random = random.Random(20261027)
         self.running = True
+        self.worker_samples = []
 
     def check(self, condition, message):
         if not condition:
@@ -136,7 +137,7 @@ class Run:
 
     async def cancel(self, who, order):
         return await self.request('POST', f"/api/v1/orders/{order['id']}/cancel", who, 'cancel',
-                                  json={'reason': 'user_other', 'expectedVersion': order['version']})
+                                  json={'reason': 'user_other', 'notes': '[CARGA AISLADA] Fin de reserva.', 'expectedVersion': order['version']})
 
     async def arrival(self, rate, seconds, function):
         start = time.monotonic()
@@ -232,7 +233,9 @@ class Run:
         sizes = (50, 100, 150, 200, 250, 300) if self.args.profile == 'pessimistic' else (100, 200, 300, 400, 600, 800, 1000)
         for count in sizes:
             name = f'read_{count}'
+            start = time.monotonic() - self.started
             await self.read_users(count, 120 if not self.args.quick else 20, name)
+            self.details.setdefault('readingStages', []).append({'users': count, 'start': start, 'end': time.monotonic() - self.started})
             self.check(quantile(self.samples[name], .95) < 750, name + ' p95')
             self.check(quantile(self.samples[name], .99) < 2000, name + ' p99')
 
@@ -355,6 +358,74 @@ class Run:
         self.check((quantile(accepted, .95) or math.inf) < 10000, 'P9 acceptance p95')
         self.check((quantile(self.samples['kitchen_create'], .95) or math.inf) < 1500, 'P9 creation p95')
 
+    async def worker_resources(self):
+        # One persistent monitor, rather than spawning a process per sample.
+        script = """
+import json, os, time
+from pathlib import Path
+hz, pages = os.sysconf('SC_CLK_TCK'), os.sysconf('SC_PAGE_SIZE')
+while True:
+    rows=[]
+    for entry in Path('/proc').iterdir():
+        if not entry.name.isdigit(): continue
+        try:
+            args=(entry/'cmdline').read_bytes().split(bytes([0]))
+            if len(args)<3 or args[1:3] != [b'-m',b'uvicorn']: continue
+            stat=(entry/'stat').read_text().split()
+            rows.append({'pid':int(entry.name),'cpuSeconds':(int(stat[13])+int(stat[14]))/hz,'rssBytes':int(stat[23])*pages})
+        except (OSError,ValueError,IndexError): pass
+    try: print(json.dumps({'time':time.time(),'workers':rows}),flush=True)
+    except BrokenPipeError: break
+    time.sleep(.5)
+"""
+        process = await asyncio.create_subprocess_exec(*COMPOSE, 'exec', '-T', 'app', 'python', '-u', '-c', script,
+                                                       stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL)
+        try:
+            while self.running:
+                line = await process.stdout.readline()
+                if not line:
+                    break
+                self.worker_samples.append(json.loads(line))
+        finally:
+            if process.returncode is None:
+                process.terminate()
+            await process.wait()
+
+    def resource_summary(self):
+        by_pid = defaultdict(list)
+        for sample in self.worker_samples:
+            for row in sample['workers']:
+                by_pid[row['pid']].append((sample['time'], row['cpuSeconds'], row['rssBytes']))
+        workers = []
+        for pid, rows in by_pid.items():
+            elapsed = rows[-1][0] - rows[0][0]
+            workers.append({'pid': pid, 'peakRssMiB': max(r[2] for r in rows) / 2**20,
+                            'meanCpuPercent': (rows[-1][1] - rows[0][1]) / max(.001, elapsed) * 100})
+        def memory(value):
+            raw = value.split('/')[0].strip()
+            for unit, factor in [('GiB',2**30),('MiB',2**20),('KiB',2**10),('GB',10**9),('MB',10**6),('kB',1000),('B',1)]:
+                if raw.endswith(unit): return float(raw[:-len(unit)])*factor
+            return 0
+        container_peaks = max((sum(memory(c['MemUsage']) for c in sample['containers']) for sample in self.monitor), default=0)
+        cpu_samples = [(sample['elapsed'], sum(float(c['CPUPerc'].rstrip('%')) for c in sample['containers']) /
+                       (2 if self.args.profile=='pessimistic' else 4)) for sample in self.monitor]
+        stages=[]
+        for stage in self.details.get('readingStages', []):
+            values=[value for elapsed,value in cpu_samples if stage['start'] <= elapsed <= stage['end']]
+            mean=sum(values)/len(values) if values else None
+            stages.append({**stage,'meanCpuPercent':mean,'p95CpuPercent':quantile(values,.95)})
+            self.check(mean is not None and mean < 75, f"P2 {stage['users']} sustained CPU")
+        budget=3584 if self.args.profile=='pessimistic' else 7680
+        self.check(bool(self.monitor) and bool(workers), 'Resource monitoring unavailable')
+        self.check(container_peaks / 2**20 <= budget, 'Combined memory budget exceeded')
+        if self.args.scenario == 'P7b':
+            self.check(all(w['peakRssMiB'] < 400 for w in workers), 'P7b worker RSS >=400MiB')
+        values=[w['meanCpuPercent'] for w in workers]
+        ratio=max(values)/min(values) if values and min(values)>0 else None
+        if self.args.scenario in ('P8','P8-1000') and self.args.profile=='base':
+            self.check(ratio is not None and ratio < 2, 'P8 worker CPU imbalance >=2')
+        return {'workers': workers, 'workerCpuRatio':ratio,'peakContainersMiB':container_peaks/2**20,'readingStages':stages}
+
     async def resources(self):
         while self.running:
             try:
@@ -378,6 +449,7 @@ class Run:
             await self.prepare()
             self.reset()
             monitor = asyncio.create_task(self.resources())
+            worker_monitor = asyncio.create_task(self.worker_resources())
             try:
                 scenario = self.args.scenario
                 if scenario in ('P0', 'P2', 'P4', 'P5', 'P6', 'P7', 'P7b'):
@@ -406,7 +478,9 @@ class Run:
             finally:
                 self.running = False
                 monitor.cancel()
-                await asyncio.gather(monitor, return_exceptions=True)
+                worker_monitor.cancel()
+                await asyncio.gather(monitor, worker_monitor, return_exceptions=True)
+                self.details['resources'] = self.resource_summary()
                 for name, codes in self.statuses.items():
                     self.check(codes[500] == 0 and codes[0] == 0, name + ' internal/transport errors')
                 metrics = {name: {'count': len(values), 'p50Ms': quantile(values, .5), 'p95Ms': quantile(values, .95),

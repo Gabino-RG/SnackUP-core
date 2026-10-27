@@ -106,3 +106,54 @@ def test_silent_redis_subscription_survives_past_old_timeout(app, caplog):
             await redis.aclose()
     asyncio.run(exercise())
     assert not any('Event subscription unavailable' in r.message for r in caplog.records)
+
+
+def test_admission_bounds_concurrency_without_thread_or_connection_wait():
+    from snackup.admission import DatabaseAdmission
+    from starlette.responses import JSONResponse
+    async def exercise():
+        active = peak = 0
+        started = asyncio.Event()
+        release = asyncio.Event()
+        async def endpoint(scope, receive, send):
+            nonlocal active, peak
+            active += 1
+            peak = max(peak, active)
+            started.set()
+            try:
+                await release.wait()
+                await JSONResponse({'ok': True})(scope, receive, send)
+            finally:
+                active -= 1
+        middleware = DatabaseAdmission(endpoint, capacity=1, wait_seconds=.02)
+        async def request():
+            messages = []
+            async def receive():
+                return {'type': 'http.request', 'body': b''}
+            async def send(message):
+                messages.append(message)
+            await middleware({'type': 'http', 'path': '/api/probe'}, receive, send)
+            return messages
+        first = asyncio.create_task(request())
+        await started.wait()
+        rejected = await request()
+        assert rejected[0]['status'] == 503
+        assert (b'retry-after', b'1') in rejected[0]['headers']
+        release.set()
+        assert (await first)[0]['status'] == 200
+        assert (await request())[0]['status'] == 200
+        assert peak == 1 and active == 0
+    asyncio.run(exercise())
+
+
+def test_retention_never_discards_pending_push(app):
+    from snackup.push_models import PushDelivery
+    now = utcnow()
+    with app.state.db.sessions.begin() as db:
+        row = OutboxEvent(event_id='d'*32, topic='test', event_type='test', data={}, published_at=now-timedelta(days=8))
+        db.add(row)
+        db.flush()
+        db.add(PushDelivery(outbox_event_id=row.id, event_id=row.event_id, user_id='student', payload={}, state='retry'))
+    run_cycle(app.state.db, app.state.settings, now)
+    with app.state.db.sessions() as db:
+        assert db.scalar(select(OutboxEvent.event_id)) == 'd'*32
