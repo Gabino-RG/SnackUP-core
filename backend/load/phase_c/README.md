@@ -2,7 +2,7 @@
 
 Este entorno usa PostgreSQL 17 y el supervisor, Caddy, Redis, API y scheduler reales del contenedor unificado. La imagen de medición sustituye los archivos estáticos de Flutter por páginas mínimas; el workflow del contenedor unificado verifica por separado las dos compilaciones Flutter. No envía correo ni push externos.
 
-El generador es Python (`aiohttp` y `python-socketio`) porque los scripts k6 originales citados por el informe no están en este repositorio ni entre los archivos recibidos. Envía tráfico HTTP y WebSocket real, con sesiones reales, y valida resultados en SQL. No inventa latencias ni acelera el reloj. `--quick` reduce duraciones; conserva tres minutos a 40 pedidos/s en P4 porque una ráfaga de 20 s ocultaba saturación sostenida. Sus resultados no certifican resistencia.
+El generador es Python (`aiohttp` y `python-socketio`) porque los scripts k6 originales citados por el informe no están en este repositorio ni entre los archivos recibidos. Envía tráfico HTTP y WebSocket real, con sesiones reales, y valida resultados en SQL. No inventa latencias ni acelera el reloj. `--quick` reduce duraciones; conserva los cinco escalones de tres minutos en P4 porque acortar los escalones anteriores ocultaba saturación sostenida. Sus resultados no certifican resistencia.
 
 ## Ejecución reproducible y aislada
 

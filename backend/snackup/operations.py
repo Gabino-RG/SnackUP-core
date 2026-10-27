@@ -462,7 +462,13 @@ def transition(db: Session, user: User, id: str, action: str, body: dict, reques
                            payload={"reason": order.cancel_reason} if action == "cancel" else None))
     _order_event(db, order)
     db.flush()
-    return order if canonical else order_dict(order, db, include_pickup=student)
+    if canonical:
+        return order
+    result = order_dict(order, db, include_pickup=student)
+    # Release contended rows in the handler thread, before FastAPI schedules
+    # response serialization and dependency teardown on other threads.
+    db.commit()
+    return result
 
 
 @router.post("/orders/{id}/accept")
@@ -562,7 +568,9 @@ def create_order_transaction(body, request: Request, db: Session, user: User,
     if previous:
         require(hmac.compare_digest(previous.payload_hash, payload_hash), 409, "IDEMPOTENCY_CONFLICT",
                 "La clave ya se utilizó con otro pedido.")
-        return previous.response_json
+        result = previous.response_json
+        db.commit()
+        return result
     require(len({item.productId for item in body.items}) == len(body.items), 400 if canonical else 422,
             "INVALID_ITEMS" if canonical else "DUPLICATE_PRODUCT",
             "Agrupa las cantidades de cada producto en un solo renglón.")
@@ -689,6 +697,10 @@ def create_order_transaction(body, request: Request, db: Session, user: User,
                            action="created", actor_role="ALUMNO"))
     _order_event(db, order, created=True)
     db.flush()
+    # Persist the complete reservation and idempotency response before replying.
+    # Deferring COMMIT to dependency cleanup kept the hot product/business locks
+    # across two thread-pool handoffs under sustained traffic.
+    db.commit()
     return result
 
 

@@ -35,6 +35,30 @@ def test_pool_timeout_is_retryable_json(app, client):
     assert 'private' not in response.text
 
 
+def test_order_handlers_release_locks_before_returning_to_event_loop(app, client, tokens, monkeypatch):
+    from uuid import uuid4
+    checked = []
+    from snackup import v3_operations
+    for name, db_position in (('create_order_transaction', 2), ('_transition_response', 0)):
+        original = getattr(v3_operations, name)
+        def handler(*args, _original=original, _db_position=db_position, **kwargs):
+            result = _original(*args, **kwargs)
+            assert not args[_db_position].in_transaction(), 'Hot row locks survived the handler thread'
+            checked.append(True)
+            return result
+        monkeypatch.setattr(v3_operations, name, handler)
+    headers = {**tokens['student'], 'Idempotency-Key': str(uuid4())}
+    payload = {'businessId': 'business-1', 'items': [{'productId': 'product-1', 'quantity': 1}], 'expectedTotal': 35.5}
+    created = client.post('/api/v1/orders', headers=headers, json=payload)
+    repeated = client.post('/api/v1/orders', headers=headers, json=payload)
+    assert created.status_code == repeated.status_code == 201
+    assert created.content == repeated.content
+    cancelled = client.post('/api/v1/orders/' + created.json()['id'] + '/cancel', headers=tokens['student'],
+                            json={'reason': 'user_other', 'notes': 'Prueba de liberación de bloqueos'})
+    assert cancelled.status_code == 200
+    assert len(checked) == 3
+
+
 def test_password_verification_releases_connection_and_rechecks_revocation(app, client, monkeypatch):
     original = auth.password_matches
     def verify(password, encoded):

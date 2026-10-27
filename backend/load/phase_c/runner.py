@@ -208,8 +208,9 @@ class Run:
                 self.check(status == 201, f'P4 {rate}/s creation')
                 if status == 201:
                     self.check((await self.cancel(who, order))[0] == 200, f'P4 {rate}/s cancellation')
-            # The last step exposed failures missed by a 20-second burst.
-            await self.arrival(rate, 180 if not self.args.quick or rate == 40 else 20, one)
+            # Retain the full history and duration even for quick regression:
+            # shortening the lower stages masked sustained high-rate failures.
+            await self.arrival(rate, 180, one)
             self.check(quantile(self.samples[f'create_{rate}'], .95) < 1500, f'P4 {rate}/s p95')
 
     async def p7(self):
@@ -487,6 +488,7 @@ while True:
                     with self.engine.connect() as db:
                         sql['active'] = db.scalar(text("SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() AND state='active'"))
                         sql['idleTransaction'] = db.scalar(text("SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() AND state='idle in transaction'"))
+                        sql['waits'] = [dict(row) for row in db.execute(text("SELECT wait_event_type AS type, wait_event AS event, count(*) AS count FROM pg_stat_activity WHERE datname=current_database() AND state='active' AND pid<>pg_backend_pid() GROUP BY 1,2")).mappings()]
                         sql['outboxLag'] = float(db.scalar(text('SELECT coalesce(extract(epoch FROM now()-min(created_at)),0) FROM outbox_events WHERE published_at IS NULL')))
                     try:
                         containers = json.loads(output)

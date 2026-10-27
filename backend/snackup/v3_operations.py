@@ -710,7 +710,9 @@ def sales_summary(id: str, db: DB, actor: Operator, from_date: Annotated[date, Q
 def _transition_response(db, actor, id, action, body, request):
     result = transition(db, actor, id, action, body.model_dump(exclude_unset=True), request,
                         student=actor.role == "user", canonical=True)
-    return order_dto(result, db, actor)
+    response = order_dto(result, db, actor)
+    db.commit()
+    return response
 
 
 @router.post("/orders/{id}/accept", operation_id="v3AcceptOrder",
