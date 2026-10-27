@@ -1,0 +1,88 @@
+name: Phase C two-hour endurance
+on:
+  push:
+    branches: [codex/auditoria-v32-contenedor-unico]
+    paths: ['backend/**', '.github/workflows/phase-c-soak.yml']
+permissions:
+  contents: read
+concurrency:
+  group: phase-c-soak-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  soak:
+    if: contains(github.event.head_commit.message, '[phase-c-full]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      COMPOSE_PROJECT_NAME: snackup-phase-c-soak-${{ github.run_id }}
+      SNACKUP_ENVIRONMENT: test
+      SNACKUP_SECRET_KEY: isolated-phase-c-secret-not-for-production-2026
+      SNACKUP_DATABASE_URL: postgresql+psycopg://loadtest:isolated-loadtest-password@127.0.0.1:15432/snackup_loadtest
+      ALLOW_LOAD: 'YES'
+      PROFILE: base
+      QUICK: '--full'
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - uses: docker/setup-compose-action@v2
+      - name: Configure isolated resource profile
+        run: |
+          mkdir -p reports/phase-c
+          if [ "$PROFILE" = base ]; then
+            echo 'SERVER_CPUS=0-3' >> "$GITHUB_ENV"
+            echo 'WORKERS=3' >> "$GITHUB_ENV"
+            echo 'DB_MEMORY=2g' >> "$GITHUB_ENV"
+            echo 'APP_MEMORY=5g' >> "$GITHUB_ENV"
+          else
+            echo 'SERVER_CPUS=0-1' >> "$GITHUB_ENV"
+            echo 'PASSWORD_CONCURRENCY=2' >> "$GITHUB_ENV"
+            echo 'WORKERS=1' >> "$GITHUB_ENV"
+            echo 'DB_MEMORY=1g' >> "$GITHUB_ENV"
+            echo 'APP_MEMORY=2300m' >> "$GITHUB_ENV"
+          fi
+          python - <<'PY'
+          import json, os, platform
+          from pathlib import Path
+          Path('reports/phase-c/environment.json').write_text(json.dumps({'commit':os.environ['GITHUB_SHA'],'profile':os.environ['PROFILE'],'runnerCpu':os.cpu_count(),'platform':platform.platform(),'generatorSharesRunner':True,'serverCpu':4 if os.environ['PROFILE']=='base' else 2,'postgres':'17-alpine','fixtureStudents':1000,'businesses':4,'quick':os.environ['QUICK']=='--quick'},indent=2))
+          PY
+      - name: Build and start actual supervisor proxy API jobs Redis and PostgreSQL
+        run: |
+          python -m pip install -q -r requirements.lock
+          docker compose -f load/phase_c/compose.yaml up -d --build --wait --wait-timeout 180
+          python -m load.create_fixtures --confirm-isolated --output /tmp/phase-c-fixtures.json
+      - name: Calibrate Argon2 without changing security parameters
+        run: |
+          docker compose -f load/phase_c/compose.yaml exec -T app python - <<'PYCODE' > reports/phase-c/calibration.json
+          from concurrent.futures import ThreadPoolExecutor
+          import json,time
+          from snackup.auth import PASSWORDS
+          encoded=PASSWORDS.hash('synthetic-calibration-password')
+          results=[]
+          for concurrency in (1,2,4):
+              start=time.perf_counter()
+              with ThreadPoolExecutor(max_workers=concurrency) as pool:
+                  list(pool.map(lambda _:PASSWORDS.verify(encoded,'synthetic-calibration-password'),range(40)))
+              results.append({'concurrency':concurrency,'verifications':40,'elapsedSeconds':time.perf_counter()-start})
+          print(json.dumps({'argon2':{'memoryKiB':19456,'timeCost':2,'parallelism':1},'measurements':results},indent=2))
+          PYCODE
+      - name: P12 two actual hours of reading and complete kitchen flow
+        run: python -m load.phase_c.runner --fixtures /tmp/phase-c-fixtures.json --profile base --scenario P12 --output reports/phase-c/P12.json --full
+      - name: Collect bounded redacted diagnostics
+        if: always()
+        run: |
+          docker compose -f load/phase_c/compose.yaml ps --all > reports/phase-c/status.txt
+          docker compose -f load/phase_c/compose.yaml logs --no-color --tail 150 > reports/phase-c/containers.log 2>&1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase-c-soak-${{ github.run_id }}
+          path: backend/reports/phase-c
+          retention-days: 30
+      - name: Remove only disposable load project
+        if: always()
+        run: docker compose -f load/phase_c/compose.yaml down --volumes --remove-orphans

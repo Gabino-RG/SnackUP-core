@@ -1,9 +1,9 @@
 from contextlib import asynccontextmanager
+from concurrent.futures import ThreadPoolExecutor
 import json
 import logging
 from pathlib import Path
 import time
-from threading import BoundedSemaphore
 from urllib.parse import urlsplit
 
 from fastapi import FastAPI, Request
@@ -57,6 +57,7 @@ def create_app(settings: Settings | None = None):
             await app.state.events.stop()
             await app.state.socketio_gateway.stop()
             app.state.limiter.close()
+            app.state.password_executor.shutdown(wait=True, cancel_futures=True)
             database.dispose()
 
     app = FastAPI(title='SnackUP API V3 · FastAPI', version='3.2.0', lifespan=lifespan,
@@ -67,7 +68,8 @@ def create_app(settings: Settings | None = None):
                   redoc_url=None, openapi_url='/api/openapi.json' if settings.environment != 'production' else None)
     app.state.settings = settings
     app.state.db = database
-    app.state.password_slots = BoundedSemaphore(settings.password_concurrency)
+    app.state.password_executor = ThreadPoolExecutor(max_workers=settings.password_concurrency,
+                                                    thread_name_prefix='snackup-password')
     from .admission import DatabaseAdmission
     app.add_middleware(DatabaseAdmission, capacity=min(24, max(1, settings.pool_size + settings.max_overflow - 4)),
                        wait_seconds=settings.admission_wait_seconds, login_wait_seconds=settings.login_wait_seconds)

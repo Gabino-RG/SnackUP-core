@@ -124,6 +124,9 @@ class Run:
             result = {k: db.scalar(text(sql), {'stock': self.initial_stock}) for k, sql in checks.items()}
             result['pendingOutbox'] = db.scalar(text('SELECT count(*) FROM outbox_events WHERE published_at IS NULL'))
             result['deadlocks'] = db.scalar(text("SELECT deadlocks FROM pg_stat_database WHERE datname=current_database()"))
+            if self.args.scenario == 'P12':
+                result['expiredPublishedOutbox'] = db.scalar(text("SELECT count(*) FROM outbox_events WHERE published_at < now()-interval '7 days'"))
+                self.check(result['expiredPublishedOutbox'] == 0, 'P12 retention did not purge expired publications')
             result['orders'] = db.scalar(text('SELECT count(*) FROM orders'))
         for key in checks:
             self.check(result[key] == 0, key)
@@ -310,7 +313,7 @@ class Run:
             status, order, _ = await self.purchase(who, metric='kitchen_create')
             self.check(status == 201, 'P9 create failed')
             if status == 201:
-                orders[order['id']] = {'code': order['pickupCode'], 'created': time.monotonic(), 'prepare': None, 'walk': None}
+                orders[order['id']] = {'code': order['pickupCode'], 'created': time.monotonic(), 'prepare': None, 'walk': None, 'who': who}
         async def tablet(operator):
             while not stop.is_set():
                 status, page, _ = await self.request('GET', f"/api/v1/businesses/{operator['businessId']}/orders/active?limit=100", operator, 'kitchen_read')
@@ -343,7 +346,17 @@ class Run:
                         if result == 200 and action == 'complete':
                             done.add(order['id'])
                 await asyncio.sleep(2)
+        async def student_poll():
+            while not stop.is_set():
+                # One poll per student with an active order, every five seconds.
+                active = {state['who']['email']: state['who'] for oid, state in orders.items() if oid not in done}
+                async def poll(who):
+                    status, _, _ = await self.request('GET', '/api/v1/users/me/orders/active?limit=20', who, 'student_read')
+                    self.check(status == 200, 'P9 student read')
+                await asyncio.gather(*(poll(who) for who in active.values()))
+                await asyncio.sleep(5)
         tasks = [asyncio.create_task(tablet(op)) for op in self.operators for _ in range(2)]
+        tasks.append(asyncio.create_task(student_poll()))
         try:
             await self.arrival(rate, seconds, create)
             deadline = time.monotonic() + 300
@@ -436,7 +449,12 @@ while True:
                         sql['active'] = db.scalar(text("SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() AND state='active'"))
                         sql['idleTransaction'] = db.scalar(text("SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() AND state='idle in transaction'"))
                         sql['outboxLag'] = float(db.scalar(text('SELECT coalesce(extract(epoch FROM now()-min(created_at)),0) FROM outbox_events WHERE published_at IS NULL')))
-                    return {'elapsed': time.monotonic() - self.started, 'containers': [json.loads(x) for x in output.splitlines() if x], 'sql': sql}
+                    try:
+                        containers = json.loads(output)
+                        containers = containers if isinstance(containers, list) else [containers]
+                    except ValueError:
+                        containers = [json.loads(x) for x in output.splitlines() if x]
+                    return {'elapsed': time.monotonic() - self.started, 'containers': containers, 'sql': sql}
                 self.monitor.append(await asyncio.to_thread(collect))
             except Exception as error:
                 self.details['monitorError'] = type(error).__name__
@@ -467,6 +485,8 @@ while True:
                 elif scenario == 'P9-burst':
                     await self.kitchen(4.5, 300 if not self.args.quick else 60)
                 elif scenario == 'P12':
+                    with self.engine.begin() as db:
+                        db.execute(text("INSERT INTO outbox_events (event_id,topic,event_type,data,created_at,published_at,publish_attempts) SELECT md5(i::text),'retention-probe','probe','{}'::json,now()-interval '8 days',now()-interval '8 days',1 FROM generate_series(1,2000) i"))
                     await asyncio.gather(self.read_users(300, 7200, 'soak_read'), self.kitchen(1.5, 7200))
                 else:
                     raise ValueError('Unknown scenario')
@@ -480,7 +500,10 @@ while True:
                 monitor.cancel()
                 worker_monitor.cancel()
                 await asyncio.gather(monitor, worker_monitor, return_exceptions=True)
-                self.details['resources'] = self.resource_summary()
+                try:
+                    self.details['resources'] = self.resource_summary()
+                except Exception as error:
+                    self.failures.append('Resource summary failed: ' + type(error).__name__)
                 for name, codes in self.statuses.items():
                     self.check(codes[500] == 0 and codes[0] == 0, name + ' internal/transport errors')
                 metrics = {name: {'count': len(values), 'p50Ms': quantile(values, .5), 'p95Ms': quantile(values, .95),

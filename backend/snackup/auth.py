@@ -125,15 +125,22 @@ def verify_access_tokens(tokens, db, settings):
 def verify_access_token(token: str, db: Session, settings) -> User:
     claims = decode_access_token(token, settings)
     sid = claims['sid']
-    # Revalidation after waiting on a write lock must observe a logout or an
-    # administrative revocation committed while this Session was waiting.
-    session = db.get(RefreshSession, sid, populate_existing=True)
-    user = db.get(User, claims["sub"], populate_existing=True)
-    if (session is None or user is None or session.user_id != user.id or
-            session.revoked_at is not None or as_utc(session.expires_at) <= utcnow() or
+    # A joined, fresh snapshot avoids three round trips per authenticated read.
+    # populate_existing also refreshes objects loaded before a write-lock wait.
+    from .operation_models import Business
+    row = db.execute(select(RefreshSession, User, AcademicRecord, Business.is_active)
+        .join(User, User.id == RefreshSession.user_id)
+        .outerjoin(AcademicRecord, AcademicRecord.email == User.email)
+        .outerjoin(Business, Business.id == User.business_id)
+        .where(RefreshSession.id == sid, User.id == claims['sub'])
+        .execution_options(populate_existing=True)).first()
+    if row is None:
+        raise ApiError(401, "UNAUTHENTICATED", "La sesión fue revocada.")
+    session, user, record, active = row
+    if (session.revoked_at is not None or as_utc(session.expires_at) <= utcnow() or
             claims.get("ver") != user.auth_version or session.auth_version != user.auth_version):
         raise ApiError(401, "UNAUTHENTICATED", "La sesión fue revocada.")
-    ensure_account(user, db)
+    ensure_account_state(user, record, active)
     return user
 
 
@@ -162,16 +169,25 @@ def login_user(db: Session, request: Request, email: str, password: str) -> User
     user = db.scalar(select(User).where(User.email == email))
     snapshot = (user.id, user.password_hash, user.auth_version) if user else None
     db.commit()  # No connection or row lock during Argon2, including its queue.
-    with request.app.state.password_slots:
+    def verify():
         matched = password_matches(password, snapshot[1] if snapshot else None)
         replacement = (hash_password(password) if matched and PASSWORDS.check_needs_rehash(snapshot[1]) else None)
+        return matched, replacement
+    # Fixed hash threads also bound allocator arenas: a semaphore on FastAPI's
+    # rotating worker threads allowed each thread to retain an Argon2 buffer.
+    matched, replacement = request.app.state.password_executor.submit(verify).result()
     if not matched:
         raise ApiError(401, "INVALID_CREDENTIALS", "Correo o contraseña incorrectos.")
-    user = db.scalar(select(User).where(User.id == snapshot[0]).with_for_update(key_share=True)
-                     .execution_options(populate_existing=True))
-    if user is None or (user.password_hash, user.auth_version) != snapshot[1:]:
+    from .operation_models import Business
+    row = db.execute(select(User, AcademicRecord, Business.is_active)
+        .outerjoin(AcademicRecord, AcademicRecord.email == User.email)
+        .outerjoin(Business, Business.id == User.business_id)
+        .where(User.id == snapshot[0]).with_for_update(of=User, key_share=True)
+        .execution_options(populate_existing=True)).first()
+    if row is None or (row[0].password_hash, row[0].auth_version) != snapshot[1:]:
         raise ApiError(401, "INVALID_CREDENTIALS", "Correo o contraseña incorrectos.")
-    ensure_account(user, db)
+    user, record, active = row
+    ensure_account_state(user, record, active)
     if replacement:
         user.password_hash = replacement
     return user

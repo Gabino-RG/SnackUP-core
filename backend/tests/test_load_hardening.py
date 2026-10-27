@@ -157,3 +157,16 @@ def test_retention_never_discards_pending_push(app):
     run_cycle(app.state.db, app.state.settings, now)
     with app.state.db.sessions() as db:
         assert db.scalar(select(OutboxEvent.event_id)) == 'd'*32
+
+
+def test_http_authorization_joins_session_roster_and_business_in_one_query(app, tokens):
+    queries = []
+    def capture(conn, cursor, statement, parameters, context, many):
+        queries.append(statement)
+    event.listen(app.state.db.engine, 'before_cursor_execute', capture)
+    try:
+        with app.state.db.sessions() as db:
+            assert auth.verify_access_token(access(tokens, 'student'), db, app.state.settings).id == 'student'
+    finally:
+        event.remove(app.state.db.engine, 'before_cursor_execute', capture)
+    assert len(queries) == 1

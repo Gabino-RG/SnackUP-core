@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     pool_size: int = 10
     max_overflow: int = 5
     pool_timeout_seconds: float = 2
-    admission_wait_seconds: float = 2
+    admission_wait_seconds: float = 5
     login_wait_seconds: float = 8
     password_concurrency: int = 4
     outbox_retention_days: int = 7
