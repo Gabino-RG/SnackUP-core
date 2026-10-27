@@ -2,7 +2,7 @@ import '../api/api_client.dart';
 import 'models.dart';
 import 'portal_configuration.dart';
 
-/// Orders/status routes follow API v3. Admin CRUD and statistics shape are proposed extensions.
+/// Kitchen and administration DTOs served under /api/legacy/v1/.
 class OperationsRepository {
   OperationsRepository(this.api);
   final ApiClient api;

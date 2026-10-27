@@ -42,21 +42,34 @@ void main() {
     },
   );
   test('invalid and empty ratings do not produce fabricated percentages', () {
-    for (final input in [
-      0,
-      6,
-      -1,
-      4.5,
-      double.nan,
-      double.infinity,
-      '4',
-      null,
-    ]) {
+    for (final input in [6, -1, 4.5, double.nan, double.infinity, '4', null]) {
       expect(validRating(input), isNull);
     }
     expect(validRating(4.0), 4);
+    expect(validRating(0), 0);
     expect(ReviewStatistics([]).rating, isNull);
     expect(ReviewStatistics([]).negativePercent, isNull);
+  });
+  test('V3.2 zero stars count in averages, alerts, histogram and filters', () {
+    const zero = AdminReview(id: 'zero', businessId: 'one', rating: 0);
+    final stats = ReviewStatistics([
+      zero,
+      const AdminReview(id: 'five', businessId: 'one', rating: 5),
+      const AdminReview(id: 'missing', businessId: 'one'),
+    ]);
+    expect(stats.rating, 2.5);
+    expect(stats.validCount, 2);
+    expect(stats.negativeCount, 1);
+    expect(stats.negativePercent, 50);
+    expect(stats.histogram[0], 1);
+    expect(stats.service, isNull);
+    expect(
+      const AdminFilter(
+        period: AdminPeriod.all,
+        negativeOnly: true,
+      ).matches(zero, DateTime.now()),
+      isTrue,
+    );
   });
   test(
     'all filters intersect including career, group, negative, text and campus hours',

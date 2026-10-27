@@ -41,7 +41,7 @@ class PortalAccount {
   bool get canManageAccounts => isAdmin && isMaster;
   bool get isBusiness =>
       role == 'business' && (businessId?.isNotEmpty ?? false);
-  // The admin role is a proposed extension to v3 and must be assigned by the server.
+  // The legacy portal role must be assigned by the server.
   bool get isAdmin => role == 'admin';
   String get identity => '$id:$role:${businessId ?? ''}:$isMaster';
 

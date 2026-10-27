@@ -6,7 +6,7 @@ int? validRating(Object? value) {
     return null;
   }
   final rating = value.toInt();
-  return rating >= 1 && rating <= 5 ? rating : null;
+  return rating >= 0 && rating <= 5 ? rating : null;
 }
 
 String academicValue(Object? value) =>
@@ -45,7 +45,7 @@ class AdminReview {
   final String? careerId, groupId;
   final String comment;
   final DateTime? createdAt;
-  bool get isNegative => rating != null && rating! >= 1 && rating! <= 2;
+  bool get isNegative => rating != null && rating! >= 0 && rating! <= 2;
   // The campus is in San Juan del Río: UTC−6 throughout the year.
   DateTime? get campusTime =>
       createdAt?.toUtc().subtract(const Duration(hours: 6));
@@ -176,7 +176,7 @@ class ReviewStatistics {
     final ratings = reviews
         .map(select)
         .whereType<int>()
-        .where((r) => r >= 1 && r <= 5)
+        .where((r) => r >= 0 && r <= 5)
         .toList();
     return ratings.isEmpty
         ? null
@@ -192,7 +192,7 @@ class ReviewStatistics {
   double? get negativePercent =>
       validCount == 0 ? null : 100 * negativeCount / validCount;
   Map<int, int> get histogram => {
-    for (var star = 1; star <= 5; star++)
+    for (var star = 0; star <= 5; star++)
       star: reviews.where((r) => r.rating == star).length,
   };
   Map<String, ReviewStatistics> get byCareer {

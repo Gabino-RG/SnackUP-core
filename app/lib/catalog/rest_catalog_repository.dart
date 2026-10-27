@@ -5,8 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'catalog.dart';
 
-/// Provisional CRUD routes from the v3 interfaces. Confirm these with backend;
-/// the v3 attachment refers to v2 for full product CRUD and pagination schemas.
+/// Portal DTOs served by the delivered backend under /api/legacy/v1/.
 class CatalogRoutes {
   const CatalogRoutes({
     this.collection = 'businesses/{businessId}/products',
@@ -86,6 +85,9 @@ class RestCatalogRepository extends CatalogRepository {
         final code = error is Map ? error['code']?.toString() ?? 'HTTP_ERROR' : 'HTTP_ERROR';
         if (response.statusCode == 401 && code == 'TOKEN_EXPIRED' &&
             attempt == 0 && await _refresh()) continue;
+        if (code == 'FEATURED_LIMIT_REACHED') {
+          throw CatalogException('El local admite hasta tres productos destacados. Quita uno antes de destacar otro.', code: code);
+        }
         final message = switch (response.statusCode) {
           401 => 'Tu sesión terminó. Vuelve a iniciar sesión.',
           403 => 'Tu cuenta no tiene permiso para modificar este catálogo.',

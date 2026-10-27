@@ -1,13 +1,13 @@
 # SnackUP · Cocina y Administración
 
 Esta rama contiene el portal Flutter REST de **Cocina/Local y Administración**.
-El backend tiene su propia rama, `codex/backend-api-v3-fastapi`; su código ya no
+El backend entregado tiene su propia rama, `codex/auditoria-v32-contenedor-unico`; su código ya no
 está incluido aquí. La app de alumnos se construye en `codex/usuarios-pwa`.
 
 | Aplicación | Rama | Despliegue |
 | --- | --- | --- |
 | Cocina / Administración | [`codex/entrega-paneles-rest`](https://github.com/Gabino-RG/SnackUP-core/tree/codex/entrega-paneles-rest) | [Contenedor del portal](deploy/README.md) |
-| Backend | [`codex/backend-api-v3-fastapi`](https://github.com/Gabino-RG/SnackUP-core/tree/codex/backend-api-v3-fastapi) | [Instalación y tres contenedores](https://github.com/Gabino-RG/SnackUP-core/blob/codex/backend-api-v3-fastapi/backend/DESPLIEGUE_TRES_APPS.md) |
+| Backend V3.2 | [`codex/auditoria-v32-contenedor-unico`](https://github.com/Gabino-RG/SnackUP-core/tree/codex/auditoria-v32-contenedor-unico) | [Despliegue unificado](https://github.com/Gabino-RG/SnackUP-core/blob/codex/auditoria-v32-contenedor-unico/backend/DESPLIEGUE_CONTENEDOR_UNICO.md) |
 | Alumnos / PWA | [`codex/usuarios-pwa`](https://github.com/Gabino-RG/SnackUP-core/tree/codex/usuarios-pwa) | [Contenedor de alumnos](https://github.com/Gabino-RG/SnackUP-core/blob/codex/usuarios-pwa/deploy/README.md) |
 
 La entrada de esta imagen es `app/lib/main_portal_api.dart`, con
@@ -17,11 +17,13 @@ como referencia y para evitar perder trabajo; no se incluye como otra app en
 el contenedor del portal.
 
 El despliegue conjunto publica alumnos en `/` y este portal en `/paneles/`,
-compilado con `WEB_BASE_HREF=/paneles/`. Cada uno tiene su proceso Caddy y su
-imagen. API, PostgreSQL, Redis y el proxy HTTPS son servicios independientes.
+compilado con `WEB_BASE_HREF=/paneles/`. La entrega V3.2 reúne las dos PWAs,
+FastAPI, Caddy, Redis y tareas en el contenedor de aplicación; PostgreSQL es
+un servicio separado. El contenedor del portal también puede construirse por separado.
 
 ## Integración y validación
 
+- [Validación con el backend V3.2 y pasos para actualizar el despliegue](docs/integracion/VALIDACION_BACKEND_V32.md).
 - [Construir y ejecutar el contenedor](deploy/README.md).
 - [Contrato de los 43 endpoints del portal](docs/integracion/openapi.json).
 - [Integrar el portal con el backend separado](docs/integracion/EQUIPO_BACKEND.md).

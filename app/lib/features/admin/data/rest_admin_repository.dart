@@ -4,7 +4,7 @@ import '../domain/academic_directory.dart';
 import '../domain/admin_models.dart';
 import 'admin_repository.dart';
 
-/// Provisional administrative endpoints, isolated until backend confirms them.
+/// Administrative endpoints confirmed in the backend's /api/legacy/v1/ contract.
 class AdminApiRoutes {
   const AdminApiRoutes({
     this.businesses = 'admin/businesses',

@@ -1,0 +1,110 @@
+"""Run Flutter repository integration against an isolated, pinned FastAPI checkout.
+
+Never accepts a remote URL or an existing database. All identities are synthetic.
+Usage: python scripts/integration/live_backend.py --backend ../SnackUP-backend-v32/backend
+"""
+import argparse
+from contextlib import ExitStack
+import json
+import os
+from pathlib import Path
+import secrets
+import socket
+import subprocess
+import sys
+import tempfile
+import threading
+import time
+
+BACKEND_REVISION = '81c76c5eda9ba6315fbf1dcd1a69599f8906db5e'
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--backend', type=Path, required=True)
+    parser.add_argument('--flutter', default='flutter')
+    parser.add_argument('--web', type=Path, help='Compiled /paneles/ build for the browser smoke test')
+    parser.add_argument('--node', default='node')
+    args = parser.parse_args()
+    backend = args.backend.resolve()
+    revision = subprocess.check_output(['git', '-C', str(backend), 'rev-parse', 'HEAD'], text=True).strip()
+    expected = subprocess.check_output(['git', '-C', str(backend), 'rev-parse', BACKEND_REVISION], text=True).strip()
+    if revision != expected:
+        parser.error('The backend must be checked out at the pinned V3.2 revision ' + BACKEND_REVISION)
+    if subprocess.check_output(['git', '-C', str(backend), 'status', '--porcelain', '--untracked-files=no'], text=True).strip():
+        parser.error('Use an unmodified backend checkout so results identify the tested code.')
+    panel_contract = json.loads((Path(__file__).resolve().parents[2] / 'docs/integracion/openapi.json').read_text(encoding='utf-8'))
+    server_contract = json.loads((backend / 'contracts/panels.openapi.json').read_text(encoding='utf-8'))
+    for section in ('paths', 'components'):
+        if panel_contract[section] != server_contract[section]:
+            parser.error('The portal and delivered backend disagree on contract ' + section)
+    sys.path.insert(0, str(backend))
+    import uvicorn
+    from snackup.main import create_app
+    from snackup.config import Settings
+    from snackup.auth import hash_password
+    from snackup.db import Base
+    from snackup.identity_models import User, Career, AcademicGroup, AcademicRecord
+    from snackup.operation_models import Business, Product
+
+    # Reserve the socket before starting to avoid port selection races.
+    listener = socket.socket()
+    listener.bind(('127.0.0.1', 0))
+    origin = 'http://127.0.0.1:' + str(listener.getsockname()[1])
+    with tempfile.TemporaryDirectory(prefix='snackup-live-') as folder, ExitStack() as cleanup:
+        cleanup.callback(listener.close)
+        root = Path(folder)
+        password = secrets.token_urlsafe(32)
+        settings = Settings(_env_file=None, environment='test',
+            secret_key=secrets.token_urlsafe(48), database_url='sqlite:///' + (root / 'test.db').as_posix(),
+            public_origin=origin, redis_url='', background_events=True, push_enabled=False,
+            media_dir=root / 'media', web_dir=None, smtp_host='', smtp_from='',
+            admin_email_domains='staff.example.edu', student_email_domains='students.example.edu')
+        app = create_app(settings)
+        cleanup.callback(app.state.db.dispose)
+        if args.web:
+            from fastapi.staticfiles import StaticFiles
+            app.mount('/paneles', StaticFiles(directory=args.web.resolve(), html=True), name='panels')
+        Base.metadata.create_all(app.state.db.engine)
+        hashed = hash_password(password)
+        with app.state.db.sessions.begin() as db:
+            db.add(Career(id='career-1', name='Desarrollo de Software'))
+            db.flush()
+            db.add(AcademicGroup(id='group-1', career_id='career-1', name='DSM-1'))
+            db.add_all([Business(id=f'business-{i}', name=f'Cafetería {i}', is_open=True,
+                cafeteria_id='cafeteria', cafeteria_name='Cafetería universitaria') for i in (1, 2)])
+            db.flush()
+            for name, role, business in [('master', 'admin', None), ('operator', 'business', 'business-1'),
+                                         ('student', 'user', None)]:
+                email = name + ('@students.example.edu' if role == 'user' else '@staff.example.edu')
+                db.add(User(id=name, email=email, display_name=name, password_hash=hashed,
+                    role=role, business_id=business, is_master=name == 'master',
+                    is_active=True, email_verified=True, approval_status='approved'))
+                if role == 'user':
+                    db.add(AcademicRecord(email=email, institutional_id='SYNTHETIC-1', display_name=name,
+                        kind='student', career_id='career-1', group_id='group-1', source='isolated integration'))
+            db.add(Product(id='product-1', business_id='business-1', name='Torta', category='Comida', price='35.50', stock=10))
+        server = uvicorn.Server(uvicorn.Config(app, log_level='warning', access_log=False))
+        worker = threading.Thread(target=server.run, kwargs={'sockets': [listener]}, daemon=True)
+        worker.start()
+        try:
+            deadline = time.monotonic() + 20
+            while not server.started:
+                if not worker.is_alive() or time.monotonic() >= deadline:
+                    raise RuntimeError('The disposable backend failed to start')
+                time.sleep(.05)
+            print('Testing Flutter clients against backend ' + revision, flush=True)
+            env = {**os.environ, 'SNACKUP_LIVE_ORIGIN': origin, 'SNACKUP_LIVE_PASSWORD': password}
+            result = subprocess.run([args.flutter, 'test', 'test_live/backend_v32_test.dart', '--reporter', 'expanded'],
+                cwd=Path(__file__).resolve().parents[2] / 'app', env=env, timeout=180)
+            if result.returncode == 0 and args.web:
+                result = subprocess.run([args.node, 'scripts/integration/live_browser.cjs'],
+                    cwd=Path(__file__).resolve().parents[2], env=env, timeout=240)
+        finally:
+            server.should_exit = True
+            worker.join(timeout=15)
+        return result.returncode
+
+
+if __name__ == '__main__':
+    sys.exit(main())

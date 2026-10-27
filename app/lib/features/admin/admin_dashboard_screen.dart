@@ -628,7 +628,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
         ],
         if (_section == 3) ...[
           _notice(
-            'Las alertas se basan en calificaciones de 1–2 estrellas. Revisa el contexto y la cantidad de opiniones antes de acordar acciones con un local.',
+            'Las alertas se basan en calificaciones de 0–2 estrellas. Revisa el contexto y la cantidad de opiniones antes de acordar acciones con un local.',
             Icons.fact_check_outlined,
             AdminColors.cyan,
           ),
@@ -811,7 +811,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
               ),
             ),
             FilterChip(
-              label: const Text('Solo 1–2 estrellas'),
+              label: const Text('Solo 0–2 estrellas'),
               selected: _negativeOnly,
               onSelected: (v) => setState(() => _negativeOnly = v),
               avatar: Icon(
@@ -980,7 +980,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                     '${stats.negativeCount}',
                     stats.negativePercent == null
                         ? 'Sin calificaciones'
-                        : '${stats.negativePercent!.toStringAsFixed(0)}% con 1–2 estrellas',
+                        : '${stats.negativePercent!.toStringAsFixed(0)}% con 0–2 estrellas',
                     Icons.flag_outlined,
                     AdminColors.red,
                   ),
@@ -1158,7 +1158,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                       ),
                       const SizedBox(height: 14),
                       Text(
-                        '${stats.negativeCount} opiniones de 1–2 estrellas',
+                        '${stats.negativeCount} opiniones de 0–2 estrellas',
                         style: TextStyle(
                           fontSize: 10,
                           color: stats.negativeCount > 0
@@ -1267,7 +1267,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
             width: width,
             child: _panel(
               'Evolución de la experiencia',
-              'Promedio diario · días con opiniones · escala 1–5',
+              'Promedio diario · días con opiniones · escala 0–5',
               _trend(stats),
             ),
           ),
@@ -1278,7 +1278,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
               'Cantidad de opiniones por calificación',
               Column(
                 children: [
-                  for (var star = 5; star >= 1; star--)
+                  for (var star = 5; star >= 0; star--)
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 10),
                       child: Row(
@@ -1471,7 +1471,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
           LineChartData(
             minX: 0,
             maxX: math.max(1, last),
-            minY: 1,
+            minY: 0,
             maxY: 5,
             gridData: FlGridData(
               show: true,

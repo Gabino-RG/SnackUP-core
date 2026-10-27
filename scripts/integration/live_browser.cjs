@@ -1,0 +1,112 @@
+// Compiled portal, actual FastAPI and disposable SQL state from live_backend.py.
+const fs = require('node:fs');
+const path = require('node:path');
+const assert = require('node:assert/strict');
+const { randomUUID } = require('node:crypto');
+const { chromium } = require(process.env.SNACKUP_PLAYWRIGHT || 'playwright');
+const origin = process.env.SNACKUP_LIVE_ORIGIN;
+const password = process.env.SNACKUP_LIVE_PASSWORD;
+if (!origin || new URL(origin).hostname !== '127.0.0.1' || !password) throw Error('Run live_backend.py');
+const output = 'build/live-backend';
+fs.mkdirSync(output, {recursive: true});
+for (const name of ['failure.txt', 'failure.png', 'browser-result.json']) {
+  const previous = path.join(output, name);
+  if (fs.existsSync(previous)) fs.unlinkSync(previous);
+}
+(async () => {
+  const browser = await chromium.launch({headless: true, executablePath: process.env.SNACKUP_CHROMIUM || undefined});
+  const context = await browser.newContext({viewport: {width: 1440, height: 1050}});
+  const page = await context.newPage();
+  const studentContext = await browser.newContext();
+  const errors = [], failures = [];
+  const frames = [];
+  page.on('websocket', socket => socket.on('framereceived', event => {
+    try { frames.push(JSON.parse(event.payload)); } catch {}
+  }));
+  async function waitFrame(predicate) {
+    const deadline = Date.now() + 15000;
+    while (!frames.some(predicate)) {
+      if (Date.now() > deadline) throw Error('Expected real-time notification was not received');
+      await page.waitForTimeout(50);
+    }
+  }
+  page.on('pageerror', e => errors.push(e.message));
+  page.on('response', r => {
+    const p = new URL(r.url()).pathname;
+    if (p.startsWith('/api/') && r.status() >= 400 && !(p.endsWith('/auth/refresh') && r.status() === 401)) {
+      failures.push(`${r.status()} ${p}`);
+    }
+  });
+  page.setDefaultTimeout(30000);
+  async function enableSemantics() {
+    await page.locator('flutter-view').waitFor({timeout: 60000});
+    const placeholder = page.locator('flt-semantics-placeholder');
+    if (await placeholder.count()) await placeholder.evaluate(node => node.click());
+  }
+  async function field(label, value) {
+    await page.getByRole('textbox', {name: label, exact: true}).click();
+    await page.keyboard.press('Control+A');
+    await page.keyboard.type(value);
+    await page.keyboard.press('Tab');
+  }
+  async function login(user) {
+    await field('Correo electrónico', `${user}@staff.example.edu`);
+    await field('Contraseña', password);
+    await page.getByRole('button', {name: 'Entrar', exact: true}).click();
+  }
+  const text = value => page.getByText(value, {exact: false}).or(page.getByLabel(value, {exact: false})).first();
+  try {
+    await page.goto(origin + '/paneles/');
+    await enableSemantics();
+    await login('operator');
+    await page.getByRole('switch', {name: 'Recibir pedidos', exact: true}).waitFor();
+    assert.equal(await page.getByRole('button', {name: 'Gestionar locales y cuentas', exact: true}).count(), 0);
+    await page.screenshot({path: path.join(output, 'cocina.png')});
+    // Real browser refresh cookie must restore the Kitchen session on reload.
+    await page.reload();
+    await enableSemantics();
+    await page.getByRole('switch', {name: 'Recibir pedidos', exact: true}).waitFor();
+    await waitFrame(f => f.type === 'subscribed');
+    const open = page.waitForResponse(r => r.url().endsWith('/business-1/status') && r.status() === 200);
+    await page.getByRole('switch', {name: 'Recibir pedidos', exact: true}).click();
+    await page.getByRole('button', {name: 'Confirmar', exact: true}).click();
+    await open;
+    const signedIn = await studentContext.request.post(origin + '/api/legacy/v1/auth/login', {
+      headers: {Origin: origin}, data: {email: 'student@students.example.edu', password}
+    });
+    assert.equal(signedIn.status(), 200);
+    const studentToken = (await signedIn.json()).tokens.accessToken;
+    const purchase = await studentContext.request.post(origin + '/api/v1/orders', {
+      headers: {Origin: origin, Authorization: 'Bearer ' + studentToken, 'Idempotency-Key': randomUUID()},
+      data: {businessId: 'business-1', items: [{productId: 'product-1', quantity: 1}], paymentMethod: 'Efectivo', expectedTotal: 35.5}
+    });
+    assert.equal(purchase.status(), 201);
+    const order = await purchase.json();
+    await waitFrame(f => f.type === 'order.created' && f.data?.id === order.id);
+    await page.getByRole('button', {name: 'Aceptar pedido', exact: true}).waitFor();
+    await page.getByRole('button', {name: 'Aceptar pedido', exact: true}).click();
+    await page.getByRole('button', {name: 'Iniciar preparación', exact: true}).waitFor();
+    await page.screenshot({path: path.join(output, 'pedido-en-vivo.png')});
+    await page.getByRole('button', {name: /Historial/}).click();
+    await text('Historial de pedidos').waitFor();
+    await text('student').waitFor();
+    await page.screenshot({path: path.join(output, 'historial.png')});
+    await page.getByRole('button', {name: 'Cerrar sesión', exact: true}).click();
+    await login('master');
+    await page.getByRole('button', {name: 'Gestionar locales y cuentas', exact: true}).waitFor();
+    await text('Opinión sintética para integración').waitFor();
+    await page.screenshot({path: path.join(output, 'administracion.png')});
+    await page.setViewportSize({width: 390, height: 844});
+    await page.screenshot({path: path.join(output, 'administracion-movil.png')});
+    assert.deepEqual(errors, []);
+    assert.deepEqual(failures, []);
+    fs.writeFileSync(path.join(output, 'browser-result.json'), JSON.stringify({passed: true,
+      checks: ['Kitchen login', 'role isolation', 'HTTP-only cookie reload', 'WebSocket order.created and Kitchen accept', 'SQL order history',
+        'logout and admin login', 'zero-star review visible', 'desktop and mobile screenshots'], errors, failures}, null, 2));
+    console.log('Real-backend browser smoke passed. Screenshots: ' + output);
+  } catch (error) {
+    await page.screenshot({path: path.join(output, 'failure.png')}).catch(() => {});
+    fs.writeFileSync(path.join(output, 'failure.txt'), `${error.stack}\n${errors.join('\n')}\n${failures.join('\n')}`);
+    throw error;
+  } finally { await browser.close(); }
+})().catch(error => {console.error(error); process.exitCode = 1;});

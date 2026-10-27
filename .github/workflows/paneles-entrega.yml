@@ -16,6 +16,45 @@ permissions:
   contents: read
 
 jobs:
+  backend-v32:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: 81c76c5eda9ba6315fbf1dcd1a69599f8906db5e
+          path: build/backend-v32
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.32.0'
+          channel: stable
+          cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install pinned backend and browser
+        run: |
+          python -m pip install -r build/backend-v32/backend/requirements.lock
+          npm install --prefix "$RUNNER_TEMP/snackup-ui" --no-package-lock --no-audit --no-fund playwright@1.51.1
+          "$RUNNER_TEMP/snackup-ui/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Compile the actual portal under its deployment path
+        working-directory: app
+        run: flutter build web --release --target lib/main_portal_api.dart --base-href /paneles/ --pwa-strategy=none --no-web-resources-cdn
+      - name: Exercise Flutter clients and compiled screens against FastAPI V3.2
+        run: |
+          export SNACKUP_PLAYWRIGHT="$RUNNER_TEMP/snackup-ui/node_modules/playwright"
+          python scripts/integration/live_backend.py --backend build/backend-v32/backend --web app/build/web
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: SnackUP-Paneles-Backend-V32
+          path: build/live-backend/
+          if-no-files-found: ignore
+          retention-days: 30
   delivery:
     runs-on: ubuntu-latest
     timeout-minutes: 25

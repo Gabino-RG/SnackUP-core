@@ -157,6 +157,8 @@ String operationsMessage(Object e) {
     return switch (e.code) {
       'VERIFICATION_FAILED' =>
         'El código no coincide. Pide al cliente su código de este pedido.',
+      'MEAL_VOUCHER_DATE_EXPIRED' =>
+        'El vale corresponde a otro día y ya no se puede entregar. Consulta con el responsable del local.',
       'VERSION_CONFLICT' =>
         'Otro dispositivo actualizó este registro. Revisa la información actual antes de repetir.',
       'INVALID_STATUS_TRANSITION' =>
