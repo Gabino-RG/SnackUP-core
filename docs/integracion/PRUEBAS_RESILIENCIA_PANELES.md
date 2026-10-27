@@ -64,7 +64,7 @@ las cuatro simultáneamente. No configurar esa variable con credenciales reales.
 
 Resultados por ejecución en `build/live-backend/resilience-api.json` y
 `resilience-browser.json`, junto con capturas. El workflow conserva estos archivos
-en el artefacto `SnackUP-Paneles-Backend-V32`. Consultar el resultado del commit
+en el artefacto `SnackUP-Paneles-Backend-V32-chromium` o `SnackUP-Paneles-Backend-V32-webkit`. Consultar el resultado del commit
 exacto; un resultado anterior no valida cambios posteriores.
 
 ## Límites
