@@ -59,7 +59,7 @@ jobs:
       - name: Install pinned backend and browser
         run: |
           python -m pip install -r build/backend-v32/backend/requirements.lock
-          npm install --prefix "$RUNNER_TEMP/snackup-ui" --no-package-lock --no-audit --no-fund playwright@1.51.1
+          npm install --prefix "$RUNNER_TEMP/snackup-ui" --no-package-lock --no-audit --no-fund playwright@1.62.1
           "$RUNNER_TEMP/snackup-ui/node_modules/.bin/playwright" install --with-deps ${{ matrix.browser }}
       - name: Compile the actual portal under its deployment path
         working-directory: app
@@ -109,7 +109,7 @@ jobs:
           python scripts/integration/build_delivery.py
       - name: Install test browser
         run: |
-          npm install --prefix "$RUNNER_TEMP/snackup-ui" --no-package-lock --no-audit --no-fund playwright@1.51.1
+          npm install --prefix "$RUNNER_TEMP/snackup-ui" --no-package-lock --no-audit --no-fund playwright@1.62.1
           "$RUNNER_TEMP/snackup-ui/node_modules/.bin/playwright" install --with-deps chromium
       - name: Exercise production frontend with disposable local fixture
         env:

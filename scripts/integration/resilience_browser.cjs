@@ -103,7 +103,7 @@ if (!origin || new URL(origin).hostname !== '127.0.0.1' || !fixtures.readyId) th
     checks.push('administrative revocation removes the open Kitchen session and protected controls');
     await page.screenshot({path:'build/live-backend/resilience-recovered.png'});
     assert.deepEqual(errors,[]);
-    fs.writeFileSync('build/live-backend/resilience-browser.json',JSON.stringify({passed:true,engine,checks,errors},null,2));
+    fs.writeFileSync('build/live-backend/resilience-browser.json',JSON.stringify({passed:true,engine,browserVersion:browser.version(),checks,errors},null,2));
     console.log('Resilience browser passed');
   } catch(e) {
     await page.screenshot({path:'build/live-backend/resilience-failure.png'}).catch(()=>{});

@@ -14,7 +14,7 @@ del tablero. El recorrido del navegador incluye Cocina y chat a 390 píxeles,
 y Administración y consulta de horarios en móvil y escritorio.
 
 El workflow ejecuta integración y resiliencia con PostgreSQL en Chromium y
-WebKit. Consultar la ejecución del commit entregado para conocer su resultado;
+WebKit, con Playwright fijado a 1.62.1. Consultar la ejecución del commit entregado para conocer su resultado;
 configurar la matriz no implica haberla aprobado. WebKit automatizado no equivale
 a certificar Safari en un iPhone físico. Completar la aceptación con los equipos
 reales, en especial cámara/QR, teclado, permisos y sonido.
@@ -115,3 +115,13 @@ no garantiza ejecución de cierres. Asignar un responsable y un destino de alert
 institucional; esto requiere acceso y no queda activado por generar el paquete.
 
 Pruebas funcionales adicionales y defecto corregido: [resiliencia de paneles](PRUEBAS_RESILIENCIA_PANELES.md).
+
+### Compatibilidad observada
+
+La ejecución inicial de CI con Playwright 1.51.1 / WebKit 18.4 registró un error
+`CanvasKit RuntimeError: Out of bounds memory access` aunque las operaciones HTTP
+terminaron. No se ignoró el error ni se retiró la comprobación de excepciones.
+El mismo recorrido local pasó con Playwright 1.62.1 / WebKit 26.5. La matriz CI
+usa ahora esa versión de la herramienta para reproducir el entorno actualizado.
+Esto no demuestra que Safari 18 haya quedado corregido: las versiones antiguas
+requieren validación específica y no están certificadas por esta entrega.

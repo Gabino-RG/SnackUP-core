@@ -163,7 +163,7 @@ for (const name of ['failure.txt', 'failure.png', 'browser-result.json']) {
     await page.screenshot({path: path.join(output, 'horario-admin-v32-movil.png')});
     assert.deepEqual(errors, []);
     assert.deepEqual(failures, []);
-    fs.writeFileSync(path.join(output, 'browser-result.json'), JSON.stringify({passed: true, engine,
+    fs.writeFileSync(path.join(output, 'browser-result.json'), JSON.stringify({passed: true, engine, browserVersion: browser.version(),
       checks: ['Kitchen login', 'role isolation', 'HTTP-only cookie reload', 'WebSocket order.created and Kitchen accept', 'SQL order history',
         'chat send/reply/delete and activity outside chat', 'closing schedule', 'detailed statistics', 'read-only administrative schedule',
         'logout and admin login', 'zero-star review visible', 'desktop and mobile screenshots'], errors, failures}, null, 2));

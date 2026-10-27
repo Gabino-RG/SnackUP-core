@@ -34,19 +34,24 @@ fs.mkdirSync(output, { recursive: true });
     if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key,v])=>[key,/^(password|newPassword|accessToken|refreshToken|token)$/i.test(key)?'REDACTED-SECRET':redact(v)]));
     return value;
   }
-  page.on('response', response => {
-    const url = new URL(response.url());
-    if (!url.pathname.startsWith(apiPrefix)) return;
-    const req = response.request();
-    traceJobs.push((async()=>{
+  // Capture the real fixture response before fulfilling the browser request.
+  // Unlike response.json(), this body survives a document reload/cancellation.
+  await page.route(new URL(apiPrefix+'**',reviewUrl).href, async route => {
+    const req=route.request(), url=new URL(req.url());
+    const job=(async()=>{
+      const response=await route.fetch({maxRedirects:0});
+      const bytes=await response.body();
       let body=null, requestBody=null;
-      if (response.status() !== 204) {
-        try {body=await response.json();}
-        catch {traceErrors.push(`${req.method()} ${url.pathname} HTTP ${response.status()}: response body could not be captured`);}
+      if(response.status()!==204) {
+        try {body=JSON.parse(bytes.toString('utf8'));}
+        catch {traceErrors.push(`${req.method()} ${url.pathname} HTTP ${response.status()}: invalid JSON response`);}
       }
       try {requestBody=req.postDataJSON();} catch {}
       traces.push(redact({method:req.method(),path:url.pathname.slice(apiPrefix.length)+url.search,status:response.status(),body,requestBody}));
-    })());
+      await route.fulfill({response,body:bytes});
+    })();
+    traceJobs.push(job);
+    await job;
   });
   async function drainTraces() {
     // Chromium can discard response bodies on reload. Read them before leaving
