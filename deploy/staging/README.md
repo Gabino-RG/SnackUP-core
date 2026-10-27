@@ -2,7 +2,8 @@
 
 Este paquete prepara un servidor nuevo de pruebas. No despliega automáticamente,
 no trae cuentas, padrón ni contraseñas y no certifica capacidad para mil alumnos.
-Backend: `81c76c5`; paneles: `0287cbf`. `versions.json` contiene los SHA completos.
+Backend: `81c76c5`; paneles: `49c35ec` (chat, horarios, vales y estadísticas V3.2).
+`versions.json` contiene los SHA completos.
 El frontend de alumnos incluido por el backend todavía usa Firebase: no utilizar
 este piloto como lanzamiento general ni dar por terminada su integración SQL.
 
@@ -81,6 +82,11 @@ No hay usuario ni contraseña por defecto.
 4. Registrar una opinión de prueba, comprobar carrera/grupo y seguimiento
    administrativo. Una opinión de cero estrellas debe contar como negativa.
 5. Comprobar recuperación por correo con SMTP real y recarga de sesión.
+   Comprobar además chat de Cocina (envío, respuesta y cierre), cierre automático
+   con el proceso de tareas activo, posposición, pedido no recogido y liberación
+   de vale con datos de prueba. Administración solo consulta los horarios y no
+   puede entrar a conversaciones. El chat se actualiza cada 10 segundos con la
+   vista abierta; no hay avisos de chat fuera de ella.
 6. Reiniciar el piloto y verificar persistencia; realizar respaldo y restauración
    en otro entorno. El volumen de Docker por sí solo no constituye un respaldo.
 7. Validar por separado la app de alumnos contra SQL y medir la carga prevista.
