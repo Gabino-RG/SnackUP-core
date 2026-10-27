@@ -96,3 +96,5 @@ Supervisar `/health/ready`, estado de contenedores, errores HTTP, espacio en dis
 antigüedad del último respaldo y proceso de tareas. Salud de la API por sí sola
 no garantiza ejecución de cierres. Asignar un responsable y un destino de alertas
 institucional; esto requiere acceso y no queda activado por generar el paquete.
+
+Pruebas funcionales adicionales y defecto corregido: [resiliencia de paneles](PRUEBAS_RESILIENCIA_PANELES.md).

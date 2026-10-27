@@ -11,7 +11,7 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[2]
 BACKEND = '81c76c5eda9ba6315fbf1dcd1a69599f8906db5e'
-PANELS = '41c2e3176012fee3847e90edfb3440bb87f6ea25'
+PANELS = '0699898e4389775e4097bec41019cdfc20f2e116'
 USERS = 'a00d0bf4ecdae74a89f3afbe8ec3d0758efb8884'
 REMOTE = 'https://github.com/Gabino-RG/SnackUP-core.git'
 
@@ -52,6 +52,7 @@ def prepare(output: Path, repository: Path = ROOT):
     shutil.copyfile(Path(__file__).with_name('backup_unified.sh'), backend / 'backup_unified.sh')
     shutil.copyfile(Path(__file__).parents[1] / 'check_panels_server.py', output / 'check_panels_server.py')
     shutil.copyfile(ROOT / 'docs/integracion/PREPARACION_PRODUCCION_PANELES.md', output / 'ACEPTACION_PANELES.md')
+    shutil.copyfile(ROOT / 'docs/integracion/PRUEBAS_RESILIENCIA_PANELES.md', output / 'PRUEBAS_RESILIENCIA_PANELES.md')
     shutil.copyfile(Path(__file__).with_name('README.md'), output / 'LEEME.md')
     (output / 'versions.json').write_text(json.dumps({'backend': BACKEND, 'panels': PANELS, 'users': USERS,
         'usersStorage': 'Firebase; not certified for SQL integration', 'purpose': 'staging',
