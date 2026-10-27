@@ -106,11 +106,15 @@ def main():
             raise RuntimeError('Database migration failed; the applications were not started')
         processes.children.remove(('migration', migration))
         processes.start('jobs', [sys.executable, '-m', 'snackup.jobs'])
-        processes.start('api', [sys.executable, '-m', 'uvicorn', 'snackup.main:create_app', '--factory',
-                               '--host', '127.0.0.1', '--port', '8000', '--workers', str(workers),
+        # Independent listeners let Caddy balance long-lived sockets explicitly.
+        ports = list(range(8000, 8000 + workers))
+        os.environ['SNACKUP_UPSTREAMS'] = ' '.join(f'127.0.0.1:{port}' for port in ports)
+        for port in ports:
+            processes.start(f'api-{port}', [sys.executable, '-m', 'uvicorn', 'snackup.main:create_app', '--factory',
+                               '--host', '127.0.0.1', '--port', str(port), '--timeout-keep-alive', '130',
                                '--proxy-headers', '--forwarded-allow-ips', '127.0.0.1', '--no-access-log'])
         from healthcheck import api_ready
-        wait_for(api_ready, processes)
+        wait_for(lambda: all(api_ready(port) for port in ports), processes)
         processes.start('caddy', ['caddy', 'run', '--config', str(Path(__file__).with_name('Caddyfile')),
                                  '--adapter', 'caddyfile'])
         while True:

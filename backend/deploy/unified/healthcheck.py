@@ -15,11 +15,13 @@ def fetch(port, path):
         return response.read(65536)
 
 
-def api_ready():
-    return b'"ready"' in fetch(8000, '/health/ready')
+def api_ready(port=8000):
+    return b'"ready"' in fetch(port, '/health/ready')
 
 
 def check():
+    if not all(api_ready(port) for port in range(8000, 8000 + int(os.environ.get("SNACKUP_WORKERS", "2")))):
+        raise RuntimeError("An API worker is not ready")
     if time.time() - Path("/tmp/snackup-jobs-heartbeat").stat().st_mtime > 180:
         raise RuntimeError("Scheduled jobs are not running")
     if b'"ready"' not in fetch(8081, '/health/ready'):

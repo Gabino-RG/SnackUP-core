@@ -88,7 +88,7 @@ def close_chat(db, chat, settings, now=None):
 
 
 def _actor_lock(db, request, actor):
-    db.scalar(select(User).where(User.id == actor.id).with_for_update().execution_options(populate_existing=True))
+    db.scalar(select(User).where(User.id == actor.id).with_for_update(key_share=True).execution_options(populate_existing=True))
     actor = current_user(request, db)
     require(actor.role in ('user', 'business'), 403, 'FORBIDDEN')
     return actor

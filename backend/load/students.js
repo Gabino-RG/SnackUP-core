@@ -138,7 +138,7 @@ export default function () {
     creation.add(confirmed);
     if (confirmed) {
       const retry = http.post(`${base}/api/v1/orders`, payload, params('retry_order', { 'Idempotency-Key': key }));
-      idempotency.add(retry.status === 201 && JSON.stringify(json(retry)) === JSON.stringify(created));
+      idempotency.add(retry.status === 201 && retry.body === response.body);
       sleep(0.5);
       const cancelled = http.post(`${base}/api/v1/orders/${encodeURIComponent(created.id)}/cancel`,
         JSON.stringify({ expectedVersion: created.version, reason: 'user_other', notes: '[CARGA AISLADA] Fin del ensayo de reserva.' }),

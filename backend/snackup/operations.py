@@ -391,7 +391,7 @@ def transition(db: Session, user: User, id: str, action: str, body: dict, reques
         validate_body("acceptOrder" if student else operation_ids[action], body)
     # A request authenticated before waiting must observe a committed account
     # or refresh-family revocation before changing state.
-    db.scalar(select(User).where(User.id == user.id).with_for_update().execution_options(populate_existing=True))
+    db.scalar(select(User).where(User.id == user.id).with_for_update(key_share=True).execution_options(populate_existing=True))
     user = current_user(request, db)
     require_student(user) if student else require_business(user)
     order = _order(db, user, id, student=student, lock=True)
@@ -553,7 +553,7 @@ def create_order_transaction(body, request: Request, db: Session, user: User,
                                             separators=(",", ":"), default=str).encode()).hexdigest()
     # Serializes retries by the same user even when the idempotency row does not yet exist.
     # PostgreSQL READ COMMITTED sees the first committed result after waiting on this lock.
-    db.scalar(select(User).where(User.id == user.id).with_for_update().execution_options(populate_existing=True))
+    db.scalar(select(User).where(User.id == user.id).with_for_update(key_share=True).execution_options(populate_existing=True))
     user = current_user(request, db)
     require(user.is_active and user.role == "user" and user.email_verified and user.approval_status == "approved",
             403, "FORBIDDEN", "La cuenta no está autorizada para comprar.")

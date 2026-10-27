@@ -51,7 +51,8 @@ def test_legacy_and_v3_catalog_share_the_three_featured_limit(app, client, token
         assert db.scalar(select(func.count()).select_from(Product).where(Product.is_featured.is_(True))) == 3
 
 
-def test_two_sides_open_same_chat_once(app, client, tokens):
+@pytest.mark.parametrize('repeat', range(20))
+def test_two_sides_open_same_chat_once(app, client, tokens, repeat):
     require_postgres(app)
     order = buy(client, tokens).json()
     def command(who):

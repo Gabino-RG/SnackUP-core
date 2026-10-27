@@ -1,4 +1,6 @@
 """Owned media with decoded-image validation and transaction-aware file cleanup."""
+from .auth import request_user
+
 import io
 from pathlib import Path
 from typing import Annotated, Literal
@@ -18,7 +20,7 @@ from .operation_models import Business, MediaFile, Product
 
 router = APIRouter(tags=['Medios V3'])
 DB = Annotated[Session, Depends(get_db, scope='function')]
-Authenticated = Annotated[User, Depends(current_user)]
+Authenticated = Annotated[User, Depends(request_user)]
 Purpose = Literal['product', 'business', 'avatar', 'review']
 MAX_BYTES = 5 * 1024 * 1024
 FORMATS = {'JPEG': 'image/jpeg', 'PNG': 'image/png', 'WEBP': 'image/webp'}

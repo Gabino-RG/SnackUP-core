@@ -155,7 +155,7 @@ class FavoritePage(ResponseModel):
 
 
 def lock_student(db, request, actor):
-    db.scalar(select(User).where(User.id == actor.id).with_for_update().execution_options(populate_existing=True))
+    db.scalar(select(User).where(User.id == actor.id).with_for_update(key_share=True).execution_options(populate_existing=True))
     return require_student(current_user(request, db))
 
 
@@ -272,7 +272,7 @@ class VoucherResponse(ResponseModel):
 @router.post('/orders/{id}/meal-voucher/release', response_model=VoucherResponse, operation_id='v32ReleaseMealVoucher')
 def confirm_voucher_not_redeemed(id: str, body: VoucherReleaseInput, request: Request, db: DB, actor: Operator):
     require(body.notRedeemed, 422, 'CONFIRMATION_REQUIRED', 'Confirma que el vale no fue redimido.')
-    db.scalar(select(User).where(User.id == actor.id).with_for_update().execution_options(populate_existing=True))
+    db.scalar(select(User).where(User.id == actor.id).with_for_update(key_share=True).execution_options(populate_existing=True))
     actor = current_user(request, db)
     order = _order(db, actor, id, lock=True)
     current_user(request, db)

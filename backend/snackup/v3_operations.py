@@ -3,6 +3,8 @@
 Public IDs stay opaque. The explicitly versioned legacy adapter shares the same
 rows, reservations and state machine; neither API can double-reserve or deliver.
 """
+from .auth import request_user
+
 from datetime import date, datetime, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Annotated, Literal
@@ -30,7 +32,7 @@ from .v3_media import owned_media
 
 router = APIRouter()
 DB = Annotated[Session, Depends(get_db, scope="function")]
-Authenticated = Annotated[User, Depends(current_user)]
+Authenticated = Annotated[User, Depends(request_user)]
 Operator = Annotated[User, Depends(require_business)]
 Student = Annotated[User, Depends(require_student)]
 Page = Annotated[int, Query(ge=1)]

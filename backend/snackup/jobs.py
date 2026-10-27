@@ -5,11 +5,11 @@ import signal
 import sys
 from threading import Event, Lock
 
-from sqlalchemy import select, text
+from sqlalchemy import delete, exists, select, text
 
 from .auth import as_utc
 from .common import iso
-from .db import Database, emit_event, utcnow
+from .db import Database, OutboxEvent, emit_event, utcnow
 from .operation_models import Business, Order
 from .v32_chat import TTL, close_chat
 from .v32_models import Chat
@@ -52,6 +52,16 @@ def run_cycle(database, settings, now=None):
                 for chat in chats:
                     close_chat(db, chat, settings, now)
                     counts['expiredChats'] += 1
+            from .push_models import PushDelivery
+            with database.sessions.begin() as db:
+                pending_push = exists(select(PushDelivery.id).where(PushDelivery.outbox_event_id == OutboxEvent.id,
+                    PushDelivery.state.not_in(('sent', 'dead', 'cancelled'))))
+                ids = db.scalars(select(OutboxEvent.id).where(
+                    OutboxEvent.published_at < now - timedelta(days=settings.outbox_retention_days), ~pending_push)
+                    .order_by(OutboxEvent.published_at, OutboxEvent.id).limit(settings.outbox_cleanup_batch)
+                    .with_for_update(skip_locked=True)).all()
+                if ids:
+                    db.execute(delete(OutboxEvent).where(OutboxEvent.id.in_(ids)))
         finally:
             if postgres:
                 guard.execute(text('SELECT pg_advisory_unlock(:key)'), {'key': LOCK_ID})

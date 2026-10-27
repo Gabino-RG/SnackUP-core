@@ -3,6 +3,8 @@
 One business rating per completed order; one product review per purchased
 product/order. Neither endpoint accepts author, academic data, or aggregates.
 """
+from .auth import request_user
+
 from datetime import datetime
 from typing import Annotated
 
@@ -24,7 +26,7 @@ from .review_models import ProductReview
 router = APIRouter(tags=['Calificaciones V3'])
 DB = Annotated[Session, Depends(get_db, scope='function')]
 Student = Annotated[User, Depends(require_student)]
-Authenticated = Annotated[User, Depends(current_user)]
+Authenticated = Annotated[User, Depends(request_user)]
 Score = Annotated[StrictInt, Field(ge=0, le=5)]
 
 

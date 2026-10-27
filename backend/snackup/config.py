@@ -34,6 +34,11 @@ class Settings(BaseSettings):
     refresh_days: int = 30
     pool_size: int = 10
     max_overflow: int = 5
+    pool_timeout_seconds: float = 2
+    admission_wait_seconds: float = 2
+    password_concurrency: int = 4
+    outbox_retention_days: int = 7
+    outbox_cleanup_batch: int = 1000
     max_websockets: int = 2000
     websocket_revalidate_seconds: float = 15
     enable_test_mailbox: bool = False
@@ -84,6 +89,10 @@ class Settings(BaseSettings):
         self.public_origin = self.public_origin.rstrip('/')
         if not (1 <= self.pool_size <= 50 and 0 <= self.max_overflow <= 50):
             raise ValueError('Invalid SQL connection pool limits.')
+        if not (0.1 <= self.pool_timeout_seconds <= 10 and 0.1 <= self.admission_wait_seconds <= 10
+                and 1 <= self.password_concurrency <= 8 and 1 <= self.outbox_retention_days <= 90
+                and 1 <= self.outbox_cleanup_batch <= 10000):
+            raise ValueError('Invalid admission, password or outbox limits.')
         if not (1 <= self.max_websockets <= 10000 and 1 <= self.websocket_revalidate_seconds <= 30):
             raise ValueError('Invalid WebSocket capacity or authorization revalidation interval.')
         if not (1 <= self.access_token_minutes <= 60 and 1 <= self.refresh_days <= 30):

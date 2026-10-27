@@ -1,4 +1,6 @@
 """REST administration, authorized account assignment and student reviews."""
+from .auth import request_user
+
 
 import math
 
@@ -79,7 +81,7 @@ def _assignment(db: Session, settings, *, role: str, email: str,
 
 
 @router.get("/institution", operation_id="getInstitution")
-def institution(request: Request, actor: User = Depends(current_user)):
+def institution(request: Request, actor: User = Depends(request_user)):
     settings = request.app.state.settings
     return {
         "university": {"id": settings.institution_id, "name": settings.institution_name},

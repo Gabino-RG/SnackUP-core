@@ -3,6 +3,7 @@ import json
 import logging
 from pathlib import Path
 import time
+from threading import BoundedSemaphore
 from urllib.parse import urlsplit
 
 from fastapi import FastAPI, Request
@@ -10,7 +11,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
-from sqlalchemy.exc import IntegrityError, OperationalError
+from sqlalchemy.exc import IntegrityError, OperationalError, TimeoutError as PoolTimeoutError
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.exceptions import HTTPException
 from starlette.concurrency import run_in_threadpool
@@ -66,6 +67,10 @@ def create_app(settings: Settings | None = None):
                   redoc_url=None, openapi_url='/api/openapi.json' if settings.environment != 'production' else None)
     app.state.settings = settings
     app.state.db = database
+    app.state.password_slots = BoundedSemaphore(settings.password_concurrency)
+    from .admission import DatabaseAdmission
+    app.add_middleware(DatabaseAdmission, capacity=min(24, max(1, settings.pool_size + settings.max_overflow - 4)),
+                       wait_seconds=settings.admission_wait_seconds)
     app.state.limiter = RateLimiter(settings)
     app.state.events = EventBridge(database, settings)
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=[urlsplit(settings.public_origin).hostname])
@@ -84,7 +89,7 @@ def create_app(settings: Settings | None = None):
                 # or turn a denied delivery into a successful operation.
                 log.warning('Audit persistence unavailable for %s', error.code)
         return JSONResponse(error.payload(), status_code=error.status,
-                            headers={'Retry-After': '60'} if error.status == 429 else None)
+                            headers={'Retry-After': '60' if error.status == 429 else '1'} if error.status in {429, 503} else None)
 
     @app.exception_handler(RequestValidationError)
     async def invalid_request(_, error):
@@ -95,9 +100,10 @@ def create_app(settings: Settings | None = None):
     async def conflict(_, error):
         return JSONResponse({'error': {'code': 'CONFLICT', 'message': 'La operación entra en conflicto con un registro existente.'}}, status_code=409)
 
+    @app.exception_handler(PoolTimeoutError)
     @app.exception_handler(OperationalError)
     async def database_unavailable(_, error):
-        return JSONResponse({'error': {'code': 'DATABASE_UNAVAILABLE', 'message': 'No se pudo confirmar la operación. Actualiza antes de repetirla.'}}, status_code=503)
+        return JSONResponse({'error': {'code': 'DATABASE_UNAVAILABLE', 'message': 'No se pudo confirmar la operación. Actualiza antes de repetirla.'}}, status_code=503, headers={'Retry-After': '1'})
 
     @app.exception_handler(HTTPException)
     async def http_error(_, error):

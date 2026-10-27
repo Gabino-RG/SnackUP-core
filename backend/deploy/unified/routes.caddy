@@ -13,7 +13,12 @@
 	route {
 		@backend path /api /api/* /socket.io /socket.io/* /media /media/* /health /health/*
 		handle @backend {
-			reverse_proxy 127.0.0.1:8000
+			reverse_proxy {$SNACKUP_UPSTREAMS:127.0.0.1:8000} {
+                lb_policy least_conn
+                transport http {
+                    keepalive 30s
+                }
+            }
 		}
 		redir /paneles /paneles/ 308
 		handle_path /paneles/* {
