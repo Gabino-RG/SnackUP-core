@@ -6,26 +6,32 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: phase-c-${{ github.ref }}
+  group: phase-c-${{ github.ref }}-${{ contains(github.event.head_commit.message, '[phase-c-full]') && 'full' || 'quick' }}
   cancel-in-progress: true
 jobs:
   load:
     strategy:
       fail-fast: false
       matrix:
-        profile: [base, pessimistic]
+        include:
+          - {profile: base, suite: safety, scenarios: 'P0 P5 P6 P7b P4 P7'}
+          - {profile: base, suite: reading, scenarios: 'P2'}
+          - {profile: base, suite: realtime, scenarios: 'P8 P8-1000 P8-idle'}
+          - {profile: base, suite: kitchen, scenarios: 'P9 P9-burst P8b'}
+          - {profile: pessimistic, suite: pessimistic, scenarios: 'P7b P2 P7'}
     runs-on: ubuntu-latest
     timeout-minutes: 240
     defaults:
       run:
         working-directory: backend
     env:
-      COMPOSE_PROJECT_NAME: snackup-phase-c-${{ github.run_id }}-${{ matrix.profile }}
+      COMPOSE_PROJECT_NAME: snackup-phase-c-${{ github.run_id }}-${{ matrix.suite }}
       SNACKUP_ENVIRONMENT: test
       SNACKUP_SECRET_KEY: isolated-phase-c-secret-not-for-production-2026
       SNACKUP_DATABASE_URL: postgresql+psycopg://loadtest:isolated-loadtest-password@127.0.0.1:15432/snackup_loadtest
       ALLOW_LOAD: 'YES'
       PROFILE: ${{ matrix.profile }}
+      SCENARIOS: ${{ matrix.scenarios }}
       QUICK: ${{ contains(github.event.head_commit.message, '[phase-c-full]') && '--full' || '--quick' }}
     steps:
       - uses: actions/checkout@v4
@@ -73,62 +79,20 @@ jobs:
               results.append({'concurrency':concurrency,'verifications':40,'elapsedSeconds':time.perf_counter()-start})
           print(json.dumps({'argon2':{'memoryKiB':19456,'timeCost':2,'parallelism':1},'measurements':results},indent=2))
           PYCODE
-      - name: P0 smoke and idempotent retry
-        continue-on-error: true
-        if: matrix.profile == 'base'
-        run: python -m load.phase_c.runner --fixtures /tmp/phase-c-fixtures.json --profile "$PROFILE" --scenario P0 --output reports/phase-c/P0.json $QUICK
-      - name: P5 200 buyers finite stock 50
-        continue-on-error: true
-        if: success() && matrix.profile == 'base'
-        run: python -m load.phase_c.runner --fixtures /tmp/phase-c-fixtures.json --profile "$PROFILE" --scenario P5 --output reports/phase-c/P5.json $QUICK
-      - name: P6 50 keys and 10 simultaneous retries
-        continue-on-error: true
-        if: success() && matrix.profile == 'base'
-        run: python -m load.phase_c.runner --fixtures /tmp/phase-c-fixtures.json --profile "$PROFILE" --scenario P6 --output reports/phase-c/P6.json $QUICK
-      - name: P7b three waves of 200 logins
-        continue-on-error: true
-        run: python -m load.phase_c.runner --fixtures /tmp/phase-c-fixtures.json --profile "$PROFILE" --scenario P7b --output reports/phase-c/P7b.json $QUICK
-      - name: P4 one business 2 to 40 orders per second
-        continue-on-error: true
-        if: success() && matrix.profile == 'base'
-        run: python -m load.phase_c.runner --fixtures /tmp/phase-c-fixtures.json --profile "$PROFILE" --scenario P4 --output reports/phase-c/P4.json $QUICK
-      - name: P2 reading steps to 1000 base or 300 pessimistic
-        continue-on-error: true
-        run: python -m load.phase_c.runner --fixtures /tmp/phase-c-fixtures.json --profile "$PROFILE" --scenario P2 --output reports/phase-c/P2.json $QUICK
-      - name: P7 sustained 20 logins per second
-        continue-on-error: true
-        run: python -m load.phase_c.runner --fixtures /tmp/phase-c-fixtures.json --profile "$PROFILE" --scenario P7 --output reports/phase-c/P7.json $QUICK
-      - name: P8 300 Socket.IO clients through Caddy
-        continue-on-error: true
-        if: success() && matrix.profile == 'base'
-        run: python -m load.phase_c.runner --fixtures /tmp/phase-c-fixtures.json --profile "$PROFILE" --scenario P8 --output reports/phase-c/P8.json $QUICK
-      - name: P8 1000 Socket.IO clients through Caddy
-        continue-on-error: true
-        if: success() && matrix.profile == 'base'
-        run: python -m load.phase_c.runner --fixtures /tmp/phase-c-fixtures.json --profile "$PROFILE" --scenario P8-1000 --output reports/phase-c/P8-1000.json $QUICK
-      - name: P8 randomized 20 to 40 seconds of silence
-        continue-on-error: true
-        if: success() && matrix.profile == 'base'
-        run: python -m load.phase_c.runner --fixtures /tmp/phase-c-fixtures.json --profile "$PROFILE" --scenario P8-idle --output reports/phase-c/P8-idle.json $QUICK
-      - name: P9 complete kitchen workflow 90 orders per minute
-        continue-on-error: true
-        if: success() && matrix.profile == 'base'
-        run: python -m load.phase_c.runner --fixtures /tmp/phase-c-fixtures.json --profile "$PROFILE" --scenario P9 --output reports/phase-c/P9.json $QUICK
-      - name: P9 burst 270 orders per minute
-        continue-on-error: true
-        if: success() && matrix.profile == 'base'
-        run: python -m load.phase_c.runner --fixtures /tmp/phase-c-fixtures.json --profile "$PROFILE" --scenario P9-burst --output reports/phase-c/P9-burst.json $QUICK
-      - name: P8b combined kitchen and 300 sockets
-        continue-on-error: true
-        if: success() && matrix.profile == 'base'
-        run: python -m load.phase_c.runner --fixtures /tmp/phase-c-fixtures.json --profile "$PROFILE" --scenario P8b --output reports/phase-c/P8b.json $QUICK
+      - name: Execute documented scenarios and retain every failure
+        run: |
+          failed=0
+          for scenario in $SCENARIOS; do
+            python -m load.phase_c.runner --fixtures /tmp/phase-c-fixtures.json --profile "$PROFILE" --scenario "$scenario" --output "reports/phase-c/$scenario.json" $QUICK || failed=1
+          done
+          exit "$failed"
       - name: Verify every required scenario produced a passing report
+        if: always()
         run: |
           python - <<'PYCODE'
           import json,os
           from pathlib import Path
-          required=['P2','P7','P7b'] if os.environ['PROFILE']=='pessimistic' else ['P0','P2','P4','P5','P6','P7','P7b','P8','P8-1000','P8-idle','P8b','P9','P9-burst']
-          for name in required:
+          for name in os.environ['SCENARIOS'].split():
               report=json.loads(Path('reports/phase-c/'+name+'.json').read_text())
               assert report['success'], (name,report['failures'])
           PYCODE
@@ -140,7 +104,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: phase-c-${{ matrix.profile }}-${{ github.run_id }}
+          name: phase-c-${{ matrix.suite }}-${{ github.run_id }}
           path: backend/reports/phase-c
           retention-days: 30
       - name: Remove only disposable load project

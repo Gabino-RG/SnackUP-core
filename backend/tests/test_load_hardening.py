@@ -170,3 +170,40 @@ def test_http_authorization_joins_session_roster_and_business_in_one_query(app, 
     finally:
         event.remove(app.state.db.engine, 'before_cursor_execute', capture)
     assert len(queries) == 1
+
+
+@pytest.mark.postgres
+def test_login_waiting_on_actor_observes_business_disabled_during_wait(app, client):
+    if app.state.db.engine.dialect.name != 'postgresql':
+        pytest.skip('Real PostgreSQL row-lock snapshot required')
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Event
+    from fastapi.testclient import TestClient
+    from snackup.operation_models import Business
+    waiting = Event()
+    def observe(conn, cursor, statement, parameters, context, many):
+        if 'FOR NO KEY UPDATE' in statement and 'users' in statement:
+            waiting.set()
+    # Keep the app's lifespan owned by the existing client, not this peer.
+    def request_login():
+        peer = TestClient(app, base_url=app.state.settings.public_origin)
+        try:
+            return peer.post('/api/v1/auth/login', json={
+                'email': 'operator@staff.example.edu', 'password': 'Test-Only-Password-392!'})
+        finally:
+            peer.close()
+    with app.state.db.sessions() as blocker, ThreadPoolExecutor(max_workers=1) as pool:
+        blocker.scalar(select(User).where(User.id == 'operator').with_for_update())
+        event.listen(app.state.db.engine, 'before_cursor_execute', observe)
+        try:
+            future = pool.submit(request_login)
+            try:
+                assert waiting.wait(10), 'Login did not reach actor lock'
+                blocker.get(Business, 'business-1').is_active = False
+            finally:
+                blocker.commit()
+            response = future.result(timeout=10)
+        finally:
+            event.remove(app.state.db.engine, 'before_cursor_execute', observe)
+    assert response.status_code == 403, response.text
+    assert response.json()['error']['code'] == 'ACCESS_REVOKED'

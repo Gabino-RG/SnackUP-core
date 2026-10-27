@@ -50,6 +50,7 @@ class Run:
         self.random = random.Random(20261027)
         self.running = True
         self.worker_samples = []
+        self.expected_order_events, self.received_order_events = set(), set()
 
     def check(self, condition, message):
         if not condition:
@@ -76,10 +77,10 @@ class Run:
             self.statuses[name][status] += 1
         return status, body, raw
 
-    async def auth(self, who):
+    async def auth(self, who, min_lifetime=60):
         async with self.locks[who['email']]:
             current = self.sessions.get(who['email'])
-            if current and datetime.fromisoformat(current['accessTokenExpiresAt']).timestamp() > time.time() + 60:
+            if current and datetime.fromisoformat(current['accessTokenExpiresAt']).timestamp() > time.time() + min_lifetime:
                 return
             if current:
                 status, body, _ = await self.request('POST', '/api/v1/auth/refresh',
@@ -220,14 +221,15 @@ class Run:
                 await asyncio.sleep(30)
         self.check(quantile(self.samples['login_wave'], .95) < 3000, 'P7b p95 >=3s')
 
-    async def read_users(self, count, seconds, metric='read'):
+    async def read_users(self, count, seconds, metric='read', ramp_seconds=0):
         until = time.monotonic() + seconds
+        steady_at = time.monotonic() + ramp_seconds
         async def user(who):
-            await asyncio.sleep(self.random.uniform(0, min(7.5, seconds / 2)))
+            await asyncio.sleep(self.random.uniform(0, ramp_seconds or min(7.5, seconds / 2)))
             while time.monotonic() < until:
                 for path in ('/api/v1/businesses?limit=20', f"/api/v1/businesses/{who['businessId']}/products?limit=20",
                              '/api/v1/users/me/orders/active?limit=20'):
-                    status, _, _ = await self.request('GET', path, who, metric)
+                    status, _, _ = await self.request('GET', path, who, metric if time.monotonic() >= steady_at else metric + '_ramp')
                     self.check(status == 200, metric + ' HTTP failure')
                 await asyncio.sleep(self.random.uniform(5, 10))
         await asyncio.gather(*(user(who) for who in self.students[:count]))
@@ -237,8 +239,8 @@ class Run:
         for count in sizes:
             name = f'read_{count}'
             start = time.monotonic() - self.started
-            await self.read_users(count, 120 if not self.args.quick else 20, name)
-            self.details.setdefault('readingStages', []).append({'users': count, 'start': start, 'end': time.monotonic() - self.started})
+            await self.read_users(count, 360 if not self.args.quick else 20, name, ramp_seconds=0 if self.args.quick else 60)
+            self.details.setdefault('readingStages', []).append({'users': count, 'start': start + (0 if self.args.quick else 60), 'end': time.monotonic() - self.started})
             self.check(quantile(self.samples[name], .95) < 750, name + ' p95')
             self.check(quantile(self.samples[name], .99) < 2000, name + ' p99')
 
@@ -248,18 +250,20 @@ class Run:
         slots = asyncio.Semaphore(25)
         async def connect(index, who):
             async with slots:
-                await self.auth(who)
+                await self.auth(who, min_lifetime=seconds + 420)
                 sio = socketio.AsyncClient(http_session=self.http, reconnection=False, logger=False, engineio_logger=False)
                 async def product(event):
                     data = event['data']
                     received.append((index, data.get('businessId'), data.get('version'),
                         (time.time() - datetime.fromisoformat(event['occurredAt']).timestamp()) * 1000, event['id']))
                 async def order(event):
+                    self.received_order_events.add((event['data']['id'], event['data']['version']))
                     self.samples['order_event'].append((time.time() - datetime.fromisoformat(event['occurredAt']).timestamp()) * 1000)
                 async def disconnect(*_):
                     disconnected.append(index)
                 sio.on('product.updated', product)
                 sio.on('order.updated', order)
+                sio.on('order.created', order)
                 sio.on('disconnect', disconnect)
                 await sio.connect(BASE, transports=['websocket'], auth={'token': self.sessions[who['email']]['accessToken']},
                                   headers={'Origin': BASE}, wait_timeout=30)
@@ -288,6 +292,8 @@ class Run:
         try:
             tasks = [asyncio.create_task(toggles(i, op)) for i, op in enumerate(self.operators)] if toggle else []
             if kitchen:
+                if not self.args.quick:
+                    await asyncio.sleep(120)
                 tasks.append(asyncio.create_task(self.kitchen(1.5, seconds)))
             if tasks:
                 await asyncio.gather(*tasks)
@@ -298,6 +304,10 @@ class Run:
             unique = {(i, business, version, eid) for i, business, version, _, eid in received if (business, version) in changes}
             expected = sum(sum(who['businessId'] == business for who in self.students[:count]) for business, _ in changes)
             self.details.update(expectedEvents=expected, receivedEvents=len(unique), changes=len(changes), unexpectedDisconnects=len(disconnected))
+            if kitchen:
+                self.details.update(expectedOrderEvents=len(self.expected_order_events), receivedOrderEvents=len(self.received_order_events))
+                self.check(self.expected_order_events == self.received_order_events, 'P8b order event loss')
+                self.check((quantile(self.samples['order_event'], .95) or math.inf) < 1000, 'P8b event p95')
             if toggle:
                 self.check(expected > 0 and len(unique) == expected, 'P8 event loss')
                 self.samples['product_event'] = [latency for _, business, version, latency, _ in received if (business, version) in changes]
@@ -313,6 +323,7 @@ class Run:
             status, order, _ = await self.purchase(who, metric='kitchen_create')
             self.check(status == 201, 'P9 create failed')
             if status == 201:
+                self.expected_order_events.add((order['id'], order['version']))
                 orders[order['id']] = {'code': order['pickupCode'], 'created': time.monotonic(), 'prepare': None, 'walk': None, 'who': who}
         async def tablet(operator):
             while not stop.is_set():
@@ -339,8 +350,10 @@ class Run:
                         data = {'expectedVersion': order['version']}
                         if action == 'complete':
                             data.update(method='manual', code=state['code'])
-                        result, _, _ = await self.request('POST', f"/api/v1/orders/{order['id']}/{action}", operator, 'kitchen_transition', json=data)
+                        result, updated, _ = await self.request('POST', f"/api/v1/orders/{order['id']}/{action}", operator, 'kitchen_transition', json=data)
                         self.check(result in (200, 409), 'P9 transition error')
+                        if result == 200:
+                            self.expected_order_events.add((updated['id'], updated['version']))
                         if result == 200 and action == 'accept':
                             accepted.append((time.monotonic() - state['created']) * 1000)
                         if result == 200 and action == 'complete':

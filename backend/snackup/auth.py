@@ -178,16 +178,13 @@ def login_user(db: Session, request: Request, email: str, password: str) -> User
     matched, replacement = request.app.state.password_executor.submit(verify).result()
     if not matched:
         raise ApiError(401, "INVALID_CREDENTIALS", "Correo o contraseña incorrectos.")
-    from .operation_models import Business
-    row = db.execute(select(User, AcademicRecord, Business.is_active)
-        .outerjoin(AcademicRecord, AcademicRecord.email == User.email)
-        .outerjoin(Business, Business.id == User.business_id)
-        .where(User.id == snapshot[0]).with_for_update(of=User, key_share=True)
-        .execution_options(populate_existing=True)).first()
-    if row is None or (row[0].password_hash, row[0].auth_version) != snapshot[1:]:
+    user = db.scalar(select(User).where(User.id == snapshot[0]).with_for_update(key_share=True)
+                     .execution_options(populate_existing=True))
+    if user is None or (user.password_hash, user.auth_version) != snapshot[1:]:
         raise ApiError(401, "INVALID_CREDENTIALS", "Correo o contraseña incorrectos.")
-    user, record, active = row
-    ensure_account_state(user, record, active)
+    # Read related authorization AFTER a possible row-lock wait. Joining it
+    # into the locking SELECT could retain a pre-wait PostgreSQL snapshot.
+    ensure_account(user, db)
     if replacement:
         user.password_hash = replacement
     return user
