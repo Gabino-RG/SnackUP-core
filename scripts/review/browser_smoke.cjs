@@ -150,7 +150,7 @@ fs.mkdirSync(output, { recursive: true });
     await contents('Promedio de '+reviews.length+' valoraciones').waitFor();
     await page.screenshot({path:path.join(output,'02-maestro-separado.png')});
     const negatives=reviews.filter(r=>r.rating<=2);
-    await label('Solo 1–2 estrellas').click();
+    await label('Solo 0–2 estrellas').click();
     await contents('Promedio de '+negatives.length+' valoraciones').waitFor();
     await label('Limpiar filtros').click();
     await page.getByRole('button',{name:/Carrera: Todas las carreras/}).click();
