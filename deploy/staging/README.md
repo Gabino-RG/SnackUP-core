@@ -2,7 +2,7 @@
 
 Este paquete prepara un servidor nuevo de pruebas. No despliega automáticamente,
 no trae cuentas, padrón ni contraseñas y no certifica capacidad para mil alumnos.
-Backend: `81c76c5`; paneles: `0699898` (V3.2 y protección ante entregas inciertas).
+Backend: `81c76c5`; paneles: `f0f67f3` (V3.2 adaptable a móvil y PC).
 `versions.json` contiene los SHA completos.
 El frontend de alumnos incluido por el backend todavía usa Firebase: no utilizar
 este piloto como lanzamiento general ni dar por terminada su integración SQL.
