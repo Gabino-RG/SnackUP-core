@@ -1,0 +1,35 @@
+name: Paquete del piloto
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/entrega-paneles-rest]
+    paths: ['deploy/staging/**', '.github/workflows/staging-package.yml']
+permissions:
+  contents: read
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify packaging, integrity and private configuration
+        run: python -m unittest discover -s deploy/staging -p 'test_*.py' -v
+      - name: Build the pinned server package
+        run: python deploy/staging/prepare.py --output build/SnackUP-Piloto
+      - name: Validate Compose with disposable configuration only
+        working-directory: build/SnackUP-Piloto/backend
+        run: |
+          python configure.py init
+          SNACKUP_DOMAIN=piloto.example.test TLS_ACME_EMAIL=ci@example.test SNACKUP_INSTITUTION_ID=ci SNACKUP_INSTITUTION_NAME=CI SNACKUP_CAFETERIA_ID=ci SNACKUP_CAFETERIA_NAME=CI SNACKUP_ADMIN_EMAIL_DOMAINS=example.test docker compose --env-file .env -f compose.unified.yaml config --quiet
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SnackUP-Piloto-Servidor
+          path: build/SnackUP-Piloto.zip
+          if-no-files-found: error
+          retention-days: 30
