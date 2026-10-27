@@ -11,7 +11,7 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[2]
 BACKEND = '81c76c5eda9ba6315fbf1dcd1a69599f8906db5e'
-PANELS = '49c35ec30408a7750b657150230c833b97779bf3'
+PANELS = '41c2e3176012fee3847e90edfb3440bb87f6ea25'
 USERS = 'a00d0bf4ecdae74a89f3afbe8ec3d0758efb8884'
 REMOTE = 'https://github.com/Gabino-RG/SnackUP-core.git'
 
