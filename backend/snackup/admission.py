@@ -4,7 +4,7 @@ from starlette.responses import JSONResponse
 
 
 class DatabaseAdmission:
-    def __init__(self, app, capacity, wait_seconds, login_wait_seconds=8, write_concurrency=2):
+    def __init__(self, app, capacity, wait_seconds, login_wait_seconds=8, write_concurrency=1):
         self.app = app
         self.capacity, self.wait_seconds = capacity, wait_seconds
         self.login_wait_seconds = login_wait_seconds

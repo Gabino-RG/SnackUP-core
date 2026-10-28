@@ -72,7 +72,7 @@ La composición transmite las variables de rendimiento de `.env` a la aplicació
 |---|---|---|
 | `SNACKUP_POOL_TIMEOUT_SECONDS` | 2 | Espera máxima por conexión SQL |
 | `SNACKUP_ADMISSION_WAIT_SECONDS` | 5 | Cola asíncrona antes del handler |
-| `SNACKUP_WRITE_CONCURRENCY` | 2 | Mutaciones SQL simultáneas por worker; login usa sus hilos propios |
+| `SNACKUP_WRITE_CONCURRENCY` | 1 | Mutaciones SQL simultáneas por worker; login usa sus hilos propios |
 | `SNACKUP_LOGIN_WAIT_SECONDS` | 8 | Cola de las olas de login |
 | `SNACKUP_PASSWORD_CONCURRENCY` | 4 | Hilos dedicados a Argon2 por worker |
 | `SNACKUP_OUTBOX_RETENTION_DAYS` | 7 | Antigüedad de publicaciones eliminables |
