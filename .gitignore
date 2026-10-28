@@ -4,6 +4,9 @@
 *.pyc
 *.swp
 .DS_Store
+
+# Local SQL demos and credentials belong to other branches, never to Git.
+.local/
 .atom/
 .build/
 .buildlog/
