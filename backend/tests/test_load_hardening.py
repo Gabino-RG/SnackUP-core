@@ -170,6 +170,43 @@ def test_admission_bounds_concurrency_without_thread_or_connection_wait():
     asyncio.run(exercise())
 
 
+@pytest.mark.parametrize('blocked_on', ['write-slot', 'global-slot'])
+def test_waiting_writes_allow_reads_and_release_permits_on_timeout_and_cancel(blocked_on):
+    from snackup.admission import DatabaseAdmission
+    from starlette.responses import JSONResponse
+    async def exercise():
+        started, release = asyncio.Event(), asyncio.Event()
+        async def endpoint(scope, receive, send):
+            if scope['path'].endswith('block'):
+                started.set()
+                await release.wait()
+            await JSONResponse({'ok': True})(scope, receive, send)
+        middleware = DatabaseAdmission(endpoint, capacity=3 if blocked_on == 'write-slot' else 1,
+                                       wait_seconds=.03, write_concurrency=1)
+        async def request(method, path='/api/probe'):
+            messages = []
+            async def receive():
+                return {'type': 'http.request', 'body': b''}
+            async def send(message):
+                messages.append(message)
+            await middleware({'type': 'http', 'method': method, 'path': path}, receive, send)
+            return messages[0]['status']
+        first = asyncio.create_task(request('POST' if blocked_on == 'write-slot' else 'GET', '/api/block'))
+        await started.wait()
+        if blocked_on == 'write-slot':
+            assert await request('GET') == 200
+        assert await request('POST') == 503
+        cancelled = asyncio.create_task(request('POST'))
+        await asyncio.sleep(0)
+        cancelled.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await cancelled
+        release.set()
+        assert await first == 200
+        assert await request('POST') == 200
+    asyncio.run(exercise())
+
+
 def test_retention_never_discards_pending_push(app):
     from snackup.push_models import PushDelivery
     now = utcnow()

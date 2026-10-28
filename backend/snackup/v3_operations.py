@@ -710,7 +710,9 @@ def sales_summary(id: str, db: DB, actor: Operator, from_date: Annotated[date, Q
 def _transition_response(db, actor, id, action, body, request):
     result = transition(db, actor, id, action, body.model_dump(exclude_unset=True), request,
                         student=actor.role == "user", canonical=True)
-    response = order_dto(result, db, actor)
+    # Every valid transition starts from an uncompleted order. A rating cannot
+    # exist before this transition commits, including a fresh completion.
+    response = order_dto(result, db, actor, rated_ids=set())
     db.commit()
     return response
 

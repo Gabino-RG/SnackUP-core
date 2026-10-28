@@ -366,6 +366,7 @@ def sales_summary(id: str, db: DB, user: Operator,
 
 def _restore_stock(db: Session, order: Order, request: Request) -> None:
     if order.stock_restored:
+        current_user(request, db)
         return
     quantities: dict[str, int] = {}
     for item in order.items:
@@ -442,9 +443,11 @@ def transition(db: Session, user: User, id: str, action: str, body: dict, reques
         # locks still serialize stock changes; Order prevents double returns.
         db.scalar(select(Business).where(Business.id == order.business_id).with_for_update(read=True, key_share=True)
                   .execution_options(populate_existing=True))
-        current_user(request, db)
         if not not_picked_up:
+            # Revalidates after the final Product wait, before changing stock.
             _restore_stock(db, order, request)
+        else:
+            current_user(request, db)
         order.cancel_reason = "student_cancelled" if student and not canonical else body["reason"]
         order.cancel_notes = None if student and not canonical else body.get("notes", "").strip() or None
         order.cancelled_by = user.id
@@ -689,14 +692,19 @@ def create_order_transaction(body, request: Request, db: Session, user: User,
     for item in body.items:
         p = by_id[item.productId]
         reserved = item.quantity if p.stock is not None else 0
-        order.items.append(OrderItem(product_id=p.id, name=p.name, quantity=item.quantity, price=p.price,
+        order.items.append(OrderItem(id=new_id(), product_id=p.id, name=p.name, quantity=item.quantity, price=p.price,
                                       notes=item.notes.strip(), reserved_quantity=reserved))
         if reserved:
             p.stock -= reserved
             p.is_available = effective_availability(p)
             _touch(p)
             _product_event(db, p)
-    db.flush()
+    if not canonical:
+        # Legacy Order itself has not been inserted yet; persist it before
+        # adding audit/idempotency rows whose FKs do not have ORM relationships.
+        db.flush()
+    # Canonical Order is already inserted. Explicit item IDs let us serialize
+    # the response and flush all four outbox records together, once, below.
     result = serializer(order, db, user) if serializer else order_dict(order, db, include_pickup=True)
     db.add(IdempotencyRecord(user_id=user.id, key=idempotency_key, payload_hash=payload_hash,
                              order_id=order.id, response_json=result))
