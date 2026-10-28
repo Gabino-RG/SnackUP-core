@@ -1,0 +1,480 @@
+{
+  "sourceWorkflow": "https://github.com/Gabino-RG/SnackUP-core/actions/runs/40596058647",
+  "scope": "Intermediate full safety run; P4 failure motivated shorter locked transaction",
+  "environment": {
+    "commit": "5a3643992da3e6c5eb2db1124b3cb8a0a89ac685",
+    "profile": "base",
+    "runnerCpu": 4,
+    "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
+    "generatorSharesRunner": true,
+    "generatorSharesCpu": true,
+    "cpuModel": "AMD EPYC 7763 64-Core Processor",
+    "serverCpu": 4,
+    "postgres": "17-alpine",
+    "fixtureStudents": 1000,
+    "businesses": 4,
+    "quick": false
+  },
+  "results": [
+    {
+      "scenario": "P0",
+      "profile": "base",
+      "quick": false,
+      "commit": "5a3643992da3e6c5eb2db1124b3cb8a0a89ac685",
+      "elapsedSeconds": 57.371004613,
+      "success": true,
+      "failures": {},
+      "details": {
+        "arrivals": [
+          {
+            "rate": 1,
+            "seconds": 45,
+            "launched": 45,
+            "elapsed": 44.063765614999994
+          }
+        ],
+        "integrity": {
+          "negativeStock": 0,
+          "duplicateNumbers": 0,
+          "duplicateCodes": 0,
+          "duplicateKeys": 0,
+          "inventoryMismatch": 0,
+          "pendingOutbox": 0,
+          "deadlocks": 0,
+          "orders": 45
+        },
+        "resources": {
+          "workers": [
+            {
+              "pid": 14,
+              "peakRssMiB": 205.93359375,
+              "meanCpuPercent": 2.785020334887386
+            },
+            {
+              "pid": 15,
+              "peakRssMiB": 205.703125,
+              "meanCpuPercent": 3.0481718625932874
+            },
+            {
+              "pid": 16,
+              "peakRssMiB": 204.00390625,
+              "meanCpuPercent": 2.96045468669132
+            }
+          ],
+          "workerCpuRatio": 1.0944881889763802,
+          "peakContainersMiB": 734.35,
+          "readingStages": []
+        }
+      },
+      "metrics": {
+        "create": {
+          "count": 45,
+          "p50Ms": 25.22120899999436,
+          "p95Ms": 37.05471099999613,
+          "p99Ms": 94.63822800000798,
+          "status": {
+            "201": 45
+          }
+        },
+        "idempotency": {
+          "count": 45,
+          "p50Ms": 11.455587000000378,
+          "p95Ms": 20.97899599999664,
+          "p99Ms": 26.378442000009272,
+          "status": {
+            "201": 45
+          }
+        },
+        "cancel": {
+          "count": 45,
+          "p50Ms": 22.791682999979912,
+          "p95Ms": 33.29278199998953,
+          "p99Ms": 54.61626199999614,
+          "status": {
+            "200": 45
+          }
+        }
+      }
+    },
+    {
+      "scenario": "P4",
+      "profile": "base",
+      "quick": false,
+      "commit": "5a3643992da3e6c5eb2db1124b3cb8a0a89ac685",
+      "elapsedSeconds": 908.7184659740001,
+      "success": false,
+      "failures": {
+        "P4 40/s creation": 1113,
+        "P4 40/s cancellation": 857,
+        "P4 40/s p95": 1
+      },
+      "details": {
+        "arrivals": [
+          {
+            "rate": 2,
+            "seconds": 180,
+            "launched": 360,
+            "elapsed": 179.548761926
+          },
+          {
+            "rate": 5,
+            "seconds": 180,
+            "launched": 900,
+            "elapsed": 179.84014509600001
+          },
+          {
+            "rate": 10,
+            "seconds": 180,
+            "launched": 1800,
+            "elapsed": 179.94685954500005
+          },
+          {
+            "rate": 20,
+            "seconds": 180,
+            "launched": 3600,
+            "elapsed": 179.99761543299996
+          },
+          {
+            "rate": 40,
+            "seconds": 180,
+            "launched": 7200,
+            "elapsed": 187.23406835699996
+          }
+        ],
+        "integrity": {
+          "negativeStock": 0,
+          "duplicateNumbers": 0,
+          "duplicateCodes": 0,
+          "duplicateKeys": 0,
+          "inventoryMismatch": 0,
+          "pendingOutbox": 0,
+          "deadlocks": 0,
+          "orders": 12747
+        },
+        "resources": {
+          "workers": [
+            {
+              "pid": 14,
+              "peakRssMiB": 215.05078125,
+              "meanCpuPercent": 23.67078286588602
+            },
+            {
+              "pid": 15,
+              "peakRssMiB": 215.53515625,
+              "meanCpuPercent": 23.505630187627364
+            },
+            {
+              "pid": 16,
+              "peakRssMiB": 213.9765625,
+              "meanCpuPercent": 24.10128084721359
+            }
+          ],
+          "workerCpuRatio": 1.0253407653754274,
+          "peakContainersMiB": 1092.9,
+          "readingStages": []
+        }
+      },
+      "metrics": {
+        "create_2": {
+          "count": 360,
+          "p50Ms": 25.50574500003222,
+          "p95Ms": 32.146531000023515,
+          "p99Ms": 35.77701800003297,
+          "status": {
+            "201": 360
+          }
+        },
+        "cancel": {
+          "count": 12747,
+          "p50Ms": 30.62773900001048,
+          "p95Ms": 5006.656620000058,
+          "p99Ms": 5045.198097000025,
+          "status": {
+            "200": 11890,
+            "503": 857
+          }
+        },
+        "create_5": {
+          "count": 900,
+          "p50Ms": 23.59482700001081,
+          "p95Ms": 30.15085899994574,
+          "p99Ms": 35.630278000041926,
+          "status": {
+            "201": 900
+          }
+        },
+        "create_10": {
+          "count": 1800,
+          "p50Ms": 21.926369000084378,
+          "p95Ms": 29.96426499998961,
+          "p99Ms": 36.33352300005299,
+          "status": {
+            "201": 1800
+          }
+        },
+        "create_20": {
+          "count": 3600,
+          "p50Ms": 22.121525999978076,
+          "p95Ms": 36.42874299998766,
+          "p99Ms": 42.2542290000365,
+          "status": {
+            "201": 3600
+          }
+        },
+        "create_40": {
+          "count": 7200,
+          "p50Ms": 5003.713366000056,
+          "p95Ms": 7468.232460999957,
+          "p99Ms": 7961.774728000137,
+          "status": {
+            "201": 6087,
+            "503": 1113
+          }
+        }
+      }
+    },
+    {
+      "scenario": "P5",
+      "profile": "base",
+      "quick": false,
+      "commit": "5a3643992da3e6c5eb2db1124b3cb8a0a89ac685",
+      "elapsedSeconds": 4.845544467999986,
+      "success": true,
+      "failures": {},
+      "details": {
+        "outcomes": {
+          "201": 50,
+          "422": 150
+        },
+        "integrity": {
+          "negativeStock": 0,
+          "duplicateNumbers": 0,
+          "duplicateCodes": 0,
+          "duplicateKeys": 0,
+          "inventoryMismatch": 0,
+          "pendingOutbox": 0,
+          "deadlocks": 0,
+          "orders": 50
+        },
+        "resources": {
+          "workers": [
+            {
+              "pid": 14,
+              "peakRssMiB": 209.55859375,
+              "meanCpuPercent": 33.41563045346684
+            },
+            {
+              "pid": 15,
+              "peakRssMiB": 209.578125,
+              "meanCpuPercent": 29.425704429172285
+            },
+            {
+              "pid": 16,
+              "peakRssMiB": 207.50390625,
+              "meanCpuPercent": 30.921926688282795
+            }
+          ],
+          "workerCpuRatio": 1.1355932203389834,
+          "peakContainersMiB": 820.2,
+          "readingStages": []
+        }
+      },
+      "metrics": {
+        "create": {
+          "count": 200,
+          "p50Ms": 1984.4353560000059,
+          "p95Ms": 2591.99833400001,
+          "p99Ms": 2627.3944280000023,
+          "status": {
+            "201": 50,
+            "422": 150
+          }
+        }
+      }
+    },
+    {
+      "scenario": "P6",
+      "profile": "base",
+      "quick": false,
+      "commit": "5a3643992da3e6c5eb2db1124b3cb8a0a89ac685",
+      "elapsedSeconds": 5.890451523999985,
+      "success": true,
+      "failures": {},
+      "details": {
+        "integrity": {
+          "negativeStock": 0,
+          "duplicateNumbers": 0,
+          "duplicateCodes": 0,
+          "duplicateKeys": 0,
+          "inventoryMismatch": 0,
+          "pendingOutbox": 0,
+          "deadlocks": 0,
+          "orders": 50
+        },
+        "resources": {
+          "workers": [
+            {
+              "pid": 14,
+              "peakRssMiB": 212.30859375,
+              "meanCpuPercent": 45.61677424227547
+            },
+            {
+              "pid": 15,
+              "peakRssMiB": 212.453125,
+              "meanCpuPercent": 47.06492580552228
+            },
+            {
+              "pid": 16,
+              "peakRssMiB": 210.37890625,
+              "meanCpuPercent": 45.25473635146376
+            }
+          ],
+          "workerCpuRatio": 1.0399999999999991,
+          "peakContainersMiB": 863.1,
+          "readingStages": []
+        }
+      },
+      "metrics": {
+        "create": {
+          "count": 500,
+          "p50Ms": 2356.0167700000247,
+          "p95Ms": 3573.475857999995,
+          "p99Ms": 3630.2321119999874,
+          "status": {
+            "201": 500
+          }
+        }
+      }
+    },
+    {
+      "scenario": "P7",
+      "profile": "base",
+      "quick": false,
+      "commit": "5a3643992da3e6c5eb2db1124b3cb8a0a89ac685",
+      "elapsedSeconds": 302.124994968,
+      "success": true,
+      "failures": {},
+      "details": {
+        "arrivals": [
+          {
+            "startRate": 0,
+            "endRate": 20,
+            "seconds": 30,
+            "launched": 300,
+            "elapsed": 30.007073164000076
+          },
+          {
+            "rate": 20,
+            "seconds": 240,
+            "launched": 4800,
+            "elapsed": 239.987356159
+          },
+          {
+            "startRate": 20,
+            "endRate": 0,
+            "seconds": 30,
+            "launched": 300,
+            "elapsed": 30.00095554199993
+          }
+        ],
+        "integrity": {
+          "negativeStock": 0,
+          "duplicateNumbers": 0,
+          "duplicateCodes": 0,
+          "duplicateKeys": 0,
+          "inventoryMismatch": 0,
+          "pendingOutbox": 0,
+          "deadlocks": 0,
+          "orders": 0
+        },
+        "resources": {
+          "workers": [
+            {
+              "pid": 14,
+              "peakRssMiB": 215.05078125,
+              "meanCpuPercent": 18.198507452067865
+            },
+            {
+              "pid": 15,
+              "peakRssMiB": 215.53515625,
+              "meanCpuPercent": 19.016827375727203
+            },
+            {
+              "pid": 16,
+              "peakRssMiB": 213.9765625,
+              "meanCpuPercent": 17.834073477968563
+            }
+          ],
+          "workerCpuRatio": 1.0663198959687905,
+          "peakContainersMiB": 1053.4,
+          "readingStages": []
+        }
+      },
+      "metrics": {
+        "login": {
+          "count": 5400,
+          "p50Ms": 31.775873000015054,
+          "p95Ms": 34.586393999916254,
+          "p99Ms": 36.91016800007674,
+          "status": {
+            "200": 5400
+          }
+        }
+      }
+    },
+    {
+      "scenario": "P7b",
+      "profile": "base",
+      "quick": false,
+      "commit": "5a3643992da3e6c5eb2db1124b3cb8a0a89ac685",
+      "elapsedSeconds": 69.585085212,
+      "success": true,
+      "failures": {},
+      "details": {
+        "integrity": {
+          "negativeStock": 0,
+          "duplicateNumbers": 0,
+          "duplicateCodes": 0,
+          "duplicateKeys": 0,
+          "inventoryMismatch": 0,
+          "pendingOutbox": 0,
+          "deadlocks": 0,
+          "orders": 0
+        },
+        "resources": {
+          "workers": [
+            {
+              "pid": 14,
+              "peakRssMiB": 213.4296875,
+              "meanCpuPercent": 13.115982673569782
+            },
+            {
+              "pid": 15,
+              "peakRssMiB": 213.43359375,
+              "meanCpuPercent": 13.01419566834252
+            },
+            {
+              "pid": 16,
+              "peakRssMiB": 211.60546875,
+              "meanCpuPercent": 12.95603166535552
+            }
+          ],
+          "workerCpuRatio": 1.0123456790123455,
+          "peakContainersMiB": 881.8,
+          "readingStages": []
+        }
+      },
+      "metrics": {
+        "login_wave": {
+          "count": 600,
+          "p50Ms": 1437.1885390000045,
+          "p95Ms": 2381.9601180000236,
+          "p99Ms": 2495.51910400001,
+          "status": {
+            "200": 600
+          }
+        }
+      }
+    }
+  ]
+}
