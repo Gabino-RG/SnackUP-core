@@ -19,7 +19,7 @@ from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Body, Depends, File, Form, Header, Query, Request, Response, UploadFile
 from PIL import Image, UnidentifiedImageError
 from pydantic import BaseModel, ConfigDict, Field, StrictInt
-from sqlalchemy import and_, case, func, or_, select, text
+from sqlalchemy import and_, case, func, or_, select, text, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, lazyload
 from sqlalchemy.orm.attributes import set_committed_value
@@ -578,10 +578,9 @@ def create_order_transaction(body, request: Request, db: Session, user: User,
     # we hold it. Read it before locking the contended business/products.
     academic = db.scalar(select(AcademicRecord).where(AcademicRecord.email == user.email,
                          AcademicRecord.kind == "student", AcademicRecord.is_active.is_(True)))
-    # Counter/version updates never change a Business key. NO KEY UPDATE still
-    # serializes numbering and excludes catalog writes, while allowing stock
-    # returns to hold KEY SHARE on this business without waiting on the counter.
-    b = db.scalar(select(Business).where(Business.id == body.businessId).with_for_update(key_share=True)
+    # Exclude catalog FOR UPDATE edits without queuing purchases/cancellations
+    # on the business while a purchase is still waiting for its products.
+    b = db.scalar(select(Business).where(Business.id == body.businessId).with_for_update(read=True, key_share=True)
                   .execution_options(populate_existing=True))
     require(b is not None and b.is_active, 404, "NOT_FOUND", "Local no encontrado.")
     from .v32_services import closing_at, validate_schedule
@@ -589,6 +588,16 @@ def create_order_transaction(body, request: Request, db: Session, user: User,
     product_ids = sorted(item.productId for item in body.items)
     products = db.scalars(select(Product).where(Product.id.in_(product_ids), Product.business_id == b.id)
                           .order_by(Product.id).with_for_update().execution_options(populate_existing=True)).all()
+    # Allocate only after the stock locks, using the current stored value rather
+    # than the earlier shared-lock snapshot. UPDATE takes NO KEY UPDATE, which
+    # coexists with the other transactions' KEY SHARE catalog guards. Failure
+    # anywhere below rolls the number/version back with the whole reservation.
+    counter = db.execute(update(Business).where(Business.id == b.id).values(
+        next_order_number=Business.next_order_number + 1, version=Business.version + 1,
+        updated_at=utcnow()).returning(Business.next_order_number, Business.version, Business.updated_at)
+        .execution_options(synchronize_session=False)).one()
+    for attribute in ('next_order_number', 'version', 'updated_at'):
+        set_committed_value(b, attribute, getattr(counter, attribute))
     current_user(request, db)
     by_id = {p.id: p for p in products}
     invalid_ids, unavailable_ids = [], []
@@ -621,7 +630,7 @@ def create_order_transaction(body, request: Request, db: Session, user: User,
     require(deadline is None or deadline > now or b.last_auto_close_date == day,
             409, "BUSINESS_CLOSED", "Ya pasó la hora de cierre del local.")
     scheduled = validate_schedule(b, body.scheduledPickupTime if canonical else None, now)
-    values = dict(business_id=b.id, student_id=user.id, order_number=b.next_order_number,
+    values = dict(business_id=b.id, student_id=user.id, order_number=b.next_order_number - 1,
                   customer_name=user.display_name, customer_institutional_id=academic.institutional_id if academic else None,
                   total=total, subtotal=total, created_at=now, updated_at=now,
                   version=1, status="pending", payment_method=body.paymentMethod if canonical else "cash",
@@ -672,10 +681,8 @@ def create_order_transaction(body, request: Request, db: Session, user: User,
     if canonical and body.paymentMethod == "ValeComida":
         from .v32_services import reserve_voucher
         reserve_voucher(db, order, now)
-    b.next_order_number += 1
     # totalOrders is part of the public Business DTO. Its count changes only
-    # for a committed new order, so bump the same resource version atomically.
-    _touch(b)
+    # for a committed new order; the atomic counter UPDATE bumped its version.
     emit_event(db, f"business:{b.id}", "business.updated", {
         "id": b.id, "version": b.version, "updatedAt": iso(b.updated_at),
     })
