@@ -3,6 +3,8 @@
 Registration deliberately returns 202 until email ownership is proven. Native
 clients explicitly send a refresh token; browsers use the HttpOnly cookie only.
 """
+from .auth import request_user
+
 from datetime import timedelta
 import secrets
 from typing import Literal
@@ -244,13 +246,8 @@ def login(request: Request, response: Response, data: LoginInput,
           db: Session = Depends(get_db, scope="function")):
     _is_web(request)
     email = normalize_email(data.email)
-    user = db.scalar(select(User).where(User.email == email).with_for_update()
-                     .execution_options(populate_existing=True))
-    if not password_matches(data.password, user.password_hash if user else None):
-        raise ApiError(401, "INVALID_CREDENTIALS", "Correo o contraseña incorrectos.")
-    ensure_account(user, db)
-    if PASSWORDS.check_needs_rehash(user.password_hash):
-        user.password_hash = hash_password(data.password)
+    from .auth import login_user
+    user = login_user(db, request, email, data.password)
     user.last_login_at = utcnow()
     db.flush()
     return {"user": serialize_v3_user(user, db), "tokens": _issue_v3_session(db, user, request, response)}
@@ -312,13 +309,13 @@ def logout(request: Request, data: RefreshInput | None = Body(default=None),
 
 
 @router.get("/users/me", response_model=AppUserResponse)
-def profile(user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
+def profile(user: User = Depends(request_user), db: Session = Depends(get_db, scope="function")):
     return serialize_v3_user(user, db)
 
 
 @router.patch("/users/me", response_model=AppUserResponse,
               description="Vincula o retira un avatar propio; no cambia rol, correo ni datos del padrón.")
-def update_profile(request: Request, data: ProfilePatch, user: User = Depends(current_user),
+def update_profile(request: Request, data: ProfilePatch, user: User = Depends(request_user),
                    db: Session = Depends(get_db, scope="function")):
     user = db.scalar(select(User).where(User.id == user.id).with_for_update()
                      .execution_options(populate_existing=True))

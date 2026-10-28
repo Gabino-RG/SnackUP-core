@@ -58,6 +58,70 @@ def test_concurrent_cancellations_without_expected_version_restore_once(app, cli
         assert db.scalar(select(func.count()).select_from(OrderTransition)) == 2
 
 
+def test_stock_return_can_progress_while_another_purchase_locks_business_counter(app, client, tokens):
+    require_postgres(app)
+    created = purchase(client, tokens, items=[{'productId': 'product-1', 'quantity': 2}], expectedTotal=71)
+    assert created.status_code == 201, created.text
+    def cancel():
+        peer = TestClient(app, base_url=app.state.settings.public_origin)
+        try:
+            return peer.post('/api/v1/orders/' + created.json()['id'] + '/cancel',
+                             headers=tokens['operator'], json={'reason': 'cannot_prepare'})
+        finally:
+            peer.close()
+    with app.state.db.sessions() as blocker, ThreadPoolExecutor(max_workers=1) as pool:
+        blocker.scalar(select(Business).where(Business.id == 'business-1').with_for_update(key_share=True))
+        future = pool.submit(cancel)
+        try:
+            # Would block under the old exclusive Business lock, despite this
+            # transaction not holding the Product needed by the cancellation.
+            response = future.result(timeout=5)
+        finally:
+            blocker.rollback()
+    assert response.status_code == 200, response.text
+    with app.state.db.sessions() as db:
+        assert db.get(Product, 'product-1').stock == 10
+        assert db.get(Order, created.json()['id']).stock_restored
+
+
+def test_waiting_product_does_not_serialize_unrelated_stock_at_business_counter(app, client, tokens):
+    require_postgres(app)
+    added = client.post('/api/v1/businesses/business-1/products', headers=tokens['operator'],
+                        json={'name': 'Otro producto', 'category': 'Bebida', 'price': 10, 'stock': 10})
+    assert added.status_code == 201, added.text
+    waiting = Event()
+    def observe(connection, cursor, statement, parameters, context, executemany):
+        if 'FROM products' in statement and 'FOR UPDATE' in statement:
+            waiting.set()
+    def send(command):
+        peer = TestClient(app, base_url=app.state.settings.public_origin)
+        try:
+            method, path, kwargs = command
+            return peer.request(method, path, **kwargs)
+        finally:
+            peer.close()
+    with app.state.db.sessions() as blocker, ThreadPoolExecutor(max_workers=2) as pool:
+        blocker.scalar(select(Product).where(Product.id == 'product-1').with_for_update())
+        event.listen(app.state.db.engine, 'before_cursor_execute', observe)
+        first = pool.submit(send, command(tokens['student']))
+        try:
+            assert waiting.wait(10), 'First purchase did not reach its stock lock'
+            second = pool.submit(send, command(tokens['other-student'], product=added.json()['id'], expected_total=10))
+            # The second product is free even though the first buyer is waiting.
+            completed = second.result(timeout=5)
+            assert completed.status_code == 201, completed.text
+            assert not first.done()
+        finally:
+            blocker.rollback()
+            event.remove(app.state.db.engine, 'before_cursor_execute', observe)
+        released = first.result(timeout=10)
+    assert released.status_code == 201, released.text
+    assert [completed.json()['orderNumber'], released.json()['orderNumber']] == [1, 2]
+    with app.state.db.sessions() as db:
+        assert db.get(Business, 'business-1').next_order_number == 3
+        assert db.get(Product, 'product-1').stock == db.get(Product, added.json()['id']).stock == 9
+
+
 def test_manual_pause_racing_stock_return_always_preserves_pause(app, client, tokens):
     require_postgres(app)
     created = purchase(client, tokens, items=[{'productId': 'product-1', 'quantity': 10}], expectedTotal=355)
@@ -82,7 +146,7 @@ def test_catalog_pause_and_cancellation_use_one_business_product_lock_order(app,
     cancellation_pid = []
 
     def interleave(connection, cursor, statement, parameters, context, executemany):
-        sql = statement.lower()
+        sql = statement.lower().replace("for no key update", "for update")
         if 'from products' in sql and 'products.id =' in sql and 'for update' in sql:
             # The catalog owns Business and has not yet locked Product.
             catalog_holds_business.set()
@@ -220,7 +284,7 @@ def test_waiting_mutation_observes_committed_session_family_revocation(app, clie
     waiting = Event()
 
     def observe_lock(connection, cursor, statement, parameters, context, executemany):
-        sql = statement.lower()
+        sql = statement.lower().replace("for no key update", "for update")
         if f'from {table}' in sql and 'for update' in sql:
             waiting.set()
 

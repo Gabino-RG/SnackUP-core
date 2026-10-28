@@ -5,6 +5,8 @@ The SQL outbox records business changes, and PushDelivery records each provider
 attempt separately. A provider accepting a request means ``sent`` here, not that
 the operating system displayed it or that the recipient read it.
 """
+from .auth import request_user
+
 import asyncio
 import base64
 from dataclasses import dataclass
@@ -146,7 +148,7 @@ def _device_json(device):
 @router.post("/users/me/devices", status_code=201, response_model=DeviceResponse,
              responses={200: {"model": DeviceResponse}}, tags=["V3 · Dispositivos"])
 def register_device(payload: DeviceRegistration, request: Request, response: Response,
-                    user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
+                    user: User = Depends(request_user), db: Session = Depends(get_db, scope="function")):
     token = canonical_token(payload, request.app.state.settings)
     # A Web Push installation cannot evade ownership by supplying different
     # encryption keys for an endpoint already registered by someone else.
@@ -193,7 +195,7 @@ def register_device(payload: DeviceRegistration, request: Request, response: Res
 
 
 @router.delete("/users/me/devices/{deviceId}", status_code=204, tags=["V3 · Dispositivos"])
-def delete_device(deviceId: str, request: Request, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
+def delete_device(deviceId: str, request: Request, user: User = Depends(request_user), db: Session = Depends(get_db, scope="function")):
     user = db.scalar(select(User).where(User.id == user.id).with_for_update().execution_options(populate_existing=True))
     verify_access_token(request.headers["authorization"].partition(" ")[2], db, request.app.state.settings)
     device = db.scalar(select(Device).where(Device.id == deviceId, Device.user_id == user.id).with_for_update())

@@ -3,15 +3,17 @@
 One business rating per completed order; one product review per purchased
 product/order. Neither endpoint accepts author, academic data, or aggregates.
 """
+from .auth import request_user
+
 from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Request
-from pydantic import BaseModel, ConfigDict, Field, StrictInt
+from pydantic import BaseModel, ConfigDict, Field, StrictInt, model_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .admin import create_student_review
+from .admin import create_review_record
 from .admin_models import Review
 from .auth import current_user, ensure_account, require_student
 from .common import iso, page_result, require
@@ -24,8 +26,21 @@ from .review_models import ProductReview
 router = APIRouter(tags=['Calificaciones V3'])
 DB = Annotated[Session, Depends(get_db, scope='function')]
 Student = Annotated[User, Depends(require_student)]
-Authenticated = Annotated[User, Depends(current_user)]
-Score = Annotated[StrictInt, Field(ge=1, le=5)]
+Authenticated = Annotated[User, Depends(request_user)]
+Score = Annotated[StrictInt, Field(ge=0, le=5)]
+
+
+class StarsInput(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    stars: Score
+    comment: str = Field(default='', max_length=1000)
+
+    @model_validator(mode='before')
+    @classmethod
+    def validate_stars(cls, value):
+        if isinstance(value, dict) and 'stars' in value and (type(value.get('stars')) is not int or not 0 <= value['stars'] <= 5):
+            raise ApiError(422, 'INVALID_RATING', 'Las estrellas deben ser un entero entre cero y cinco.')
+        return value
 
 
 class RatingInput(BaseModel):
@@ -52,6 +67,7 @@ class BusinessRatingResponse(BaseModel):
     id: str
     orderId: str
     businessId: str
+    stars: int
     rating: int
     comment: str
     foodRating: int | None
@@ -93,7 +109,7 @@ def product_review_dto(row):
 def business_rating_dto(row):
     # Only returned to the student who owns the order.
     return {'id': row.id, 'orderId': row.order_id, 'businessId': row.business_id,
-            'rating': row.rating, 'comment': row.comment, 'foodRating': row.food_rating,
+            'rating': row.rating, 'stars': row.rating, 'comment': row.comment, 'foodRating': row.food_rating,
             'serviceRating': row.service_rating, 'createdAt': iso(row.created_at),
             'updatedAt': iso(row.updated_at)}
 
@@ -121,10 +137,13 @@ def _touch_catalog(db, business):
 
 @router.post('/orders/{id}/rating', status_code=201, response_model=BusinessRatingResponse,
              operation_id='v3CreateBusinessRating')
-def rate_business(id: str, body: RatingInput, request: Request, db: DB, user: Student):
+def rate_business(id: str, body: StarsInput | RatingInput, request: Request, db: DB, user: Student):
     order = _completed_order(request, db, user, id)
     # Reuse the established academic attribution and uniqueness rules.
-    create_student_review(id, body.model_dump(exclude_none=True), user, db)
+    values = body.model_dump(exclude_none=True)
+    if isinstance(body, StarsInput):
+        values['rating'] = values.pop('stars')
+    create_review_record(id, values, user, db, minimum=0)
     row = db.scalar(select(Review).where(Review.order_id == id))
     business = db.scalar(select(Business).where(Business.id == order.business_id).with_for_update())
     current_user(request, db)
@@ -137,9 +156,11 @@ def rate_business(id: str, body: RatingInput, request: Request, db: DB, user: St
     return business_rating_dto(row)
 
 
-@router.post('/orders/{id}/reviews', status_code=201, response_model=ProductReviewsResponse,
+@router.post('/orders/{id}/reviews', status_code=201, response_model=ProductReviewsResponse | BusinessRatingResponse,
              operation_id='v3CreateProductReviews')
-def review_products(id: str, body: ProductReviewsInput, request: Request, db: DB, user: Student):
+def review_products(id: str, body: ProductReviewsInput | StarsInput, request: Request, db: DB, user: Student):
+    if isinstance(body, StarsInput):
+        return rate_business(id, body, request, db, user)
     order = _completed_order(request, db, user, id)
     ids = [item.productId for item in body.reviews]
     require(len(ids) == len(set(ids)), 422, 'DUPLICATE_PRODUCT', 'No repitas un producto en la misma reseña.')
@@ -180,3 +201,31 @@ def list_product_reviews(id: str, db: DB, user: Authenticated, page: int = Query
     require(user.role != 'business' or user.business_id == business.id, 403, 'FORBIDDEN')
     return page_result(db, select(ProductReview).where(ProductReview.product_id == id)
                        .order_by(ProductReview.created_at.desc(), ProductReview.id), product_review_dto, page, limit)
+
+
+class PublicBusinessRating(BaseModel):
+    id: str
+    businessId: str
+    stars: int | None
+    rating: int | None
+    comment: str
+    createdAt: datetime
+    updatedAt: datetime
+
+
+class BusinessRatingsPage(BaseModel):
+    data: list[PublicBusinessRating]
+    pagination: Pagination
+
+
+@router.get('/businesses/{id}/ratings', response_model=BusinessRatingsPage, operation_id='v32BusinessRatings')
+def public_business_ratings(id: str, db: DB, user: Authenticated, page: int = Query(1, ge=1),
+                            limit: int = Query(20, ge=1, le=100)):
+    business = db.get(Business, id)
+    require(business is not None and business.is_active, 404, 'BUSINESS_NOT_FOUND')
+    require(user.role != 'business' or user.business_id == id, 403, 'FORBIDDEN')
+    def public(row):
+        return {'id': row.id, 'businessId': id, 'stars': row.rating, 'rating': row.rating,
+                'comment': row.comment, 'createdAt': iso(row.created_at), 'updatedAt': iso(row.updated_at)}
+    return page_result(db, select(Review).where(Review.business_id == id)
+                       .order_by(Review.created_at.desc(), Review.id), public, page, limit)

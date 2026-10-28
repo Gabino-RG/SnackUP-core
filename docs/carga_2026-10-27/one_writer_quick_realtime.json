@@ -1,0 +1,242 @@
+{
+  "sourceWorkflow": "https://github.com/Gabino-RG/SnackUP-core/actions/runs/40616616418",
+  "artifactId": 12785163554,
+  "reports": {
+    "P8-idle.json": {
+      "scenario": "P8-idle",
+      "profile": "base",
+      "quick": true,
+      "commit": "ba24427ef191d3d3188ed358d0bab1d249e42c69",
+      "elapsedSeconds": 101.393747539,
+      "success": true,
+      "failures": {},
+      "details": {
+        "connections": 300,
+        "expectedEvents": 900,
+        "receivedEvents": 900,
+        "changes": 12,
+        "unexpectedDisconnects": 0,
+        "integrity": {
+          "negativeStock": 0,
+          "duplicateNumbers": 0,
+          "duplicateCodes": 0,
+          "duplicateKeys": 0,
+          "inventoryMismatch": 0,
+          "pendingOutbox": 0,
+          "deadlocks": 0,
+          "orders": 0
+        },
+        "resources": {
+          "workers": [
+            {
+              "pid": 14,
+              "peakRssMiB": 230.6640625,
+              "meanCpuPercent": 2.8501108483152136
+            },
+            {
+              "pid": 15,
+              "peakRssMiB": 230.63671875,
+              "meanCpuPercent": 2.7805959495758175
+            },
+            {
+              "pid": 16,
+              "peakRssMiB": 230.30859375,
+              "meanCpuPercent": 2.780595949575814
+            }
+          ],
+          "workerCpuRatio": 1.0250000000000015,
+          "peakContainersMiB": 1049.5,
+          "readingStages": []
+        }
+      },
+      "metrics": {
+        "toggle": {
+          "count": 12,
+          "p50Ms": 16.29738899998756,
+          "p95Ms": 27.928715000030024,
+          "p99Ms": 27.928715000030024,
+          "status": {
+            "200": 12
+          }
+        },
+        "product_event": {
+          "count": 900,
+          "p50Ms": 69.80514526367188,
+          "p95Ms": 164.12925720214844,
+          "p99Ms": 167.5572395324707,
+          "status": {}
+        }
+      }
+    },
+    "calibration.json": {
+      "argon2": {
+        "memoryKiB": 19456,
+        "timeCost": 2,
+        "parallelism": 1
+      },
+      "measurements": [
+        {
+          "concurrency": 1,
+          "verifications": 40,
+          "elapsedSeconds": 0.7149626169999976
+        },
+        {
+          "concurrency": 2,
+          "verifications": 40,
+          "elapsedSeconds": 0.38581127100002277
+        },
+        {
+          "concurrency": 4,
+          "verifications": 40,
+          "elapsedSeconds": 0.2790699059999895
+        }
+      ]
+    },
+    "P8.json": {
+      "scenario": "P8",
+      "profile": "base",
+      "quick": true,
+      "commit": "ba24427ef191d3d3188ed358d0bab1d249e42c69",
+      "elapsedSeconds": 65.056958329,
+      "success": true,
+      "failures": {},
+      "details": {
+        "connections": 300,
+        "expectedEvents": 2400,
+        "receivedEvents": 2400,
+        "changes": 32,
+        "unexpectedDisconnects": 0,
+        "integrity": {
+          "negativeStock": 0,
+          "duplicateNumbers": 0,
+          "duplicateCodes": 0,
+          "duplicateKeys": 0,
+          "inventoryMismatch": 0,
+          "pendingOutbox": 0,
+          "deadlocks": 0,
+          "orders": 0
+        },
+        "resources": {
+          "workers": [
+            {
+              "pid": 14,
+              "peakRssMiB": 213.2890625,
+              "meanCpuPercent": 4.111257720684906
+            },
+            {
+              "pid": 15,
+              "peakRssMiB": 211.63671875,
+              "meanCpuPercent": 5.000712516025389
+            },
+            {
+              "pid": 16,
+              "peakRssMiB": 211.05859375,
+              "meanCpuPercent": 4.249617355515644
+            }
+          ],
+          "workerCpuRatio": 1.2163461538461535,
+          "peakContainersMiB": 825.4,
+          "readingStages": []
+        }
+      },
+      "metrics": {
+        "toggle": {
+          "count": 32,
+          "p50Ms": 16.01269999997612,
+          "p95Ms": 61.45028899999261,
+          "p99Ms": 81.30174599997986,
+          "status": {
+            "200": 32
+          }
+        },
+        "product_event": {
+          "count": 2400,
+          "p50Ms": 92.54121780395508,
+          "p95Ms": 188.49945068359375,
+          "p99Ms": 262.06398010253906,
+          "status": {}
+        }
+      }
+    },
+    "P8-1000.json": {
+      "scenario": "P8-1000",
+      "profile": "base",
+      "quick": true,
+      "commit": "ba24427ef191d3d3188ed358d0bab1d249e42c69",
+      "elapsedSeconds": 56.79100112399996,
+      "success": true,
+      "failures": {},
+      "details": {
+        "connections": 1000,
+        "expectedEvents": 8000,
+        "receivedEvents": 8000,
+        "changes": 32,
+        "unexpectedDisconnects": 0,
+        "integrity": {
+          "negativeStock": 0,
+          "duplicateNumbers": 0,
+          "duplicateCodes": 0,
+          "duplicateKeys": 0,
+          "inventoryMismatch": 0,
+          "pendingOutbox": 0,
+          "deadlocks": 0,
+          "orders": 0
+        },
+        "resources": {
+          "workers": [
+            {
+              "pid": 14,
+              "peakRssMiB": 230.5390625,
+              "meanCpuPercent": 12.489080062752954
+            },
+            {
+              "pid": 15,
+              "peakRssMiB": 229.26171875,
+              "meanCpuPercent": 12.756321433567921
+            },
+            {
+              "pid": 16,
+              "peakRssMiB": 228.43359375,
+              "meanCpuPercent": 13.041378895770558
+            }
+          ],
+          "workerCpuRatio": 1.0442225392296718,
+          "peakContainersMiB": 1046.7,
+          "readingStages": []
+        }
+      },
+      "metrics": {
+        "toggle": {
+          "count": 32,
+          "p50Ms": 18.291013999998995,
+          "p95Ms": 248.00204999996822,
+          "p99Ms": 296.48744999997234,
+          "status": {
+            "200": 32
+          }
+        },
+        "product_event": {
+          "count": 8000,
+          "p50Ms": 129.81486320495605,
+          "p95Ms": 402.9078483581543,
+          "p99Ms": 564.6612644195557,
+          "status": {}
+        }
+      }
+    },
+    "environment.json": {
+      "commit": "ba24427ef191d3d3188ed358d0bab1d249e42c69",
+      "profile": "base",
+      "runnerCpu": 4,
+      "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
+      "generatorSharesRunner": true,
+      "generatorSharesCpu": true,
+      "cpuModel": "AMD EPYC 9V74 80-Core Processor",
+      "serverCpu": 4,
+      "postgres": "17-alpine",
+      "fixtureStudents": 1000,
+      "businesses": 4,
+      "quick": true
+    }
+  }
+}

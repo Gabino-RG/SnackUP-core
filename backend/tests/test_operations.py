@@ -17,7 +17,7 @@ from fastapi.testclient import TestClient
 from PIL import Image
 from sqlalchemy import create_engine, func, select, text
 
-from snackup.auth import current_user
+from snackup.auth import request_user
 from snackup.config import Settings
 from snackup.db import Base, OutboxEvent, get_db
 from snackup.errors import ApiError
@@ -72,7 +72,7 @@ def operations_env(tmp_path, monkeypatch):
             raise ApiError(401, "UNAUTHENTICATED")
         return user
 
-    app.dependency_overrides[current_user] = test_user
+    app.dependency_overrides[request_user] = test_user
     # Production services recheck authentication after acquiring SQL locks.
     # This isolated domain fixture replaces that same lookup explicitly; the
     # integration/V3 suites exercise real access tokens and revocation races.

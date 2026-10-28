@@ -1,4 +1,6 @@
 """Owned media with decoded-image validation and transaction-aware file cleanup."""
+from .auth import request_user
+
 import io
 from pathlib import Path
 from typing import Annotated, Literal
@@ -7,7 +9,7 @@ import warnings
 from fastapi import APIRouter, Depends, File, Form, Request, Response, UploadFile
 from PIL import Image, ImageOps, UnidentifiedImageError
 from pydantic import BaseModel
-from sqlalchemy import or_, select
+from sqlalchemy import or_, or_, select
 from sqlalchemy.orm import Session
 
 from .auth import current_user, ensure_account
@@ -18,7 +20,7 @@ from .operation_models import Business, MediaFile, Product
 
 router = APIRouter(tags=['Medios V3'])
 DB = Annotated[Session, Depends(get_db, scope='function')]
-Authenticated = Annotated[User, Depends(current_user)]
+Authenticated = Annotated[User, Depends(request_user)]
 Purpose = Literal['product', 'business', 'avatar', 'review']
 MAX_BYTES = 5 * 1024 * 1024
 FORMATS = {'JPEG': 'image/jpeg', 'PNG': 'image/png', 'WEBP': 'image/webp'}
@@ -127,7 +129,7 @@ def delete_media(id: str, request: Request, db: DB, user: Authenticated):
         return Response(status_code=204)
     url = request.app.state.settings.public_origin + '/media/' + row.filename
     used = (db.scalar(select(Product.id).where(Product.image_url == url, Product.is_deleted.is_(False)).limit(1))
-            or db.scalar(select(Business.id).where(Business.image_url == url).limit(1))
+            or db.scalar(select(Business.id).where(or_(Business.image_url == url, Business.cover_image_url == url)).limit(1))
             or db.scalar(select(User.id).where(User.avatar_url == url).limit(1)))
     require(used is None, 409, 'MEDIA_IN_USE', 'Desvincula la imagen del recurso antes de eliminarla.')
     row.deleted_at = utcnow()

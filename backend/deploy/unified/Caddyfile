@@ -1,0 +1,18 @@
+{
+	email {$TLS_ACME_EMAIL}
+	http_port 8080
+	https_port 8443
+	admin off
+}
+import routes.caddy
+
+{$SNACKUP_DOMAIN} {
+	import snackup_routes
+	# No access log: reset links and authentication material stay out of logs.
+}
+
+# No port publication. Checks the actual proxy and both static applications.
+http://:8081 {
+	bind 127.0.0.1
+	import snackup_routes
+}

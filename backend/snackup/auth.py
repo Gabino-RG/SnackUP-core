@@ -46,7 +46,7 @@ def token_hash(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
-def ensure_account(user: User, db: Session) -> None:
+def ensure_account_state(user, record, business_active=True):
     if user.approval_status == "pending":
         raise ApiError(403, "ACCESS_PENDING", "La solicitud está pendiente de autorización.")
     if user.approval_status == "rejected":
@@ -55,27 +55,26 @@ def ensure_account(user: User, db: Session) -> None:
         raise ApiError(403, "ACCESS_REVOKED", "El acceso está suspendido.")
     if not user.email_verified:
         raise ApiError(403, "EMAIL_NOT_VERIFIED", "Confirma tu correo antes de iniciar sesión.")
-    if user.role == "business":
-        # Avoid a circular model import. Businesses are registered at app creation.
-        business_table = User.metadata.tables.get("businesses")
-        business = None if not user.business_id or business_table is None else db.execute(
-            select(business_table.c.id).where(business_table.c.id == user.business_id,
-                                             business_table.c.is_active.is_(True))
-        ).first()
-        if business is None:
-            raise ApiError(403, "ACCESS_REVOKED", "El local asignado no está activo.")
-    record = db.scalar(select(AcademicRecord).where(AcademicRecord.email == user.email)
-                       .execution_options(populate_existing=True))
-    # A missing staff roster does not remove an explicitly granted SnackUP role.
-    # Once an authoritative record exists, its inactivity blocks every role.
-    # Refresh an already-loaded record too: writes recheck after locking User.
+    if user.role == "business" and not business_active:
+        raise ApiError(403, "ACCESS_REVOKED", "El local asignado no está activo.")
     if record is not None and not record.is_active:
         raise ApiError(403, "ACCESS_REVOKED", "El padrón institucional no autoriza el acceso.")
     if user.role == "user" and (record is None or record.kind != "student"):
         raise ApiError(403, "ACCESS_REVOKED", "El padrón institucional no autoriza el acceso.")
 
 
-def verify_access_token(token: str, db: Session, settings) -> User:
+def ensure_account(user: User, db: Session) -> None:
+    record = db.scalar(select(AcademicRecord).where(AcademicRecord.email == user.email)
+                       .execution_options(populate_existing=True))
+    active = True
+    if user.role == "business":
+        from .operation_models import Business
+        active = bool(db.scalar(select(Business.id).where(Business.id == user.business_id,
+                                                          Business.is_active.is_(True))))
+    ensure_account_state(user, record, active)
+
+
+def decode_access_token(token, settings):
     try:
         claims = jwt.decode(token, settings.secret_key, algorithms=["HS256"],
                             issuer=JWT_ISSUER, audience=JWT_AUDIENCE,
@@ -84,18 +83,64 @@ def verify_access_token(token: str, db: Session, settings) -> User:
         raise ApiError(401, "TOKEN_EXPIRED", "La sesión requiere renovación.") from None
     except jwt.InvalidTokenError:
         raise ApiError(401, "UNAUTHENTICATED", "La sesión no es válida.") from None
-    sid = claims.get("sid")
-    if not isinstance(sid, str) or not isinstance(claims.get("sub"), str):
+    if not isinstance(claims.get("sid"), str) or not isinstance(claims.get("sub"), str):
         raise ApiError(401, "UNAUTHENTICATED", "La sesión no es válida.")
-    # Revalidation after waiting on a write lock must observe a logout or an
-    # administrative revocation committed while this Session was waiting.
-    session = db.get(RefreshSession, sid, populate_existing=True)
-    user = db.get(User, claims["sub"], populate_existing=True)
-    if (session is None or user is None or session.user_id != user.id or
-            session.revoked_at is not None or as_utc(session.expires_at) <= utcnow() or
+    return claims
+
+
+def verify_access_tokens(tokens, db, settings):
+    """Fresh authorization in one joined SELECT per batch, without a stale cache."""
+    from .operation_models import Business
+    claims, result = {}, {}
+    for token in tokens:
+        try:
+            claims[token] = decode_access_token(token, settings)
+        except ApiError:
+            result[token] = None
+    if not claims:
+        return result
+    rows = db.execute(select(RefreshSession, User, AcademicRecord, Business.is_active)
+        .join(User, User.id == RefreshSession.user_id)
+        .outerjoin(AcademicRecord, AcademicRecord.email == User.email)
+        .outerjoin(Business, Business.id == User.business_id)
+        .where(RefreshSession.id.in_({c['sid'] for c in claims.values()})))
+    by_session = {session.id: (session, user, record, active) for session, user, record, active in rows}
+    now = utcnow()
+    for token, c in claims.items():
+        value = by_session.get(c['sid'])
+        result[token] = None
+        if value is None:
+            continue
+        session, user, record, active = value
+        if (user.id != c['sub'] or session.revoked_at is not None or as_utc(session.expires_at) <= now
+                or c['ver'] != user.auth_version or session.auth_version != user.auth_version):
+            continue
+        try:
+            ensure_account_state(user, record, active)
+            result[token] = user
+        except ApiError:
+            pass
+    return result
+
+def verify_access_token(token: str, db: Session, settings) -> User:
+    claims = decode_access_token(token, settings)
+    sid = claims['sid']
+    # A joined, fresh snapshot avoids three round trips per authenticated read.
+    # populate_existing also refreshes objects loaded before a write-lock wait.
+    from .operation_models import Business
+    row = db.execute(select(RefreshSession, User, AcademicRecord, Business.is_active)
+        .join(User, User.id == RefreshSession.user_id)
+        .outerjoin(AcademicRecord, AcademicRecord.email == User.email)
+        .outerjoin(Business, Business.id == User.business_id)
+        .where(RefreshSession.id == sid, User.id == claims['sub'])
+        .execution_options(populate_existing=True)).first()
+    if row is None:
+        raise ApiError(401, "UNAUTHENTICATED", "La sesión fue revocada.")
+    session, user, record, active = row
+    if (session.revoked_at is not None or as_utc(session.expires_at) <= utcnow() or
             claims.get("ver") != user.auth_version or session.auth_version != user.auth_version):
         raise ApiError(401, "UNAUTHENTICATED", "La sesión fue revocada.")
-    ensure_account(user, db)
+    ensure_account_state(user, record, active)
     return user
 
 
@@ -108,7 +153,44 @@ def current_user(request: Request, db: Session = Depends(get_db, scope="function
     return verify_access_token(token, db, request.app.state.settings)
 
 
-def require_admin(user: User = Depends(current_user)) -> User:
+def request_user(request: Request, db: Session = Depends(get_db, scope="function"),
+                 credentials: HTTPAuthorizationCredentials | None = Security(BEARER)) -> User:
+    """The dependency returns its connection before FastAPI schedules the handler.
+
+    Objects stay attached (expire_on_commit=False). Write handlers still call
+    current_user after their locks; that function never ends their transaction.
+    """
+    user = current_user(request, db, credentials)
+    db.commit()
+    return user
+
+
+def login_user(db: Session, request: Request, email: str, password: str) -> User:
+    user = db.scalar(select(User).where(User.email == email))
+    snapshot = (user.id, user.password_hash, user.auth_version) if user else None
+    db.commit()  # No connection or row lock during Argon2, including its queue.
+    def verify():
+        matched = password_matches(password, snapshot[1] if snapshot else None)
+        replacement = (hash_password(password) if matched and PASSWORDS.check_needs_rehash(snapshot[1]) else None)
+        return matched, replacement
+    # Fixed hash threads also bound allocator arenas: a semaphore on FastAPI's
+    # rotating worker threads allowed each thread to retain an Argon2 buffer.
+    matched, replacement = request.app.state.password_executor.submit(verify).result()
+    if not matched:
+        raise ApiError(401, "INVALID_CREDENTIALS", "Correo o contraseña incorrectos.")
+    user = db.scalar(select(User).where(User.id == snapshot[0]).with_for_update(key_share=True)
+                     .execution_options(populate_existing=True))
+    if user is None or (user.password_hash, user.auth_version) != snapshot[1:]:
+        raise ApiError(401, "INVALID_CREDENTIALS", "Correo o contraseña incorrectos.")
+    # Read related authorization AFTER a possible row-lock wait. Joining it
+    # into the locking SELECT could retain a pre-wait PostgreSQL snapshot.
+    ensure_account(user, db)
+    if replacement:
+        user.password_hash = replacement
+    return user
+
+
+def require_admin(user: User = Depends(request_user)) -> User:
     if user.role != "admin":
         raise ApiError(403, "FORBIDDEN", "Se requiere acceso administrativo.")
     return user
@@ -120,13 +202,13 @@ def require_master(user: User = Depends(require_admin)) -> User:
     return user
 
 
-def require_business(user: User = Depends(current_user)) -> User:
+def require_business(user: User = Depends(request_user)) -> User:
     if user.role != "business" or not user.business_id:
         raise ApiError(403, "FORBIDDEN", "Se requiere la cuenta del local.")
     return user
 
 
-def require_student(user: User = Depends(current_user)) -> User:
+def require_student(user: User = Depends(request_user)) -> User:
     if user.role != "user":
         raise ApiError(403, "FORBIDDEN", "Se requiere una cuenta de estudiante.")
     return user

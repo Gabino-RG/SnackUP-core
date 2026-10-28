@@ -19,11 +19,12 @@ from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Body, Depends, File, Form, Header, Query, Request, Response, UploadFile
 from PIL import Image, UnidentifiedImageError
 from pydantic import BaseModel, ConfigDict, Field, StrictInt
-from sqlalchemy import and_, case, func, or_, select
+from sqlalchemy import and_, case, func, or_, select, text, update
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, lazyload
+from sqlalchemy.orm.attributes import set_committed_value
 
-from .auth import current_user, ensure_account, require_business, require_student
+from .auth import as_utc, current_user, require_business, require_student
 from .common import iso, page_result, require, validate_body, version_check
 from .db import emit_event, get_db, new_id, utcnow
 from .errors import ApiError
@@ -127,6 +128,8 @@ def _product_event(db: Session, product: Product) -> None:
 
 
 def _product_fields(db: Session, b: Business, data: dict, request: Request, current: Product | None = None) -> dict:
+    from .v32_services import enforce_featured_limit
+    enforce_featured_limit(db, b.id, data["isFeatured"], current.id if current else None)
     price = Decimal(str(data["price"]))
     require(price.is_finite() and price == price.quantize(Decimal("0.01")),
             422, "INVALID_PRICE", "El precio admite como máximo dos decimales.")
@@ -186,6 +189,9 @@ def set_business_open(id: str, db: DB, user: Operator, body: dict = Body(...)):
     validate_body("setBusinessOpen", body)
     b = _business(db, user, id, True)
     version_check(b, body["expectedVersion"])
+    from .v32_services import notify_business_closed
+    if b.is_open and not body["isOpen"]:
+        notify_business_closed(db, b)
     b.is_open = body["isOpen"]
     _touch(b)
     emit_event(db, f"business:{b.id}", "business.updated", {"id": b.id, "version": b.version})
@@ -213,7 +219,7 @@ def get_product(id: str, db: DB, user: Operator):
 @router.post("/businesses/{id}/products", status_code=201)
 def create_product(id: str, request: Request, db: DB, user: Operator, body: dict = Body(...)):
     validate_body("createProduct", body)
-    b = _business(db, user, id)
+    b = _business(db, user, id, True)
     p = Product(business_id=b.id, **_product_fields(db, b, body, request))
     db.add(p)
     db.flush()
@@ -224,6 +230,7 @@ def create_product(id: str, request: Request, db: DB, user: Operator, body: dict
 @router.patch("/products/{id}")
 def update_product(id: str, request: Request, db: DB, user: Operator, body: dict = Body(...)):
     validate_body("updateProduct", body)
+    _business(db, user, user.business_id, True)
     p = _product(db, user, id, True)
     version_check(p, body["expectedVersion"])
     b = _business(db, user, p.business_id)
@@ -359,6 +366,7 @@ def sales_summary(id: str, db: DB, user: Operator,
 
 def _restore_stock(db: Session, order: Order, request: Request) -> None:
     if order.stock_restored:
+        current_user(request, db)
         return
     quantities: dict[str, int] = {}
     for item in order.items:
@@ -385,7 +393,7 @@ def transition(db: Session, user: User, id: str, action: str, body: dict, reques
         validate_body("acceptOrder" if student else operation_ids[action], body)
     # A request authenticated before waiting must observe a committed account
     # or refresh-family revocation before changing state.
-    db.scalar(select(User).where(User.id == user.id).with_for_update().execution_options(populate_existing=True))
+    db.scalar(select(User).where(User.id == user.id).with_for_update(key_share=True).execution_options(populate_existing=True))
     user = current_user(request, db)
     require_student(user) if student else require_business(user)
     order = _order(db, user, id, student=student, lock=True)
@@ -396,6 +404,17 @@ def transition(db: Session, user: User, id: str, action: str, body: dict, reques
         version_check(order, body["expectedVersion"])
     allowed = {"accept": ("pending",), "start": ("accepted",), "ready": ("preparing",),
                "complete": ("ready",), "cancel": ("pending",) if student else ("pending", "accepted", "preparing")}
+    not_picked_up = canonical and not student and action == "cancel" and body.get("reason") == "not_picked_up"
+    if not_picked_up:
+        require(order.status == "ready", 400, "INVALID_STATUS_TRANSITION")
+        business = db.scalar(select(Business).where(Business.id == order.business_id).with_for_update()
+                             .execution_options(populate_existing=True))
+        current_user(request, db)
+        require(order.ready_at is not None, 422, "READY_TIME_UNAVAILABLE")
+        base_time = max(as_utc(order.ready_at), as_utc(order.scheduled_pickup_time or order.ready_at))
+        require(utcnow() >= base_time + timedelta(minutes=business.pickup_timeout_minutes),
+                422, "PICKUP_TIMEOUT_NOT_REACHED", "Todavía no vence el plazo de recogida.")
+        allowed["cancel"] = ("ready",)
     require(order.status in allowed[action], 400 if canonical else 409, "INVALID_STATUS_TRANSITION",
             "La acción no corresponde al estado actual.")
     new_status = {"accept": "accepted", "start": "preparing", "ready": "ready", "complete": "completed", "cancel": "cancelled"}[action]
@@ -410,27 +429,34 @@ def transition(db: Session, user: User, id: str, action: str, body: dict, reques
                            audit={"actor_id": user.id, "action": "pickup.verification_failed",
                                   "target_type": "order", "target_id": order.id,
                                   "data": {"method": body["method"]}})
+        from .v32_services import consume_voucher
+        consume_voucher(db, order, utcnow())
         order.verification_method, order.verified_by = body["method"], user.id
         order.verified_at = utcnow()
     if action == "cancel":
         if not student:
             require(body["reason"] != "other" or bool(body.get("notes", "").strip()), 422,
                     "INVALID_CANCEL_REASON", "Describe el motivo de cancelación.")
-        # Catalog edits and purchases acquire Business before Products. Follow
-        # that order here too: PostgreSQL may recheck the order's foreign key
-        # after an autoflush, so holding Product while waiting on Business can
-        # otherwise deadlock a catalog edit. No order attributes are dirtied
-        # until the inventory locks and final authorization have completed.
-        db.scalar(select(Business).where(Business.id == order.business_id).with_for_update()
+        # Keep Business before Products to exclude catalog FOR UPDATE edits.
+        # Cancellation does not change the business: KEY SHARE is sufficient
+        # and can coexist with purchases' NO KEY UPDATE counter lock. Product
+        # locks still serialize stock changes; Order prevents double returns.
+        db.scalar(select(Business).where(Business.id == order.business_id).with_for_update(read=True, key_share=True)
                   .execution_options(populate_existing=True))
-        current_user(request, db)
-        _restore_stock(db, order, request)
+        if not not_picked_up:
+            # Revalidates after the final Product wait, before changing stock.
+            _restore_stock(db, order, request)
+        else:
+            current_user(request, db)
         order.cancel_reason = "student_cancelled" if student and not canonical else body["reason"]
         order.cancel_notes = None if student and not canonical else body.get("notes", "").strip() or None
         order.cancelled_by = user.id
         order.cancelled_by_role = "ALUMNO" if student else "COCINA"
     previous = order.status
     order.status = new_status
+    if action == "cancel" and body.get("voucherNotRedeemed"):
+        from .v32_services import release_voucher
+        release_voucher(db, order, user)
     _touch(order)
     setattr(order, new_status + "_at", order.updated_at)
     db.add(OrderTransition(order_id=order.id, actor_id=user.id, from_status=previous,
@@ -439,7 +465,13 @@ def transition(db: Session, user: User, id: str, action: str, body: dict, reques
                            payload={"reason": order.cancel_reason} if action == "cancel" else None))
     _order_event(db, order)
     db.flush()
-    return order if canonical else order_dict(order, db, include_pickup=student)
+    if canonical:
+        return order
+    result = order_dict(order, db, include_pickup=student)
+    # Release contended rows in the handler thread, before FastAPI schedules
+    # response serialization and dependency teardown on other threads.
+    db.commit()
+    return result
 
 
 @router.post("/orders/{id}/accept")
@@ -530,27 +562,45 @@ def create_order_transaction(body, request: Request, db: Session, user: User,
                                             separators=(",", ":"), default=str).encode()).hexdigest()
     # Serializes retries by the same user even when the idempotency row does not yet exist.
     # PostgreSQL READ COMMITTED sees the first committed result after waiting on this lock.
-    db.scalar(select(User).where(User.id == user.id).with_for_update().execution_options(populate_existing=True))
+    db.scalar(select(User).where(User.id == user.id).with_for_update(key_share=True).execution_options(populate_existing=True))
     user = current_user(request, db)
     require(user.is_active and user.role == "user" and user.email_verified and user.approval_status == "approved",
             403, "FORBIDDEN", "La cuenta no está autorizada para comprar.")
-    ensure_account(user, db)
     previous = db.scalar(select(IdempotencyRecord).where(IdempotencyRecord.user_id == user.id,
                                                          IdempotencyRecord.key == idempotency_key))
     if previous:
         require(hmac.compare_digest(previous.payload_hash, payload_hash), 409, "IDEMPOTENCY_CONFLICT",
                 "La clave ya se utilizó con otro pedido.")
-        return previous.response_json
+        result = previous.response_json
+        db.commit()
+        return result
     require(len({item.productId for item in body.items}) == len(body.items), 400 if canonical else 422,
             "INVALID_ITEMS" if canonical else "DUPLICATE_PRODUCT",
             "Agrupa las cantidades de cada producto en un solo renglón.")
-    b = db.scalar(select(Business).where(Business.id == body.businessId).with_for_update()
+    # Roster imports take this same User lock, so attribution is stable while
+    # we hold it. Read it before locking the contended business/products.
+    academic = db.scalar(select(AcademicRecord).where(AcademicRecord.email == user.email,
+                         AcademicRecord.kind == "student", AcademicRecord.is_active.is_(True)))
+    # Exclude catalog FOR UPDATE edits without queuing purchases/cancellations
+    # on the business while a purchase is still waiting for its products.
+    b = db.scalar(select(Business).where(Business.id == body.businessId).with_for_update(read=True, key_share=True)
                   .execution_options(populate_existing=True))
     require(b is not None and b.is_active, 404, "NOT_FOUND", "Local no encontrado.")
+    from .v32_services import closing_at, validate_schedule
     require(b.is_open, 409, "BUSINESS_CLOSED", "El local no está recibiendo pedidos.")
     product_ids = sorted(item.productId for item in body.items)
     products = db.scalars(select(Product).where(Product.id.in_(product_ids), Product.business_id == b.id)
                           .order_by(Product.id).with_for_update().execution_options(populate_existing=True)).all()
+    # Allocate only after the stock locks, using the current stored value rather
+    # than the earlier shared-lock snapshot. UPDATE takes NO KEY UPDATE, which
+    # coexists with the other transactions' KEY SHARE catalog guards. Failure
+    # anywhere below rolls the number/version back with the whole reservation.
+    counter = db.execute(update(Business).where(Business.id == b.id).values(
+        next_order_number=Business.next_order_number + 1, version=Business.version + 1,
+        updated_at=utcnow()).returning(Business.next_order_number, Business.version, Business.updated_at)
+        .execution_options(synchronize_session=False)).one()
+    for attribute in ('next_order_number', 'version', 'updated_at'):
+        set_committed_value(b, attribute, getattr(counter, attribute))
     current_user(request, db)
     by_id = {p.id: p for p in products}
     invalid_ids, unavailable_ids = [], []
@@ -575,20 +625,49 @@ def create_order_transaction(body, request: Request, db: Session, user: User,
     if canonical and total != body.expectedTotal:
         raise ApiError(409, "PRICE_CHANGED", "El precio cambió. Revisa el total antes de confirmar.",
                        {"currentTotal": float(total)})
+    # Validate time after acquiring every row lock: contention may cross closing
+    # time or shorten the pickup lead time. Rejection must leave no reservations.
     now = utcnow()
-    academic = db.scalar(select(AcademicRecord).where(AcademicRecord.email == user.email,
-                         AcademicRecord.kind == "student", AcademicRecord.is_active.is_(True)))
-    values = dict(business_id=b.id, student_id=user.id, order_number=b.next_order_number,
+    day = now.astimezone(ZoneInfo(b.timezone)).date()
+    deadline = closing_at(b, day)
+    require(deadline is None or deadline > now or b.last_auto_close_date == day,
+            409, "BUSINESS_CLOSED", "Ya pasó la hora de cierre del local.")
+    scheduled = validate_schedule(b, body.scheduledPickupTime if canonical else None, now)
+    values = dict(business_id=b.id, student_id=user.id, order_number=b.next_order_number - 1,
                   customer_name=user.display_name, customer_institutional_id=academic.institutional_id if academic else None,
                   total=total, subtotal=total, created_at=now, updated_at=now,
                   version=1, status="pending", payment_method=body.paymentMethod if canonical else "cash",
                   payment_status="pay_at_pickup" if not canonical or body.paymentMethod == "Efectivo" else "unverified",
-                  stock_restored=False)
-    if canonical:
+                  stock_restored=False, scheduled_pickup_time=scheduled)
+    if canonical and db.get_bind().dialect.name == 'postgresql':
+        from sqlalchemy.dialects.postgresql import insert
+        # One statement replaces SAVEPOINT/INSERT/RELEASE for the only expected
+        # conflict. The partial unique index still arbitrates across businesses;
+        # other integrity failures abort the outer transaction normally.
+        for _ in range(8):
+            statement = insert(Order).values(id=new_id(), pickup_code=generate_pickup_code(), **values)
+            statement = statement.on_conflict_do_nothing(index_elements=[Order.pickup_code],
+                index_where=text('length(pickup_code) = 6')).returning(Order).options(lazyload(Order.items))
+            order = db.scalars(statement).first()
+            if order is not None:
+                # Newly inserted rows cannot have items yet. Avoid a SELECT and
+                # an early autoflush of the business/outbox when appending them.
+                set_committed_value(order, 'items', [])
+                break
+        else:
+            raise ApiError(503, "CODE_GENERATION_UNAVAILABLE", "No fue posible crear el pedido. Intenta nuevamente.")
+    elif canonical:
         # A savepoint confines a rare code collision without consuming inventory,
         # the per-local number, or the idempotency key in the outer transaction.
+        # sqlite3 legacy mode does not BEGIN for SELECT/SAVEPOINT. Without this
+        # guard a voucher rejection could leave the newly inserted order behind.
+        # PostgreSQL already starts a real transaction and needs no workaround.
+        if db.get_bind().dialect.name == 'sqlite':
+            connection = db.connection()
+            if not connection.connection.driver_connection.in_transaction:
+                connection.exec_driver_sql('BEGIN')
         for _ in range(8):
-            order = Order(id=new_id(), pickup_code=generate_pickup_code(), **values)
+            order = Order(id=new_id(), pickup_code=generate_pickup_code(), items=[], **values)
             try:
                 with db.begin_nested():
                     db.add(order)
@@ -600,26 +679,32 @@ def create_order_transaction(body, request: Request, db: Session, user: User,
         else:
             raise ApiError(503, "CODE_GENERATION_UNAVAILABLE", "No fue posible crear el pedido. Intenta nuevamente.")
     else:
-        order = Order(id=new_id(), pickup_code=f"{secrets.randbelow(100_000_000):08d}", **values)
+        order = Order(id=new_id(), pickup_code=f"{secrets.randbelow(100_000_000):08d}", items=[], **values)
         db.add(order)
-    b.next_order_number += 1
+    if canonical and body.paymentMethod == "ValeComida":
+        from .v32_services import reserve_voucher
+        reserve_voucher(db, order, now)
     # totalOrders is part of the public Business DTO. Its count changes only
-    # for a committed new order, so bump the same resource version atomically.
-    _touch(b)
+    # for a committed new order; the atomic counter UPDATE bumped its version.
     emit_event(db, f"business:{b.id}", "business.updated", {
         "id": b.id, "version": b.version, "updatedAt": iso(b.updated_at),
     })
     for item in body.items:
         p = by_id[item.productId]
         reserved = item.quantity if p.stock is not None else 0
-        order.items.append(OrderItem(product_id=p.id, name=p.name, quantity=item.quantity, price=p.price,
+        order.items.append(OrderItem(id=new_id(), product_id=p.id, name=p.name, quantity=item.quantity, price=p.price,
                                       notes=item.notes.strip(), reserved_quantity=reserved))
         if reserved:
             p.stock -= reserved
             p.is_available = effective_availability(p)
             _touch(p)
             _product_event(db, p)
-    db.flush()
+    if not canonical:
+        # Legacy Order itself has not been inserted yet; persist it before
+        # adding audit/idempotency rows whose FKs do not have ORM relationships.
+        db.flush()
+    # Canonical Order is already inserted. Explicit item IDs let us serialize
+    # the response and flush all four outbox records together, once, below.
     result = serializer(order, db, user) if serializer else order_dict(order, db, include_pickup=True)
     db.add(IdempotencyRecord(user_id=user.id, key=idempotency_key, payload_hash=payload_hash,
                              order_id=order.id, response_json=result))
@@ -627,6 +712,10 @@ def create_order_transaction(body, request: Request, db: Session, user: User,
                            action="created", actor_role="ALUMNO"))
     _order_event(db, order, created=True)
     db.flush()
+    # Persist the complete reservation and idempotency response before replying.
+    # Deferring COMMIT to dependency cleanup kept the hot product/business locks
+    # across two thread-pool handoffs under sustained traffic.
+    db.commit()
     return result
 
 

@@ -152,7 +152,8 @@ def test_populated_v1_upgrade_preserves_all_historical_columns_and_constraints(m
     command.check(config)
     current = sa.MetaData()
     current.reflect(bind=engine)
-    assert {'devices', 'push_deliveries', 'product_reviews', 'account_audit_events'} <= current.tables.keys()
+    assert {'devices', 'push_deliveries', 'product_reviews', 'account_audit_events',
+            'cart_items', 'favorites', 'meal_voucher_uses', 'chats', 'chat_messages', 'chat_closures'} <= current.tables.keys()
     inspector = sa.inspect(engine)
     assert isinstance(next(c['type'] for c in inspector.get_columns('orders') if c['name'] == 'id'), sa.Text)
     assert any(index['name'] == 'uq_orders_v3_pickup_code' and index['unique']
@@ -182,15 +183,24 @@ def test_populated_v1_upgrade_preserves_all_historical_columns_and_constraints(m
         idempotency = connection.execute(sa.select(current.tables['idempotency_records'])).mappings().one()
         assert idempotency['updated_at'] == idempotency['created_at'] and idempotency['expires_at'] is None
         assert connection.execute(sa.select(current.tables['outbox_events'].c.publish_attempts)).scalar_one() == 0
+        business = connection.execute(sa.select(current.tables['businesses'])).mappings().one()
+        assert business['pickup_timeout_minutes'] == 30 and business['auto_close_enabled'] is False
+        assert business['cover_image_url'] is None and business['last_auto_close_date'] is None
         if engine.dialect.name == 'sqlite':
             assert connection.exec_driver_sql('PRAGMA foreign_key_check').all() == []
     # These checks were unnamed in 0001: SQLite's batch recreation must retain them.
     for table, values in [('products', {'stock': -1}), ('products', {'is_available': True}),
                           ('products', {'preparation_minutes': -1}), ('products', {'calories': -1}),
-                          ('businesses', {'version': 0}), ('orders', {'status': 'made_up'}),
+                          ('businesses', {'version': 0}), ('businesses', {'pickup_timeout_minutes': 4}),
+                          ('businesses', {'auto_close_enabled': True}), ('reviews', {'rating': -1}),
+                          ('orders', {'status': 'made_up'}),
                           ('order_items', {'reserved_quantity': 2})]:
         with pytest.raises(IntegrityError), engine.begin() as connection:
             connection.execute(current.tables[table].update().values(**values))
+    with engine.begin() as connection:
+        connection.execute(current.tables['reviews'].update().values(rating=0))
+    with engine.connect() as connection:
+        assert connection.execute(sa.select(current.tables['reviews'].c.rating)).scalar_one() == 0
     # The new uniqueness gate applies only to six-character codes, so old duplicates survive.
     with engine.begin() as connection:
         connection.execute(current.tables['orders'].update().where(
@@ -202,4 +212,31 @@ def test_populated_v1_upgrade_preserves_all_historical_columns_and_constraints(m
     with pytest.raises(RuntimeError, match='verified pre-upgrade'):
         command.downgrade(config, '0001_initial')
     with engine.connect() as connection:
-        assert connection.execute(sa.text('SELECT version_num FROM alembic_version')).scalar_one() == '0002_v3'
+        assert connection.execute(sa.text('SELECT version_num FROM alembic_version')).scalar_one() == '0003_v32'
+
+
+def test_populated_v3_upgrade_preserves_devices_push_and_product_opinions(migrated_database):
+    engine, config = migrated_database
+    _seed_v1(engine)
+    command.upgrade(config, '0002_v3')
+    old = sa.MetaData()
+    old.reflect(bind=engine)
+    with engine.begin() as connection:
+        connection.execute(old.tables['product_reviews'].insert().values(
+            id='product-review-history', order_id='order-completed', product_id='firestore-product',
+            user_id='student-history', rating=5, comment='Opinión anterior del platillo', created_at=STAMP, updated_at=STAMP))
+        connection.execute(old.tables['devices'].insert().values(
+            id='device-history', user_id='student-history', token='synthetic-token', token_hash='e' * 64,
+            platform='android', provider='fcm', session_family_id='family-history',
+            last_active_at=STAMP, created_at=STAMP, updated_at=STAMP))
+        connection.execute(old.tables['account_audit_events'].insert().values(
+            id='audit-history', actor_id='master-history', action='test-history', target_type='user',
+            target_id='student-history', data={'synthetic': True}, created_at=STAMP))
+        connection.execute(old.tables['push_deliveries'].insert().values(
+            id='push-history', outbox_event_id=1, event_id='d' * 32, device_id='device-history', user_id='student-history',
+            payload={'type': 'order.updated'}, state='pending', attempts=0, next_attempt_at=STAMP,
+            created_at=STAMP, updated_at=STAMP))
+    before = _snapshot(engine, old)
+    command.upgrade(config, 'head')
+    assert _snapshot(engine, old) == before
+    command.check(config)

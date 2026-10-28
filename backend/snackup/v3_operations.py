@@ -3,13 +3,15 @@
 Public IDs stay opaque. The explicitly versioned legacy adapter shares the same
 rows, reservations and state machine; neither API can double-reserve or deliver.
 """
+from .auth import request_user
+
 from datetime import date, datetime, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Body, Depends, Header, Query, Request, Response
-from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, StrictBool, StrictInt, create_model, model_validator
+from pydantic import AwareDatetime, BaseModel, BeforeValidator, ConfigDict, Field, StrictBool, StrictInt, create_model, model_validator
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -30,13 +32,13 @@ from .v3_media import owned_media
 
 router = APIRouter()
 DB = Annotated[Session, Depends(get_db, scope="function")]
-Authenticated = Annotated[User, Depends(current_user)]
+Authenticated = Annotated[User, Depends(request_user)]
 Operator = Annotated[User, Depends(require_business)]
 Student = Annotated[User, Depends(require_student)]
 Page = Annotated[int, Query(ge=1)]
 Limit = Annotated[int, Query(ge=1, le=200)]
 PUBLIC_ROLES = {"user": "ALUMNO", "business": "COCINA", "admin": "ADMIN"}
-KITCHEN_REASONS = frozenset({"product_unavailable", "cannot_prepare", "store_issue", "store_closing", "other"})
+KITCHEN_REASONS = frozenset({"product_unavailable", "cannot_prepare", "store_issue", "store_closing", "other", "not_picked_up"})
 # V2 was not supplied. This is the only student reason explicitly named in V3;
 # expanding this catalog requires the actual V2 contract, never a wildcard.
 STUDENT_REASONS = frozenset({"user_other"})
@@ -71,24 +73,25 @@ class OrderItemInput(StrictInput):
 class CreateOrderInput(StrictInput):
     businessId: OpaqueId
     items: list[OrderItemInput] = Field(min_length=1, max_length=50)
-    paymentMethod: Literal["Efectivo", "Transferencia"] = "Efectivo"
+    paymentMethod: Literal["Efectivo", "Transferencia", "Tarjeta", "ValeComida"] = "Efectivo"
     expectedTotal: Money = Field(ge=0, le=50_000_000,
                                 json_schema_extra={"minimum": 0, "maximum": 50_000_000, "multipleOf": 0.01})
-    scheduledPickupTime: None = None
+    scheduledPickupTime: AwareDatetime | None = Field(default=None, strict=False)
 
     @model_validator(mode="before")
     @classmethod
     def validate_items_and_schedule(cls, value):
         if not isinstance(value, dict):
             return value
+        schedule = value.get("scheduledPickupTime")
+        if schedule is not None and not isinstance(schedule, str):
+            raise ApiError(422, "INVALID_SCHEDULE", "Envía una fecha ISO 8601 con zona horaria.")
         items = value.get("items")
         if not isinstance(items, list) or not items or any(
             not isinstance(item, dict) or type(item.get("quantity")) is not int or item["quantity"] < 1
             for item in items
         ):
             raise ApiError(400, "INVALID_ITEMS", "El carrito debe contener productos con cantidades enteras positivas.")
-        if value.get("scheduledPickupTime") is not None:
-            raise ApiError(422, "SCHEDULING_NOT_CONFIGURED", "La recogida programada todavía no está habilitada.")
         return value
 
 
@@ -110,6 +113,7 @@ class CompleteInput(VersionInput):
 
 class CancelInput(VersionInput):
     reason: str = Field(min_length=1, max_length=60)
+    voucherNotRedeemed: StrictBool = False
     notes: str = Field(default="", max_length=500)
 
 
@@ -152,6 +156,8 @@ class BusinessStatusInput(VersionInput):
 
 
 class BusinessPatch(VersionInput):
+    coverImageUrl: str | None = Field(default=None, max_length=2048)
+    pickupTimeoutMinutes: StrictInt | None = Field(default=None, ge=5, le=180)
     name: str | None = Field(default=None, min_length=1, max_length=160)
     category: str | None = Field(default=None, max_length=80)
     description: str | None = Field(default=None, max_length=2000)
@@ -170,6 +176,12 @@ class PaginationResponse(ResponseModel):
 
 
 class BusinessResponse(ResponseModel):
+    coverImageUrl: str | None
+    pickupTimeoutMinutes: int
+    autoCloseEnabled: bool
+    closeTimeLocal: str | None
+    postponedCloseAt: datetime | None
+    lastAutoCloseDate: date | None
     id: str
     name: str
     category: str
@@ -249,7 +261,7 @@ class OrderResponse(ResponseModel):
     items: list[OrderItemResponse]
     subtotal: float
     total: float
-    paymentMethod: Literal["Efectivo", "Transferencia"]
+    paymentMethod: Literal["Efectivo", "Transferencia", "Tarjeta", "ValeComida"]
     paymentStatus: str
     status: Literal["pending", "accepted", "preparing", "ready", "completed", "cancelled"]
     createdAt: datetime
@@ -284,6 +296,33 @@ class SalesSummaryResponse(ResponseModel):
     totalSold: float
 
 
+class DailySales(ResponseModel):
+    date: date
+    completed: int
+    cancelled: int
+    totalSold: float
+
+
+class TopProduct(ResponseModel):
+    productId: str
+    name: str
+    quantity: int
+    totalSold: float
+
+
+class PaymentSales(ResponseModel):
+    paymentMethod: str
+    completed: int
+    totalSold: float
+
+
+class DetailedSalesResponse(SalesSummaryResponse):
+    timezone: str
+    daily: list[DailySales]
+    topProducts: list[TopProduct]
+    paymentMethods: list[PaymentSales]
+
+
 class OrderHistoryResponse(OrderPageResponse):
     summary: SalesSummaryResponse
 
@@ -312,7 +351,10 @@ def _business_aggregates(db: Session, ids) -> dict:
 def business_dto(b: Business, db: Session, *, aggregates=None) -> dict:
     aggregate = (aggregates if aggregates is not None else _business_aggregates(db, [b.id]))[b.id]
     return {"id": b.id, "name": b.name, "category": b.category, "description": b.description,
-            "imageUrl": b.image_url, "isOpen": b.is_open, "isActive": b.is_active, "timezone": b.timezone,
+            "imageUrl": b.image_url, "coverImageUrl": b.cover_image_url,
+            "pickupTimeoutMinutes": b.pickup_timeout_minutes, "autoCloseEnabled": b.auto_close_enabled,
+            "closeTimeLocal": b.close_time_local, "postponedCloseAt": iso(b.postponed_close_at),
+            "lastAutoCloseDate": b.last_auto_close_date, "isOpen": b.is_open, "isActive": b.is_active, "timezone": b.timezone,
             "version": b.version, "createdAt": iso(b.created_at), "updatedAt": iso(b.updated_at), **aggregate}
 
 
@@ -422,6 +464,9 @@ def _apply_product_changes(db: Session, request: Request, product: Product, chan
     for key in ("name", "category"):
         if key in changes:
             require(bool(changes[key].strip()), 422, "INVALID_INPUT", f"{key} no puede estar vacío.")
+    from .v32_services import enforce_featured_limit
+    if "isFeatured" in changes:
+        enforce_featured_limit(db, product.business_id, changes["isFeatured"], product.id)
     if "imageUrl" in changes:
         _valid_media(db, request, changes["imageUrl"], product.business_id, "product")
     if "stock" in changes and changes["stock"] is not None and product.id:
@@ -487,6 +532,13 @@ def update_business(id: str, body: BusinessPatch, request: Request, db: DB, acto
             setattr(business, field, changes[field].strip())
     if "imageUrl" in changes:
         business.image_url = changes["imageUrl"]
+    if "coverImageUrl" in changes:
+        _valid_media(db, request, changes["coverImageUrl"], id, "business")
+        require_business(current_user(request, db))
+        business.cover_image_url = changes["coverImageUrl"]
+    if "pickupTimeoutMinutes" in changes:
+        require(changes["pickupTimeoutMinutes"] is not None, 422, "INVALID_INPUT")
+        business.pickup_timeout_minutes = changes["pickupTimeoutMinutes"]
     _touch(business)
     emit_event(db, f"business:{id}", "business.updated", {"id": id, "version": business.version,
                "updatedAt": iso(business.updated_at), "isOpen": business.is_open})
@@ -497,6 +549,9 @@ def update_business(id: str, body: BusinessPatch, request: Request, db: DB, acto
 def set_business_open(id: str, body: BusinessStatusInput, request: Request, db: DB, actor: Operator):
     business = _business_for_write(db, request, actor, id)
     check_optional_version(business, body.model_dump(exclude_unset=True))
+    from .v32_services import notify_business_closed
+    if business.is_open and not body.isOpen:
+        notify_business_closed(db, business)
     business.is_open = body.isOpen
     _touch(business)
     emit_event(db, f"business:{id}", "business.updated", {"id": id, "version": business.version,
@@ -592,7 +647,10 @@ def create_order(body: CreateOrderInput, request: Request, db: DB, actor: Studen
         key = str(UUID(idempotency_key))
     except (ValueError, AttributeError):
         raise ApiError(422, "INVALID_IDEMPOTENCY_KEY", "Idempotency-Key debe contener un UUID.") from None
-    return create_order_transaction(body, request, db, actor, key, canonical=True, serializer=order_dto)
+    # A newly created pending order cannot have a review. Avoid querying that
+    # table while the purchase still owns its stock and numbering locks.
+    return create_order_transaction(body, request, db, actor, key, canonical=True,
+                                    serializer=lambda order, session, user: order_dto(order, session, user, rated_ids=set()))
 
 
 @router.get("/orders/{id}", operation_id="v3GetOrder",
@@ -641,17 +699,22 @@ def order_history(id: str, date: date, db: DB, actor: Operator, page: Page = 1, 
     return result
 
 
-@router.get("/businesses/{id}/stats", operation_id="v3SalesSummary", response_model=SalesSummaryResponse)
+@router.get("/businesses/{id}/stats", operation_id="v3SalesSummary", response_model=DetailedSalesResponse)
 def sales_summary(id: str, db: DB, actor: Operator, from_date: Annotated[date, Query(alias="from")], to: date):
     business = _business(db, actor, id)
     start, end = _range(from_date, to, business.timezone)
-    return _summary(db, _history_filter(id, start, end))
+    from .v32_stats import detailed_summary
+    return detailed_summary(db, business, start, end)
 
 
 def _transition_response(db, actor, id, action, body, request):
     result = transition(db, actor, id, action, body.model_dump(exclude_unset=True), request,
                         student=actor.role == "user", canonical=True)
-    return order_dto(result, db, actor)
+    # Every valid transition starts from an uncompleted order. A rating cannot
+    # exist before this transition commits, including a fresh completion.
+    response = order_dto(result, db, actor, rated_ids=set())
+    db.commit()
+    return response
 
 
 @router.post("/orders/{id}/accept", operation_id="v3AcceptOrder",
@@ -682,6 +745,7 @@ def complete_order(id: str, body: CompleteInput, request: Request, db: DB, actor
              response_model=OrderResponse, response_model_exclude_unset=True)
 def cancel_order(id: str, body: CancelInput, request: Request, db: DB, actor: Authenticated):
     require(actor.role in ("user", "business"), 403, "FORBIDDEN")
+    require(not body.voucherNotRedeemed or actor.role == "business", 403, "FORBIDDEN")
     reasons = STUDENT_REASONS if actor.role == "user" else KITCHEN_REASONS
     require(body.reason in reasons, 422, "INVALID_CANCEL_REASON", "Selecciona un motivo permitido para este perfil.")
     require(body.reason not in ("other", "user_other") or bool(body.notes.strip()), 422,

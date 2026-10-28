@@ -1,0 +1,582 @@
+"""Documented Phase C scenarios, real HTTP/Socket.IO and SQL integrity.
+
+Only a new disposable loadtest DB on loopback is accepted. No credentials or
+response bodies enter the report. --quick explicitly reduces durations only.
+"""
+import argparse
+import asyncio
+from collections import Counter, defaultdict
+from datetime import datetime
+import json
+import math
+import os
+from pathlib import Path
+import random
+import subprocess
+import time
+from uuid import uuid4
+
+import aiohttp
+import socketio
+from sqlalchemy import create_engine, text
+from sqlalchemy.engine import make_url
+
+BASE = 'http://127.0.0.1:18080'
+COMPOSE = ['docker', 'compose', '-f', 'load/phase_c/compose.yaml']
+
+
+def quantile(values, fraction):
+    return sorted(values)[max(0, math.ceil(len(values) * fraction) - 1)] if values else None
+
+
+class Run:
+    def __init__(self, args):
+        self.args = args
+        self.fixtures = json.loads(Path(args.fixtures).read_text())
+        self.accounts = self.fixtures['students'] + self.fixtures['operators']
+        self.students = self.accounts[:1000]
+        self.operators = self.accounts[1000:]
+        assert len(self.students) == 1000 and len(self.operators) == 4
+        url = os.environ['SNACKUP_DATABASE_URL']
+        parsed = make_url(url)
+        assert os.environ.get('ALLOW_LOAD') == 'YES' and os.environ.get('SNACKUP_ENVIRONMENT') == 'test'
+        assert parsed.database == 'snackup_loadtest' and parsed.host in {'localhost', '127.0.0.1'}
+        self.engine = create_engine(url)
+        self.auth_path = Path(args.fixtures).with_suffix('.sessions.json')
+        self.sessions = json.loads(self.auth_path.read_text()) if self.auth_path.exists() else {}
+        self.locks = defaultdict(asyncio.Lock)
+        self.samples, self.statuses = defaultdict(list), defaultdict(Counter)
+        self.failures, self.details, self.monitor = [], {}, []
+        self.random = random.Random(20261027)
+        self.running = True
+        self.worker_samples = []
+        self.expected_order_events, self.received_order_events = set(), set()
+
+    def check(self, condition, message):
+        if not condition:
+            self.failures.append(message)
+
+    async def request(self, method, path, who=None, name=None, **kwargs):
+        headers = kwargs.pop('headers', {})
+        if who is not None:
+            await self.auth(who)
+            headers['Authorization'] = 'Bearer ' + self.sessions[who['email']]['accessToken']
+        start = time.perf_counter()
+        try:
+            async with self.http.request(method, BASE + path, headers=headers, **kwargs) as response:
+                raw = await response.text()
+                status = response.status
+                try:
+                    body = json.loads(raw)
+                except ValueError:
+                    body = {}
+        except (aiohttp.ClientError, TimeoutError):
+            status, body, raw = 0, {}, ''
+        if name:
+            self.samples[name].append((time.perf_counter() - start) * 1000)
+            self.statuses[name][status] += 1
+        return status, body, raw
+
+    async def auth(self, who, min_lifetime=60):
+        async with self.locks[who['email']]:
+            current = self.sessions.get(who['email'])
+            if current and datetime.fromisoformat(current['accessTokenExpiresAt']).timestamp() > time.time() + min_lifetime:
+                return
+            if current:
+                status, body, _ = await self.request('POST', '/api/v1/auth/refresh',
+                    json={'refreshToken': current['refreshToken']}, name='refresh')
+                if status == 200:
+                    self.sessions[who['email']] = body['tokens']
+                    return
+            status, body, _ = await self.request('POST', '/api/v1/auth/login',
+                json={'email': who['email'], 'password': who['password']})
+            if status != 200:
+                raise RuntimeError('Fixture authentication failed with HTTP ' + str(status))
+            self.sessions[who['email']] = body['tokens']
+
+    async def prepare(self):
+        slots = asyncio.Semaphore(8)
+        async def one(account):
+            async with slots:
+                await self.auth(account)
+        await asyncio.gather(*(one(a) for a in self.accounts))
+        self.auth_path.write_text(json.dumps(self.sessions))
+        self.auth_path.chmod(0o600)
+
+    def reset(self, stock=100000):
+        with self.engine.begin() as db:
+            db.execute(text('TRUNCATE orders, order_items, order_transitions, idempotency_records, meal_voucher_uses, '
+                            'chats, chat_messages, chat_closures, outbox_events RESTART IDENTITY CASCADE'))
+            db.execute(text('UPDATE businesses SET next_order_number=1, is_open=true, auto_close_enabled=false'))
+            db.execute(text('UPDATE products SET stock=:stock, is_available=true, manual_available=true'), {'stock': stock})
+        self.initial_stock = stock
+
+    def integrity(self):
+        with self.engine.connect() as db:
+            checks = {
+                'negativeStock': 'SELECT count(*) FROM products WHERE stock<0',
+                'duplicateNumbers': 'SELECT count(*) FROM (SELECT business_id,order_number FROM orders GROUP BY 1,2 HAVING count(*)>1) q',
+                'duplicateCodes': 'SELECT count(*) FROM (SELECT pickup_code FROM orders WHERE length(pickup_code)=6 GROUP BY 1 HAVING count(*)>1) q',
+                'duplicateKeys': 'SELECT count(*) FROM (SELECT user_id,key FROM idempotency_records GROUP BY 1,2 HAVING count(*)>1) q',
+                'inventoryMismatch': '''SELECT count(*) FROM products p WHERE p.stock + COALESCE((
+                    SELECT sum(i.reserved_quantity) FROM order_items i JOIN orders o ON o.id=i.order_id
+                    WHERE i.product_id=p.id AND NOT o.stock_restored),0) != :stock''',
+            }
+            result = {k: db.scalar(text(sql), {'stock': self.initial_stock}) for k, sql in checks.items()}
+            result['pendingOutbox'] = db.scalar(text('SELECT count(*) FROM outbox_events WHERE published_at IS NULL'))
+            result['deadlocks'] = db.scalar(text("SELECT deadlocks FROM pg_stat_database WHERE datname=current_database()"))
+            if self.args.scenario == 'P12':
+                result['expiredPublishedOutbox'] = db.scalar(text("SELECT count(*) FROM outbox_events WHERE published_at < now()-interval '7 days'"))
+                self.check(result['expiredPublishedOutbox'] == 0, 'P12 retention did not purge expired publications')
+            result['orders'] = db.scalar(text('SELECT count(*) FROM orders'))
+        for key in checks:
+            self.check(result[key] == 0, key)
+        self.check(result['deadlocks'] == 0, 'PostgreSQL deadlocks')
+        return result
+
+    async def purchase(self, who, business=None, product=None, key=None, metric='create'):
+        return await self.request('POST', '/api/v1/orders', who, metric,
+            json={'businessId': business or who['businessId'], 'items': [{'productId': product or who['productId'], 'quantity': 1}],
+                  'paymentMethod': 'Efectivo', 'expectedTotal': 10.0}, headers={'Idempotency-Key': key or str(uuid4())})
+
+    async def cancel(self, who, order):
+        return await self.request('POST', f"/api/v1/orders/{order['id']}/cancel", who, 'cancel',
+                                  json={'reason': 'user_other', 'notes': '[CARGA AISLADA] Fin de reserva.', 'expectedVersion': order['version']})
+
+    async def arrival(self, rate, seconds, function):
+        start = time.monotonic()
+        tasks = []
+        for i in range(round(rate * seconds)):
+            await asyncio.sleep(max(0, start + i / rate - time.monotonic()))
+            tasks.append(asyncio.create_task(function(i)))
+        await asyncio.gather(*tasks)
+        self.details.setdefault('arrivals', []).append({'rate': rate, 'seconds': seconds, 'launched': len(tasks),
+                                                      'elapsed': time.monotonic() - start})
+
+    async def arrival_ramp(self, start_rate, end_rate, seconds, function):
+        count = round((start_rate + end_rate) * seconds / 2)
+        slope = (end_rate - start_rate) / seconds
+        started = time.monotonic()
+        tasks = []
+        for index in range(count):
+            # Invert the integral of a linear rate, using interval midpoints.
+            at = (math.sqrt(start_rate**2 + 2*slope*(index+.5)) - start_rate) / slope
+            await asyncio.sleep(max(0, started + at - time.monotonic()))
+            tasks.append(asyncio.create_task(function(index)))
+        await asyncio.gather(*tasks)
+        await asyncio.sleep(max(0, started + seconds - time.monotonic()))
+        self.details.setdefault('arrivals', []).append({'startRate': start_rate, 'endRate': end_rate,
+            'seconds': seconds, 'launched': count, 'elapsed': time.monotonic() - started})
+
+    async def p0(self):
+        async def iteration(i):
+            who = self.students[i % 5]
+            key = str(uuid4())
+            a = await self.purchase(who, key=key)
+            b = await self.purchase(who, key=key, metric='idempotency')
+            self.check(a[0] == b[0] == 201 and a[2] == b[2], 'P0 idempotency mismatch')
+            if a[0] == 201:
+                self.check((await self.cancel(who, a[1]))[0] == 200, 'P0 cancellation')
+        await self.arrival(1, 45 if not self.args.quick else 5, iteration)
+
+    async def p5(self):
+        self.reset(stock=50)
+        target = self.students[0]
+        results = await asyncio.gather(*(self.purchase(who, target['businessId'], target['productId']) for who in self.students[:200]))
+        codes = Counter(r[0] for r in results)
+        self.details['outcomes'] = dict(codes)
+        self.check(codes == {201: 50, 422: 150}, 'P5 requires exactly 50 created and 150 unavailable')
+
+    async def p6(self):
+        target = self.students[0]
+        async def group(who):
+            key = str(uuid4())
+            rows = await asyncio.gather(*(self.purchase(who, target['businessId'], target['productId'], key) for _ in range(10)))
+            successful = [r for r in rows if r[0] == 201]
+            self.check(bool(successful) and len({r[2] for r in successful}) == 1, 'P6 duplicate/missing order')
+            self.check(all(r[0] in (201, 503) for r in rows), 'P6 unexpected response')
+        await asyncio.gather(*(group(who) for who in self.students[:50]))
+        with self.engine.connect() as db:
+            self.check(db.scalar(text('SELECT count(*) FROM orders')) == 50, 'P6 order count')
+
+    async def p4(self):
+        target = self.students[0]
+        for rate in (2, 5, 10, 20, 40):
+            async def one(i):
+                who = self.students[i % 1000]
+                status, order, _ = await self.purchase(who, target['businessId'], target['productId'], metric=f'create_{rate}')
+                self.check(status == 201, f'P4 {rate}/s creation')
+                if status == 201:
+                    self.check((await self.cancel(who, order))[0] == 200, f'P4 {rate}/s cancellation')
+            # Retain the full history and duration even for quick regression:
+            # shortening the lower stages masked sustained high-rate failures.
+            await self.arrival(rate, 180, one)
+            self.check(quantile(self.samples[f'create_{rate}'], .95) < 1500, f'P4 {rate}/s p95')
+
+    async def p7(self):
+        async def login(i):
+            who = self.students[i % 1000]
+            status, _, _ = await self.request('POST', '/api/v1/auth/login', name='login',
+                                             json={'email': who['email'], 'password': who['password']})
+            self.check(status == 200, 'P7 login')
+        if self.args.quick:
+            await self.arrival(20, 30, login)
+        else:
+            await self.arrival_ramp(0, 20, 30, login)
+            await self.arrival(20, 240, login)
+            await self.arrival_ramp(20, 0, 30, login)
+        self.check(quantile(self.samples['login'], .95) < 1500, 'P7 p95')
+
+    async def p7b(self):
+        for wave in range(3):
+            async def login(who):
+                return await self.request('POST', '/api/v1/auth/login', name='login_wave',
+                    json={'email': who['email'], 'password': who['password']})
+            rows = await asyncio.gather(*(login(who) for who in self.students[:200]))
+            self.check(sum(r[0] == 200 for r in rows) >= 198, f'P7b wave {wave} success <99%')
+            if wave != 2:
+                await asyncio.sleep(30)
+        self.check(quantile(self.samples['login_wave'], .95) < 3000, 'P7b p95 >=3s')
+
+    async def read_users(self, count, seconds, metric='read', ramp_seconds=0):
+        until = time.monotonic() + seconds
+        steady_at = time.monotonic() + ramp_seconds
+        async def user(who):
+            await asyncio.sleep(self.random.uniform(0, ramp_seconds or min(7.5, seconds / 2)))
+            while time.monotonic() < until:
+                for path in ('/api/v1/businesses?limit=20', f"/api/v1/businesses/{who['businessId']}/products?limit=20",
+                             '/api/v1/users/me/orders/active?limit=20'):
+                    status, _, _ = await self.request('GET', path, who, metric if time.monotonic() >= steady_at else metric + '_ramp')
+                    self.check(status == 200, metric + ' HTTP failure')
+                await asyncio.sleep(min(self.random.uniform(5, 10), max(0, until - time.monotonic())))
+        await asyncio.gather(*(user(who) for who in self.students[:count]))
+
+    async def p2(self):
+        sizes = (50, 100, 150, 200, 250, 300) if self.args.profile == 'pessimistic' else (100, 200, 300, 400, 600, 800, 1000)
+        for count in sizes:
+            name = f'read_{count}'
+            start = time.monotonic() - self.started
+            await self.read_users(count, 360 if not self.args.quick else 20, name, ramp_seconds=0 if self.args.quick else 60)
+            self.details.setdefault('readingStages', []).append({'users': count, 'start': start + (0 if self.args.quick else 60), 'end': time.monotonic() - self.started})
+            self.check(quantile(self.samples[name], .95) < 750, name + ' p95')
+            self.check(quantile(self.samples[name], .99) < 2000, name + ' p99')
+
+    async def realtime(self, count, seconds, toggle=True, jitter=False, kitchen=False):
+        clients, received, changes = [], [], set()
+        disconnected = []
+        slots = asyncio.Semaphore(25)
+        async def connect(index, who):
+            async with slots:
+                await self.auth(who, min_lifetime=seconds + 420)
+                sio = socketio.AsyncClient(http_session=self.http, reconnection=False, logger=False, engineio_logger=False)
+                async def product(event):
+                    data = event['data']
+                    received.append((index, data.get('businessId'), data.get('version'),
+                        (time.time() - datetime.fromisoformat(event['occurredAt']).timestamp()) * 1000, event['id']))
+                async def order(event):
+                    self.received_order_events.add((event['data']['id'], event['data']['version']))
+                    self.samples['order_event'].append((time.time() - datetime.fromisoformat(event['occurredAt']).timestamp()) * 1000)
+                async def disconnect(*_):
+                    disconnected.append(index)
+                sio.on('product.updated', product)
+                sio.on('order.updated', order)
+                sio.on('order.created', order)
+                sio.on('disconnect', disconnect)
+                await sio.connect(BASE, transports=['websocket'], auth={'token': self.sessions[who['email']]['accessToken']},
+                                  headers={'Origin': BASE}, wait_timeout=30)
+                # user ID comes from /users/me once, never stored in reports.
+                status, me, _ = await self.request('GET', '/api/v1/users/me', who)
+                assert status == 200
+                ack = await sio.call('subscribe', {'topics': [f"business:{who['businessId']}:products", f"user:{me['id']}:orders"]}, timeout=30)
+                self.check(ack.get('ok'), 'P8 subscription denied')
+                clients.append(sio)
+        await asyncio.gather(*(connect(i, who) for i, who in enumerate(self.students[:count])))
+        self.details['connections'] = len(clients)
+        until = time.monotonic() + seconds
+        async def toggles(index, operator):
+            product_id = self.students[index]['productId']
+            enabled = True
+            while time.monotonic() < until:
+                delay = self.random.uniform(20, 40) if jitter else 5
+                await asyncio.sleep(min(delay, max(0, until - time.monotonic())))
+                if time.monotonic() >= until:
+                    break
+                enabled = not enabled
+                status, result, _ = await self.request('PATCH', f'/api/v1/products/{product_id}/availability', operator, 'toggle', json={'isAvailable': enabled})
+                self.check(status == 200, 'P8 toggle failed')
+                if status == 200:
+                    changes.add((operator['businessId'], result['version']))
+        try:
+            tasks = [asyncio.create_task(toggles(i, op)) for i, op in enumerate(self.operators)] if toggle else []
+            if kitchen:
+                if not self.args.quick:
+                    await asyncio.sleep(120)
+                tasks.append(asyncio.create_task(self.kitchen(1.5, seconds)))
+            if tasks:
+                await asyncio.gather(*tasks)
+            else:
+                await asyncio.sleep(seconds)
+            await asyncio.sleep(2)
+            self.check(not disconnected, 'P8 unexpected disconnect')
+            unique = {(i, business, version, eid) for i, business, version, _, eid in received if (business, version) in changes}
+            expected = sum(sum(who['businessId'] == business for who in self.students[:count]) for business, _ in changes)
+            self.details.update(expectedEvents=expected, receivedEvents=len(unique), changes=len(changes), unexpectedDisconnects=len(disconnected))
+            if kitchen:
+                self.details.update(expectedOrderEvents=len(self.expected_order_events), receivedOrderEvents=len(self.received_order_events))
+                self.check(self.expected_order_events == self.received_order_events, 'P8b order event loss')
+                self.check((quantile(self.samples['order_event'], .95) or math.inf) < 1000, 'P8b event p95')
+                # The student room receives order.updated only. A successful
+                # purchase also publishes one stock change to its 75 readers.
+                unique_products = {(index, event_id) for index, _, _, _, event_id in received}
+                expected_products = self.details['created'] * (count // len(self.operators))
+                self.details.update(expectedProductEvents=expected_products, receivedProductEvents=len(unique_products))
+                self.check(len(unique_products) == expected_products, 'P8b stock event loss')
+                self.samples['product_event'] = [latency for _, _, _, latency, _ in received]
+                self.check((quantile(self.samples['product_event'], .95) or math.inf) < 1000, 'P8b stock event p95')
+            if toggle:
+                self.check(expected > 0 and len(unique) == expected, 'P8 event loss')
+                self.samples['product_event'] = [latency for _, business, version, latency, _ in received if (business, version) in changes]
+                self.check((quantile(self.samples['product_event'], .95) or math.inf) < (1000 if count == 300 else 2000), 'P8 event p95')
+        finally:
+            await asyncio.gather(*(sio.disconnect() for sio in clients), return_exceptions=True)
+
+    async def kitchen(self, rate, seconds):
+        orders, done, accepted, tasks = {}, set(), [], []
+        stop = asyncio.Event()
+        async def create(i):
+            who = self.students[i % (300 if self.args.scenario == 'P8b' else 1000)]
+            status, order, _ = await self.purchase(who, metric='kitchen_create')
+            self.check(status == 201, 'P9 create failed')
+            if status == 201:
+                orders[order['id']] = {'code': order['pickupCode'], 'created': time.monotonic() - max(0, time.time() - datetime.fromisoformat(order['createdAt']).timestamp()), 'prepare': None, 'walk': None, 'who': who}
+        async def tablet(operator):
+            while not stop.is_set():
+                status, page, _ = await self.request('GET', f"/api/v1/businesses/{operator['businessId']}/orders/active?limit=100", operator, 'kitchen_read')
+                self.check(status == 200, 'P9 kitchen read')
+                for order in page.get('data', []):
+                    state = orders.get(order['id'])
+                    if state is None:
+                        continue
+                    action = None
+                    if order['status'] == 'pending':
+                        action = 'accept'
+                    elif order['status'] == 'accepted':
+                        action = 'start'
+                    elif order['status'] == 'preparing':
+                        state['prepare'] = state['prepare'] or time.monotonic() + self.random.uniform(20, 60)
+                        if time.monotonic() >= state['prepare']:
+                            action = 'ready'
+                    elif order['status'] == 'ready':
+                        if state['walk'] is not None and time.monotonic() >= state['walk']:
+                            action = 'complete'
+                    if action:
+                        data = {'expectedVersion': order['version']}
+                        if action == 'complete':
+                            data.update(method='manual', code=state['code'])
+                        result, updated, _ = await self.request('POST', f"/api/v1/orders/{order['id']}/{action}", operator, 'kitchen_transition', json=data)
+                        self.check(result in (200, 409), 'P9 transition error')
+                        if result == 200:
+                            self.expected_order_events.add((updated['id'], updated['version']))
+                        if result == 200 and action == 'accept':
+                            accepted.append((time.monotonic() - state['created']) * 1000)
+                        if result == 200 and action == 'complete':
+                            done.add(order['id'])
+                await asyncio.sleep(2)
+        async def student_poll():
+            while not stop.is_set():
+                # One poll per student with an active order, every five seconds.
+                active = {state['who']['email']: state['who'] for oid, state in orders.items() if oid not in done}
+                async def poll(who):
+                    status, page, _ = await self.request('GET', '/api/v1/users/me/orders/active?limit=20', who, 'student_read')
+                    self.check(status == 200, 'P9 student read')
+                    for order in page.get('data', []):
+                        state = orders.get(order['id'])
+                        if state and order['status'] == 'ready' and state['walk'] is None:
+                            state['walk'] = time.monotonic() + self.random.uniform(5, 30)
+                await asyncio.gather(*(poll(who) for who in active.values()))
+                await asyncio.sleep(5)
+        tasks = [asyncio.create_task(tablet(op)) for op in self.operators for _ in range(2)]
+        tasks.append(asyncio.create_task(student_poll()))
+        try:
+            await self.arrival(rate, seconds, create)
+            deadline = time.monotonic() + 300
+            while len(done) < len(orders) and time.monotonic() < deadline:
+                await asyncio.sleep(2)
+        finally:
+            stop.set()
+            await asyncio.gather(*tasks)
+        self.samples['acceptance'] = accepted
+        self.details.update(created=len(orders), delivered=len(done))
+        self.check(len(orders) > 0 and len(done) / len(orders) >= .99, 'P9 delivery ratio')
+        self.check((quantile(accepted, .95) or math.inf) < 10000, 'P9 acceptance p95')
+        self.check((quantile(self.samples['kitchen_create'], .95) or math.inf) < 1500, 'P9 creation p95')
+
+    async def worker_resources(self):
+        # One persistent monitor, rather than spawning a process per sample.
+        script = """
+import json, os, time
+from pathlib import Path
+hz, pages = os.sysconf('SC_CLK_TCK'), os.sysconf('SC_PAGE_SIZE')
+while True:
+    rows=[]
+    for entry in Path('/proc').iterdir():
+        if not entry.name.isdigit(): continue
+        try:
+            args=(entry/'cmdline').read_bytes().split(bytes([0]))
+            if len(args)<3 or args[1:3] != [b'-m',b'uvicorn']: continue
+            stat=(entry/'stat').read_text().split()
+            rows.append({'pid':int(entry.name),'cpuSeconds':(int(stat[13])+int(stat[14]))/hz,'rssBytes':int(stat[23])*pages})
+        except (OSError,ValueError,IndexError): pass
+    try: print(json.dumps({'time':time.time(),'workers':rows}),flush=True)
+    except BrokenPipeError: break
+    time.sleep(.5)
+"""
+        process = await asyncio.create_subprocess_exec(*COMPOSE, 'exec', '-T', 'app', 'python', '-u', '-c', script,
+                                                       stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL)
+        try:
+            while self.running:
+                line = await process.stdout.readline()
+                if not line:
+                    break
+                self.worker_samples.append(json.loads(line))
+        finally:
+            if process.returncode is None:
+                process.kill()
+            await asyncio.wait_for(process.wait(), timeout=5)
+
+    def resource_summary(self):
+        by_pid = defaultdict(list)
+        for sample in self.worker_samples:
+            for row in sample['workers']:
+                by_pid[row['pid']].append((sample['time'], row['cpuSeconds'], row['rssBytes']))
+        workers = []
+        for pid, rows in by_pid.items():
+            elapsed = rows[-1][0] - rows[0][0]
+            workers.append({'pid': pid, 'peakRssMiB': max(r[2] for r in rows) / 2**20,
+                            'meanCpuPercent': (rows[-1][1] - rows[0][1]) / max(.001, elapsed) * 100})
+        def memory(value):
+            raw = value.split('/')[0].strip()
+            for unit, factor in [('GiB',2**30),('MiB',2**20),('KiB',2**10),('GB',10**9),('MB',10**6),('kB',1000),('B',1)]:
+                if raw.endswith(unit): return float(raw[:-len(unit)])*factor
+            return 0
+        container_peaks = max((sum(memory(c['MemUsage']) for c in sample['containers']) for sample in self.monitor), default=0)
+        cpu_samples = [(sample['elapsed'], sum(float(c['CPUPerc'].rstrip('%')) for c in sample['containers']) /
+                       (2 if self.args.profile=='pessimistic' else 4)) for sample in self.monitor]
+        stages=[]
+        for stage in self.details.get('readingStages', []):
+            values=[value for elapsed,value in cpu_samples if stage['start'] <= elapsed <= stage['end']]
+            mean=sum(values)/len(values) if values else None
+            stages.append({**stage,'meanCpuPercent':mean,'p95CpuPercent':quantile(values,.95)})
+            self.check(mean is not None and mean < 75, f"P2 {stage['users']} sustained CPU")
+        budget=3584 if self.args.profile=='pessimistic' else 7680
+        self.check(bool(self.monitor) and bool(workers), 'Resource monitoring unavailable')
+        self.check(container_peaks / 2**20 <= budget, 'Combined memory budget exceeded')
+        if self.args.scenario == 'P7b':
+            self.check(all(w['peakRssMiB'] < 400 for w in workers), 'P7b worker RSS >=400MiB')
+        values=[w['meanCpuPercent'] for w in workers]
+        ratio=max(values)/min(values) if values and min(values)>0 else None
+        if self.args.scenario in ('P8','P8-1000') and self.args.profile=='base':
+            self.check(ratio is not None and ratio < 2, 'P8 worker CPU imbalance >=2')
+        return {'workers': workers, 'workerCpuRatio':ratio,'peakContainersMiB':container_peaks/2**20,'readingStages':stages}
+
+    async def resources(self):
+        while self.running:
+            try:
+                def collect():
+                    output = subprocess.check_output(COMPOSE + ['stats', '--no-stream', '--format', 'json'], text=True, timeout=10)
+                    sql = {}
+                    with self.engine.connect() as db:
+                        sql['active'] = db.scalar(text("SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() AND state='active'"))
+                        sql['idleTransaction'] = db.scalar(text("SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() AND state='idle in transaction'"))
+                        sql['waits'] = [dict(row) for row in db.execute(text("SELECT wait_event_type AS type, wait_event AS event, count(*) AS count FROM pg_stat_activity WHERE datname=current_database() AND state='active' AND pid<>pg_backend_pid() GROUP BY 1,2")).mappings()]
+                        sql['outboxLag'] = float(db.scalar(text('SELECT coalesce(extract(epoch FROM now()-min(created_at)),0) FROM outbox_events WHERE published_at IS NULL')))
+                    try:
+                        containers = json.loads(output)
+                        containers = containers if isinstance(containers, list) else [containers]
+                    except ValueError:
+                        containers = [json.loads(x) for x in output.splitlines() if x]
+                    return {'elapsed': time.monotonic() - self.started, 'containers': containers, 'sql': sql}
+                self.monitor.append(await asyncio.to_thread(collect))
+            except Exception as error:
+                self.details['monitorError'] = type(error).__name__
+            await asyncio.sleep(5)
+
+    async def run(self):
+        self.started = time.monotonic()
+        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=2000), cookie_jar=aiohttp.DummyCookieJar(),
+                                         timeout=aiohttp.ClientTimeout(total=15)) as self.http:
+            await self.prepare()
+            self.reset()
+            monitor = asyncio.create_task(self.resources())
+            worker_monitor = asyncio.create_task(self.worker_resources())
+            try:
+                scenario = self.args.scenario
+                if scenario in ('P0', 'P2', 'P4', 'P5', 'P6', 'P7', 'P7b'):
+                    await getattr(self, scenario.lower())()
+                elif scenario == 'P8':
+                    await self.realtime(300, 1200 if not self.args.quick else 45)
+                elif scenario == 'P8-1000':
+                    await self.realtime(1000, 300 if not self.args.quick else 45)
+                elif scenario == 'P8-idle':
+                    await self.realtime(300, 360 if not self.args.quick else 95, jitter=True)
+                elif scenario == 'P8b':
+                    await self.realtime(300, 1200 if not self.args.quick else 60, toggle=False, kitchen=True)
+                elif scenario == 'P9':
+                    await self.kitchen(1.5, 1200 if not self.args.quick else 60)
+                elif scenario == 'P9-burst':
+                    await self.kitchen(4.5, 300 if not self.args.quick else 60)
+                elif scenario == 'P12':
+                    with self.engine.begin() as db:
+                        db.execute(text("INSERT INTO outbox_events (event_id,topic,event_type,data,created_at,published_at,publish_attempts) SELECT md5(i::text),'retention-probe','probe','{}'::json,now()-interval '8 days',now()-interval '8 days',1 FROM generate_series(1,2000) i"))
+                    await asyncio.gather(self.read_users(300, 7200, 'soak_read'), self.kitchen(1.5, 7200))
+                else:
+                    raise ValueError('Unknown scenario')
+                await asyncio.sleep(2)
+                self.details['integrity'] = self.integrity()
+            except Exception as error:
+                self.failures.append('Execution failed: ' + type(error).__name__)
+                raise
+            finally:
+                self.running = False
+                monitor.cancel()
+                worker_monitor.cancel()
+                await asyncio.gather(monitor, worker_monitor, return_exceptions=True)
+                try:
+                    self.details['resources'] = self.resource_summary()
+                except Exception as error:
+                    self.failures.append('Resource summary failed: ' + type(error).__name__)
+                for name, codes in self.statuses.items():
+                    self.check(codes[500] == 0 and codes[0] == 0, name + ' internal/transport errors')
+                metrics = {name: {'count': len(values), 'p50Ms': quantile(values, .5), 'p95Ms': quantile(values, .95),
+                                  'p99Ms': quantile(values, .99), 'status': dict(self.statuses[name])} for name, values in self.samples.items()}
+                report = {'scenario': self.args.scenario, 'profile': self.args.profile, 'quick': self.args.quick,
+                    'commit': os.environ.get('GITHUB_SHA'), 'elapsedSeconds': time.monotonic() - self.started,
+                    'success': not self.failures, 'failures': dict(Counter(self.failures)), 'details': self.details,
+                    'metrics': metrics, 'resources': self.monitor}
+                self.auth_path.write_text(json.dumps(self.sessions))
+                self.auth_path.chmod(0o600)
+                Path(self.args.output).write_text(json.dumps(report, indent=2) + '\n')
+                print(json.dumps({key: report[key] for key in ('scenario', 'profile', 'quick', 'elapsedSeconds', 'success', 'failures')}), flush=True)
+        self.engine.dispose()
+        return 0 if not self.failures else 1
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--fixtures', required=True)
+    parser.add_argument('--output', required=True)
+    parser.add_argument('--profile', choices=['base', 'pessimistic'], default='base')
+    parser.add_argument('--scenario', required=True)
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument('--quick', action='store_true')
+    mode.add_argument('--full', action='store_true')
+    args = parser.parse_args()
+    if args.profile == 'pessimistic':
+        # The two remaining runner CPUs generate load without consuming the
+        # two CPUs reserved for the app and PostgreSQL containers.
+        os.sched_setaffinity(0, {2, 3})
+    return asyncio.run(Run(args).run())
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

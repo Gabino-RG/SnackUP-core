@@ -1,11 +1,17 @@
 # Backend de SnackUP
 
+**Despliegue vigente:** [un contenedor para API y ambas interfaces](DESPLIEGUE_CONTENEDOR_UNICO.md),
+con PostgreSQL persistente aparte. Ejecutar `docker compose -f compose.unified.yaml`;
+los ejemplos de `compose.yaml` más abajo conservan la topología anterior para
+desarrollo y referencia. [Implementación compatible V3.2](IMPLEMENTACION_V3_2.md).
+
 API propia para conectar la aplicación del alumno con los paneles existentes de Administración y Cocina. La versión V3 adapta el documento recibido a **Python y FastAPI**, conserva SQLAlchemy/Alembic/PostgreSQL e incorpora Socket.IO, sesiones web y nativas, medios, calificaciones y entregas push persistentes. Los eventos se respaldan mediante un outbox SQL y Redis.
 
 **Estado:** el código y los procedimientos están preparados para validarse e integrarse. No hay servidor universitario, dominio, servicio SMTP ni padrón institucional confirmados. La capacidad de **1,000 alumnos simultáneos más personal es un objetivo pendiente de medición**, no una certificación. Los datos de prueba nunca se crean automáticamente al iniciar la API.
 
 ## Contratos y alcance
 
+- **[Ampliación V3.2 implementada](IMPLEMENTACION_V3_2.md)**: carrito, favoritos, búsqueda, historial, chat, horarios, vales, calificaciones 0–5 y tareas supervisadas.
 - **[Guía completa de la adaptación V3](API_V3_FASTAPI.md)**, [OpenAPI V3](contracts/v3.openapi.json), [mapa Prisma](schema.prisma) y [validación de esta entrega](VALIDACION_V3.md).
 - [Auditoría de las aplicaciones existentes frente a V3.2](AUDITORIA_APP_Y_API_V3_2.md), [discrepancias del esquema recibido](REVISION_V3_2.md) y [separación en tres aplicaciones Docker](DESPLIEGUE_TRES_APPS.md).
 - [Contrato de los 43 endpoints de paneles](contracts/panels.openapi.json), disponible en `/api/legacy/v1`; los paneles actuales ya apuntan a ese prefijo.
@@ -14,7 +20,7 @@ API propia para conectar la aplicación del alumno con los paneles existentes de
 
 El backend implementa cuentas, permisos, solicitudes, locales, catálogo, imágenes, pedidos, reserva de existencias, recogida, opiniones con carrera/grupo, seguimiento e historial. V3 permite que `ADMIN` gestione locales y cuentas Cocina mediante `/admin/*`, con auditoría; el contrato anterior conserva la política de cuenta maestra para sus accesos. Administración no opera pedidos de Cocina. El alumnado solo puede consultar y modificar los pedidos que le pertenecen.
 
-V3 registra `Efectivo` (`pay_at_pickup`) y `Transferencia` (`unverified`); no existe una pasarela ni conciliación bancaria. El contrato anterior sigue creando compras en efectivo y puede leer ambos métodos V3. La recogida exige el código del pedido en estado listo: **no se usa matrícula como alternativa**. Los códigos nuevos tienen seis caracteres; se conservan los históricos. La API del alumno existe; queda conectar y validar su interfaz. Google/inicio de sesión institucional no está habilitado. Verificar `GET /api/v1/auth/options` para conocer las capacidades disponibles.
+V3.2 registra `Efectivo` (`pay_at_pickup`), `Transferencia`, `Tarjeta` y `ValeComida` (`unverified`); no existe una pasarela ni conciliación bancaria. El contrato anterior sigue creando compras en efectivo y puede leer los cuatro métodos V3.2. La recogida exige el código del pedido en estado listo: **no se usa matrícula como alternativa**. Los códigos nuevos tienen seis caracteres; se conservan los históricos. La API del alumno existe; queda conectar y validar su interfaz. Google/inicio de sesión institucional no está habilitado. Verificar `GET /api/v1/auth/options` para conocer las capacidades disponibles.
 
 ## Correo, carrera e institución
 
@@ -69,7 +75,7 @@ Configurar `SNACKUP_SMTP_HOST`, puerto, remitente y credenciales privadas. Produ
 
 Solicitar a la universidad: acceso de despliegue, sistema operativo, dominio y DNS, posibilidad de exponer 80/443, salida SMTP, valores institucionales autorizados, padrón/API y política de actualización/bajas. El servidor solicitado de 6–8 vCPU, 16 GB de RAM, SSD de 100–200 GB y red de 100 Mbps o más es una referencia de dimensionamiento; debe confirmarse antes de desplegar.
 
-## Despliegue con Docker Compose
+## Despliegue anterior con servicios separados
 
 El despliegue propuesto usa PostgreSQL **17**, Redis **7.4** y Caddy **2.11.7**. Las etiquetas de PostgreSQL/Redis mantienen la serie seleccionada y reciben actualizaciones de mantenimiento; registrar los digests exactos al liberar una versión y probar las actualizaciones. [Política oficial de soporte de PostgreSQL](https://www.postgresql.org/support/versioning/).
 

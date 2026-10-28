@@ -1,4 +1,6 @@
 """Contract authentication and explicit institutional student registration extension."""
+from .auth import request_user
+
 import csv
 import io
 import re
@@ -142,12 +144,8 @@ def login(request: Request, response: Response, data: dict = Body(...), db: Sess
     require_origin(request)
     validate_body("login", data)
     email = normalize_email(data["email"])
-    user = db.scalar(select(User).where(User.email == email).with_for_update())
-    if not password_matches(data["password"], user.password_hash if user else None):
-        raise ApiError(401, "INVALID_CREDENTIALS", "Correo o contraseña incorrectos.")
-    ensure_account(user, db)
-    if PASSWORDS.check_needs_rehash(user.password_hash):
-        user.password_hash = hash_password(data["password"])
+    from .auth import login_user
+    user = login_user(db, request, email, data["password"])
     return _issue_session(db, user, response, request.app.state.settings)
 
 
@@ -212,7 +210,7 @@ def logout(request: Request, data: dict = Body(...), db: Session = Depends(get_d
 
 
 @router.get("/users/me")
-def profile(user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
+def profile(user: User = Depends(request_user), db: Session = Depends(get_db, scope="function")):
     return serialize_profile(user, db)
 
 

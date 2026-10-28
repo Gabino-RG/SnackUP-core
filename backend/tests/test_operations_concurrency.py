@@ -125,7 +125,7 @@ def test_waiting_student_purchase_rechecks_committed_roster_revocation(app, clie
     waiting_on_user = Event()
 
     def observe_lock(connection, cursor, statement, parameters, context, executemany):
-        sql = statement.lower()
+        sql = statement.lower().replace("for no key update", "for update")
         if "from users" in sql and "for update" in sql:
             waiting_on_user.set()
 

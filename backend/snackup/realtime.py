@@ -109,7 +109,7 @@ class EventBridge:
             await asyncio.sleep(0.25)
 
     async def subscribe_loop(self):
-        self.subscriber = AsyncRedis.from_url(self.settings.redis_url, socket_timeout=5, socket_connect_timeout=2)
+        self.subscriber = AsyncRedis.from_url(self.settings.redis_url, socket_timeout=None, socket_connect_timeout=2, health_check_interval=30)
         while True:
             try:
                 async with self.subscriber.pubsub() as sub:
@@ -123,6 +123,10 @@ class EventBridge:
                 raise
             except Exception:
                 self.subscription_ready.clear()
+                self.broadcast({'type': 'resync.required'})
+                for queue in list(self.clients):
+                    with suppress(asyncio.QueueFull):
+                        queue.put_nowait({'type': 'error', 'code': 'RESYNC_REQUIRED'})
                 log.warning('Event subscription unavailable; reconnecting')
                 await asyncio.sleep(1)
 

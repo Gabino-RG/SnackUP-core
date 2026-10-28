@@ -1,0 +1,112 @@
+name: Phase C load and stress regression
+on:
+  push:
+    branches: [codex/auditoria-v32-contenedor-unico]
+    paths: ['backend/**', '.github/workflows/phase-c.yml']
+permissions:
+  contents: read
+concurrency:
+  group: phase-c-${{ github.ref }}-${{ contains(github.event.head_commit.message, '[phase-c-full]') && 'full' || 'quick' }}
+  cancel-in-progress: true
+jobs:
+  load:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {profile: base, suite: safety, scenarios: 'P0 P5 P6 P7b P4 P7'}
+          - {profile: base, suite: reading, scenarios: 'P2'}
+          - {profile: base, suite: realtime, scenarios: 'P8 P8-1000 P8-idle'}
+          - {profile: base, suite: kitchen, scenarios: 'P9 P9-burst P8b'}
+          - {profile: pessimistic, suite: pessimistic, scenarios: 'P7b P2 P7'}
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      COMPOSE_PROJECT_NAME: snackup-phase-c-${{ github.run_id }}-${{ matrix.suite }}
+      SNACKUP_ENVIRONMENT: test
+      SNACKUP_SECRET_KEY: isolated-phase-c-secret-not-for-production-2026
+      SNACKUP_DATABASE_URL: postgresql+psycopg://loadtest:isolated-loadtest-password@127.0.0.1:15432/snackup_loadtest
+      ALLOW_LOAD: 'YES'
+      PROFILE: ${{ matrix.profile }}
+      SCENARIOS: ${{ matrix.scenarios }}
+      QUICK: ${{ contains(github.event.head_commit.message, '[phase-c-full]') && '--full' || '--quick' }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - uses: docker/setup-compose-action@v2
+      - name: Configure isolated resource profile
+        run: |
+          mkdir -p reports/phase-c
+          if [ "$PROFILE" = base ]; then
+            echo 'SERVER_CPUS=0-3' >> "$GITHUB_ENV"
+            echo 'WORKERS=3' >> "$GITHUB_ENV"
+            echo 'DB_MEMORY=2g' >> "$GITHUB_ENV"
+            echo 'APP_MEMORY=5g' >> "$GITHUB_ENV"
+          else
+            echo 'SERVER_CPUS=0-1' >> "$GITHUB_ENV"
+            echo 'PASSWORD_CONCURRENCY=2' >> "$GITHUB_ENV"
+            echo 'WORKERS=1' >> "$GITHUB_ENV"
+            echo 'DB_MEMORY=1g' >> "$GITHUB_ENV"
+            echo 'APP_MEMORY=2300m' >> "$GITHUB_ENV"
+          fi
+          python - <<'PY'
+          import json, os, platform
+          from pathlib import Path
+          Path('reports/phase-c/environment.json').write_text(json.dumps({'commit':os.environ['GITHUB_SHA'],'profile':os.environ['PROFILE'],'runnerCpu':os.cpu_count(),'platform':platform.platform(),'generatorSharesRunner':True,'generatorSharesCpu':os.environ['PROFILE']=='base','cpuModel':next((line.split(':',1)[1].strip() for line in Path('/proc/cpuinfo').read_text().splitlines() if line.startswith('model name')),None),'serverCpu':4 if os.environ['PROFILE']=='base' else 2,'postgres':'17-alpine','fixtureStudents':1000,'businesses':4,'quick':os.environ['QUICK']=='--quick'},indent=2))
+          PY
+      - name: Build and start actual supervisor proxy API jobs Redis and PostgreSQL
+        run: |
+          python -m pip install -q -r requirements.lock
+          docker compose -f load/phase_c/compose.yaml up -d --build --wait --wait-timeout 180
+          python -m load.create_fixtures --confirm-isolated --output /tmp/phase-c-fixtures.json
+      - name: Calibrate Argon2 without changing security parameters
+        run: |
+          docker compose -f load/phase_c/compose.yaml exec -T app python - <<'PYCODE' > reports/phase-c/calibration.json
+          from concurrent.futures import ThreadPoolExecutor
+          import json,time
+          from snackup.auth import PASSWORDS
+          encoded=PASSWORDS.hash('synthetic-calibration-password')
+          results=[]
+          for concurrency in (1,2,4):
+              start=time.perf_counter()
+              with ThreadPoolExecutor(max_workers=concurrency) as pool:
+                  list(pool.map(lambda _:PASSWORDS.verify(encoded,'synthetic-calibration-password'),range(40)))
+              results.append({'concurrency':concurrency,'verifications':40,'elapsedSeconds':time.perf_counter()-start})
+          print(json.dumps({'argon2':{'memoryKiB':19456,'timeCost':2,'parallelism':1},'measurements':results},indent=2))
+          PYCODE
+      - name: Execute documented scenarios and retain every failure
+        run: |
+          failed=0
+          for scenario in $SCENARIOS; do
+            python -m load.phase_c.runner --fixtures /tmp/phase-c-fixtures.json --profile "$PROFILE" --scenario "$scenario" --output "reports/phase-c/$scenario.json" $QUICK || failed=1
+          done
+          exit "$failed"
+      - name: Verify every required scenario produced a passing report
+        if: always()
+        run: |
+          python - <<'PYCODE'
+          import json,os
+          from pathlib import Path
+          for name in os.environ['SCENARIOS'].split():
+              report=json.loads(Path('reports/phase-c/'+name+'.json').read_text())
+              assert report['success'], (name,report['failures'])
+          PYCODE
+      - name: Collect bounded redacted diagnostics
+        if: always()
+        run: |
+          docker compose -f load/phase_c/compose.yaml ps --all > reports/phase-c/status.txt
+          docker compose -f load/phase_c/compose.yaml logs --no-color --tail 150 > reports/phase-c/containers.log 2>&1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase-c-${{ matrix.suite }}-${{ github.run_id }}
+          path: backend/reports/phase-c
+          retention-days: 30
+      - name: Remove only disposable load project
+        if: always()
+        run: docker compose -f load/phase_c/compose.yaml down --volumes --remove-orphans

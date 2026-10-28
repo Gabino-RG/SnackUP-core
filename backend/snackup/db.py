@@ -49,7 +49,7 @@ class Database:
             elif settings.database_url.startswith('sqlite:///'):
                 Path(settings.database_url.removeprefix('sqlite:///')).parent.mkdir(parents=True, exist_ok=True)
         else:
-            kwargs.update(pool_size=settings.pool_size, max_overflow=settings.max_overflow, pool_timeout=10)
+            kwargs.update(pool_size=settings.pool_size, max_overflow=settings.max_overflow, pool_timeout=settings.pool_timeout_seconds)
         self.engine = create_engine(settings.database_url, **kwargs)
         if self.engine.dialect.name == 'sqlite':
             @event.listens_for(self.engine, 'connect')
@@ -67,9 +67,10 @@ class Database:
 def get_db(request: Request):
     with request.app.state.db.sessions() as session:
         try:
-            with session.begin():
-                yield session
+            yield session
+            session.commit()
         except BaseException:
+            session.rollback()
             # A media upload is staged until its metadata transaction commits.
             for path in session.info.get('created_media_files', ()):
                 try:

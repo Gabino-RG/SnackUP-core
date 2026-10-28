@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+from concurrent.futures import ThreadPoolExecutor
 import json
 import logging
 from pathlib import Path
@@ -10,7 +11,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
-from sqlalchemy.exc import IntegrityError, OperationalError
+from sqlalchemy.exc import IntegrityError, OperationalError, TimeoutError as PoolTimeoutError
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.exceptions import HTTPException
 from starlette.concurrency import run_in_threadpool
@@ -25,7 +26,7 @@ log = logging.getLogger('snackup.http')
 
 
 def create_app(settings: Settings | None = None):
-    from . import admin, identity, operations, realtime, v3_admin, v3_identity, v3_operations, v3_media, v3_reviews, push
+    from . import admin, identity, operations, realtime, v3_admin, v3_identity, v3_operations, v3_media, v3_reviews, push, v32_api, v32_chat
     from .push import install_push
     from .socketio_gateway import install_socketio
 
@@ -56,9 +57,10 @@ def create_app(settings: Settings | None = None):
             await app.state.events.stop()
             await app.state.socketio_gateway.stop()
             app.state.limiter.close()
+            app.state.password_executor.shutdown(wait=True, cancel_futures=True)
             database.dispose()
 
-    app = FastAPI(title='SnackUP API V3 · FastAPI', version='3.1.0', lifespan=lifespan,
+    app = FastAPI(title='SnackUP API V3 · FastAPI', version='3.2.0', lifespan=lifespan,
                   description='Contrato canónico V3 en /api/v1. Compatibilidad de paneles anteriores en /api/legacy/v1. '
                               'Registro institucional requiere verificación de correo antes de emitir una sesión. '
                               'Pagos son métodos registrados; no se procesa cobro. Tiempo real Socket.IO: /socket.io.',
@@ -66,6 +68,12 @@ def create_app(settings: Settings | None = None):
                   redoc_url=None, openapi_url='/api/openapi.json' if settings.environment != 'production' else None)
     app.state.settings = settings
     app.state.db = database
+    app.state.password_executor = ThreadPoolExecutor(max_workers=settings.password_concurrency,
+                                                    thread_name_prefix='snackup-password')
+    from .admission import DatabaseAdmission
+    app.add_middleware(DatabaseAdmission, capacity=min(24, max(1, settings.pool_size + settings.max_overflow - 4)),
+                       wait_seconds=settings.admission_wait_seconds, login_wait_seconds=settings.login_wait_seconds,
+                       write_concurrency=settings.write_concurrency)
     app.state.limiter = RateLimiter(settings)
     app.state.events = EventBridge(database, settings)
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=[urlsplit(settings.public_origin).hostname])
@@ -84,7 +92,7 @@ def create_app(settings: Settings | None = None):
                 # or turn a denied delivery into a successful operation.
                 log.warning('Audit persistence unavailable for %s', error.code)
         return JSONResponse(error.payload(), status_code=error.status,
-                            headers={'Retry-After': '60'} if error.status == 429 else None)
+                            headers={'Retry-After': '60' if error.status == 429 else '1'} if error.status in {429, 503} else None)
 
     @app.exception_handler(RequestValidationError)
     async def invalid_request(_, error):
@@ -95,9 +103,10 @@ def create_app(settings: Settings | None = None):
     async def conflict(_, error):
         return JSONResponse({'error': {'code': 'CONFLICT', 'message': 'La operación entra en conflicto con un registro existente.'}}, status_code=409)
 
+    @app.exception_handler(PoolTimeoutError)
     @app.exception_handler(OperationalError)
     async def database_unavailable(_, error):
-        return JSONResponse({'error': {'code': 'DATABASE_UNAVAILABLE', 'message': 'No se pudo confirmar la operación. Actualiza antes de repetirla.'}}, status_code=503)
+        return JSONResponse({'error': {'code': 'DATABASE_UNAVAILABLE', 'message': 'No se pudo confirmar la operación. Actualiza antes de repetirla.'}}, status_code=503, headers={'Retry-After': '1'})
 
     @app.exception_handler(HTTPException)
     async def http_error(_, error):
@@ -155,7 +164,7 @@ def create_app(settings: Settings | None = None):
         log.info('%s %s %d %.0fms', request.method, path, response.status_code, (time.monotonic() - started) * 1000)
         return response
 
-    for router in (v3_identity.router, v3_admin.router, v3_operations.router, v3_media.router, v3_reviews.router, push.router):
+    for router in (v32_api.router, v32_chat.router, v3_identity.router, v3_admin.router, v3_operations.router, v3_media.router, v3_reviews.router, push.router):
         app.include_router(router, prefix='/api/v1')
     # Keep the established panels' strict lower-case DTOs explicitly versioned.
     # They do not override or dilute the canonical V3 roles, errors or payloads.
@@ -164,7 +173,7 @@ def create_app(settings: Settings | None = None):
     from fastapi import APIRouter
     administrative_extensions = APIRouter(tags=['Administración institucional'])
     for route in admin.router.routes:
-        if (route.path == '/institution' or route.path.startswith(('/admin/reviews', '/admin/followups', '/admin/academic-catalog'))):
+        if (route.path in {'/institution', '/admin/access-requests', '/admin/access-requests/{id}/decision'} or (route.path == '/admin/users' and 'POST' in route.methods) or route.path.startswith(('/admin/reviews', '/admin/followups', '/admin/academic-catalog'))):
             administrative_extensions.routes.append(route)
     app.include_router(administrative_extensions, prefix='/api/v1')
     install_push(app)

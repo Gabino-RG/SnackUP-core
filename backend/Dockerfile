@@ -23,4 +23,4 @@ USER 10001:10001
 EXPOSE 8000
 HEALTHCHECK --interval=20s --timeout=5s --start-period=30s --retries=3 \
     CMD ["python", "/app/deploy/healthcheck.py"]
-CMD ["uvicorn", "snackup.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000", "--workers", "2", "--no-access-log"]
+CMD ["uvicorn", "snackup.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000", "--workers", "2", "--timeout-keep-alive", "130", "--no-access-log"]

@@ -15,7 +15,7 @@ from urllib.parse import parse_qs
 import socketio
 from sqlalchemy import select
 
-from .auth import verify_access_token
+from .auth import verify_access_token, verify_access_tokens
 from .errors import ApiError
 from .operation_models import Business
 
@@ -58,6 +58,14 @@ def sanitized_event(event):
         allowed = {"id", "businessId", "status", "version", "updatedAt", "isRated", "change"}
         if topic.startswith("user:") and kind != "order.updated":
             return None
+    elif kind in {"order.pickup_soon", "order.business_closed"} and topic.endswith(":orders"):
+        if kind == "order.pickup_soon" and not topic.startswith("business:"):
+            return None
+        if kind == "order.business_closed" and not topic.startswith("user:"):
+            return None
+        allowed = {"id", "businessId", "status", "version", "updatedAt", "scheduledPickupTime"}
+    elif kind in {"chat.message", "chat.closed", "chat.opened"} and topic.endswith(":chats"):
+        allowed = {"chatId", "messageId"}
     elif kind == "product.updated" and topic.startswith("business:") and topic.endswith(":products"):
         allowed = {"id", "businessId", "name", "description", "category", "price", "stock", "imageUrl",
                    "isAvailable", "isFeatured", "version", "updatedAt", "deletedAt"}
@@ -69,6 +77,34 @@ def sanitized_event(event):
             "occurredAt": event.get("occurredAt"),
             "data": {key: value for key, value in data.items() if key in allowed
                      and (value is None or isinstance(value, (str, int, float, bool)))}}
+
+
+def _topic_businesses(identity, topics):
+    public_businesses = set()
+    for topic in topics:
+        if topic.endswith(":chats"):
+            if identity.role == "user" and topic == f"user:{identity.user_id}:chats":
+                continue
+            if identity.role == "business" and topic == f"business:{identity.business_id}:chats":
+                continue
+            raise ApiError(403, "FORBIDDEN")
+        if topic.endswith(":orders"):
+            if identity.role == "user" and topic == f"user:{identity.user_id}:orders":
+                continue
+            if identity.role == "business" and topic == f"business:{identity.business_id}:orders":
+                continue
+            raise ApiError(403, "FORBIDDEN")
+        if not topic.startswith("business:"):
+            raise ApiError(403, "FORBIDDEN")
+        business = topic.removeprefix("business:")
+        if business.endswith(":products"):
+            business = business.removesuffix(":products")
+        if not business:
+            raise ApiError(403, "FORBIDDEN")
+        if identity.role == "business" and business != identity.business_id:
+            raise ApiError(403, "FORBIDDEN")
+        public_businesses.add(business)
+    return public_businesses
 
 
 class SocketIOGateway:
@@ -86,6 +122,7 @@ class SocketIOGateway:
         self.queue = asyncio.Queue(maxsize=200)
         self.tasks = []
         self.overflow = False
+        self.validation_slots = asyncio.Semaphore(2)
         self.handshake_timeout_seconds = 10
         self.sio.on("connect", self._connect)
         self.sio.on("disconnect", self._disconnect)
@@ -100,24 +137,7 @@ class SocketIOGateway:
             identity = _identity(db, token, self.settings)
             if expected is not None and identity != expected:
                 raise ApiError(401, "UNAUTHENTICATED")
-            public_businesses = set()
-            for topic in topics:
-                if topic.endswith(":orders"):
-                    if identity.role == "user" and topic == f"user:{identity.user_id}:orders":
-                        continue
-                    if identity.role == "business" and topic == f"business:{identity.business_id}:orders":
-                        continue
-                    raise ApiError(403, "FORBIDDEN")
-                if not topic.startswith("business:"):
-                    raise ApiError(403, "FORBIDDEN")
-                business = topic.removeprefix("business:")
-                if business.endswith(":products"):
-                    business = business.removesuffix(":products")
-                if not business:
-                    raise ApiError(403, "FORBIDDEN")
-                if identity.role == "business" and business != identity.business_id:
-                    raise ApiError(403, "FORBIDDEN")
-                public_businesses.add(business)
+            public_businesses = _topic_businesses(identity, topics)
             if public_businesses:
                 active = set(db.scalars(select(Business.id).where(Business.id.in_(public_businesses),
                                                                  Business.is_active.is_(True))))
@@ -125,13 +145,40 @@ class SocketIOGateway:
                     raise ApiError(403, "FORBIDDEN")
             return identity
 
+    async def _validated(self, *args):
+        async with self.validation_slots:
+            return await asyncio.to_thread(self._validate, *args)
+
+    def _validate_batch(self, entries, topic=None):
+        valid = set()
+        with self.db.sessions() as db:
+            users = verify_access_tokens([c.token for _, c in entries], db, self.settings)
+            # Active public destinations are shared by all recipients of an event.
+            active = set(db.scalars(select(Business.id).where(Business.is_active.is_(True))))
+            for sid, connection in entries:
+                user = users.get(connection.token)
+                if user is None:
+                    continue
+                identity = Identity(user.id, user.role, user.business_id)
+                try:
+                    destinations = _topic_businesses(identity, [topic] if topic else connection.topics)
+                except ApiError:
+                    continue
+                if identity == connection.identity and destinations <= active:
+                    valid.add(sid)
+        return valid
+
+    async def _batch(self, entries, topic=None):
+        async with self.validation_slots:
+            return await asyncio.to_thread(self._validate_batch, entries, topic)
+
     async def _connect(self, sid, environ, auth):
         if not isinstance(auth, dict) or set(auth) != {"token"} or not isinstance(auth["token"], str) or len(auth["token"]) > 8192:
             raise socketio.exceptions.ConnectionRefusedError("UNAUTHENTICATED", {"code": "UNAUTHENTICATED"})
         scope = environ.get("asgi.scope", {})
         remaining = max(0, scope.get("snackup.auth_deadline", time.monotonic() + self.handshake_timeout_seconds) - time.monotonic())
         try:
-            identity = await asyncio.wait_for(asyncio.to_thread(self._validate, auth["token"]), timeout=remaining)
+            identity = await asyncio.wait_for(self._validated(auth["token"]), timeout=remaining)
         except ApiError as error:
             raise socketio.exceptions.ConnectionRefusedError(error.code, {"code": error.code}) from None
         except Exception:
@@ -175,7 +222,7 @@ class SocketIOGateway:
         if subscribe and len(connection.topics | topics) > 64:
             return {"ok": False, "error": {"code": "SUBSCRIPTION_LIMIT"}}
         try:
-            await asyncio.to_thread(self._validate, connection.token, connection.identity, topics)
+            await self._validated(connection.token, connection.identity, topics)
         except ApiError as error:
             if error.code != "FORBIDDEN":
                 await self._close(sid)
@@ -209,6 +256,8 @@ class SocketIOGateway:
         return {"ok": False, "error": {"code": "INVALID_EVENT"}}
 
     def _enqueue(self, event):
+        if event.get("type") == "resync.required":
+            self.overflow = True
         try:
             self.queue.put_nowait(event)
         except asyncio.QueueFull:
@@ -219,18 +268,36 @@ class SocketIOGateway:
         event = sanitized_event(event)
         if event is None:
             return
-        for sid, connection in list(self.connections.items()):
-            if event["topic"] not in connection.topics:
-                continue
+        recipients = [(sid, c) for sid, c in self.connections.items() if event['topic'] in c.topics]
+        for offset in range(0, len(recipients), 250):
+            entries = recipients[offset:offset + 250]
             try:
-                await asyncio.to_thread(self._validate, connection.token, connection.identity, [event["topic"]])
+                valid = await self._batch(entries, event['topic'])
             except Exception:
-                await self._close(sid)
-                continue
-            if self.connections.get(sid) is connection:
-                # Per-recipient checks are deliberate: a broad room/Redis emit
-                # could send to a session revoked after it joined the room.
-                await self.sio.emit(event["type"], event, to=sid)
+                valid = set()
+            for sid, connection in entries:
+                if sid not in valid:
+                    await self._close(sid)
+                    continue
+                if self.connections.get(sid) is not connection or event['topic'] not in connection.topics:
+                    continue
+                delivery = event
+                if event['type'] == 'chat.message':
+                    try:
+                        delivery = await asyncio.to_thread(self._chat_message, connection, event)
+                    except Exception:
+                        await self._close(sid)
+                        continue
+                if delivery is not None:
+                    await self.sio.emit(event['type'], delivery, to=sid)
+
+    def _chat_message(self, connection, event):
+        from .v32_chat import realtime_message
+        with self.db.sessions() as db:
+            identity = _identity(db, connection.token, self.settings)
+            if identity != connection.identity:
+                return None
+            return realtime_message(db, identity, event)
 
     async def _event_loop(self):
         while True:
@@ -240,17 +307,19 @@ class SocketIOGateway:
                 await asyncio.gather(*(self._close(sid) for sid in list(self.connections)))
             await self.emit_event(event)
 
-    async def _check_connection(self, sid, connection):
-        try:
-            await asyncio.to_thread(self._validate, connection.token, connection.identity)
-        except Exception:
-            await self._close(sid)
-
     async def _revalidate_loop(self):
         while True:
             await asyncio.sleep(self.settings.websocket_revalidate_seconds)
-            await asyncio.gather(*(self._check_connection(sid, connection)
-                                  for sid, connection in list(self.connections.items())))
+            entries = list(self.connections.items())
+            for offset in range(0, len(entries), 250):
+                batch = entries[offset:offset + 250]
+                try:
+                    valid = await self._batch(batch)
+                except Exception:
+                    valid = set()
+                for sid, _ in batch:
+                    if sid not in valid:
+                        await self._close(sid)
 
     async def start(self):
         if not self.tasks:

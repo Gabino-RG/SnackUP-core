@@ -22,7 +22,7 @@ from sqlalchemy.orm import Session
 
 from snackup import admin
 from snackup.admin_models import AccessDecision, Followup, FollowupEvent, Review
-from snackup.auth import current_user
+from snackup.auth import request_user
 from snackup.common import contract
 from snackup.config import Settings
 from snackup.db import Base, Database, get_db, utcnow
@@ -66,7 +66,7 @@ def admin_api(tmp_path, monkeypatch):
             raise ApiError(401, "UNAUTHENTICATED")
         return user
 
-    app.dependency_overrides[current_user] = identity
+    app.dependency_overrides[request_user] = identity
     with database.sessions.begin() as db:
         db.add_all([
             Business(id="b1", name="Local 1", cafeteria_id="cafe", cafeteria_name="Cafetería", is_open=True),
