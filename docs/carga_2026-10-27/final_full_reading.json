@@ -1,0 +1,306 @@
+{
+  "sourceWorkflow": "https://github.com/Gabino-RG/SnackUP-core/actions/runs/40618617107",
+  "artifactId": 12787484156,
+  "reports": {
+    "P2.json": {
+      "scenario": "P2",
+      "profile": "base",
+      "quick": false,
+      "commit": "750eee4ab8359f81da31891c5a4cbfeb57408e26",
+      "elapsedSeconds": 2535.7155165840004,
+      "success": false,
+      "failures": {
+        "read_1000 p95": 1,
+        "P2 800 sustained CPU": 1,
+        "P2 1000 sustained CPU": 1
+      },
+      "details": {
+        "readingStages": [
+          {
+            "users": 100,
+            "start": 71.659334539,
+            "end": 371.67097398699997
+          },
+          {
+            "users": 200,
+            "start": 431.674304963,
+            "end": 731.676632049
+          },
+          {
+            "users": 300,
+            "start": 791.683711638,
+            "end": 1091.701588277
+          },
+          {
+            "users": 400,
+            "start": 1151.713103148,
+            "end": 1451.725746019
+          },
+          {
+            "users": 600,
+            "start": 1511.740931256,
+            "end": 1811.779686247
+          },
+          {
+            "users": 800,
+            "start": 1871.803977743,
+            "end": 2171.997922718
+          },
+          {
+            "users": 1000,
+            "start": 2232.02806418,
+            "end": 2533.4567144000002
+          }
+        ],
+        "integrity": {
+          "negativeStock": 0,
+          "duplicateNumbers": 0,
+          "duplicateCodes": 0,
+          "duplicateKeys": 0,
+          "inventoryMismatch": 0,
+          "pendingOutbox": 0,
+          "deadlocks": 0,
+          "orders": 0
+        },
+        "resources": {
+          "workers": [
+            {
+              "pid": 14,
+              "peakRssMiB": 212.76171875,
+              "meanCpuPercent": 41.46757822639409
+            },
+            {
+              "pid": 15,
+              "peakRssMiB": 212.515625,
+              "meanCpuPercent": 41.6165839452286
+            },
+            {
+              "pid": 16,
+              "peakRssMiB": 212.9921875,
+              "meanCpuPercent": 41.41566399988525
+            }
+          ],
+          "workerCpuRatio": 1.0048513032495123,
+          "peakContainersMiB": 880.3000000000001,
+          "readingStages": [
+            {
+              "users": 100,
+              "start": 71.659334539,
+              "end": 371.67097398699997,
+              "meanCpuPercent": 10.6636875,
+              "p95CpuPercent": 14.745000000000001
+            },
+            {
+              "users": 200,
+              "start": 431.674304963,
+              "end": 731.676632049,
+              "meanCpuPercent": 18.6276875,
+              "p95CpuPercent": 22.695
+            },
+            {
+              "users": 300,
+              "start": 791.683711638,
+              "end": 1091.701588277,
+              "meanCpuPercent": 26.311062500000002,
+              "p95CpuPercent": 30.582500000000003
+            },
+            {
+              "users": 400,
+              "start": 1151.713103148,
+              "end": 1451.725746019,
+              "meanCpuPercent": 34.99858974358974,
+              "p95CpuPercent": 44.082499999999996
+            },
+            {
+              "users": 600,
+              "start": 1511.740931256,
+              "end": 1811.779686247,
+              "meanCpuPercent": 54.50320512820513,
+              "p95CpuPercent": 66.065
+            },
+            {
+              "users": 800,
+              "start": 1871.803977743,
+              "end": 2171.997922718,
+              "meanCpuPercent": 81.9858125,
+              "p95CpuPercent": 87.0925
+            },
+            {
+              "users": 1000,
+              "start": 2232.02806418,
+              "end": 2533.4567144000002,
+              "meanCpuPercent": 84.72967948717948,
+              "p95CpuPercent": 88.025
+            }
+          ]
+        }
+      },
+      "metrics": {
+        "read_100_ramp": {
+          "count": 1356,
+          "p50Ms": 8.45899000000827,
+          "p95Ms": 11.615415000022722,
+          "p99Ms": 14.198263999986693,
+          "status": {
+            "200": 1356
+          }
+        },
+        "read_100": {
+          "count": 12030,
+          "p50Ms": 8.446424999988267,
+          "p95Ms": 11.404424999966523,
+          "p99Ms": 13.841541999994433,
+          "status": {
+            "200": 12030
+          }
+        },
+        "read_200_ramp": {
+          "count": 2616,
+          "p50Ms": 8.474741999975777,
+          "p95Ms": 11.908860999938042,
+          "p99Ms": 16.012713999998596,
+          "status": {
+            "200": 2616
+          }
+        },
+        "read_200": {
+          "count": 23943,
+          "p50Ms": 8.17693400006192,
+          "p95Ms": 11.891360000049644,
+          "p99Ms": 16.145241000003807,
+          "status": {
+            "200": 23943
+          }
+        },
+        "read_300_ramp": {
+          "count": 3768,
+          "p50Ms": 8.28632299999299,
+          "p95Ms": 12.45755399997961,
+          "p99Ms": 17.03311800008578,
+          "status": {
+            "200": 3768
+          }
+        },
+        "read_300": {
+          "count": 35931,
+          "p50Ms": 8.502103999944666,
+          "p95Ms": 15.569314999993367,
+          "p99Ms": 21.2413879999076,
+          "status": {
+            "200": 35931
+          }
+        },
+        "read_400_ramp": {
+          "count": 5454,
+          "p50Ms": 8.35697299999083,
+          "p95Ms": 15.571852999983093,
+          "p99Ms": 21.764487999917037,
+          "status": {
+            "200": 5454
+          }
+        },
+        "read_400": {
+          "count": 47724,
+          "p50Ms": 8.845887000006769,
+          "p95Ms": 18.275465999977314,
+          "p99Ms": 25.492928000176107,
+          "status": {
+            "200": 47724
+          }
+        },
+        "read_600_ramp": {
+          "count": 8246,
+          "p50Ms": 9.185611000020799,
+          "p95Ms": 30.79371900003025,
+          "p99Ms": 63.310246000128245,
+          "status": {
+            "200": 8246
+          }
+        },
+        "read_600": {
+          "count": 71422,
+          "p50Ms": 12.79373400006989,
+          "p95Ms": 39.47173799997472,
+          "p99Ms": 67.49263400001837,
+          "status": {
+            "200": 71422
+          }
+        },
+        "read_800_ramp": {
+          "count": 10802,
+          "p50Ms": 14.175531000091723,
+          "p95Ms": 184.53139300004295,
+          "p99Ms": 241.61298900003203,
+          "status": {
+            "200": 10802
+          }
+        },
+        "read_800": {
+          "count": 92032,
+          "p50Ms": 82.90865300000405,
+          "p95Ms": 262.34556000008524,
+          "p99Ms": 331.36363700009497,
+          "status": {
+            "200": 92032
+          }
+        },
+        "read_1000_ramp": {
+          "count": 12657,
+          "p50Ms": 37.08997100011402,
+          "p95Ms": 1009.1855259997828,
+          "p99Ms": 1103.196626999761,
+          "status": {
+            "200": 12657
+          }
+        },
+        "read_1000": {
+          "count": 91737,
+          "p50Ms": 773.0773839998619,
+          "p95Ms": 956.3794930004406,
+          "p99Ms": 1064.1629470001135,
+          "status": {
+            "200": 91737
+          }
+        }
+      }
+    },
+    "calibration.json": {
+      "argon2": {
+        "memoryKiB": 19456,
+        "timeCost": 2,
+        "parallelism": 1
+      },
+      "measurements": [
+        {
+          "concurrency": 1,
+          "verifications": 40,
+          "elapsedSeconds": 0.799609892999996
+        },
+        {
+          "concurrency": 2,
+          "verifications": 40,
+          "elapsedSeconds": 0.44001499000000877
+        },
+        {
+          "concurrency": 4,
+          "verifications": 40,
+          "elapsedSeconds": 0.31562180600001
+        }
+      ]
+    },
+    "environment.json": {
+      "commit": "750eee4ab8359f81da31891c5a4cbfeb57408e26",
+      "profile": "base",
+      "runnerCpu": 4,
+      "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
+      "generatorSharesRunner": true,
+      "generatorSharesCpu": true,
+      "cpuModel": "AMD EPYC 9V74 80-Core Processor",
+      "serverCpu": 4,
+      "postgres": "17-alpine",
+      "fixtureStudents": 1000,
+      "businesses": 4,
+      "quick": false
+    }
+  }
+}

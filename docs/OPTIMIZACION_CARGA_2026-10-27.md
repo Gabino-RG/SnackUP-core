@@ -69,6 +69,64 @@ Fuentes verificables: [ejecución con dos escrituras](https://github.com/Gabino-
 
 La segunda corrida figura como `quick=true`, pero P4 conservó los 15 minutos completos, incluida la historia de carga de los escalones anteriores. Los demás escenarios cortos no equivalen a la batería completa. En esa repetición el perfil de dos CPU completó 600/600 logins, aunque su p95 de 3,962.69 ms incumplió el objetivo de 3 s; la lectura de 1,000 alumnos incumplió el criterio de CPU sostenida. Estos fallos permanecen en [los JSON de login/lectura pesimista](carga_2026-10-27/one_writer_quick_pessimistic.json) y [lectura base](carga_2026-10-27/one_writer_quick_reading.json).
 
+### Confirmación en la batería completa
+
+El job de seguridad de la [ejecución final completa](https://github.com/Gabino-RG/SnackUP-core/actions/runs/40618617107) aprobó P0, P4, P5, P6, P7 y P7b en `750eee4ab8359f81da31891c5a4cbfeb57408e26`. En esta ocasión el runner fue AMD EPYC 9V74, con el mismo perfil de cuatro CPU y tres workers; se registra la diferencia de CPU para no confundir esta medición con una repetición en la misma máquina.
+
+| Escenario completo, perfil base | Resultado final |
+|---|---|
+| P4, cinco escalones de tres minutos | 13,860/13,860 creados y cancelados; cero 503 |
+| P4, 40 pedidos/s | 7,200/7,200 creados; p95 95.29 ms; p99 146.30 ms |
+| P5, 200 compradores y stock 50 | Exactamente 50 respuestas 201 y 150 respuestas 422 |
+| P6, 500 solicitudes con 50 claves | 500 respuestas 201 idénticas por clave; exactamente 50 pedidos |
+| P7, login sostenido | 5,400/5,400 respuestas 200; p95 33.40 ms |
+| P7b, tres olas de 200 logins | 600/600 respuestas 200; p95 2,430.04 ms; RSS máximo 234.27 MiB por worker |
+| Integridad | Cero stock negativo, discrepancias, números/códigos/claves duplicados y deadlocks; outbox sin pendientes al terminar |
+
+[Evidencia del job completo](carga_2026-10-27/final_full_safety.json), artifact `12786509144`. La aprobación de este job no sustituye los resultados de las demás suites.
+
+### Lectura y login con las duraciones completas
+
+En lectura se mantuvieron 60 segundos de rampa y 300 segundos sostenidos por escalón. Cada alumno consultó negocios, productos y pedidos activos cada 5–10 segundos. Los criterios siguen siendo p95 <750 ms, p99 <2 s y CPU media del servidor <75%; no se modificaron tras observar los resultados.
+
+| Perfil base: alumnos | p95 | p99 | CPU media sostenida | Resultado |
+|---:|---:|---:|---:|---|
+| 100 | 11.40 ms | 13.84 ms | 10.66% | Aprobado |
+| 200 | 11.89 ms | 16.15 ms | 18.63% | Aprobado |
+| 300 | 15.57 ms | 21.24 ms | 26.31% | Aprobado |
+| 400 | 18.28 ms | 25.49 ms | 35.00% | Aprobado |
+| 600 | 39.47 ms | 67.49 ms | 54.50% | Aprobado |
+| 800 | 262.35 ms | 331.36 ms | 81.99% | Fallido por CPU |
+| 1,000 | 956.38 ms | 1,064.16 ms | 84.73% | Fallido por CPU y p95 |
+
+Todas las solicitudes de esos escalones respondieron 200. El job completo **sigue fallido** por los tres criterios registrados en su JSON. En este runner se validaron 600 lectores dentro de todos los límites, no 1,000. El fixture contiene solo cuatro negocios, un producto por negocio y no incluye historial previo: estos resultados tampoco certifican un catálogo o base histórica grandes. [Evidencia de lectura base](carga_2026-10-27/final_full_reading.json), artifact `12787484156`; CPU AMD EPYC 9V74, kernel `6.17.0-1022-azure`, generador compartiendo CPU.
+
+El perfil pesimista completo aprobó los seis escalones de 50–300 lectores. Con 300: p95 16.69 ms, p99 25.54 ms y CPU media 27.60%. Completó 5,400/5,400 logins sostenidos (p95 21.71 ms) y 600/600 logins en tres olas (p95 2,805.60 ms; RSS máximo 177.28 MiB durante las olas). [Evidencia pesimista](carga_2026-10-27/final_full_pessimistic.json), artifact `12788500449`.
+
+Esta aprobación de dos CPU ocurrió en AMD EPYC 9V45 con generador en CPU separadas. La repetición corta en otro runner había fallado con p95 de 3.96 s, y se conserva. No se atribuye la diferencia al límite de escrituras: los logins quedan fuera de ese semáforo y los procesadores/condiciones fueron distintos. El objetivo de tres segundos no está garantizado para cualquier servidor de dos CPU.
+
+### Tiempo real completo detrás de Caddy
+
+| Escenario | Eventos recibidos / esperados | p95 del evento | Desconexiones inesperadas | Resultado |
+|---|---:|---:|---:|---|
+| P8: 300 sockets, 20 min | 71,700 / 71,700 | 248.91 ms | 0 | Aprobado |
+| P8-1000: 1,000 sockets, 5 min | 59,000 / 59,000 | 248.46 ms | 0 | Aprobado |
+| P8-idle: 300 sockets, 6 min e intervalos de 20–40 s | 3,450 / 3,450 | 232.07 ms | 0 | Aprobado |
+
+Las razones de CPU entre el worker más y menos ocupado fueron 1.16 y 1.13 para P8 y P8-1000, por debajo del umbral de 2. [Evidencia de tiempo real](carga_2026-10-27/final_full_realtime.json), artifact `12787532694`.
+
+### Cocina y receso completo
+
+Se simularon cuatro locales con dos tabletas por local, consulta de cocina cada dos segundos y consulta de alumnos con pedidos activos cada cinco segundos. Se mantuvieron los tiempos documentados de preparación y traslado, sin acelerar el reloj.
+
+| Escenario | Pedidos creados / entregados | p95 de creación | p95 hasta aceptación | Resultado |
+|---|---:|---:|---:|---|
+| P9: 90 pedidos/min durante 20 min | 1,800 / 1,800 | 38.63 ms | 1,987.49 ms | Aprobado |
+| P9-burst: 270 pedidos/min durante 5 min | 1,350 / 1,350 | 475.80 ms | 2,494.91 ms | Aprobado |
+| P8b: 300 sockets y 90 pedidos/min durante 20 min | 1,800 / 1,800 | 50.11 ms | 2,006.73 ms | Aprobado |
+
+La ráfaga lanzó las 1,350 llegadas previstas. En P8b llegaron las 7,200/7,200 transiciones del alumno y los 135,000/135,000 avisos de stock, con p95 de 244.72 ms y 243.34 ms, respectivamente; no hubo desconexiones inesperadas. Los 409 entre tabletas son conflictos de versión esperados y no duplicaron transiciones. Las tres pruebas terminaron sin errores internos/de transporte, discrepancias de inventario, duplicados ni deadlocks. [Evidencia de cocina](carga_2026-10-27/final_full_kitchen.json), artifact `12789090290`.
+
 ## Simulación de Fase C
 
 El [protocolo y los comandos](../backend/load/phase_c/README.md) describen perfiles, tasas, duraciones, criterios y limitaciones del generador. Se recrearon los escenarios con tráfico HTTP/Socket.IO real porque los scripts k6 citados en el informe no estaban incluidos. Los runners comparten CPU con el generador; no son la laptop de QA ni el futuro servidor de TI.
@@ -77,7 +135,7 @@ La [evidencia de la repetición corta](carga_2026-10-27/) conserva también los 
 
 Otra corrida corta dio p95 de 3.54 s a 40 pedidos/s; motivó el ajuste final de bloqueos del negocio. No se omite esa variabilidad aunque otra repetición del mismo escenario hubiera pasado.
 
-Resultados completos y evidencia: pendientes de consolidar al terminar las ejecuciones largas del código final `750eee4ab8359f81da31891c5a4cbfeb57408e26`. La desconexión de la conversación no detuvo los workflows; se retomó su seguimiento sin reiniciar la resistencia.
+La batería completa del código `750eee4ab8359f81da31891c5a4cbfeb57408e26` terminó **fallida** por los criterios de lectura base de 800 y 1,000 alumnos detallados arriba. Las suites de compras/login base, tiempo real, cocina y perfil pesimista aprobaron. La resistencia P12 sigue pendiente de terminar y no se presenta como aprobada. La desconexión de la conversación no detuvo los workflows; se retomó su seguimiento sin reiniciarlos.
 
 - [Batería completa con una escritura por worker](https://github.com/Gabino-RG/SnackUP-core/actions/runs/40618617107).
 - [Resistencia P12 de dos horas con una escritura por worker](https://github.com/Gabino-RG/SnackUP-core/actions/runs/40618617105).
