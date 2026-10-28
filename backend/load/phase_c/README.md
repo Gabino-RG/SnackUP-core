@@ -1,6 +1,6 @@
 # Regresión de carga del informe del 27 de octubre de 2026
 
-Este entorno usa PostgreSQL 17 y el supervisor, Caddy, Redis, API y scheduler reales del contenedor unificado. La imagen de medición sustituye los archivos estáticos de Flutter por páginas mínimas; el workflow del contenedor unificado verifica por separado las dos compilaciones Flutter. No envía correo ni push externos.
+Este entorno usa PostgreSQL 17 y el supervisor, Caddy, Redis, API y scheduler reales del contenedor unificado. La imagen de medición sustituye los archivos estáticos de Flutter por páginas mínimas; el workflow del contenedor unificado verifica por separado las dos compilaciones Flutter. No envía correo ni push externos. El fixture contiene 1,000 alumnos, cuatro locales, cuatro operadores y un producto por local. Cada escenario reinicia los pedidos de la base aislada; los resultados de lectura no representan un catálogo grande ni una base histórica de producción.
 
 El generador es Python (`aiohttp` y `python-socketio`) porque los scripts k6 originales citados por el informe no están en este repositorio ni entre los archivos recibidos. Envía tráfico HTTP y WebSocket real, con sesiones reales, y valida resultados en SQL. No inventa latencias ni acelera el reloj. `--quick` reduce duraciones; conserva los cinco escalones de tres minutos en P4 porque acortar los escalones anteriores ocultaba saturación sostenida. Sus resultados no certifican resistencia.
 
