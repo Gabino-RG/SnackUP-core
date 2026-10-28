@@ -2,6 +2,8 @@
 
 La revisión parte del informe PDF y de los cuatro documentos de resultados/propuestas del 27 de octubre de 2026, sobre `81c76c5`. Se conserva el contrato HTTP V3/V3.2 y legacy, los datos y el contenedor de aplicación único con PostgreSQL separado. Esta fase no añade migraciones ni elimina endpoints.
 
+La configuración final de una escritura activa por worker aprobó la compra sostenida a 40 pedidos/s y la resistencia de dos horas con 300 lectores y 90 pedidos/min. La regresión terminó con 295 pruebas PostgreSQL aprobadas y 54 comprobaciones del contenedor. La lectura base cumplió todos los límites hasta 600 alumnos; los escalones de 800 y 1,000 incumplieron CPU y/o latencia, por lo que el workflow de carga conserva su resultado fallido. La validación final está cerrada con ese límite explícito.
+
 ## Cambios y motivo
 
 | Hallazgo | Implementación |
@@ -127,6 +129,26 @@ Se simularon cuatro locales con dos tabletas por local, consulta de cocina cada 
 
 La ráfaga lanzó las 1,350 llegadas previstas. En P8b llegaron las 7,200/7,200 transiciones del alumno y los 135,000/135,000 avisos de stock, con p95 de 244.72 ms y 243.34 ms, respectivamente; no hubo desconexiones inesperadas. Los 409 entre tabletas son conflictos de versión esperados y no duplicaron transiciones. Las tres pruebas terminaron sin errores internos/de transporte, discrepancias de inventario, duplicados ni deadlocks. [Evidencia de cocina](carga_2026-10-27/final_full_kitchen.json), artifact `12789090290`.
 
+### Resistencia P12: dos horas reales
+
+La [ejecución final de resistencia](https://github.com/Gabino-RG/SnackUP-core/actions/runs/40618617105) aprobó sobre el mismo commit `750eee4ab8359f81da31891c5a4cbfeb57408e26`, con PostgreSQL 17, tres workers, una escritura por worker y AMD EPYC 7763. Mantuvo 300 lectores y 90 pedidos/min durante 7,200 segundos. Incluyendo preparación y drenaje, el escenario duró 7,307.70 segundos; no se aceleró el reloj.
+
+| Comprobación | Resultado |
+|---|---|
+| Pedidos lanzados / creados / entregados | 10,800 / 10,800 / 10,800 |
+| Lecturas de los 300 alumnos | 852,399 respuestas 200; p95 120.84 ms; p99 371.78 ms |
+| Creación / aceptación, p95 | 352.32 ms / 2,391.25 ms |
+| Renovación de sesión | 1,308 respuestas 200 |
+| Respuestas HTTP registradas | 1,096,079; solo 200, 201 y los 409 esperados entre tabletas |
+| Stock negativo, discrepancias, números/códigos/claves duplicados y deadlocks | 0 |
+| Outbox pendiente al terminar / publicaciones vencidas restantes | 0 / 0 |
+| Retención | Se eliminaron las 2,000 publicaciones de ocho días de antigüedad |
+| Memoria máxima medida, app + PostgreSQL | 991.50 MiB, dentro del presupuesto de 7,680 MiB |
+| RSS máximo por worker | 224.03 MiB |
+| Mayor retraso observado del outbox en las muestras | 0.723 s |
+
+El [JSON de resistencia](carga_2026-10-27/final_soak.json) conserva métricas, entorno y las 959 muestras de recursos normalizadas; artifact original `12790852552`. También se verificaron expresamente el conteo de llegadas, las respuestas HTTP, cero eventos pendientes y cero publicaciones vencidas. Las publicaciones nuevas se conservan siete días: la prueba valida la purga de eventos vencidos y el presupuesto de memoria, no una tabla de eventos de tamaño constante ni una garantía de ausencia de fugas para duraciones mayores.
+
 ## Simulación de Fase C
 
 El [protocolo y los comandos](../backend/load/phase_c/README.md) describen perfiles, tasas, duraciones, criterios y limitaciones del generador. Se recrearon los escenarios con tráfico HTTP/Socket.IO real porque los scripts k6 citados en el informe no estaban incluidos. Los runners comparten CPU con el generador; no son la laptop de QA ni el futuro servidor de TI.
@@ -135,7 +157,7 @@ La [evidencia de la repetición corta](carga_2026-10-27/) conserva también los 
 
 Otra corrida corta dio p95 de 3.54 s a 40 pedidos/s; motivó el ajuste final de bloqueos del negocio. No se omite esa variabilidad aunque otra repetición del mismo escenario hubiera pasado.
 
-La batería completa del código `750eee4ab8359f81da31891c5a4cbfeb57408e26` terminó **fallida** por los criterios de lectura base de 800 y 1,000 alumnos detallados arriba. Las suites de compras/login base, tiempo real, cocina y perfil pesimista aprobaron. La resistencia P12 sigue pendiente de terminar y no se presenta como aprobada. La desconexión de la conversación no detuvo los workflows; se retomó su seguimiento sin reiniciarlos.
+La batería completa del código `750eee4ab8359f81da31891c5a4cbfeb57408e26` terminó **fallida** por los criterios de lectura base de 800 y 1,000 alumnos detallados arriba. Las suites de compras/login base, tiempo real, cocina y perfil pesimista aprobaron. **La resistencia P12 también aprobó** después de completar sus dos horas y el drenaje. La desconexión de la conversación no detuvo los workflows; se retomó su seguimiento sin reiniciarlos. Los commits posteriores solo conservan documentación y evidencia; no alteran el código ejecutable validado.
 
 - [Batería completa con una escritura por worker](https://github.com/Gabino-RG/SnackUP-core/actions/runs/40618617107).
 - [Resistencia P12 de dos horas con una escritura por worker](https://github.com/Gabino-RG/SnackUP-core/actions/runs/40618617105).
