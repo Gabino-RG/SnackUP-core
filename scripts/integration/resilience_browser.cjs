@@ -73,7 +73,7 @@ if (!origin || new URL(origin).hostname !== '127.0.0.1' || !fixtures.readyId) th
     await field('Código del cliente',fixtures.readyCode);
     const confirm=page.getByRole('button',{name:'Confirmar entrega',exact:true});
     await confirm.click();
-    await text('Revisa tu conexión.').waitFor();
+    await text('Revisa tu conexión y comprueba el resultado antes de repetir un guardado.').waitFor();
     assert.equal(await confirm.isDisabled(),true,'Uncertain delivery must require closing and reloading, not another send');
     await context.setOffline(false);
     await page.getByRole('button',{name:'Volver y comprobar el pedido',exact:true}).click();
