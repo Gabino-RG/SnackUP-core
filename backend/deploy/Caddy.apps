@@ -1,0 +1,30 @@
+{
+    email {$TLS_ACME_EMAIL}
+    http_port 8080
+    https_port 8443
+    admin localhost:2019
+}
+
+{$SNACKUP_DOMAIN} {
+    encode zstd gzip
+    header -Server
+    request_body {
+        max_size 6MB
+    }
+
+    # Keep one public origin and preserve the API paths, including WebSocket.
+    @backend path /api /api/* /socket.io /socket.io/* /media /media/* /health/live /health/ready
+    handle @backend {
+        reverse_proxy api:8000
+    }
+
+    redir /paneles /paneles/ 308
+    handle_path /paneles/* {
+        reverse_proxy cocina:8080
+    }
+
+    handle {
+        reverse_proxy usuarios:8080
+    }
+    # No access log: reset/verification tokens and cookies are not recorded.
+}

@@ -1,0 +1,1570 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "SnackUP - extensiones de identidad y alumnado",
+    "version": "0.1.0",
+    "description": "Contrato del backend implementado en snackup/identity.py, operations.py y admin.py. 11 operaciones adicionales y la ampliación compatible del perfil existente. No sustituye ni modifica las 43 operaciones de panels.openapi.json. El frontend estudiantil existente aún requiere integración REST; no hay API, padrón, SMTP ni servidor institucional entregados por este documento."
+  },
+  "servers": [
+    {
+      "url": "/api/legacy/v1"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "public",
+      "description": "Sin sesión; acuses genéricos y límites antiabuso."
+    },
+    {
+      "name": "student",
+      "description": "role=user, correo confirmado, cuenta activa/aprobada y padrón institucional activo de tipo student."
+    },
+    {
+      "name": "authenticated",
+      "description": "Perfil de la propia sesión; nunca consulta académica de otra persona."
+    }
+  ],
+  "paths": {
+    "/student/register": {
+      "post": {
+        "operationId": "registerStudent",
+        "summary": "Solicitar alta de alumno mediante padrón",
+        "description": "SMTP y dominios estudiantiles configurados obligatorios. Solo crea role=user cuando el correo coincide con un registro student activo y el dominio está permitido. Nombre, carrera y grupo vienen del padrón. El correo aún debe verificarse. 202 es genérico también para duplicados, correos no autorizados o inexistentes; no devuelve sesión ni confirma elegibilidad. Campos de rol/carrera inyectados se rechazan.",
+        "tags": [
+          "public"
+        ],
+        "responses": {
+          "202": {
+            "description": "Operación confirmada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Received"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. El cliente conserva error.code; ver API_ALUMNOS.md.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-required-role": "public",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StudentRegistration"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/verify-email": {
+      "post": {
+        "operationId": "verifyEmail",
+        "summary": "Confirmar posesión del correo",
+        "description": "Token opaco de 30 minutos, vinculado al correo, de un solo uso. No concede roles ni sesión. En solicitudes de personal solo marca correo confirmado; mantiene autorización pendiente. Token inválido, usado o expirado: 422 VERIFICATION_TOKEN_INVALID.",
+        "tags": [
+          "public"
+        ],
+        "responses": {
+          "204": {
+            "description": "Operación confirmada"
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. El cliente conserva error.code; ver API_ALUMNOS.md.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-required-role": "public",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerificationInput"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "Debe coincidir exactamente con SNACKUP_PUBLIC_ORIGIN; también lo envían explícitamente clientes nativos de confianza."
+          }
+        ]
+      },
+      "get": {
+        "operationId": "emailVerificationPage",
+        "summary": "Abrir pantalla de confirmación de correo",
+        "description": "HTML. El correo apunta a /api/legacy/v1/auth/verify-email#token=...; el fragmento no se envía al servidor. JavaScript lo retira de la barra y envía el POST solo tras pulsar Confirmar correo. GET no modifica datos. No pasar el token en query parameters. Respuesta con CSP de nonce y Cache-Control no-store.",
+        "tags": [
+          "public"
+        ],
+        "responses": {
+          "200": {
+            "description": "Página de confirmación sin cambios de estado.",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. El cliente conserva error.code; ver API_ALUMNOS.md.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-required-role": "public",
+        "security": []
+      }
+    },
+    "/auth/resend-verification": {
+      "post": {
+        "operationId": "resendVerification",
+        "summary": "Reenviar confirmación de correo",
+        "description": "Respuesta genérica aunque no exista la cuenta. Si existe, no está verificada y no fue rechazada, invalida tokens previos y envía uno nuevo. SMTP no configurado o entrega fallida: 503 EMAIL_UNAVAILABLE.",
+        "tags": [
+          "public"
+        ],
+        "responses": {
+          "202": {
+            "description": "Operación confirmada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Received"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. El cliente conserva error.code; ver API_ALUMNOS.md.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-required-role": "public",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/student/businesses": {
+      "get": {
+        "operationId": "listStudentBusinesses",
+        "summary": "Consultar locales activos",
+        "description": "Solo locales activos, ordenados por nombre e ID. Incluye isOpen: un local cerrado sigue siendo visible, pero no acepta pedidos.",
+        "tags": [
+          "student"
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación confirmada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessPage"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. El cliente conserva error.code; ver API_ALUMNOS.md.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-required-role": "user",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 20
+            }
+          }
+        ]
+      }
+    },
+    "/student/businesses/{id}/products": {
+      "get": {
+        "operationId": "listStudentProducts",
+        "summary": "Consultar catálogo disponible de un local",
+        "description": "Solo productos no eliminados y disponibles de un local activo; orden categoría, nombre e ID. stock=null significa inventario sin límite de unidades configurado. Precios e inventario vuelven a comprobarse al comprar.",
+        "tags": [
+          "student"
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación confirmada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductPage"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. El cliente conserva error.code; ver API_ALUMNOS.md.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-required-role": "user",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ]
+      }
+    },
+    "/student/orders": {
+      "post": {
+        "operationId": "createStudentOrder",
+        "summary": "Crear pedido con reserva de existencias",
+        "description": "Solo cash. El servidor fija precios, cantidades disponibles, total, número y código de entrega; reserva existencias transaccionalmente. No admite productos duplicados, precios enviados por cliente ni pedidos a varios locales. Misma clave y mismo body devuelve el JSON original (201), incluso si el pedido avanzó desde entonces: consultar GET después. Misma clave con otro body: 409 IDEMPOTENCY_CONFLICT. Límite de creación/reintentos: 30/minuto por usuario. No hay procesamiento de pago electrónico.",
+        "tags": [
+          "student"
+        ],
+        "responses": {
+          "201": {
+            "description": "Operación confirmada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentOrder"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. El cliente conserva error.code; ver API_ALUMNOS.md.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-required-role": "user",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StudentOrderInput"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9._:-]{16,128}$"
+            },
+            "description": "Clave nueva por intención de compra, reutilizada sin cambiar el body cuando se desconoce el resultado. Ámbito del usuario autenticado."
+          }
+        ]
+      },
+      "get": {
+        "operationId": "listStudentOrders",
+        "summary": "Listar únicamente pedidos propios",
+        "description": "Ordenados del más reciente al más antiguo, con ID como desempate. No filtra por estado. Incluye pickupCode solo para el propietario.",
+        "tags": [
+          "student"
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación confirmada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentOrderPage"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. El cliente conserva error.code; ver API_ALUMNOS.md.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-required-role": "user",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 20
+            }
+          }
+        ]
+      }
+    },
+    "/student/orders/{id}": {
+      "get": {
+        "operationId": "getStudentOrder",
+        "summary": "Consultar un pedido propio",
+        "description": "Un pedido de otra persona se responde como inexistente (404). Incluye código privado del propietario; Cocina usa el DTO distinto del contrato de paneles.",
+        "tags": [
+          "student"
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación confirmada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentOrder"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. El cliente conserva error.code; ver API_ALUMNOS.md.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-required-role": "user",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ]
+      }
+    },
+    "/student/orders/{id}/cancel": {
+      "post": {
+        "operationId": "cancelStudentOrder",
+        "summary": "Cancelar un pedido propio pendiente",
+        "description": "Solo estado pending y expectedVersion vigente. Devuelve existencias reservadas una sola vez y marca cancelReason=student_cancelled. El alumno no envía motivo libre ni notas. Después de aceptación por Cocina: 409 INVALID_STATUS_TRANSITION. Versión anterior: 409 VERSION_CONFLICT.",
+        "tags": [
+          "student"
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación confirmada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentOrder"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. El cliente conserva error.code; ver API_ALUMNOS.md.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-required-role": "user",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VersionInput"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ]
+      }
+    },
+    "/student/orders/{id}/review": {
+      "post": {
+        "operationId": "createStudentReview",
+        "summary": "Opinar sobre un pedido propio entregado",
+        "description": "Solo pedido completed, una opinión por pedido. rating obligatorio; foodRating y serviceRating pueden omitirse o ser null. Carrera/grupo se copian del padrón vigente al enviar la opinión; nunca se aceptan desde el cliente. Cambios posteriores del padrón no reescriben esa copia. Opinión repetida: 409 REVIEW_EXISTS. Sin entrega: 409 ORDER_NOT_COMPLETED. La respuesta no revela identidad personal.",
+        "tags": [
+          "student"
+        ],
+        "responses": {
+          "201": {
+            "description": "Operación confirmada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentReview"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. El cliente conserva error.code; ver API_ALUMNOS.md.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-required-role": "user",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StudentReviewInput"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ]
+      }
+    },
+    "/users/me": {
+      "get": {
+        "operationId": "getProfileWithAcademics",
+        "summary": "Leer perfil propio con información académica validada",
+        "description": "Ruta ya definida en panels.openapi.json; aquí se documentan campos adicionales compatibles. Se conservan id,displayName,role,businessId,isMaster. Añade email,emailVerified y academic cuando hay padrón activo. La carrera se obtiene de esa relación SQL, no se deduce del texto del correo. Un padrón existente inactivo bloquea cualquier rol; personal sin padrón puede conservar permisos asignados manualmente.",
+        "tags": [
+          "authenticated"
+        ],
+        "responses": {
+          "200": {
+            "description": "Operación confirmada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileWithAcademics"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error sin efectos no autorizados. El cliente conserva error.code; ver API_ALUMNOS.md.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "x-required-role": "authenticated"
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "minLength": 1
+              },
+              "message": {
+                "type": "string"
+              },
+              "details": {}
+            },
+            "required": [
+              "code",
+              "message"
+            ]
+          }
+        },
+        "required": [
+          "error"
+        ]
+      },
+      "Pagination": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "totalPages": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "page",
+          "limit",
+          "total",
+          "totalPages"
+        ]
+      },
+      "Business": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 60
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 600
+          },
+          "timezone": {
+            "type": "string",
+            "minLength": 1
+          },
+          "cafeteriaId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "cafeteriaName": {
+            "type": "string",
+            "minLength": 1
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "isOpen": {
+            "type": "boolean"
+          },
+          "isActive": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "version",
+          "isOpen",
+          "isActive",
+          "cafeteriaId",
+          "cafeteriaName"
+        ]
+      },
+      "BusinessPage": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Business"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/Pagination"
+          }
+        },
+        "required": [
+          "data",
+          "pagination"
+        ]
+      },
+      "Product": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "businessId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1
+          },
+          "price": {
+            "type": "number",
+            "minimum": 0.01,
+            "maximum": 10000,
+            "description": "MXN con hasta 2 decimales."
+          },
+          "stock": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 1000000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "imageUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "isAvailable": {
+            "type": "boolean"
+          },
+          "isFeatured": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "businessId",
+          "name",
+          "description",
+          "category",
+          "price",
+          "stock",
+          "imageUrl",
+          "isAvailable",
+          "isFeatured",
+          "version",
+          "updatedAt"
+        ]
+      },
+      "ProductPage": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Product"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/Pagination"
+          }
+        },
+        "required": [
+          "data",
+          "pagination"
+        ]
+      },
+      "OrderItem": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "price": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Pesos MXN, no centavos. Finito y máximo dos decimales."
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "quantity",
+          "price"
+        ]
+      },
+      "Review": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "businessId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "rating": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 5
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "foodRating": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 5
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "serviceRating": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 5
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "careerId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "groupId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "career": {
+            "type": "string"
+          },
+          "group": {
+            "type": "string"
+          },
+          "comment": {
+            "type": "string"
+          },
+          "createdAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "businessId",
+          "rating",
+          "comment",
+          "createdAt"
+        ]
+      },
+      "Profile": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "displayName": {
+            "type": "string",
+            "minLength": 1
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "business",
+              "admin",
+              "user",
+              "pending"
+            ]
+          },
+          "businessId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "isMaster": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "displayName",
+          "role",
+          "businessId",
+          "isMaster"
+        ]
+      },
+      "VersionInput": {
+        "type": "object",
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "expectedVersion"
+        ],
+        "additionalProperties": false
+      },
+      "Received": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "received"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "StudentRegistration": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 160,
+            "minLength": 1
+          },
+          "password": {
+            "type": "string",
+            "minLength": 12,
+            "maxLength": 128,
+            "writeOnly": true
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ],
+        "additionalProperties": false
+      },
+      "EmailInput": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 160,
+            "minLength": 1
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "additionalProperties": false
+      },
+      "VerificationInput": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "minLength": 20,
+            "maxLength": 256,
+            "writeOnly": true
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "additionalProperties": false
+      },
+      "StudentItemInput": {
+        "type": "object",
+        "properties": {
+          "productId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 36
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 99
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 500,
+            "default": ""
+          }
+        },
+        "required": [
+          "productId",
+          "quantity"
+        ],
+        "additionalProperties": false
+      },
+      "StudentOrderInput": {
+        "type": "object",
+        "properties": {
+          "businessId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 36
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StudentItemInput"
+            },
+            "minItems": 1,
+            "maxItems": 50
+          },
+          "paymentMethod": {
+            "type": "string",
+            "enum": [
+              "cash"
+            ],
+            "default": "cash"
+          }
+        },
+        "required": [
+          "businessId",
+          "items"
+        ],
+        "additionalProperties": false
+      },
+      "StudentOrder": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "businessId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "orderNumber": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "accepted",
+              "preparing",
+              "ready",
+              "completed",
+              "cancelled"
+            ]
+          },
+          "customerName": {
+            "type": "string"
+          },
+          "paymentMethod": {
+            "type": "string",
+            "enum": [
+              "cash",
+              "Transferencia",
+              "Tarjeta",
+              "ValeComida"
+            ],
+            "description": "Adaptador legacy: efectivo sigue siendo cash; los demás métodos conservan su etiqueta V3.2. Ninguno representa cobro confirmado."
+          },
+          "total": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Pesos MXN, no centavos. Finito y máximo dos decimales."
+          },
+          "items": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/components/schemas/StudentOrderItem"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "scheduledPickupTime": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cancelReason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cancelNotes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "paymentStatus": {
+            "type": "string",
+            "enum": [
+              "pay_at_pickup",
+              "unverified"
+            ],
+            "description": "pay_at_pickup para efectivo; unverified para transferencia registrada por V3. Ningún valor acredita cobro ni liquidación."
+          },
+          "subtotal": {
+            "type": "number",
+            "minimum": 0
+          },
+          "pickupCode": {
+            "type": "string",
+            "pattern": "^(?:[0-9]{8}|[A-Z0-9]{6})$",
+            "readOnly": true,
+            "description": "Conserva códigos legacy de ocho dígitos; también lee códigos V3 de seis caracteres alfanuméricos mayúsculos."
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "acceptedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "preparingAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "readyAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "completedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cancelledAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "businessId",
+          "orderNumber",
+          "version",
+          "status",
+          "customerName",
+          "paymentMethod",
+          "total",
+          "items",
+          "createdAt",
+          "scheduledPickupTime",
+          "cancelReason",
+          "cancelNotes",
+          "paymentStatus",
+          "subtotal",
+          "pickupCode",
+          "updatedAt",
+          "acceptedAt",
+          "preparingAt",
+          "readyAt",
+          "completedAt",
+          "cancelledAt"
+        ],
+        "description": "Pedido del alumno propietario. Incluye pickupCode privado para la entrega; nunca usar este DTO en el panel de cocina. Dinero en MXN.",
+        "additionalProperties": false
+      },
+      "StudentOrderPage": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StudentOrder"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/Pagination"
+          }
+        },
+        "required": [
+          "data",
+          "pagination"
+        ],
+        "additionalProperties": false
+      },
+      "StudentReviewInput": {
+        "type": "object",
+        "properties": {
+          "rating": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5
+          },
+          "foodRating": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "serviceRating": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "comment": {
+            "type": "string",
+            "maxLength": 2000,
+            "default": ""
+          }
+        },
+        "required": [
+          "rating"
+        ],
+        "additionalProperties": false
+      },
+      "StudentReview": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Review"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "rating": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "id",
+              "businessId",
+              "rating",
+              "foodRating",
+              "serviceRating",
+              "careerId",
+              "groupId",
+              "career",
+              "group",
+              "comment",
+              "createdAt"
+            ]
+          }
+        ],
+        "description": "Opinión nueva. Carrera y grupo son una copia del padrón vigente al emitirla. No contiene correo, nombre, matrícula, userId ni orderId."
+      },
+      "AcademicProfile": {
+        "type": "object",
+        "properties": {
+          "institutionalId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "student",
+              "staff"
+            ]
+          },
+          "careerId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "careerName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "groupId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "groupName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "verified": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": [
+          "institutionalId",
+          "kind",
+          "careerId",
+          "careerName",
+          "groupId",
+          "groupName",
+          "verified"
+        ],
+        "additionalProperties": false
+      },
+      "ProfileWithAcademics": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Profile"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "email": {
+                "type": "string",
+                "format": "email",
+                "maxLength": 160,
+                "minLength": 1
+              },
+              "emailVerified": {
+                "type": "boolean"
+              },
+              "academic": {
+                "$ref": "#/components/schemas/AcademicProfile"
+              }
+            },
+            "required": [
+              "email",
+              "emailVerified"
+            ]
+          }
+        ],
+        "description": "Ampliación compatible de GET users/me. academic solo aparece si hay registro institucional activo del usuario autenticado. El catálogo académico y los permisos de SnackUP son conceptos diferentes."
+      },
+      "StudentOrderItem": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/OrderItem"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "productId": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "id",
+              "productId",
+              "notes"
+            ]
+          }
+        ],
+        "description": "Precio y nombre fijados al crear el pedido; no cambian al editar el catálogo."
+      }
+    }
+  }
+}

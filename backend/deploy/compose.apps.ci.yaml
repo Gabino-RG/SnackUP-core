@@ -1,0 +1,27 @@
+# CI ONLY: add after compose.yaml and deploy/compose.apps.yaml.
+# Requires Compose >= 2.24.4 for !override. Production files stay unchanged.
+# Set SNACKUP_DOMAIN=snackup.example.test in the CI environment; only Caddy
+# receives an http:// site address. API production validation still uses HTTPS.
+services:
+  api:
+    image: snackup-backend:apps-ci
+    environment:
+      SNACKUP_PUBLIC_ORIGIN: https://snackup.example.test
+  migrate:
+    image: snackup-backend:apps-ci
+    environment:
+      SNACKUP_PUBLIC_ORIGIN: https://snackup.example.test
+  usuarios:
+    image: snackup-usuarios:apps-ci
+  cocina:
+    image: snackup-cocina:apps-ci
+  proxy:
+    image: snackup-proxy:apps-ci
+    environment:
+      SNACKUP_DOMAIN: http://snackup.example.test
+    # Replace, rather than append to, production 80/443 TCP/UDP bindings.
+    ports: !override
+      - target: 8080
+        published: "18080"
+        host_ip: 127.0.0.1
+        protocol: tcp

@@ -1,0 +1,17 @@
+{
+    email {$TLS_ACME_EMAIL}
+    http_port 8080
+    https_port 8443
+    admin localhost:2019
+}
+
+{$SNACKUP_DOMAIN} {
+    encode zstd gzip
+    header -Server
+    request_body {
+        max_size 6MB
+    }
+    # No access log: verification URLs and cookie/token values are not recorded.
+    # The API emits method/path/status/duration without query parameters.
+    reverse_proxy api:8000
+}

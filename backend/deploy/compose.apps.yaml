@@ -1,0 +1,60 @@
+# Use after compose.yaml. Relative build contexts are resolved from backend/.
+# Keep the three source checkouts side by side, or set absolute context paths.
+services:
+  api:
+    environment:
+      SNACKUP_PASSWORD_RESET_FRONTEND_PATH: /paneles/
+
+  migrate:
+    environment:
+      SNACKUP_PASSWORD_RESET_FRONTEND_PATH: /paneles/
+
+  usuarios:
+    build:
+      context: ${SNACKUP_USERS_CONTEXT:-../../snackup-usuarios}
+      args:
+        WEB_BASE_HREF: /
+    image: ${SNACKUP_USERS_IMAGE:-snackup-usuarios:local}
+    restart: unless-stopped
+    init: true
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    networks: [edge]
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, 'http://127.0.0.1:8080/healthz']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  cocina:
+    build:
+      context: ${SNACKUP_PANELS_CONTEXT:-../../snackup-cocina}
+      args:
+        WEB_BASE_HREF: /paneles/
+        API_BASE_URL: /api/legacy/v1/
+    image: ${SNACKUP_PANELS_IMAGE:-snackup-cocina:local}
+    restart: unless-stopped
+    init: true
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    networks: [edge]
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, 'http://127.0.0.1:8080/healthz']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  proxy:
+    build:
+      args:
+        CADDY_CONFIG: deploy/Caddy.apps
+    depends_on:
+      api: {condition: service_healthy}
+      usuarios: {condition: service_healthy}
+      cocina: {condition: service_healthy}

@@ -1,0 +1,18 @@
+{
+  "scope": "Local functional regression; concurrency requires PostgreSQL CI",
+  "tests": 265,
+  "passed": 233,
+  "skipped": 32,
+  "failures": 0,
+  "database": "SQLite; PostgreSQL cases skipped",
+  "redis": "Isolated local Redis TCP",
+  "proxy": "Caddy 2.11.7 real executable",
+  "checks": [
+    "Ruff",
+    "OpenAPI snapshot",
+    "Prisma reference: 29 models, 54 SQL relationships",
+    "git diff --check"
+  ],
+  "command": "pytest -q --tb=short --junitxml=reports/v32-local.xml",
+  "productionDataUsed": false
+}

@@ -1,0 +1,122 @@
+# One application container (API + both web apps + proxy + internal Redis), plus PostgreSQL.
+# Use alone; do not merge with compose.yaml or deploy/compose.apps.yaml.
+name: snackup-unified
+services:
+  db:
+    image: postgres:17-alpine
+    command:
+    - postgres
+    - -c
+    - statement_timeout=${POSTGRES_STATEMENT_TIMEOUT_MS:-20000}
+    - -c
+    - lock_timeout=${POSTGRES_LOCK_TIMEOUT_MS:-5000}
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-snackup}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Configure POSTGRES_PASSWORD}
+      SNACKUP_DB_USER: ${SNACKUP_DB_USER:-snackup}
+      SNACKUP_DB_PASSWORD: ${SNACKUP_DB_PASSWORD:?Configure SNACKUP_DB_PASSWORD}
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+    volumes:
+    - database:/var/lib/postgresql/data
+    - ./deploy/init-db.sh:/docker-entrypoint-initdb.d/10-snackup.sh:ro
+    networks:
+    - data
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+  app:
+    build:
+      context: .
+      dockerfile: deploy/unified/Dockerfile
+      additional_contexts:
+        usuarios_source: ${SNACKUP_USERS_CONTEXT:-https://github.com/Gabino-RG/SnackUP-core.git#a00d0bf4ecdae74a89f3afbe8ec3d0758efb8884}
+        paneles_source: ${SNACKUP_PANELS_CONTEXT:-https://github.com/Gabino-RG/SnackUP-core.git#19c81fdee29600d66d9dcb1a4f109a78aeba51f6}
+    image: snackup-unified:local
+    restart: unless-stopped
+    init: true
+    environment:
+      SNACKUP_ENVIRONMENT: production
+      SNACKUP_DATABASE_URL: postgresql+psycopg://${SNACKUP_DB_USER:-snackup}:${SNACKUP_DB_PASSWORD:?Configure SNACKUP_DB_PASSWORD}@db:5432/${POSTGRES_DB:-snackup}
+      SNACKUP_REDIS_URL: unix:///tmp/snackup-redis.sock?db=0
+      SNACKUP_PUBLIC_ORIGIN: https://${SNACKUP_DOMAIN:?Configure SNACKUP_DOMAIN}
+      SNACKUP_PASSWORD_RESET_FRONTEND_PATH: /paneles/
+      SNACKUP_MEDIA_DIR: /data/media
+      SNACKUP_SECRET_KEY: ${SNACKUP_SECRET_KEY:?Configure SNACKUP_SECRET_KEY}
+      SNACKUP_INSTITUTION_ID: ${SNACKUP_INSTITUTION_ID:?Configure SNACKUP_INSTITUTION_ID}
+      SNACKUP_INSTITUTION_NAME: ${SNACKUP_INSTITUTION_NAME:?Configure SNACKUP_INSTITUTION_NAME}
+      SNACKUP_CAFETERIA_ID: ${SNACKUP_CAFETERIA_ID:?Configure SNACKUP_CAFETERIA_ID}
+      SNACKUP_CAFETERIA_NAME: ${SNACKUP_CAFETERIA_NAME:?Configure SNACKUP_CAFETERIA_NAME}
+      SNACKUP_ADMIN_EMAIL_DOMAINS: ${SNACKUP_ADMIN_EMAIL_DOMAINS:?Configure SNACKUP_ADMIN_EMAIL_DOMAINS}
+      SNACKUP_STUDENT_EMAIL_DOMAINS: ${SNACKUP_STUDENT_EMAIL_DOMAINS:-}
+      SNACKUP_POOL_SIZE: ${SNACKUP_POOL_SIZE:-10}
+      SNACKUP_MAX_OVERFLOW: ${SNACKUP_MAX_OVERFLOW:-5}
+      SNACKUP_POOL_TIMEOUT_SECONDS: ${SNACKUP_POOL_TIMEOUT_SECONDS:-2}
+      SNACKUP_ADMISSION_WAIT_SECONDS: ${SNACKUP_ADMISSION_WAIT_SECONDS:-5}
+      SNACKUP_WRITE_CONCURRENCY: ${SNACKUP_WRITE_CONCURRENCY:-1}
+      SNACKUP_LOGIN_WAIT_SECONDS: ${SNACKUP_LOGIN_WAIT_SECONDS:-8}
+      SNACKUP_PASSWORD_CONCURRENCY: ${SNACKUP_PASSWORD_CONCURRENCY:-4}
+      SNACKUP_OUTBOX_RETENTION_DAYS: ${SNACKUP_OUTBOX_RETENTION_DAYS:-7}
+      SNACKUP_OUTBOX_CLEANUP_BATCH: ${SNACKUP_OUTBOX_CLEANUP_BATCH:-1000}
+      SNACKUP_ACCESS_TOKEN_MINUTES: ${SNACKUP_ACCESS_TOKEN_MINUTES:-15}
+      SNACKUP_REFRESH_DAYS: ${SNACKUP_REFRESH_DAYS:-30}
+      SNACKUP_MAX_WEBSOCKETS: ${SNACKUP_MAX_WEBSOCKETS:-2000}
+      SNACKUP_WEBSOCKET_REVALIDATE_SECONDS: ${SNACKUP_WEBSOCKET_REVALIDATE_SECONDS:-15}
+      SNACKUP_BACKGROUND_EVENTS: 'true'
+      SNACKUP_ENABLE_TEST_MAILBOX: 'false'
+      SNACKUP_PUSH_ENABLED: ${SNACKUP_PUSH_ENABLED:-false}
+      SNACKUP_PUSH_FCM_CREDENTIALS_FILE: ${SNACKUP_PUSH_FCM_CREDENTIALS_FILE:-}
+      SNACKUP_PUSH_FCM_PROJECT_ID: ${SNACKUP_PUSH_FCM_PROJECT_ID:-}
+      SNACKUP_PUSH_APNS_KEY_FILE: ${SNACKUP_PUSH_APNS_KEY_FILE:-}
+      SNACKUP_PUSH_APNS_KEY_ID: ${SNACKUP_PUSH_APNS_KEY_ID:-}
+      SNACKUP_PUSH_APNS_TEAM_ID: ${SNACKUP_PUSH_APNS_TEAM_ID:-}
+      SNACKUP_PUSH_APNS_TOPIC: ${SNACKUP_PUSH_APNS_TOPIC:-}
+      SNACKUP_PUSH_APNS_SANDBOX: ${SNACKUP_PUSH_APNS_SANDBOX:-false}
+      SNACKUP_PUSH_WEBPUSH_PRIVATE_KEY_FILE: ${SNACKUP_PUSH_WEBPUSH_PRIVATE_KEY_FILE:-}
+      SNACKUP_PUSH_WEBPUSH_SUBJECT: ${SNACKUP_PUSH_WEBPUSH_SUBJECT:-}
+      SNACKUP_SMTP_HOST: ${SNACKUP_SMTP_HOST:-}
+      SNACKUP_SMTP_PORT: ${SNACKUP_SMTP_PORT:-587}
+      SNACKUP_SMTP_USER: ${SNACKUP_SMTP_USER:-}
+      SNACKUP_SMTP_PASSWORD: ${SNACKUP_SMTP_PASSWORD:-}
+      SNACKUP_SMTP_FROM: ${SNACKUP_SMTP_FROM:-}
+      SNACKUP_SMTP_STARTTLS: ${SNACKUP_SMTP_STARTTLS:-true}
+      SNACKUP_WORKERS: ${SNACKUP_WORKERS:-2}
+      SNACKUP_DOMAIN: ${SNACKUP_DOMAIN:?Configure SNACKUP_DOMAIN}
+      TLS_ACME_EMAIL: ${TLS_ACME_EMAIL:?Configure TLS_ACME_EMAIL}
+    ports:
+    - 80:8080
+    - 443:8443
+    - 443:8443/udp
+    volumes:
+    - media:/data/media
+    - redis:/data/redis
+    - tls_data:/data/caddy
+    networks:
+    - edge
+    - data
+    depends_on:
+      db:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+    - /tmp
+    cap_drop:
+    - ALL
+    security_opt:
+    - no-new-privileges:true
+    stop_grace_period: 40s
+networks:
+  edge: {}
+  data:
+    internal: true
+volumes:
+  database: {}
+  media: {}
+  redis: {}
+  tls_data: {}
