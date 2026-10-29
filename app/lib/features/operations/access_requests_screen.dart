@@ -190,7 +190,7 @@ class _AccessRequestsScreenState extends State<AccessRequestsScreen> {
           Padding(
             padding: const EdgeInsets.all(20),
             child: Text(
-              '$_total solicitudes pendientes. Autorizar permite entrar únicamente con la función y el local que asignes.',
+              'Solicitudes pendientes: $_total. Autorizar permite entrar únicamente con la función y el local que asignes.',
             ),
           ),
           if (_busy) const LinearProgressIndicator(),

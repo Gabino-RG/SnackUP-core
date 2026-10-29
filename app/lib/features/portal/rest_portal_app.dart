@@ -3,6 +3,7 @@ import '../../api/external_login.dart';
 import 'request_access_screen.dart';
 import '../operations/access_requests_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import '../../api/api_client.dart';
 import '../../api/rest_session.dart';
 import '../../api/reset_location.dart';
@@ -13,6 +14,7 @@ import '../operations/business_portal.dart';
 import '../operations/admin_management.dart';
 import '../admin/admin_dashboard_screen.dart';
 import '../admin/admin_theme.dart';
+import '../admin/panel_appearance.dart';
 import '../admin/data/rest_admin_repository.dart';
 import '../../operations/v32_repository.dart';
 
@@ -34,6 +36,7 @@ class RestPortalApp extends StatefulWidget {
 }
 
 class _RestPortalAppState extends State<RestPortalApp> {
+  final _appearance = PanelAppearance();
   SessionHttpClient? _client;
   SessionHttpClient? _canonicalClient;
   V32Repository? _v32;
@@ -45,6 +48,7 @@ class _RestPortalAppState extends State<RestPortalApp> {
   @override
   void initState() {
     super.initState();
+    _appearance.restore();
     if (widget.restoreOnStart && widget.resetToken == null)
       widget.session.restore();
   }
@@ -81,6 +85,7 @@ class _RestPortalAppState extends State<RestPortalApp> {
 
   @override
   void dispose() {
+    _appearance.dispose();
     _client?.close();
     _canonicalClient?.close();
     super.dispose();
@@ -88,7 +93,7 @@ class _RestPortalAppState extends State<RestPortalApp> {
 
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
-    animation: widget.session,
+    animation: Listenable.merge([widget.session, _appearance]),
     builder: (context, _) {
       final session = widget.session;
       final account = session.account;
@@ -187,40 +192,48 @@ class _RestPortalAppState extends State<RestPortalApp> {
       } else {
         home = _PortalLogin(session: session);
       }
-      return MaterialApp(
-        key: ValueKey(navigationKey),
-        title: 'SnackUP · Paneles',
-        debugShowCheckedModeBanner: false,
-        theme: adminTheme(),
-        home: home,
-        builder: (context, child) => const bool.fromEnvironment('REVIEW_MODE')
-            ? Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Material(
-                    color: const Color(0xFFFFEDBA),
-                    child: SafeArea(
-                      bottom: false,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        child: Text(
-                          'VERSIÓN DE REVISIÓN · Incluye datos ficticios',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Color(0xFF493500),
+      return PanelAppearanceScope(
+        controller: _appearance,
+        child: MaterialApp(
+          key: ValueKey(navigationKey),
+          title: 'SnackUP · Paneles',
+          locale: const Locale('es', 'MX'),
+          supportedLocales: const [Locale('es', 'MX')],
+          localizationsDelegates: GlobalMaterialLocalizations.delegates,
+          debugShowCheckedModeBanner: false,
+          theme: adminTheme(),
+          darkTheme: adminDarkTheme(),
+          themeMode: _appearance.dark ? ThemeMode.dark : ThemeMode.light,
+          home: home,
+          builder: (context, child) => const bool.fromEnvironment('REVIEW_MODE')
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Material(
+                      color: const Color(0xFFFFEDBA),
+                      child: SafeArea(
+                        bottom: false,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          child: Text(
+                            'VERSIÓN DE REVISIÓN · Incluye datos ficticios',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Color(0xFF493500),
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                  Expanded(child: child!),
-                ],
-              )
-            : child!,
+                    Expanded(child: child!),
+                  ],
+                )
+              : child!,
+        ),
       );
     },
   );
@@ -245,10 +258,10 @@ class _AccessNotice extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
+                Icon(
                   Icons.info_outline,
                   size: 38,
-                  color: AdminColors.navy,
+                  color: PanelPalette.of(context).ink,
                 ),
                 const SizedBox(height: 20),
                 Text(message, textAlign: TextAlign.center),
@@ -360,7 +373,7 @@ class _PortalLoginState extends State<_PortalLogin> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    backgroundColor: AdminColors.background,
+    backgroundColor: PanelPalette.of(context).background,
     body: SafeArea(
       child: Center(
         child: SingleChildScrollView(
@@ -376,6 +389,10 @@ class _PortalLoginState extends State<_PortalLogin> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      const Align(
+                        alignment: Alignment.centerRight,
+                        child: PanelThemeButton(),
+                      ),
                       Center(
                         child: Container(
                           width: 248,
@@ -406,13 +423,13 @@ class _PortalLoginState extends State<_PortalLogin> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      const Text(
+                      Text(
                         'Acceso a SnackUP',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 26,
                           fontWeight: FontWeight.w800,
-                          color: AdminColors.navy,
+                          color: PanelPalette.of(context).ink,
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -428,12 +445,12 @@ class _PortalLoginState extends State<_PortalLogin> {
                           label: const Text('Entrar al local de prueba'),
                         ),
                         const SizedBox(height: 8),
-                        const Text(
+                        Text(
                           'Cocina y productos listos para probar con una cuenta propia del local.',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 12,
-                            color: AdminColors.muted,
+                            color: PanelPalette.of(context).muted,
                           ),
                         ),
                       ],
@@ -494,7 +511,9 @@ class _PortalLoginState extends State<_PortalLogin> {
                           padding: const EdgeInsets.only(top: 16),
                           child: Text(
                             widget.session.message!,
-                            style: const TextStyle(color: AdminColors.red),
+                            style: TextStyle(
+                              color: PanelPalette.of(context).danger,
+                            ),
                           ),
                         ),
                       if (_notice != null)
@@ -554,12 +573,12 @@ class _PortalLoginState extends State<_PortalLogin> {
                         child: const Text('Continuar con Google'),
                       ),
                       if (_accessOptions?.googleEnabled == false)
-                        const Text(
+                        Text(
                           'Google no está disponible en este servidor. Puedes usar una cuenta de SnackUP.',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 12,
-                            color: AdminColors.muted,
+                            color: PanelPalette.of(context).muted,
                           ),
                         ),
                       if (_optionsFailed)
@@ -577,12 +596,12 @@ class _PortalLoginState extends State<_PortalLogin> {
                             style: TextStyle(fontSize: 12),
                           ),
                         ),
-                      const Text(
+                      Text(
                         'Cada cuenta entra únicamente a su panel: Administración o su local. Para acceder a un local, solicita tu cuenta o pide a la cuenta maestra que la cree y autorice.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 12,
-                          color: AdminColors.muted,
+                          color: PanelPalette.of(context).muted,
                         ),
                       ),
                     ],

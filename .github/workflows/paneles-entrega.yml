@@ -43,7 +43,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
         with:
-          ref: 81c76c5eda9ba6315fbf1dcd1a69599f8906db5e
+          ref: 330825c47ec845f00c9f5e58c5c10c5ebe02f364
           path: build/backend-v32
       - uses: actions/setup-python@v5
         with:

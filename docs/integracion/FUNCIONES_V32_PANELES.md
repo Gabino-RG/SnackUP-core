@@ -1,6 +1,6 @@
 # Funciones V3.2 de Cocina y Administración
 
-Esta ampliación utiliza el backend `81c76c5eda9ba6315fbf1dcd1a69599f8906db5e`.
+Esta ampliación utiliza el backend `330825c47ec845f00c9f5e58c5c10c5ebe02f364`.
 No modifica la app de alumnos ni sus ramas. Las respuestas del alumno en las
 pruebas se generan mediante HTTP contra la API existente, con cuentas sintéticas.
 

@@ -30,6 +30,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
   firebase_core: ^2.27.0
   # Autenticación: para manejar login, registro, etc.
   firebase_auth: ^4.17.8

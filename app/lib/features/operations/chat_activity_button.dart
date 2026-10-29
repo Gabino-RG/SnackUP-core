@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../operations/chat_activity.dart';
 import '../../operations/v32_repository.dart';
 import 'v32_screens.dart';
+import '../admin/panel_motion.dart';
 
 class ChatActivityButton extends StatefulWidget {
   const ChatActivityButton({
@@ -49,10 +50,14 @@ class _ChatActivityButtonState extends State<ChatActivityButton>
           : activity.hasActivity
           ? 'Actividad en chats: revisar conversaciones'
           : 'Abrir conversaciones',
-      icon: Badge(
-        isLabelVisible: activity.hasActivity || activity.unavailable,
-        backgroundColor: activity.unavailable ? Colors.orange : null,
-        child: const Icon(Icons.chat_outlined),
+      icon: PanelSignal(
+        key: ValueKey('${activity.hasActivity}:${activity.unavailable}'),
+        active: activity.hasActivity,
+        child: Badge(
+          isLabelVisible: activity.hasActivity || activity.unavailable,
+          backgroundColor: activity.unavailable ? Colors.orange : null,
+          child: const Icon(Icons.chat_outlined),
+        ),
       ),
       onPressed: () async {
         activity.acknowledge();

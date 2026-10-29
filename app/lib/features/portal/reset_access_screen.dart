@@ -121,7 +121,7 @@ class _ResetAccessScreenState extends State<ResetAccessScreen> {
                         if (_error != null)
                           Text(
                             _error!,
-                            style: const TextStyle(color: Colors.red),
+                            style: TextStyle(color: Theme.of(context).colorScheme.error),
                           ),
                         const SizedBox(height: 20),
                         FilledButton(

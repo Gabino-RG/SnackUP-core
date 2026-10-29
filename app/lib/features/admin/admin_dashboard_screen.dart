@@ -3,10 +3,13 @@ import 'dart:async';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'admin_theme.dart';
+import 'panel_motion.dart';
+import 'panel_appearance.dart';
 import 'data/admin_repository.dart';
 import 'domain/admin_models.dart';
 import 'followup_dialog.dart';
 import 'academic_picker.dart';
+import '../../operations/panel_text.dart';
 import 'domain/academic_directory.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -177,7 +180,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
     final updated = await showDialog<AdminFollowup>(
       context: context,
       builder: (context) => Theme(
-        data: adminTheme(),
+        data: Theme.of(context).brightness == Brightness.dark ? adminDarkTheme() : adminTheme(),
         child: FollowupDialog(
           review: review,
           businessName: _businessName(review.businessId),
@@ -192,7 +195,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
 
   @override
   Widget build(BuildContext context) => Theme(
-    data: adminTheme(),
+    data: Theme.of(context).brightness == Brightness.dark ? adminDarkTheme() : adminTheme(),
     child: Builder(
       builder: (context) {
         final wide = MediaQuery.sizeOf(context).width >= 1100;
@@ -202,8 +205,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
               ? null
               : AppBar(
                   title: const Text('SnackUP · Administración'),
-                  backgroundColor: Colors.white,
+                  backgroundColor: PanelPalette.of(context).surface,
                   actions: [
+                    const PanelThemeButton(),
                     IconButton(
                       onPressed: _loading ? null : () => _load(reset: true),
                       tooltip: 'Actualizar datos',
@@ -232,7 +236,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                           child: Center(
                             child: ConstrainedBox(
                               constraints: const BoxConstraints(maxWidth: 1320),
-                              child: _content(wide),
+                              child: PanelEntrance(
+                                key: ValueKey('admin-section-$_section'),
+                                child: _content(wide),
+                              ),
                             ),
                           ),
                         ),
@@ -265,9 +272,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                     color: AdminColors.teal,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.restaurant_rounded,
-                    color: AdminColors.navy,
+                    color: PanelPalette.of(context).ink,
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -303,8 +310,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Material(
+                  animationDuration: panelDuration(context),
                   color: _section == i
-                      ? const Color(0xFF163D6E)
+                      ? const Color(0xFF185769)
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(10),
                   child: InkWell(
@@ -410,34 +418,35 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
   Widget _topbar() => Container(
     height: 68,
     padding: const EdgeInsets.symmetric(horizontal: 32),
-    decoration: const BoxDecoration(
-      color: Colors.white,
-      border: Border(bottom: BorderSide(color: AdminColors.border)),
+    decoration: BoxDecoration(
+      color: PanelPalette.of(context).surface,
+      border: Border(bottom: BorderSide(color: PanelPalette.of(context).border)),
     ),
     child: Row(
       children: [
-        const Text(
+        Text(
           'UNIVERSIDAD  /  ',
           style: TextStyle(
             fontSize: 10,
-            color: AdminColors.muted,
+            color: PanelPalette.of(context).muted,
             letterSpacing: 1,
           ),
         ),
-        const Text(
+        Text(
           'Supervisión de la cafetería',
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: AdminColors.navy,
+            color: PanelPalette.of(context).ink,
           ),
         ),
         const Spacer(),
+        const PanelThemeButton(),
         _badge(
           _repository.isDemo
               ? 'DEMO · DATOS SIMULADOS'
               : (widget.isMaster ? 'CUENTA MAESTRA' : 'ADMINISTRACIÓN'),
-          AdminColors.cyan,
+          PanelPalette.of(context).accent,
         ),
         const SizedBox(width: 16),
         IconButton(
@@ -479,16 +488,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                   style: Theme.of(context).textTheme.headlineLarge,
                 ),
                 const SizedBox(height: 6),
-                const Text(
+                Text(
                   'Escucha, identifica y acompaña la mejora del servicio.',
-                  style: TextStyle(color: AdminColors.muted, fontSize: 13),
+                  style: TextStyle(color: PanelPalette.of(context).muted, fontSize: 13),
                 ),
               ],
             ),
             if (!wide)
               _badge(
                 _repository.isDemo ? 'DEMOSTRACIÓN' : 'DATOS DEL SERVIDOR',
-                AdminColors.cyan,
+                PanelPalette.of(context).accent,
               ),
           ],
         ),
@@ -497,13 +506,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
           _notice(
             'Modo demostración: locales, opiniones y resultados son ficticios. Los seguimientos se conservan solo durante esta sesión.',
             Icons.science_outlined,
-            AdminColors.cyan,
+            PanelPalette.of(context).accent,
           ),
         if (_error != null)
           _notice(
             'No se pudieron actualizar los datos. Comprueba tu conexión y el permiso administrativo. ${_reviews.isNotEmpty ? 'Los datos visibles corresponden a la lectura anterior.' : ''}',
             Icons.error_outline,
-            AdminColors.red,
+            PanelPalette.of(context).danger,
             action: TextButton(
               onPressed: _loading ? null : () => _load(reset: true),
               child: const Text('Reintentar'),
@@ -513,7 +522,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
           _notice(
             'Resultados parciales: quedan registros por cargar. Los indicadores y filtros se calculan solo sobre las opiniones cargadas; completa la carga antes de tomar decisiones.',
             Icons.info_outline,
-            AdminColors.red,
+            PanelPalette.of(context).danger,
             action: TextButton(
               onPressed: _loading || _error != null ? null : () => _load(),
               child: const Text('Cargar 200 más'),
@@ -560,27 +569,27 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
             ),
           ),
         Text(
-          '${_references?.configuration.cafeteriaName ?? 'Cafetería universitaria'} · ${_businesses.length} locales registrados',
-          style: const TextStyle(color: AdminColors.muted),
+          '${_references?.configuration.cafeteriaName ?? 'Cafetería universitaria'} · ${counted(_businesses.length, 'local registrado', 'locales registrados')}',
+          style: TextStyle(color: PanelPalette.of(context).muted),
         ),
         if (_references != null)
           Text(
             _references!.configuration.universityName,
-            style: const TextStyle(color: AdminColors.muted, fontSize: 12),
+            style: TextStyle(color: PanelPalette.of(context).muted, fontSize: 12),
           ),
         if (_updatedAt != null)
           Padding(
             padding: const EdgeInsets.only(top: 4, bottom: 14),
             child: Text(
               'Datos actualizados: ${_updatedAt!.hour.toString().padLeft(2, '0')}:${_updatedAt!.minute.toString().padLeft(2, '0')}${widget.autoRefresh ? ' · Actualización automática cada minuto' : ''}',
-              style: const TextStyle(fontSize: 11, color: AdminColors.muted),
+              style: TextStyle(fontSize: 11, color: PanelPalette.of(context).muted),
             ),
           ),
         if (_section == 3)
           _notice(
             'Registra cómo se atiende una opinión o queja: responsable, acción acordada y estado de resolución.',
             Icons.help_outline,
-            AdminColors.cyan,
+            PanelPalette.of(context).accent,
           ),
         _filters(),
         const SizedBox(height: 22),
@@ -591,7 +600,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
           const SizedBox(height: 26),
           _sectionTitle(
             'Una cafetería, distintos locales',
-            'Calificación y dimensiones de cada local',
+            'Calificación y aspectos evaluados de cada local',
           ),
           const SizedBox(height: 14),
           _storeCards(reviews),
@@ -630,7 +639,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
           _notice(
             'Las alertas se basan en calificaciones de 0–2 estrellas. Revisa el contexto y la cantidad de opiniones antes de acordar acciones con un local.',
             Icons.fact_check_outlined,
-            AdminColors.cyan,
+            PanelPalette.of(context).accent,
           ),
           Wrap(
             spacing: 8,
@@ -681,8 +690,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
         ],
         const SizedBox(height: 22),
         Text(
-          '${reviews.length} opiniones en la vista · ${_reviews.length} cargadas${_hasMore ? ' · Muestra incompleta' : ''}. Hora de la universidad: UTC−6. Los promedios excluyen valores no registrados.',
-          style: const TextStyle(fontSize: 10, color: AdminColors.muted),
+          'Opiniones en la vista: ${reviews.length} · Total cargado: ${_reviews.length}${_hasMore ? ' · Muestra incompleta' : ''}. Hora de la universidad: UTC−6. Los promedios excluyen valores no registrados.',
+          style: TextStyle(fontSize: 10, color: PanelPalette.of(context).muted),
         ),
         const SizedBox(height: 16),
       ],
@@ -716,18 +725,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
           maintainState: true,
           shape: const Border(),
           collapsedShape: const Border(),
-          leading: const Icon(Icons.tune, size: 20, color: AdminColors.navy),
-          title: const Text(
+          leading: Icon(Icons.tune, size: 20, color: PanelPalette.of(context).ink),
+          title: Text(
             'Filtrar opiniones',
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w700,
-              color: AdminColors.navy,
+              color: PanelPalette.of(context).ink,
             ),
           ),
           subtitle: Text(
             '$periodLabel · $activeCount ${activeCount == 1 ? 'filtro activo' : 'filtros activos'}',
-            style: const TextStyle(fontSize: 10, color: AdminColors.muted),
+            style: TextStyle(fontSize: 10, color: PanelPalette.of(context).muted),
           ),
           children: [_filterFields()],
         ),
@@ -817,7 +826,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
               avatar: Icon(
                 Icons.flag_outlined,
                 size: 16,
-                color: _negativeOnly ? AdminColors.red : AdminColors.muted,
+                color: _negativeOnly ? PanelPalette.of(context).danger : PanelPalette.of(context).muted,
               ),
             ),
             TextButton.icon(
@@ -902,7 +911,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  '${stats.reviews.length} opiniones para entender qué funciona\ny dónde hace falta acompañamiento.',
+                  '${counted(stats.reviews.length, 'opinión', 'opiniones')} para entender qué funciona\ny dónde hace falta acompañamiento.',
                   style: const TextStyle(
                     fontSize: 12,
                     color: Color(0xFFB8C8DE),
@@ -964,16 +973,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                   _kpi(
                     'Calificación general',
                     _mean(stats.rating),
-                    'Promedio de ${stats.validCount} valoraciones',
+                    'Promedio de ${counted(stats.validCount, 'valoración', 'valoraciones')}',
                     Icons.star_outline,
-                    AdminColors.cyan,
+                    PanelPalette.of(context).accent,
                   ),
                   _kpi(
                     'Opiniones recibidas',
                     '${stats.reviews.length}',
                     'Según los filtros seleccionados',
                     Icons.chat_bubble_outline,
-                    AdminColors.navy,
+                    PanelPalette.of(context).ink,
                   ),
                   _kpi(
                     'Opiniones negativas',
@@ -982,14 +991,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                         ? 'Sin calificaciones'
                         : '${stats.negativePercent!.toStringAsFixed(0)}% con 0–2 estrellas',
                     Icons.flag_outlined,
-                    AdminColors.red,
+                    PanelPalette.of(context).danger,
                   ),
                   _kpi(
                     'Casos por atender',
                     '${stats.reviews.where((r) => (r.isNegative || _followups.containsKey(r.id)) && (_followups[r.id]?.status ?? FollowupStatus.pending) != FollowupStatus.resolved).length}',
                     'Negativas y seguimientos abiertos',
                     Icons.fact_check_outlined,
-                    AdminColors.cyan,
+                    PanelPalette.of(context).accent,
                   ),
                 ]
                 .map(
@@ -1019,8 +1028,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(
-                    color: AdminColors.muted,
+                  style: TextStyle(
+                    color: PanelPalette.of(context).muted,
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                   ),
@@ -1032,16 +1041,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
           const SizedBox(height: 12),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 31,
-              color: AdminColors.navy,
+              color: PanelPalette.of(context).ink,
               fontWeight: FontWeight.w800,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             caption,
-            style: const TextStyle(fontSize: 10, color: AdminColors.muted),
+            style: TextStyle(fontSize: 10, color: PanelPalette.of(context).muted),
           ),
         ],
       ),
@@ -1084,12 +1093,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                             width: 36,
                             height: 36,
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF0F6FA),
+                              color: PanelPalette.of(context).layer,
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            child: const Icon(
+                            child: Icon(
                               Icons.storefront_rounded,
-                              color: AdminColors.navy,
+                              color: PanelPalette.of(context).ink,
                               size: 21,
                             ),
                           ),
@@ -1101,18 +1110,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                                 ? 'Sin datos'
                                 : 'Sin alertas',
                             stats.negativeCount > 0
-                                ? AdminColors.red
-                                : AdminColors.cyan,
+                                ? PanelPalette.of(context).danger
+                                : PanelPalette.of(context).accent,
                           ),
                         ],
                       ),
                       const SizedBox(height: 16),
                       Text(
                         b.name,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.w700,
                           fontSize: 14,
-                          color: AdminColors.navy,
+                          color: PanelPalette.of(context).ink,
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -1121,49 +1130,49 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                         children: [
                           Text(
                             _mean(stats.rating),
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 31,
                               fontWeight: FontWeight.w800,
-                              color: AdminColors.navy,
+                              color: PanelPalette.of(context).ink,
                             ),
                           ),
-                          const Padding(
+                          Padding(
                             padding: EdgeInsets.only(left: 6, bottom: 7),
                             child: Icon(
                               Icons.star_rounded,
-                              color: Color(0xFF007C66),
+                              color: PanelPalette.of(context).accent,
                               size: 19,
                             ),
                           ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              '${stats.validCount} opiniones',
+                              counted(stats.validCount, 'opinión', 'opiniones'),
                               textAlign: TextAlign.end,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 10,
-                                color: AdminColors.muted,
+                                color: PanelPalette.of(context).muted,
                               ),
                             ),
                           ),
                         ],
                       ),
                       const SizedBox(height: 14),
-                      _dimension('Servicio', stats.service, AdminColors.cyan),
+                      _dimension('Servicio', stats.service, PanelPalette.of(context).accent),
                       const SizedBox(height: 10),
                       _dimension(
                         'Alimentos',
                         stats.food,
-                        const Color(0xFF007C66),
+                        PanelPalette.of(context).accent,
                       ),
                       const SizedBox(height: 14),
                       Text(
-                        '${stats.negativeCount} opiniones de 0–2 estrellas',
+                        '${counted(stats.negativeCount, 'opinión', 'opiniones')} de 0–2 estrellas',
                         style: TextStyle(
                           fontSize: 10,
                           color: stats.negativeCount > 0
-                              ? AdminColors.red
-                              : AdminColors.muted,
+                              ? PanelPalette.of(context).danger
+                              : PanelPalette.of(context).muted,
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -1198,15 +1207,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
         children: [
           Text(
             label,
-            style: const TextStyle(fontSize: 10, color: AdminColors.muted),
+            style: TextStyle(fontSize: 10, color: PanelPalette.of(context).muted),
           ),
           const Spacer(),
           Text(
             _mean(value),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w600,
-              color: AdminColors.navy,
+              color: PanelPalette.of(context).ink,
             ),
           ),
         ],
@@ -1218,7 +1227,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
           value: (value ?? 0) / 5,
           minHeight: 5,
           color: color,
-          backgroundColor: AdminColors.border,
+          backgroundColor: PanelPalette.of(context).border,
         ),
       ),
     ],
@@ -1243,11 +1252,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 10),
-                  _dimension('General', stats.rating, AdminColors.navy),
+                  _dimension('General', stats.rating, PanelPalette.of(context).ink),
                   const SizedBox(height: 8),
-                  _dimension('Servicio', stats.service, AdminColors.cyan),
+                  _dimension('Servicio', stats.service, PanelPalette.of(context).accent),
                   const SizedBox(height: 8),
-                  _dimension('Alimentos', stats.food, const Color(0xFF007C66)),
+                  _dimension('Alimentos', stats.food, PanelPalette.of(context).accent),
                 ],
               ),
             );
@@ -1302,11 +1311,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                                     ? 0
                                     : stats.histogram[star]! / stats.validCount,
                                 minHeight: 14,
-                                backgroundColor: const Color(0xFFF0F3F6),
+                                backgroundColor: PanelPalette.of(context).layer,
                                 color: star <= 2
                                     ? const Color(0xFFEA8A76)
                                     : star == 3
-                                    ? AdminColors.cyan
+                                    ? PanelPalette.of(context).accent
                                     : const Color(0xFF00A788),
                               ),
                             ),
@@ -1317,9 +1326,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                             child: Text(
                               '${stats.histogram[star]}',
                               textAlign: TextAlign.end,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 12,
-                                color: AdminColors.muted,
+                                color: PanelPalette.of(context).muted,
                               ),
                             ),
                           ),
@@ -1364,9 +1373,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                                           ),
                                           Text(
                                             '${_mean(e.value.rating)} ★ · ${e.value.reviews.length}',
-                                            style: const TextStyle(
+                                            style: TextStyle(
                                               fontSize: 11,
-                                              color: AdminColors.muted,
+                                              color: PanelPalette.of(context).muted,
                                             ),
                                           ),
                                         ],
@@ -1377,8 +1386,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                                         child: LinearProgressIndicator(
                                           value: (e.value.rating ?? 0) / 5,
                                           minHeight: 8,
-                                          backgroundColor: AdminColors.border,
-                                          color: AdminColors.cyan,
+                                          backgroundColor: PanelPalette.of(context).border,
+                                          color: PanelPalette.of(context).accent,
                                         ),
                                       ),
                                     ],
@@ -1439,22 +1448,22 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.insights, color: AdminColors.cyan, size: 32),
+              Icon(Icons.insights, color: PanelPalette.of(context).accent, size: 32),
               const SizedBox(height: 10),
               Text(
                 '${_mean(points.first.value.rating)} ★',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 30,
                   fontWeight: FontWeight.w700,
-                  color: AdminColors.navy,
+                  color: PanelPalette.of(context).ink,
                 ),
               ),
               Text('${_date(points.first.key)} · un día con opiniones'),
               const SizedBox(height: 6),
-              const Text(
+              Text(
                 'Se necesitan más días para mostrar una tendencia.',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 11, color: AdminColors.muted),
+                style: TextStyle(fontSize: 11, color: PanelPalette.of(context).muted),
               ),
             ],
           ),
@@ -1478,7 +1487,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
               drawVerticalLine: false,
               horizontalInterval: 1,
               getDrawingHorizontalLine: (_) =>
-                  const FlLine(color: AdminColors.border, strokeWidth: 1),
+                  FlLine(color: PanelPalette.of(context).border, strokeWidth: 1),
             ),
             borderData: FlBorderData(show: false),
             titlesData: FlTitlesData(
@@ -1495,9 +1504,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                   interval: 1,
                   getTitlesWidget: (value, meta) => Text(
                     value.toInt().toString(),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 10,
-                      color: AdminColors.muted,
+                      color: PanelPalette.of(context).muted,
                     ),
                   ),
                 ),
@@ -1511,9 +1520,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                     padding: const EdgeInsets.only(top: 8),
                     child: Text(
                       _date(first.add(Duration(days: value.toInt()))),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 9,
-                        color: AdminColors.muted,
+                        color: PanelPalette.of(context).muted,
                       ),
                     ),
                   ),
@@ -1531,12 +1540,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                     )
                     .toList(),
                 isCurved: false,
-                color: AdminColors.cyan,
+                color: PanelPalette.of(context).accent,
                 barWidth: 3,
                 dotData: FlDotData(show: points.length < 14),
                 belowBarData: BarAreaData(
                   show: true,
-                  color: AdminColors.cyan.withValues(alpha: .08),
+                  color: PanelPalette.of(context).accent.withValues(alpha: .08),
                 ),
               ),
             ],
@@ -1561,7 +1570,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
   Widget _explanation(IconData icon, String title, String body) => Row(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Icon(icon, size: 22, color: AdminColors.cyan),
+      Icon(icon, size: 22, color: PanelPalette.of(context).accent),
       const SizedBox(width: 12),
       Expanded(
         child: Column(
@@ -1569,18 +1578,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
           children: [
             Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
-                color: AdminColors.navy,
+                color: PanelPalette.of(context).ink,
               ),
             ),
             const SizedBox(height: 4),
             Text(
               body,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
-                color: AdminColors.muted,
+                color: PanelPalette.of(context).muted,
                 height: 1.5,
               ),
             ),
@@ -1603,7 +1612,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
       Column(
         children: [
           for (var i = 0; i < reviews.length; i++) ...[
-            if (i > 0) const Divider(height: 1, color: AdminColors.border),
+            if (i > 0) Divider(height: 1, color: PanelPalette.of(context).border),
             InkWell(
               onTap: () => _openReview(reviews[i]),
               borderRadius: BorderRadius.circular(14),
@@ -1634,10 +1643,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
               children: [
                 Text(
                   _businessName(review.businessId),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: AdminColors.navy,
+                    color: PanelPalette.of(context).ink,
                   ),
                 ),
                 Text(
@@ -1646,16 +1655,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                     color: review.isNegative
-                        ? AdminColors.red
-                        : const Color(0xFF007C66),
+                        ? PanelPalette.of(context).danger
+                        : PanelPalette.of(context).accent,
                   ),
                 ),
                 if (review.isNegative || followup != null)
                   _badge(
                     status.label,
                     status == FollowupStatus.resolved
-                        ? AdminColors.cyan
-                        : AdminColors.red,
+                        ? PanelPalette.of(context).accent
+                        : PanelPalette.of(context).danger,
                   ),
               ],
             ),
@@ -1666,9 +1675,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                   : review.comment,
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
-                color: Color(0xFF334155),
+                color: PanelPalette.of(context).ink,
                 height: 1.55,
               ),
             ),
@@ -1679,26 +1688,26 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
               children: [
                 Text(
                   '${review.career} · ${review.group}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 10,
-                    color: AdminColors.muted,
+                    color: PanelPalette.of(context).muted,
                   ),
                 ),
                 Text(
                   review.campusTime == null
                       ? 'Fecha sin registrar'
                       : '${_date(review.campusTime!)} · ${review.campusTime!.hour.toString().padLeft(2, '0')}:${review.campusTime!.minute.toString().padLeft(2, '0')} h',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 10,
-                    color: AdminColors.muted,
+                    color: PanelPalette.of(context).muted,
                   ),
                 ),
                 if (followup?.assignee.isNotEmpty ?? false)
                   Text(
                     'Responsable: ${followup!.assignee}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 10,
-                      color: AdminColors.muted,
+                      color: PanelPalette.of(context).muted,
                     ),
                   ),
               ],
@@ -1710,10 +1719,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                 children: [
                   Expanded(child: meta),
                   const SizedBox(width: 20),
-                  const Icon(
+                  Icon(
                     Icons.arrow_forward_rounded,
                     size: 19,
-                    color: AdminColors.navy,
+                    color: PanelPalette.of(context).ink,
                   ),
                 ],
               )
@@ -1722,10 +1731,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                 children: [
                   meta,
                   const SizedBox(height: 10),
-                  const Text(
+                  Text(
                     'Ver detalle y seguimiento →',
                     style: TextStyle(
-                      color: AdminColors.cyan,
+                      color: PanelPalette.of(context).accent,
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
                     ),
@@ -1741,16 +1750,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
     children: [
       Text(
         title,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 18,
           fontWeight: FontWeight.w700,
-          color: AdminColors.navy,
+          color: PanelPalette.of(context).ink,
         ),
       ),
       const SizedBox(height: 4),
       Text(
         subtitle,
-        style: const TextStyle(fontSize: 11, color: AdminColors.muted),
+        style: TextStyle(fontSize: 11, color: PanelPalette.of(context).muted),
       ),
     ],
   );
@@ -1762,16 +1771,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
         children: [
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w700,
-              color: AdminColors.navy,
+              color: PanelPalette.of(context).ink,
             ),
           ),
           const SizedBox(height: 5),
           Text(
             subtitle,
-            style: const TextStyle(fontSize: 10, color: AdminColors.muted),
+            style: TextStyle(fontSize: 10, color: PanelPalette.of(context).muted),
           ),
           const SizedBox(height: 24),
           content,
@@ -1781,9 +1790,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
   );
   Widget _card(Widget child) => Container(
     decoration: BoxDecoration(
-      color: Colors.white,
+      color: PanelPalette.of(context).surface,
       borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: AdminColors.border),
+      border: Border.all(color: PanelPalette.of(context).border),
     ),
     clipBehavior: Clip.antiAlias,
     child: child,
@@ -1805,12 +1814,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
     child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Icon(Icons.inbox_outlined, color: AdminColors.muted, size: 30),
+        Icon(Icons.inbox_outlined, color: PanelPalette.of(context).muted, size: 30),
         const SizedBox(height: 10),
         Text(
           text,
           textAlign: TextAlign.center,
-          style: const TextStyle(color: AdminColors.muted, fontSize: 12),
+          style: TextStyle(color: PanelPalette.of(context).muted, fontSize: 12),
         ),
       ],
     ),

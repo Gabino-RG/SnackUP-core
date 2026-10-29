@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../operations/models.dart';
+import '../../operations/panel_text.dart';
 import '../../operations/operations_repository.dart';
 import '../../operations/kitchen_controller.dart';
 import '../admin/admin_theme.dart';
@@ -180,14 +181,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Text('Creado: ${campusStamp(o.createdAt)}'),
-                        Text('Pago: ${o.payment}'),
+                        Text('Pago: ${paymentLabel(o.payment)}'),
                         for (final item in o.items)
                           Text(
                             '${item.quantity} × ${item.name}${item.notes.isEmpty ? '' : ' · ${item.notes}'}',
                           ),
                         if (o.cancelReason != null)
                           Text(
-                            'Motivo: ${cancelReasons[o.cancelReason] ?? o.cancelReason}',
+                            'Motivo: ${o.cancelReason == 'not_picked_up' ? 'Pedido no recogido' : cancelReasons[o.cancelReason] ?? o.cancelReason}',
                           ),
                         if (o.cancelNotes?.isNotEmpty ?? false)
                           Text(o.cancelNotes!),
@@ -237,14 +238,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, color: AdminColors.cyan),
+            Icon(icon, color: PanelPalette.of(context).accent),
             const SizedBox(height: 16),
             Text(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.w800,
-                color: AdminColors.navy,
+                color: PanelPalette.of(context).ink,
               ),
             ),
             Text(label),

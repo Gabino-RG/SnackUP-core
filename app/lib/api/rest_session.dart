@@ -110,6 +110,8 @@ class RestSession extends ChangeNotifier {
   bool logoutPending = false;
   _AccessToken? _token;
   Future<bool>? _refreshing;
+  ApiException? _renewalError;
+  DateTime? _renewalRetryAt;
   Future<void> _cookieTail = Future<void>.value();
   int _generation = 0;
   bool _disposed = false;
@@ -150,6 +152,8 @@ class RestSession extends ChangeNotifier {
     }
     final generation = ++_generation;
     _refreshing = null;
+    _renewalError = null;
+    _renewalRetryAt = null;
     _token = null;
     account = null;
     phase = PortalSessionPhase.restoring;
@@ -202,6 +206,8 @@ class RestSession extends ChangeNotifier {
     }
     final generation = ++_generation;
     _refreshing = null;
+    _renewalError = null;
+    _renewalRetryAt = null;
     _token = null;
     account = null;
     message = null;
@@ -259,7 +265,8 @@ class RestSession extends ChangeNotifier {
         code: 'UNAUTHENTICATED',
       );
     }
-    if (!_token!.expiresAt.isAfter(_now().add(const Duration(seconds: 30)))) {
+    if (_renewalError != null ||
+        !_token!.expiresAt.isAfter(_now().add(const Duration(seconds: 30)))) {
       if (!await refresh(expectedToken: _token!.value)) {
         throw const ApiException('Tu sesión terminó.', code: 'UNAUTHENTICATED');
       }
@@ -277,6 +284,9 @@ class RestSession extends ChangeNotifier {
       return Future.value(true);
     final running = _refreshing;
     if (running != null) return running;
+    if (_renewalError != null && _renewalRetryAt!.isAfter(_now())) {
+      return Future.error(_renewalError!);
+    }
     final future = _renew();
     _refreshing = future;
     return future.whenComplete(() {
@@ -297,11 +307,25 @@ class RestSession extends ChangeNotifier {
       if (profile.identity != account?.identity) _generation++;
       _token = token;
       account = profile;
+      _renewalError = null;
+      _renewalRetryAt = null;
+      message = null;
       _changed();
       return true;
-    } catch (_) {
-      if (_current(generation))
-        invalidate('No se pudo renovar tu sesión. Vuelve a iniciar sesión.');
+    } catch (error) {
+      if (!_current(generation)) return false;
+      if (error is ApiException && error.isTransient) {
+        // Keep the panel and drafts, but stop this request. Never send a write
+        // using a token whose renewal failed or automatically replay a write.
+        _renewalError = error;
+        _renewalRetryAt = _now().add(
+          error.retryAfter ?? const Duration(seconds: 5),
+        );
+        message = error.message;
+        _changed();
+        rethrow;
+      }
+      invalidate('No se pudo renovar tu sesión. Vuelve a iniciar sesión.');
       return false;
     }
   }

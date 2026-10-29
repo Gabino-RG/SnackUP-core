@@ -4,11 +4,14 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:flutter/material.dart';
 import '../../catalog/catalog.dart';
 import '../../operations/models.dart';
+import '../../operations/panel_text.dart';
 import '../../operations/kitchen_controller.dart';
 import '../../operations/operations_repository.dart';
 import '../../operations/realtime.dart';
 import '../catalog/catalog_screen.dart';
 import '../admin/admin_theme.dart';
+import '../admin/panel_motion.dart';
+import '../admin/panel_appearance.dart';
 import 'order_dialogs.dart';
 import 'history_screen.dart';
 import 'record_editor.dart';
@@ -231,12 +234,13 @@ class _BusinessPortalState extends State<BusinessPortal>
                 b?.cafeteriaName ?? 'Cafetería universitaria',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 11, color: AdminColors.muted),
+                style: TextStyle(fontSize: 11, color: PanelPalette.of(context).muted),
               ),
             ],
           ),
-          backgroundColor: Colors.white,
+          backgroundColor: PanelPalette.of(context).surface,
           actions: [
+            const PanelThemeButton(),
             if (widget.v32 != null)
               ChatActivityButton(
                 key: ValueKey(widget.businessId),
@@ -278,8 +282,18 @@ class _BusinessPortalState extends State<BusinessPortal>
         body: SafeArea(
           child: Column(
             children: [
-              Container(
-                color: AdminColors.navy,
+              AnimatedContainer(
+                duration: panelDuration(context, 320),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AdminColors.navy,
+                      b?.isOpen == true
+                          ? const Color(0xFF006857)
+                          : const Color(0xFF334155),
+                    ],
+                  ),
+                ),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 7,
@@ -333,11 +347,17 @@ class _BusinessPortalState extends State<BusinessPortal>
                 ),
               if (_kitchen.newCount > 0)
                 MaterialBanner(
-                  leading: const Icon(
+                  leading: Icon(
                     Icons.notifications_active,
-                    color: AdminColors.cyan,
+                    color: PanelPalette.of(context).accent,
                   ),
-                  content: Text('${_kitchen.newCount} pedido(s) nuevo(s)'),
+                  content: Text(
+                    counted(
+                      _kitchen.newCount,
+                      'pedido nuevo',
+                      'pedidos nuevos',
+                    ),
+                  ),
                   actions: [
                     TextButton(
                       onPressed: () => _navigate(0),
@@ -362,28 +382,31 @@ class _BusinessPortalState extends State<BusinessPortal>
                         ],
                       ),
                     Expanded(
-                      child: switch (_section) {
-                        0 => _board(),
-                        1 => CatalogScreen(
-                          businessId: widget.businessId,
-                          repository: widget.catalog,
-                        ),
-                        2 => HistoryScreen(
-                          repository: widget.repository,
-                          businessId: widget.businessId,
-                        ),
-                        3 => HistoryScreen(
-                          key: const ValueKey('sales'),
-                          repository: widget.repository,
-                          businessId: widget.businessId,
-                          summaryOnly: true,
-                        ),
-                        5 => V32OperationsScreen(
-                          repository: widget.v32!,
-                          businessId: widget.businessId,
-                        ),
-                        _ => _settings(),
-                      },
+                      child: PanelEntrance(
+                        key: ValueKey('section-$_section'),
+                        child: switch (_section) {
+                          0 => _board(),
+                          1 => CatalogScreen(
+                            businessId: widget.businessId,
+                            repository: widget.catalog,
+                          ),
+                          2 => HistoryScreen(
+                            repository: widget.repository,
+                            businessId: widget.businessId,
+                          ),
+                          3 => HistoryScreen(
+                            key: const ValueKey('sales'),
+                            repository: widget.repository,
+                            businessId: widget.businessId,
+                            summaryOnly: true,
+                          ),
+                          5 => V32OperationsScreen(
+                            repository: widget.v32!,
+                            businessId: widget.businessId,
+                          ),
+                          _ => _settings(),
+                        },
+                      ),
                     ),
                   ],
                 ),
@@ -439,12 +462,12 @@ class _BusinessPortalState extends State<BusinessPortal>
                 runSpacing: 12,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  const Text(
+                  Text(
                     'Cocina',
                     style: TextStyle(
                       fontSize: 26,
                       fontWeight: FontWeight.w800,
-                      color: AdminColors.navy,
+                      color: PanelPalette.of(context).ink,
                     ),
                   ),
                   SizedBox(
@@ -462,9 +485,9 @@ class _BusinessPortalState extends State<BusinessPortal>
                     _kitchen.lastSync == null
                         ? 'Cargando pedidos…'
                         : '${_live ? 'En vivo' : 'Actualización cada 10 s'} · ${campusStamp(_kitchen.lastSync)}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
-                      color: AdminColors.muted,
+                      color: PanelPalette.of(context).muted,
                     ),
                   ),
                 ],
@@ -574,7 +597,7 @@ class _BusinessPortalState extends State<BusinessPortal>
   Widget _column(int index, List<KitchenOrder> orders) => Container(
     margin: const EdgeInsets.fromLTRB(8, 0, 8, 12),
     decoration: BoxDecoration(
-      color: const Color(0xFFEEF2F6),
+      color: PanelPalette.of(context).layer,
       borderRadius: BorderRadius.circular(16),
     ),
     child: Column(
@@ -589,7 +612,7 @@ class _BusinessPortalState extends State<BusinessPortal>
                   Icons.soup_kitchen_outlined,
                   Icons.shopping_bag_outlined,
                 ][index],
-                color: AdminColors.navy,
+                color: PanelPalette.of(context).ink,
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -631,116 +654,143 @@ class _BusinessPortalState extends State<BusinessPortal>
         .difference(o.createdAt!)
         .inMinutes
         .clamp(0, 99999);
-    return Card(
+    final accent = switch (o.status) {
+      KitchenStatus.pending => PanelPalette.of(context).pending,
+      KitchenStatus.ready => PanelPalette.of(context).accent,
+      _ => PanelPalette.of(context).ink,
+    };
+    return PanelEntrance(
       key: ValueKey(o.id),
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Pedido #${o.number}',
-                    style: const TextStyle(
-                      fontSize: 19,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-                Text(
-                  '${minutes} min',
-                  style: TextStyle(
-                    color: minutes >= 20 ? AdminColors.red : AdminColors.muted,
-                  ),
-                ),
-              ],
-            ),
-            Text(
-              o.customer,
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              child: Text(
-                o.status.label,
-                style: const TextStyle(color: AdminColors.cyan),
-              ),
-            ),
-            if (o.scheduledAt != null)
-              Text('Recogida: ${campusStamp(o.scheduledAt)}'),
-            const Divider(),
-            for (final item in o.items)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${item.quantity} × ${item.name}',
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    if (item.notes.isNotEmpty)
-                      Text(
-                        'Nota: ${item.notes}',
-                        style: const TextStyle(color: AdminColors.red),
+      child: Card(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: accent.withValues(alpha: .30)),
+        ),
+        shadowColor: accent.withValues(alpha: .14),
+        elevation: o.status == KitchenStatus.pending ? 3 : 1,
+        margin: const EdgeInsets.only(bottom: 12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Pedido #${o.number}',
+                      style: const TextStyle(
+                        fontSize: 19,
+                        fontWeight: FontWeight.w800,
                       ),
-                  ],
+                    ),
+                  ),
+                  Text(
+                    '${minutes} min',
+                    style: TextStyle(
+                      color: minutes >= 20
+                          ? PanelPalette.of(context).danger
+                          : PanelPalette.of(context).muted,
+                    ),
+                  ),
+                ],
+              ),
+              Text(
+                o.customer,
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              AnimatedContainer(
+                duration: panelDuration(context),
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: .09),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border(left: BorderSide(color: accent, width: 3)),
+                ),
+                margin: const EdgeInsets.symmetric(vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 6,
+                  horizontal: 10,
+                ),
+                child: Text(
+                  o.status.label,
+                  style: TextStyle(color: accent, fontWeight: FontWeight.w700),
                 ),
               ),
-            Text(
-              '${money(o.totalCents)} · ${o.payment}',
-              style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 14),
-            if (widget.v32 != null)
-              OutlinedButton.icon(
-                icon: const Icon(Icons.chat_outlined),
-                label: const Text('Chat del pedido'),
-                onPressed: disabled
-                    ? null
-                    : () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => Scaffold(
-                            appBar: AppBar(
-                              title: Text('Chat · Pedido #${o.number}'),
-                            ),
-                            body: KitchenChatScreen(
-                              repository: widget.v32!,
-                              businessId: widget.businessId,
-                              orderId: o.id,
+              if (o.scheduledAt != null)
+                Text('Recogida: ${campusStamp(o.scheduledAt)}'),
+              const Divider(),
+              for (final item in o.items)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${item.quantity} × ${item.name}',
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      if (item.notes.isNotEmpty)
+                        Text(
+                          'Nota: ${item.notes}',
+                          style: TextStyle(color: PanelPalette.of(context).danger),
+                        ),
+                    ],
+                  ),
+                ),
+              Text(
+                '${money(o.totalCents)} · ${paymentLabel(o.payment)}',
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 14),
+              if (widget.v32 != null)
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.chat_outlined),
+                  label: const Text('Chat del pedido'),
+                  onPressed: disabled
+                      ? null
+                      : () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => Scaffold(
+                              appBar: AppBar(
+                                title: Text('Chat · Pedido #${o.number}'),
+                              ),
+                              body: KitchenChatScreen(
+                                repository: widget.v32!,
+                                businessId: widget.businessId,
+                                orderId: o.id,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-              ),
-            FilledButton(
-              onPressed: disabled ? null : () => _action(o),
-              child: Text(
-                _kitchen.busy.contains(o.id) ? 'Guardando…' : o.status.button!,
-              ),
-            ),
-            if (o.status.canCancel)
-              TextButton(
-                onPressed: disabled
-                    ? null
-                    : () => showDialog<bool>(
-                        context: context,
-                        barrierDismissible: false,
-                        builder: (_) => OrderActionDialog(
-                          order: o,
-                          controller: _kitchen,
-                          cancel: true,
-                        ),
-                      ),
-                child: const Text(
-                  'Cancelar pedido',
-                  style: TextStyle(color: AdminColors.red),
+                ),
+              FilledButton(
+                onPressed: disabled ? null : () => _action(o),
+                child: Text(
+                  _kitchen.busy.contains(o.id)
+                      ? 'Guardando…'
+                      : o.status.button!,
                 ),
               ),
-          ],
+              if (o.status.canCancel)
+                TextButton(
+                  onPressed: disabled
+                      ? null
+                      : () => showDialog<bool>(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (_) => OrderActionDialog(
+                            order: o,
+                            controller: _kitchen,
+                            cancel: true,
+                          ),
+                        ),
+                  child: Text(
+                    'Cancelar pedido',
+                    style: TextStyle(color: PanelPalette.of(context).danger),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );

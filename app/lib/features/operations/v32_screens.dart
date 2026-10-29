@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../api/api_client.dart';
 import '../../operations/models.dart';
+import '../../operations/panel_text.dart';
+import '../admin/panel_motion.dart';
 import '../../operations/v32_repository.dart';
 
 class SpecialOrdersScreen extends StatefulWidget {
@@ -72,7 +74,7 @@ class _SpecialOrdersScreenState extends State<SpecialOrdersScreen> {
       context,
       release
           ? 'Confirmar que el vale NO fue canjeado'
-          : 'Cancelar por no recogido',
+          : 'Cancelar pedido no recogido',
       release
           ? 'Confirma con el responsable que este vale no se utilizó. Se liberará su reserva; un vale consumido nunca se libera.'
           : 'El pedido listo se cancelará sin reponer existencias. Si tiene vale, la reserva se conserva hasta confirmar por separado que no se canjeó.',
@@ -102,7 +104,7 @@ class _SpecialOrdersScreenState extends State<SpecialOrdersScreen> {
         _notice = error == null && _error == null
             ? (release
                   ? 'Reserva del vale liberada.'
-                  : 'Pedido cancelado por no recogido.')
+                  : 'Pedido cancelado porque no se recogió.')
             : null;
       });
   }
@@ -160,7 +162,7 @@ class _SpecialOrdersScreenState extends State<SpecialOrdersScreen> {
       ),
       if (_busy) const LinearProgressIndicator(),
       if (_error != null)
-        Text(_error!, style: const TextStyle(color: Colors.red)),
+        Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
       if (_notice != null) Text(_notice!),
       if (!_busy && _orders.isEmpty)
         const Text('No hay pedidos en esta página.'),
@@ -175,7 +177,7 @@ class _SpecialOrdersScreenState extends State<SpecialOrdersScreen> {
                   'Pedido #${order['orderNumber']} · ${order['customerName']}',
                 ),
                 Text(
-                  '${KitchenStatus.values.firstWhere((s) => s.name == order['status']).label} · ${order['paymentMethod']}',
+                  '${KitchenStatus.values.firstWhere((s) => s.name == order['status']).label} · ${paymentLabel(order['paymentMethod'])}',
                 ),
                 if (order['scheduledPickupTime'] != null)
                   Text(
@@ -197,7 +199,9 @@ class _SpecialOrdersScreenState extends State<SpecialOrdersScreen> {
                     order['paymentMethod'] == 'ValeComida')
                   TextButton(
                     onPressed: _busy ? null : () => _act(order, true),
-                    child: const Text('Confirmar vale no canjeado y liberar'),
+                    child: const Text(
+                      'Confirmar que el vale no se canjeó y liberarlo',
+                    ),
                   ),
               ],
             ),
@@ -295,7 +299,7 @@ class _DetailedStatsScreenState extends State<DetailedStatsScreen> {
         style: Theme.of(context).textTheme.headlineSmall,
       ),
       const Text(
-        'Ventas entregadas, por fecha de terminación en la zona del local. El medio de pago registrado no acredita un cobro ni una conciliación bancaria.',
+        'Ventas de pedidos entregados, según la fecha de entrega y la zona horaria del local. El medio de pago registrado no acredita un cobro ni una conciliación bancaria.',
       ),
       Wrap(
         spacing: 8,
@@ -319,7 +323,7 @@ class _DetailedStatsScreenState extends State<DetailedStatsScreen> {
       ),
       if (_busy) const LinearProgressIndicator(),
       if (_error != null)
-        Text(_error!, style: const TextStyle(color: Colors.red)),
+        Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
       if (_data != null) ...[
         Text(
           'Entregados: ${_data!['completed']} · Cancelados: ${_data!['cancelled']} · Ventas: ${money(cents(_data!['totalSold']))}',
@@ -331,8 +335,8 @@ class _DetailedStatsScreenState extends State<DetailedStatsScreen> {
         ),
         for (final row in _data!['paymentMethods'] as List)
           ListTile(
-            title: Text('${row['paymentMethod']}'),
-            subtitle: Text('${row['completed']} entregados'),
+            title: Text(paymentLabel(row['paymentMethod'])),
+            subtitle: Text('Pedidos entregados: ${row['completed']}'),
             trailing: Text(money(cents(row['totalSold']))),
           ),
         const Text(
@@ -342,7 +346,7 @@ class _DetailedStatsScreenState extends State<DetailedStatsScreen> {
         for (final row in _data!['topProducts'] as List)
           ListTile(
             title: Text('${row['name']}'),
-            subtitle: Text('${row['quantity']} unidades'),
+            subtitle: Text('Unidades: ${row['quantity']}'),
             trailing: Text(money(cents(row['totalSold']))),
           ),
         const Text(
@@ -353,7 +357,7 @@ class _DetailedStatsScreenState extends State<DetailedStatsScreen> {
           ListTile(
             title: Text('${row['date']}'),
             subtitle: Text(
-              '${row['completed']} entregados · ${row['cancelled']} cancelados',
+              'Entregados: ${row['completed']} · Cancelados: ${row['cancelled']}',
             ),
             trailing: Text(money(cents(row['totalSold']))),
           ),
@@ -424,24 +428,27 @@ class _V32OperationsScreenState extends State<V32OperationsScreen> {
         ),
       ),
       Expanded(
-        child: switch (_section) {
-          0 => KitchenChatScreen(
-            repository: widget.repository,
-            businessId: widget.businessId,
-          ),
-          1 => ClosingScreen(
-            repository: widget.repository,
-            businessId: widget.businessId,
-          ),
-          2 => SpecialOrdersScreen(
-            repository: widget.repository,
-            businessId: widget.businessId,
-          ),
-          _ => DetailedStatsScreen(
-            repository: widget.repository,
-            businessId: widget.businessId,
-          ),
-        },
+        child: PanelEntrance(
+          key: ValueKey('operation-$_section'),
+          child: switch (_section) {
+            0 => KitchenChatScreen(
+              repository: widget.repository,
+              businessId: widget.businessId,
+            ),
+            1 => ClosingScreen(
+              repository: widget.repository,
+              businessId: widget.businessId,
+            ),
+            2 => SpecialOrdersScreen(
+              repository: widget.repository,
+              businessId: widget.businessId,
+            ),
+            _ => DetailedStatsScreen(
+              repository: widget.repository,
+              businessId: widget.businessId,
+            ),
+          },
+        ),
       ),
     ],
   );
@@ -574,7 +581,7 @@ class _ClosingScreenState extends State<ClosingScreen> {
       ),
       if (_busy) const LinearProgressIndicator(),
       if (_error != null)
-        Text(_error!, style: const TextStyle(color: Colors.red)),
+        Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
       if (_notice != null) Text(_notice!),
       Align(
         alignment: Alignment.centerLeft,
@@ -585,7 +592,7 @@ class _ClosingScreenState extends State<ClosingScreen> {
         ),
       ),
       if (_business != null) ...[
-        Text('Zona del local: ${_business!['timezone']}'),
+        Text('Zona horaria del local: ${_business!['timezone']}'),
         Text('Estado: ${_business!['isOpen'] == true ? 'Abierto' : 'Cerrado'}'),
         if (_business!['postponedCloseAt'] != null)
           Text('Cierre pospuesto: ${_business!['postponedCloseAt']}'),
@@ -659,7 +666,7 @@ class _ClosingScreenState extends State<ClosingScreen> {
         ],
         const Divider(height: 32),
         const Text(
-          'Un pedido listo puede marcarse como no recogido cuando vence este plazo, contado desde la hora más tardía entre “listo” y su recogida programada. No repone existencias.',
+          'Puedes cancelar un pedido listo que no se haya recogido cuando venza este plazo. Se cuenta desde que el pedido está listo o desde la hora de recogida programada, lo que ocurra después. La cancelación no repone existencias.',
         ),
         const SizedBox(height: 16),
         if (widget.readOnly)
@@ -924,10 +931,10 @@ class _KitchenChatScreenState extends State<KitchenChatScreen>
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             const Text(
-              'Consulta cada 10 segundos mientras esta pantalla está abierta. Las conversaciones vencen tras 24 horas de inactividad. Para iniciar una, usa “Chat del pedido” en Cocina.',
+              'Los mensajes se actualizan cada 10 segundos mientras esta pantalla está abierta. Las conversaciones vencen tras 24 horas de inactividad. Para iniciar una, usa “Chat del pedido” en Cocina.',
             ),
             if (_error != null)
-              Text(_error!, style: const TextStyle(color: Colors.red)),
+              Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
             Wrap(
               spacing: 8,
               children: [

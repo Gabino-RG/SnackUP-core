@@ -1,8 +1,41 @@
 # Preparación para producción: Cocina y Administración
 
 Alcance: paneles Flutter REST y herramientas de entrega. No modifica la app de
-alumnos ni certifica el sistema completo. Backend fijado a `81c76c5`.
+alumnos ni certifica el sistema completo. Backend fijado a `330825c`.
 Estado: candidato a validación institucional; no autorizado aún para producción.
+
+## Actualización del backend: 28 de octubre de 2026
+
+La integración y el workflow de los paneles usan
+`330825c47ec845f00c9f5e58c5c10c5ebe02f364`. Los informes anteriores que citan
+`81c76c5` conservan su revisión histórica; no acreditan por sí solos esta actualización.
+
+- HTTP 503 `SERVICE_BUSY` indica saturación temporal. Los demás errores 503
+  advierten que se debe consultar el resultado antes de repetir un guardado.
+- La renovación conserva el panel y los formularios ante errores de red,
+  tiempo agotado, 429 y 5xx. La petición afectada se detiene y propaga el error;
+  no se autoriza una escritura con una renovación pendiente. El siguiente
+  intento respeta `Retry-After` en segundos (el formato que envía este backend),
+  o espera cinco segundos si no se especifica. No hay repetición automática
+  de guardados ni de mensajes de chat.
+- Una renovación rechazada por autenticación o permisos sigue cerrando la
+  sesión. Las peticiones simultáneas comparten una única renovación.
+- Las pruebas locales de integración utilizan SQL temporal con SQLite.
+  PostgreSQL, Chromium y WebKit están configurados en CI; hay que comprobar
+  la ejecución del commit publicado antes de declarar esa validación aprobada.
+- La evidencia del backend aprueba Cocina y resistencia de dos horas, pero
+  conserva fallos de rendimiento con 800 y 1,000 lectores. No certifica
+  1,000 alumnos simultáneos en el futuro servidor institucional.
+
+Verificación local de esta actualización: 157 pruebas Flutter aprobadas,
+dos escenarios de integración de los clientes Dart contra el backend fijado,
+y resiliencia API con SQL temporal (cuatro compras, conflicto de aceptación,
+cierre con aplazamiento y reapertura). Además, cuatro pruebas del comprobador
+de despliegue y 27 del simulador de contrato aprobaron, con 260 respuestas
+validadas. El análisis no detectó errores; mantiene dos advertencias de
+imports sin uso en archivos de demostración/prueba administrativos y avisos
+de estilo existentes. No se ejecutó de nuevo la matriz de navegadores ni
+una prueba de carga PostgreSQL en esta validación local.
 
 ## Móvil y PC
 

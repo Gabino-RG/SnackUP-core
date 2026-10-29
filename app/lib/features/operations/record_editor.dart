@@ -199,7 +199,7 @@ class _RecordEditorState extends State<RecordEditor> {
                           ),
                   ),
                 if (_error != null)
-                  Text(_error!, style: const TextStyle(color: Colors.red)),
+                  Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
                 if (_conflict)
                   const Text(
                     'Conservamos lo que escribiste. Cierra y actualiza la lista para comprobar el registro antes de volver a editarlo.',

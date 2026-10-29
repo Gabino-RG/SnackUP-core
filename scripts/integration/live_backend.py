@@ -19,7 +19,7 @@ import time
 from urllib.parse import urlsplit, urlunsplit
 from uuid import uuid4
 
-BACKEND_REVISION = '81c76c5eda9ba6315fbf1dcd1a69599f8906db5e'
+BACKEND_REVISION = '330825c47ec845f00c9f5e58c5c10c5ebe02f364'
 
 
 @contextmanager

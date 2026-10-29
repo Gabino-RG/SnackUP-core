@@ -19,9 +19,9 @@ class ProductImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final placeholder = Container(
-      color: const Color(0xFFEAF0F5),
+      color: Theme.of(context).colorScheme.surfaceContainer,
       alignment: Alignment.center,
-      child: Icon(Icons.restaurant_outlined, color: catalogNavy, size: size / 3),
+      child: Icon(Icons.restaurant_outlined, color: Theme.of(context).colorScheme.onSurface, size: size / 3),
     );
     Widget image = placeholder;
     try {
@@ -133,7 +133,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    backgroundColor: catalogBackground,
+    backgroundColor: Theme.of(context).scaffoldBackgroundColor,
     appBar: AppBar(
       title: const Text('Mi catálogo'),
       actions: [IconButton(
@@ -148,7 +148,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
         width: double.infinity, color: const Color(0xFFFFF4D6),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         child: const Text('DATOS DE EJEMPLO · Los cambios se guardan en este dispositivo.',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF493500))),
       ),
       Padding(padding: const EdgeInsets.all(16), child: Column(children: [
         Row(children: [
@@ -239,7 +239,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
           maxLines: 1, overflow: TextOverflow.ellipsis),
         Row(children: [
           Text('\$${(draft.priceCents / 100).toStringAsFixed(2)}',
-            style: const TextStyle(fontSize: 24, color: catalogNavy, fontWeight: FontWeight.w700)),
+            style: TextStyle(fontSize: 24, color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w700)),
           IconButton(
             tooltip: 'Cambiar precio de ${draft.name}',
             onPressed: busy ? null : () => _price(product), icon: const Icon(Icons.edit_outlined, size: 19),
@@ -398,7 +398,7 @@ class _CatalogEditorScreenState extends State<CatalogEditorScreen> {
     canPop: _allowPop || (!_saving && !_dirty),
     onPopInvokedWithResult: (didPop, result) { if (!didPop) _close(); },
     child: Scaffold(
-      backgroundColor: catalogBackground,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         leading: IconButton(tooltip: 'Volver al catálogo', onPressed: _saving ? null : () => _close(), icon: const Icon(Icons.arrow_back)),
         title: Text(widget.productId == null ? 'Agregar producto' : 'Editar producto'),
@@ -468,9 +468,9 @@ class _CatalogEditorScreenState extends State<CatalogEditorScreen> {
                     value: _featured, onChanged: _saving ? null : (v) => setState(() { _featured = v; _dirty = true; })),
                   if (_error != null) Container(
                     margin: const EdgeInsets.symmetric(vertical: 16), padding: const EdgeInsets.all(16),
-                    color: const Color(0xFFFFEDEC),
+                    color: Theme.of(context).colorScheme.errorContainer,
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(catalogMessage(_error!)),
+                      Text(catalogMessage(_error!), style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer)),
                       if (_error is CatalogException && (_error as CatalogException).code == 'VERSION_CONFLICT')
                         TextButton(onPressed: _saving ? null : () async {
                           if (await _confirm('Recargar producto', 'Esto descartará los cambios del formulario.', 'Recargar')) _load();
@@ -490,7 +490,7 @@ class _CatalogEditorScreenState extends State<CatalogEditorScreen> {
                     child: TextButton.icon(
                       onPressed: _saving ? null : _delete, icon: const Icon(Icons.delete_outline),
                       label: const Text('Eliminar producto'),
-                      style: TextButton.styleFrom(foregroundColor: Colors.red.shade800),
+                      style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
                     )),
                   const SizedBox(height: 32),
                 ],

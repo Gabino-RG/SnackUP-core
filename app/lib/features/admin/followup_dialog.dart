@@ -115,10 +115,10 @@ class _FollowupDialogState extends State<FollowupDialog> {
                   Expanded(
                     child: Text(
                       widget.businessName,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.w700,
-                        color: AdminColors.navy,
+                        color: PanelPalette.of(context).ink,
                       ),
                     ),
                   ),
@@ -132,7 +132,7 @@ class _FollowupDialogState extends State<FollowupDialog> {
               const SizedBox(height: 5),
               Text(
                 '${widget.review.career} · ${widget.review.group}',
-                style: const TextStyle(fontSize: 12, color: AdminColors.muted),
+                style: TextStyle(fontSize: 12, color: PanelPalette.of(context).muted),
               ),
               const SizedBox(height: 18),
               Wrap(
@@ -154,12 +154,12 @@ class _FollowupDialogState extends State<FollowupDialog> {
               const SizedBox(height: 18),
               const Divider(),
               const SizedBox(height: 14),
-              const Text(
+              Text(
                 'Atención de esta opinión',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
-                  color: AdminColors.navy,
+                  color: PanelPalette.of(context).ink,
                 ),
               ),
               const SizedBox(height: 6),
@@ -167,7 +167,7 @@ class _FollowupDialogState extends State<FollowupDialog> {
                 widget.repository.isDemo
                     ? 'Demostración: estos cambios solo viven en esta sesión.'
                     : 'Indica quién atenderá esta opinión o queja, qué acción se realizará y si ya quedó resuelta. Cada cambio se guarda en el historial.',
-                style: const TextStyle(fontSize: 11, color: AdminColors.muted),
+                style: TextStyle(fontSize: 11, color: PanelPalette.of(context).muted),
               ),
               const SizedBox(height: 20),
               if (_loading)
@@ -178,8 +178,8 @@ class _FollowupDialogState extends State<FollowupDialog> {
                     padding: const EdgeInsets.only(bottom: 16),
                     child: Text(
                       _error!,
-                      style: const TextStyle(
-                        color: AdminColors.red,
+                      style: TextStyle(
+                        color: PanelPalette.of(context).danger,
                         fontSize: 12,
                       ),
                     ),
@@ -211,7 +211,7 @@ class _FollowupDialogState extends State<FollowupDialog> {
                   maxLength: 120,
                   decoration: const InputDecoration(
                     labelText: 'Responsable del seguimiento',
-                    hintText: 'Ej. Coordinación de servicios',
+                    hintText: 'Ej.: Coordinación de servicios',
                   ),
                   validator: (value) => (value ?? '').trim().isEmpty
                       ? 'Indica a quién corresponde dar seguimiento.'
@@ -247,19 +247,19 @@ class _FollowupDialogState extends State<FollowupDialog> {
                   ),
                 ),
                 const SizedBox(height: 28),
-                const Text(
+                Text(
                   'Historial de seguimiento',
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
-                    color: AdminColors.navy,
+                    color: PanelPalette.of(context).ink,
                   ),
                 ),
                 const SizedBox(height: 12),
                 if (_history.events.isEmpty)
-                  const Text(
+                  Text(
                     'Aún no hay acuerdos registrados.',
-                    style: TextStyle(fontSize: 12, color: AdminColors.muted),
+                    style: TextStyle(fontSize: 12, color: PanelPalette.of(context).muted),
                   ),
                 for (final event in _history.events)
                   Padding(
@@ -267,12 +267,12 @@ class _FollowupDialogState extends State<FollowupDialog> {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Padding(
+                        Padding(
                           padding: EdgeInsets.only(top: 4),
                           child: Icon(
                             Icons.circle,
                             size: 9,
-                            color: AdminColors.cyan,
+                            color: PanelPalette.of(context).accent,
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -282,10 +282,10 @@ class _FollowupDialogState extends State<FollowupDialog> {
                             children: [
                               Text(
                                 '${event.status.label} · ${event.assignee}',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontWeight: FontWeight.w600,
                                   fontSize: 12,
-                                  color: AdminColors.navy,
+                                  color: PanelPalette.of(context).ink,
                                 ),
                               ),
                               const SizedBox(height: 4),
@@ -296,9 +296,9 @@ class _FollowupDialogState extends State<FollowupDialog> {
                               const SizedBox(height: 5),
                               Text(
                                 _date(event.updatedAt),
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 10,
-                                  color: AdminColors.muted,
+                                  color: PanelPalette.of(context).muted,
                                 ),
                               ),
                             ],
@@ -308,9 +308,9 @@ class _FollowupDialogState extends State<FollowupDialog> {
                     ),
                   ),
                 if (_history.hasMore)
-                  const Text(
+                  Text(
                     'Se muestran los últimos 50 eventos. Existen eventos anteriores en el historial.',
-                    style: TextStyle(fontSize: 11, color: AdminColors.red),
+                    style: TextStyle(fontSize: 11, color: PanelPalette.of(context).danger),
                   ),
               ],
             ],
@@ -322,12 +322,12 @@ class _FollowupDialogState extends State<FollowupDialog> {
   Widget _rating(String title, int? value) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
     decoration: BoxDecoration(
-      color: AdminColors.background,
+      color: PanelPalette.of(context).background,
       borderRadius: BorderRadius.circular(8),
     ),
     child: Text(
       '$title: ${value == null ? 'Sin informar' : '$value ★'}',
-      style: const TextStyle(fontSize: 12, color: AdminColors.navy),
+      style: TextStyle(fontSize: 12, color: PanelPalette.of(context).ink),
     ),
   );
   String _date(DateTime? value) {

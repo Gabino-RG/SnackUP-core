@@ -178,7 +178,7 @@ class _OrderActionDialogState extends State<OrderActionDialog> {
                     padding: const EdgeInsets.only(top: 12),
                     child: Text(
                       _error!,
-                      style: const TextStyle(color: Colors.red),
+                      style: TextStyle(color: Theme.of(context).colorScheme.error),
                     ),
                   ),
               ],

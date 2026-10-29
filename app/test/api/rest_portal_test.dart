@@ -30,6 +30,10 @@ void main() {
     await tester.pumpWidget(RestPortalApp(session: session,
       businessBuilder: (account) => Scaffold(body: Text('Local asignado: ${account.businessId}'))));
     await tester.pumpAndSettle();
+    final loginContext = tester.element(find.byKey(const ValueKey('portal-email')));
+    expect(Localizations.localeOf(loginContext), const Locale('es', 'MX'));
+    expect(MaterialLocalizations.of(loginContext).cancelButtonLabel, 'Cancelar');
+    expect(MaterialLocalizations.of(loginContext).openAppDrawerTooltip, 'Abrir menú de navegación');
     await tester.enterText(find.byKey(const ValueKey('portal-email')), 'owner@example.test');
     await tester.enterText(find.byKey(const ValueKey('portal-password')), ' secret ');
     await tester.ensureVisible(find.byKey(const ValueKey('portal-login')));
