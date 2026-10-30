@@ -329,7 +329,7 @@ class OrderHistoryResponse(OrderPageResponse):
 
 def _business_aggregates(db: Session, ids) -> dict:
     ids = list(ids)
-    result = {id: {"ownerId": None, "averageRating": 0.0, "totalRatings": 0, "totalOrders": 0} for id in ids}
+    result = {id: {"ownerId": None, "averageRating": 0.0, "totalRatings": 0} for id in ids}
     if not ids:
         return result
     for business_id, average, count in db.execute(
@@ -337,10 +337,6 @@ def _business_aggregates(db: Session, ids) -> dict:
         .where(Review.business_id.in_(ids)).group_by(Review.business_id)
     ):
         result[business_id].update(averageRating=round(float(average or 0), 2), totalRatings=count)
-    for business_id, count in db.execute(
-        select(Order.business_id, func.count()).where(Order.business_id.in_(ids)).group_by(Order.business_id)
-    ):
-        result[business_id]["totalOrders"] = count
     for business_id, owner_id in db.execute(select(User.business_id, User.id).where(
         User.business_id.in_(ids), User.role == "business", User.is_active.is_(True), User.approval_status == "approved"
     )):
@@ -350,6 +346,10 @@ def _business_aggregates(db: Session, ids) -> dict:
 
 def business_dto(b: Business, db: Session, *, aggregates=None) -> dict:
     aggregate = (aggregates if aggregates is not None else _business_aggregates(db, [b.id]))[b.id]
+    # Every order is created through the atomic counter UPDATE in the same
+    # transaction and orders are never deleted, so the counter is the count;
+    # COUNT(*) over a semester of orders on every catalog read is not needed.
+    aggregate = {**aggregate, "totalOrders": b.next_order_number - 1}
     return {"id": b.id, "name": b.name, "category": b.category, "description": b.description,
             "imageUrl": b.image_url, "coverImageUrl": b.cover_image_url,
             "pickupTimeoutMinutes": b.pickup_timeout_minutes, "autoCloseEnabled": b.auto_close_enabled,
