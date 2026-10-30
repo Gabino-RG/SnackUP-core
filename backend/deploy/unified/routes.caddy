@@ -15,6 +15,8 @@
 		handle @backend {
 			reverse_proxy {$SNACKUP_UPSTREAMS:127.0.0.1:8000} {
                 lb_policy least_conn
+                # Arrival time for the API admission budget; replaces any client value.
+                header_up X-Snackup-Edge-Ms {time.now.unix_ms}
                 transport http {
                     keepalive 30s
                 }

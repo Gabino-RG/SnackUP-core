@@ -37,6 +37,8 @@ class Settings(BaseSettings):
     pool_timeout_seconds: float = 2
     admission_wait_seconds: float = 5
     write_concurrency: int = 1
+    mail_concurrency: int = 2
+    session_concurrency: int = 4
     login_wait_seconds: float = 8
     password_concurrency: int = 4
     outbox_retention_days: int = 7
@@ -93,6 +95,7 @@ class Settings(BaseSettings):
             raise ValueError('Invalid SQL connection pool limits.')
         if not (0.1 <= self.pool_timeout_seconds <= 10 and 0.1 <= self.admission_wait_seconds <= 10
                 and 1 <= self.login_wait_seconds <= 10 and 1 <= self.write_concurrency <= 24
+                and 1 <= self.mail_concurrency <= 24 and 1 <= self.session_concurrency <= 24
                 and 1 <= self.password_concurrency <= 8 and 1 <= self.outbox_retention_days <= 90
                 and 1 <= self.outbox_cleanup_batch <= 10000):
             raise ValueError('Invalid admission, password or outbox limits.')
