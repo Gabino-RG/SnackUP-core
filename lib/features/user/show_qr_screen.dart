@@ -1,469 +1,369 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:snackup/theme/app_colors.dart';
-import 'package:snackup/theme/app_text.dart';
+import 'package:snackup/student/student_api.dart';
+import 'package:snackup/student/student_widgets.dart';
+import 'package:snackup/theme/student_colors.dart';
+import 'package:snackup/theme/student_text.dart';
 
-class ShowQrScreen extends StatelessWidget {
+import 'rate_order_screen.dart';
+import 'package:snackup/student/product_reviews.dart';
+
+class ShowQrScreen extends StatefulWidget {
   final String orderId;
-  final String qrData;
-
-  const ShowQrScreen({
-    super.key,
-    required this.orderId,
-    required this.qrData,
-  });
+  const ShowQrScreen({super.key, required this.orderId});
 
   @override
-  Widget build(BuildContext context) {
-    final Stream<DocumentSnapshot> orderStream =
-        FirebaseFirestore.instance.collection('orders').doc(orderId).snapshots();
+  State<ShowQrScreen> createState() => _ShowQrScreenState();
+}
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Código de Entrega',
-          style: AppText.h3.copyWith(
-            fontWeight: FontWeight.w700,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        backgroundColor: AppColors.background,
-        elevation: 0,
-        foregroundColor: AppColors.textPrimary,
-      ),
-      body: StreamBuilder<DocumentSnapshot>(
-        stream: orderStream,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return _buildLoadingState();
-          }
-          
-          if (!snapshot.hasData || !snapshot.data!.exists) {
-            return _buildErrorState('Pedido no encontrado');
-          }
-          
-          final order = snapshot.data!.data() as Map<String, dynamic>;
-          final String status = order['status'] ?? '';
-          final String numeroDeControl = order['userNumeroDeControl'] ?? '0000';
-          final double totalPrice = order['totalPrice'] ?? 0.0;
-          final List<dynamic> items = order['items'] ?? [];
-          final Timestamp? createdAt = order['createdAt'] as Timestamp?;
+class _ShowQrScreenState extends State<ShowQrScreen> {
+  StudentApi? _api;
+  String? _ownerId;
+  int _revision = -1;
+  Future<Map<String, dynamic>>? _future;
 
-          // CERRAR PANTALLA SI EL PEDIDO ESTÁ COMPLETADO O CANCELADO
-          if (status == 'completed' || status == 'cancelled') {
-            Future.microtask(() {
-              if (Navigator.of(context).canPop()) {
-                Navigator.of(context).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      status == 'completed' 
-                          ? '¡Pedido entregado! Gracias por tu compra'
-                          : 'Pedido cancelado',
-                    ),
-                    backgroundColor: status == 'completed' 
-                        ? AppColors.success 
-                        : AppColors.error,
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                );
-              }
-            });
-          }
-
-          if (status != 'ready') {
-            return _buildNotReadyState(context, status);
-          }
-          
-          return _buildQrContent(
-            context,
-            numeroDeControl,
-            totalPrice,
-            items,
-            createdAt,
-          );
-        },
-      ),
-    );
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final api = context.watch<StudentApi>();
+    _ownerId ??= api.user?['id'] as String?;
+    if (!identical(_api, api) || _revision != api.revision) {
+      _api = api;
+      _revision = api.revision;
+      _future = _load();
+    }
   }
 
-  Widget _buildQrContent(
-    BuildContext context,
-    String numeroDeControl,
-    double totalPrice,
-    List<dynamic> items,
-    Timestamp? createdAt,
-  ) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        children: [
-          // HEADER INFORMATIVO
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: AppColors.success.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: AppColors.success.withOpacity(0.3),
-              ),
-            ),
+  Future<Map<String, dynamic>> _load() async {
+    final user = _ownerId;
+    if (user != _api!.user?['id']) {
+      throw const ApiException(
+        401,
+        'SESSION_CHANGED',
+        'Tu sesión cambió. Vuelve a abrir tu pedido.',
+      );
+    }
+    final order = await _api!.getObject('/orders/${widget.orderId}');
+    if (user == null || user != _api!.user?['id'] || order['userId'] != user) {
+      throw const ApiException(
+        403,
+        'NOT_OWN_ORDER',
+        'Este pedido no pertenece a tu cuenta.',
+      );
+    }
+    return order;
+  }
+
+  void _reload() => setState(() {
+    _future = _load();
+  });
+
+  String _explanation(String status) => switch (status) {
+    'pending' => 'El negocio recibió tu solicitud y todavía debe aceptarla.',
+    'accepted' =>
+      'El negocio aceptó tu pedido. Pronto comenzará su preparación.',
+    'preparing' =>
+      'El negocio está preparando tu comida. Te avisaremos cuando esté lista.',
+    'ready' =>
+      'Tu pedido está listo. Muestra este código únicamente al personal del negocio al recogerlo.',
+    'completed' => 'Este pedido ya fue entregado. Gracias por usar SnackUP.',
+    'cancelled' =>
+      'Este pedido fue cancelado y su código ya no puede usarse para recoger.',
+    _ => 'Actualiza para consultar el estado más reciente de tu pedido.',
+  };
+
+  Widget _content(Map<String, dynamic> order) {
+    // Recheck in the render path as well: a provider account change must never
+    // keep the previous account's pickup secret visible during the next GET.
+    if (_ownerId != _api!.user?['id'] || order['userId'] != _ownerId) {
+      return const Center(child: Text('Este pedido no pertenece a tu cuenta.'));
+    }
+    final status = order['status'] as String;
+    final ready = status == 'ready';
+    final code = order['pickupCode'] as String?;
+    final items = (order['items'] as List).cast<Map>();
+    final color = status == 'cancelled'
+        ? AppColors.error
+        : ready || status == 'completed'
+        ? AppColors.success
+        : AppColors.primary;
+    return ListView(
+      padding: const EdgeInsets.all(20),
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: [
+        Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 640),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Icon(
-                  Icons.qr_code_scanner_rounded,
-                  size: 40,
-                  color: AppColors.success,
+                Text('Pedido #${order['orderNumber']}', style: AppText.h1),
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Chip(
+                    avatar: Icon(
+                      ready ? Icons.check_circle_outline : Icons.receipt_long,
+                      size: 18,
+                      color: color,
+                    ),
+                    label: Text(statusLabel(status)),
+                    backgroundColor: color.withValues(alpha: .1),
+                  ),
                 ),
                 const SizedBox(height: 12),
-                Text(
-                  'Tu pedido está listo',
-                  style: AppText.h3.copyWith(
-                    color: AppColors.success,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Muestra este código QR al personal para recoger tu pedido',
-                  style: AppText.body.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 32),
-
-          // TARJETA DEL QR
-          Material(
-            elevation: 4,
-            borderRadius: BorderRadius.circular(24),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(32),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 20,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  // QR CODE
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: AppColors.background,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: AppColors.borders,
-                        width: 2,
-                      ),
-                    ),
-                    child: QrImageView(
-                      data: qrData,
-                      version: QrVersions.auto,
-                      size: 220,
-                      backgroundColor: Colors.white,
-                      eyeStyle: const QrEyeStyle(
-                        eyeShape: QrEyeShape.square,
-                        color: AppColors.primary,
-                      ),
-                      dataModuleStyle: const QrDataModuleStyle(
-                        dataModuleShape: QrDataModuleShape.square,
-                        color: AppColors.textPrimary,
-                      ),
+                Text(_explanation(status), style: AppText.body),
+                if (order['scheduledPickupTime'] != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 10),
+                    child: Text(
+                      'Recogida programada: ${dateText(order['scheduledPickupTime'])}',
                     ),
                   ),
-
-                  const SizedBox(height: 24),
-
-                  // NÚMERO DE CONTROL DE RESPUESTA
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppColors.componentBase,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Column(
-                      children: [
-                        Text(
-                          'Si el QR no funciona, usa este número:',
-                          style: AppText.notes.copyWith(
-                            color: AppColors.textSecondary,
+                const SizedBox(height: 24),
+                if (ready && code != null && code.isNotEmpty)
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        children: [
+                          const Text('Código de recogida', style: AppText.h3),
+                          const SizedBox(height: 16),
+                          LayoutBuilder(
+                            builder: (context, constraints) => QrImageView(
+                              data: code,
+                              version: QrVersions.auto,
+                              size: math.min(220.0, constraints.maxWidth),
+                              backgroundColor: Colors.white,
+                              eyeStyle: const QrEyeStyle(
+                                eyeShape: QrEyeShape.square,
+                                color: AppColors.primary,
+                              ),
+                              dataModuleStyle: const QrDataModuleStyle(
+                                dataModuleShape: QrDataModuleShape.square,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
                           ),
-                          textAlign: TextAlign.center,
+                          const SizedBox(height: 16),
+                          SelectableText(
+                            code,
+                            key: const ValueKey('pickup-code'),
+                            textAlign: TextAlign.center,
+                            style: AppText.h1.copyWith(
+                              fontSize: 32,
+                              letterSpacing: 4,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Si el lector no funciona, el personal puede introducir este mismo código.',
+                            style: AppText.notes,
+                            textAlign: TextAlign.center,
+                          ),
+                          TextButton.icon(
+                            onPressed: () async {
+                              await Clipboard.setData(
+                                ClipboardData(text: code),
+                              );
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Código de recogida copiado.',
+                                    ),
+                                  ),
+                                );
+                              }
+                            },
+                            icon: const Icon(Icons.copy),
+                            label: const Text('Copiar código'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                if (ready && (code == null || code.isEmpty))
+                  ErrorPanel(
+                    error: const ApiException(
+                      409,
+                      'MISSING_PICKUP_CODE',
+                      'No recibimos el código de este pedido. Actualiza antes de recogerlo.',
+                    ),
+                    onRetry: _reload,
+                  ),
+                if (!ready && !['completed', 'cancelled'].contains(status))
+                  const Card(
+                    child: Padding(
+                      padding: EdgeInsets.all(20),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.schedule,
+                            color: AppColors.primary,
+                            size: 32,
+                          ),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'El código se mostrará cuando tu pedido esté listo.',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 20),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Resumen del pedido', style: AppText.h3),
+                        const SizedBox(height: 16),
+                        ...items.map(
+                          (item) => Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('${item['quantity']} × ${item['name']}'),
+                                if ((item['notes'] as String? ?? '').isNotEmpty)
+                                  Text(
+                                    item['notes'].toString(),
+                                    style: AppText.notes,
+                                  ),
+                                Text(
+                                  money(
+                                    (item['price'] as num) *
+                                        (item['quantity'] as num),
+                                  ),
+                                  style: AppText.notes,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const Divider(),
+                        Text(
+                          'Total: ${money(order['total'])}',
+                          style: AppText.h3,
                         ),
                         const SizedBox(height: 8),
+                        Text('Forma de pago: ${order['paymentMethod']}'),
                         Text(
-                          numeroDeControl,
-                          style: AppText.h1.copyWith(
-                            color: AppColors.primary,
-                            fontSize: 28,
-                            fontWeight: FontWeight.w700,
-                          ),
+                          order['paymentStatus'] == 'pay_at_pickup'
+                              ? 'Pago al recoger'
+                              : 'Confirma el pago con el negocio',
+                          style: AppText.notes,
                         ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Creado: ${dateText(order['createdAt'])}',
+                          style: AppText.notes,
+                        ),
+                        if (order['cancelNotes'] != null &&
+                            order['cancelNotes'].toString().isNotEmpty)
+                          Text(
+                            'Motivo de cancelación: ${order['cancelNotes']}',
+                          ),
                       ],
                     ),
                   ),
-                ],
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 32),
-
-          // INFORMACIÓN ADICIONAL DEL PEDIDO
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: AppColors.componentBase,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Resumen del Pedido',
-                  style: AppText.h3.copyWith(
-                    color: AppColors.textPrimary,
-                    fontSize: 18,
-                  ),
                 ),
-                const SizedBox(height: 16),
-                
-                // ITEMS DEL PEDIDO
-                ...items.take(3).map((item) => Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          '${item['quantity']}x',
-                          style: AppText.notes.copyWith(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w700,
+                if (status == 'completed' && order['isRated'] != true)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 16),
+                    child: FilledButton.icon(
+                      onPressed: () async {
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute<void>(
+                            builder: (_) =>
+                                RateOrderScreen(orderId: widget.orderId),
                           ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          item['name'] ?? 'Producto',
-                          style: AppText.body.copyWith(
-                            color: AppColors.textPrimary,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                )),
-                
-                if (items.length > 3) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    '+ ${items.length - 3} productos más',
-                    style: AppText.notes.copyWith(
-                      color: AppColors.textSecondary,
+                        );
+                        if (mounted) _reload();
+                      },
+                      icon: const Icon(Icons.star_outline),
+                      label: const Text('Calificar cafetería'),
                     ),
                   ),
-                ],
-                
-                const SizedBox(height: 16),
-                const Divider(height: 1, color: AppColors.borders),
-                const SizedBox(height: 16),
-                
-                // TOTAL
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Total:',
-                      style: AppText.body.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
+                if (status == 'completed')
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: OutlinedButton.icon(
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute<void>(
+                          builder: (_) =>
+                              RateProductScreen(orderId: widget.orderId),
+                        ),
                       ),
+                      icon: const Icon(Icons.restaurant_outlined),
+                      label: const Text('Calificar platillos'),
                     ),
-                    Text(
-                      '\$${totalPrice.toStringAsFixed(2)}',
-                      style: AppText.h3.copyWith(
-                        color: AppColors.success,
-                        fontSize: 20,
-                      ),
-                    ),
-                  ],
+                  ),
+                const SizedBox(height: 16),
+                OutlinedButton.icon(
+                  onPressed: _reload,
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Actualizar estado'),
                 ),
               ],
             ),
           ),
-
-          const SizedBox(height: 24),
-
-          // INSTRUCCIONES
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.tertiary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.info_outline_rounded,
-                  color: AppColors.tertiary,
-                  size: 20,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Acércate al mostrador y muestra este código al personal',
-                    style: AppText.notes.copyWith(
-                      color: AppColors.tertiary,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLoadingState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          CircularProgressIndicator(color: AppColors.primary),
-          const SizedBox(height: 16),
-          Text(
-            'Cargando código de entrega...',
-            style: AppText.body.copyWith(
-              color: AppColors.textSecondary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildErrorState(String message) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.error_outline_rounded,
-              size: 64,
-              color: AppColors.error.withOpacity(0.7),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              message,
-              style: AppText.h3.copyWith(
-                color: AppColors.textPrimary,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
         ),
-      ),
+      ],
     );
   }
 
-  Widget _buildNotReadyState(BuildContext context, String status) {
-    String title = 'Pedido en proceso';
-    String subtitle = 'Tu pedido está siendo preparado';
-    IconData icon = Icons.access_time_rounded;
-    Color color = AppColors.warning;
-
-    if (status == 'pending') {
-      title = 'Pedido Recibido';
-      subtitle = 'Esperando confirmación del negocio';
-      icon = Icons.pending_actions_rounded;
-      color = AppColors.primary;
-    } else if (status == 'preparing') {
-      title = 'Preparando tu Pedido';
-      subtitle = 'El negocio está cocinando tu comida';
-      icon = Icons.restaurant_rounded;
-      color = AppColors.tertiary;
-    }
-
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                icon,
-                size: 50,
-                color: color,
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              title,
-              style: AppText.h3.copyWith(
-                color: AppColors.textPrimary,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              subtitle,
-              style: AppText.body.copyWith(
-                color: AppColors.textSecondary,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-              ),
-              child: Text(
-                'Volver a Mis Pedidos',
-                style: AppText.body.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ],
-        ),
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: AppColors.componentBase,
+    appBar: AppBar(
+      title: const Text('Mi pedido'),
+      backgroundColor: AppColors.background,
+    ),
+    body: RefreshIndicator(
+      onRefresh: () async {
+        final next = _load();
+        setState(() {
+          _future = next;
+        });
+        try {
+          await next;
+        } catch (_) {
+          /* The error remains visible with retry. */
+        }
+      },
+      child: FutureBuilder<Map<String, dynamic>>(
+        future: _future,
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: [ErrorPanel(error: snapshot.error!, onRetry: _reload)],
+            );
+          }
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          return Column(
+            children: [
+              if (snapshot.connectionState == ConnectionState.waiting)
+                const LinearProgressIndicator(),
+              Expanded(child: _content(snapshot.data!)),
+            ],
+          );
+        },
       ),
-    );
-  }
+    ),
+  );
 }

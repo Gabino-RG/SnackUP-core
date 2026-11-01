@@ -1,4 +1,16 @@
-# SnackUP-Core `v1.0`
+# SnackUP · frontend de alumnos REST
+
+La interfaz de alumnos se conecta al backend FastAPI existente mediante `/api/v1`.
+Consulta [ALUMNOS_REST.md](ALUMNOS_REST.md) para instalar, ejecutar, probar e integrar
+esta interfaz con el contenedor de tu equipo. El backend y las pantallas de Cocina
+se conservan sin cambios.
+
+Las instrucciones de Firebase que siguen son documentación histórica del proyecto
+original. El arranque actual del portal de alumnos utiliza REST.
+
+---
+
+# SnackUP-Core `v1.0` · documentación original
 
 ![SnackUP Banner](https://img.shields.io/badge/SnackUP-Official_Production_Repo-orange?style=for-the-badge&logo=fastapi)
 [![Flutter Version](https://img.shields.io/badge/Flutter-3.29.0%2B-02569B?style=flat&logo=flutter)](https://flutter.dev)

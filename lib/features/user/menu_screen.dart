@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'product_detail_screen.dart';
-import 'package:snackup/theme/app_colors.dart';
-import 'package:snackup/theme/app_text.dart';
+import 'package:provider/provider.dart';
+import 'package:snackup/student/student_api.dart';
+import 'package:snackup/student/student_widgets.dart';
+import 'package:snackup/theme/student_colors.dart';
+import 'package:snackup/theme/student_text.dart';
 
-class MenuScreen extends StatelessWidget {
+import 'product_detail_screen.dart';
+
+class MenuScreen extends StatefulWidget {
   final String businessId;
   final String businessName;
 
@@ -15,462 +18,273 @@ class MenuScreen extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    final Stream<QuerySnapshot> productsStream = FirebaseFirestore.instance
-        .collection('products')
-        .where('businessId', isEqualTo: businessId)
-        .where('isAvailable', isEqualTo: true)
-        .orderBy('category')
-        .orderBy('name')
-        .snapshots();
+  State<MenuScreen> createState() => _MenuScreenState();
+}
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          businessName,
-          style: AppText.h3.copyWith(
-            fontWeight: FontWeight.w700,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        backgroundColor: AppColors.background,
-        elevation: 0,
-        foregroundColor: AppColors.textPrimary,
-      ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: productsStream,
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return _buildErrorState();
-          }
-          
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return _buildLoadingState();
-          }
-          
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return _buildEmptyState();
-          }
+class _MenuScreenState extends State<MenuScreen> {
+  StudentApi? _api;
+  Future<List<dynamic>>? _data;
+  int _revision = -1;
 
-          final docs = snapshot.data!.docs;
-          
-          return _buildMenuList(docs);
-        },
-      ),
-    );
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final api = context.watch<StudentApi>();
+    if (_api != api || _revision != api.revision) {
+      _api = api;
+      _revision = api.revision;
+      _data = _fetch();
+    }
   }
 
-  Widget _buildMenuList(List<QueryDocumentSnapshot> docs) {
-    return CustomScrollView(
-      slivers: [
-        // HEADER INFORMATIVO
-        SliverToBoxAdapter(
-          child: Container(
-            margin: const EdgeInsets.all(16),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.tertiary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: AppColors.tertiary.withOpacity(0.3),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.restaurant_menu_rounded,
-                  color: AppColors.tertiary,
-                  size: 20,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Explora nuestro menú organizado por categorías',
-                    style: AppText.notes.copyWith(
-                      color: AppColors.tertiary,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+  Future<List<dynamic>> _fetch() => Future.wait<dynamic>([
+    _api!.getObject('/businesses/${Uri.encodeComponent(widget.businessId)}'),
+    _api!.getAll(
+      '/businesses/${Uri.encodeComponent(widget.businessId)}/products',
+      query: {'isAvailable': 'true'},
+    ),
+  ]);
 
-        // LISTA DE PRODUCTOS AGRUPADOS POR CATEGORÍA
-        SliverList(
-          delegate: SliverChildBuilderDelegate(
-            (context, index) {
-              final doc = docs[index];
-              final product = doc.data()! as Map<String, dynamic>;
-              final String category = product['category'] ?? 'SIN CATEGORÍA';
-              
-              bool isNewCategory = index == 0 || 
-                  (docs[index-1].data()! as Map<String, dynamic>)['category'] != category;
-
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // ENCABEZADO DE CATEGORÍA
-                  if (isNewCategory)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              category,
-                              style: AppText.body.copyWith(
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.primary,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Container(
-                              height: 2,
-                              color: AppColors.borders,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  
-                  // TARJETA DE PRODUCTO
-                  _buildProductCard(context, doc),
-                ],
-              );
-            },
-            childCount: docs.length,
-          ),
-        ),
-
-        // ESPACIO FINAL
-        const SliverToBoxAdapter(
-          child: SizedBox(height: 20),
-        ),
-      ],
-    );
+  Future<void> _reload() async {
+    final future = _fetch();
+    setState(() {
+      _data = future;
+    });
+    // The FutureBuilder presents request failures, including pull-to-refresh.
+    await future.then<void>((_) {}, onError: (Object _, StackTrace __) {});
   }
 
-  Widget _buildProductCard(BuildContext context, DocumentSnapshot doc) {
-    final product = doc.data()! as Map<String, dynamic>;
-    final price = product['price'] ?? 0.0;
-    final String imageUrl = product['imageUrl'] ?? '';
-    final String description = product['description'] ?? '';
-    final int stock = product['stock'] ?? 0;
-    final bool isSoldOut = stock <= 0;
-    final bool isFeatured = product['isFeatured'] ?? false;
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      child: Material(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(16),
-        elevation: 1,
-        child: InkWell(
-          onTap: isSoldOut ? null : () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => ProductDetailScreen(
-                  product: product,
-                  productId: doc.id,
-                ),
-              ),
-            );
-          },
-          borderRadius: BorderRadius.circular(16),
-          child: Opacity(
-            opacity: isSoldOut ? 0.6 : 1.0,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  // IMAGEN DEL PRODUCTO
-                  Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      color: AppColors.componentBase,
-                    ),
-                    child: Stack(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.network(
-                            imageUrl.isNotEmpty ? imageUrl : 'https://via.placeholder.com/100',
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                color: AppColors.componentBase,
-                                child: Icon(
-                                  Icons.fastfood_rounded,
-                                  size: 30,
-                                  color: AppColors.textSecondary.withOpacity(0.4),
-                                ),
-                              );
-                            },
-                          ),
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: AppColors.background,
+    appBar: AppBar(title: Text(widget.businessName, style: AppText.h3)),
+    body: FutureBuilder<List<dynamic>>(
+      future: _data,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return ErrorPanel(error: snapshot.error!, onRetry: _reload);
+        }
+        final business = snapshot.data![0] as Map<String, dynamic>;
+        final published = snapshot.data![1] as List<Map<String, dynamic>>;
+        final products = published.where((product) {
+          final stock = product['stock'];
+          return product['isAvailable'] == true &&
+              (stock == null || stock is num && stock > 0);
+        }).toList();
+        final open = business['isOpen'] == true && business['isActive'] == true;
+        final categories = <String, List<Map<String, dynamic>>>{};
+        for (final product in products) {
+          final category = (product['category'] as String?)?.trim();
+          categories
+              .putIfAbsent(
+                category == null || category.isEmpty ? 'Menú' : category,
+                () => [],
+              )
+              .add(product);
+        }
+        return RefreshIndicator(
+          onRefresh: _reload,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+            children: [
+              Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 900),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: .08),
+                          borderRadius: BorderRadius.circular(18),
                         ),
-                        if (isFeatured)
-                          Positioned(
-                            top: 4,
-                            left: 4,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: AppColors.warning,
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.star_rounded,
-                                    color: Colors.white,
-                                    size: 10,
-                                  ),
-                                  const SizedBox(width: 2),
-                                  Text(
-                                    'DESTACADO',
-                                    style: AppText.notes.copyWith(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 8,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  
-                  const SizedBox(width: 16),
-                  
-                  // INFORMACIÓN DEL PRODUCTO
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
+                        child: Row(
                           children: [
+                            Icon(
+                              Icons.storefront_rounded,
+                              color: open
+                                  ? AppColors.primary
+                                  : AppColors.textSecondary,
+                            ),
+                            const SizedBox(width: 12),
                             Expanded(
                               child: Text(
-                                product['name'] ?? 'Producto',
-                                style: AppText.body.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.textPrimary,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
+                                open
+                                    ? 'Elige tus favoritos y personaliza tu pedido.'
+                                    : 'Este local está cerrado. Puedes explorar su menú.',
+                                style: AppText.body,
                               ),
                             ),
-                            if (isSoldOut) ...[
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: AppColors.error.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  'AGOTADO',
-                                  style: AppText.notes.copyWith(
-                                    color: AppColors.error,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 10,
-                                  ),
-                                ),
-                              ),
-                            ],
                           ],
                         ),
-                        
-                        if (description.isNotEmpty) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            description,
-                            style: AppText.notes.copyWith(
-                              color: AppColors.textSecondary,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
+                      ),
+                      if (products.isEmpty)
+                        const CatalogEmpty(
+                          icon: Icons.restaurant_menu_rounded,
+                          title: 'Sin platillos disponibles por ahora',
+                          message:
+                              'Vuelve más tarde para consultar las opciones de este local.',
+                        ),
+                      for (final entry in categories.entries) ...[
+                        Padding(
+                          padding: const EdgeInsets.only(top: 24, bottom: 12),
+                          child: Text(entry.key, style: AppText.h3),
+                        ),
+                        for (final product in entry.value)
+                          CatalogProductCard(
+                            product: product,
+                            businessOpen: open,
                           ),
-                        ],
-                        
-                        const SizedBox(height: 8),
-                        
-                        Row(
-                          children: [
-                            // PRECIO
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: isSoldOut 
-                                    ? AppColors.textSecondary.withOpacity(0.1)
-                                    : AppColors.success.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                '\$${price.toStringAsFixed(2)}',
-                                style: AppText.body.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                  color: isSoldOut 
-                                      ? AppColors.textSecondary
-                                      : AppColors.success,
-                                ),
-                              ),
-                            ),
-                            
-                            const SizedBox(width: 8),
-                            
-                            // STOCK DISPONIBLE
-                            if (!isSoldOut && stock > 0 && stock <= 10) ...[
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: AppColors.warning.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  'Últimos $stock',
-                                  style: AppText.notes.copyWith(
-                                    color: AppColors.warning,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 10,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ],
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    ),
+  );
+}
+
+/// Shared catalogue card. Only the current server ID is passed to detail.
+class CatalogProductCard extends StatelessWidget {
+  final Map<String, dynamic> product;
+  final bool businessOpen;
+  const CatalogProductCard({
+    super.key,
+    required this.product,
+    this.businessOpen = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final available = product['isAvailable'] == true && businessOpen;
+    final stock = product['stock'];
+    final id = product['id'] as String?;
+    return Card(
+      color: AppColors.componentBase,
+      margin: const EdgeInsets.only(bottom: 12),
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: const BorderSide(color: AppColors.borders),
+      ),
+      elevation: 0,
+      child: InkWell(
+        onTap: id == null
+            ? null
+            : () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => ProductDetailScreen(productId: id),
+                ),
+              ),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: StudentImage(
+                  url: product['imageUrl'],
+                  width: 84,
+                  height: 84,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      product['name']?.toString() ?? 'Producto',
+                      style: AppText.h3.copyWith(fontSize: 18),
+                    ),
+                    if ((product['description']?.toString() ?? '')
+                        .isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        product['description'].toString(),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppText.notes,
+                      ),
+                    ],
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 4,
+                      children: [
+                        Text(
+                          money(product['price']),
+                          style: AppText.body.copyWith(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
+                        if (!available || (stock is num && stock <= 0))
+                          Text(
+                            !businessOpen ? 'Local cerrado' : 'No disponible',
+                            style: AppText.notes.copyWith(
+                              color: AppColors.error,
+                            ),
+                          ),
+                        if (product['isFeatured'] == true)
+                          const Icon(
+                            Icons.star_rounded,
+                            color: AppColors.accent,
+                            size: 18,
+                          ),
                       ],
                     ),
-                  ),
-                  
-                  const SizedBox(width: 12),
-                  
-                  // INDICADOR DE NAVEGACIÓN
-                  Icon(
-                    Icons.chevron_right_rounded,
-                    color: isSoldOut 
-                        ? AppColors.textSecondary.withOpacity(0.3)
-                        : AppColors.textSecondary.withOpacity(0.5),
-                    size: 24,
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
+              const CircleAvatar(
+                radius: 18,
+                backgroundColor: AppColors.accent,
+                child: Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.primary,
+                ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
+}
 
-  Widget _buildErrorState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.error_outline_rounded,
-              size: 64,
-              color: AppColors.error.withOpacity(0.7),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Error al cargar el menú',
-              style: AppText.h3.copyWith(
-                color: AppColors.textPrimary,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Verifica tu conexión e intenta nuevamente',
-              style: AppText.body.copyWith(
-                color: AppColors.textSecondary,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+class CatalogEmpty extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String message;
+  const CatalogEmpty({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.message,
+  });
 
-  Widget _buildLoadingState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          CircularProgressIndicator(color: AppColors.primary),
-          const SizedBox(height: 16),
-          Text(
-            'Cargando menú...',
-            style: AppText.body.copyWith(
-              color: AppColors.textSecondary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                color: AppColors.componentBase,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.restaurant_menu_rounded,
-                size: 50,
-                color: AppColors.textSecondary.withOpacity(0.5),
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Menú no disponible',
-              style: AppText.h3.copyWith(
-                color: AppColors.textPrimary,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Este negocio no tiene productos disponibles en este momento',
-              style: AppText.body.copyWith(
-                color: AppColors.textSecondary,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 52, color: AppColors.primary.withValues(alpha: .6)),
+        const SizedBox(height: 16),
+        Text(title, textAlign: TextAlign.center, style: AppText.h3),
+        const SizedBox(height: 8),
+        Text(message, textAlign: TextAlign.center, style: AppText.notes),
+      ],
+    ),
+  );
 }

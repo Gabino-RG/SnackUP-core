@@ -1,0 +1,100 @@
+{
+  "sourceProject": "snackup-8fe96",
+  "sourceBranch": "codex/cliente-firebase",
+  "sourceClientCommit": "0f93fa6db49a304e70df95bfa5a4899252d114e8",
+  "exportedAt": "2026-11-01T03:47:10.857323+00:00",
+  "businesses": [
+    {
+      "id": "ErXhwair10xwwFCKfWBR",
+      "imageUrl": "https://www.mexicodesconocido.com.mx/wp-content/uploads/2023/12/historia-del-cafe-publicdomainpictures.jpeg",
+      "isOpen": true,
+      "name": "Negocio prueba 3"
+    },
+    {
+      "id": "N0zLz2jSih8z3DRpGCkc",
+      "imageUrl": "https://tse1.mm.bing.net/th/id/OIP.Njy-lLsZNZEOaPu-sKcysAHaE8?rs=1&pid=ImgDetMain&o=7&rm=3",
+      "name": "Negocio 1 Prueba",
+      "isOpen": true
+    },
+    {
+      "id": "wlG7tgnVnnwAKeEWrKIs",
+      "name": "Negocio prueba 2",
+      "isOpen": true,
+      "imageUrl": "https://tse3.mm.bing.net/th/id/OIP.bzoQ12Kj7eYGiWCLkUNlvQHaE6?rs=1&pid=ImgDetMain&o=7&rm=3"
+    }
+  ],
+  "products": [
+    {
+      "id": "Fq7hrEzhsFSWYb2MZBpB",
+      "businessId": "N0zLz2jSih8z3DRpGCkc",
+      "price": "53",
+      "isAvailable": true,
+      "isFeatured": true,
+      "name": "Polinesios",
+      "stock": 0,
+      "category": "POLINESIOS",
+      "description": "Polínesios",
+      "imageUrl": null
+    },
+    {
+      "id": "XUz66WBRoxgthBcXgX7n",
+      "imageUrl": null,
+      "businessId": "N0zLz2jSih8z3DRpGCkc",
+      "category": "TACO",
+      "isFeatured": false,
+      "isAvailable": true,
+      "stock": 30,
+      "description": "ta chio ta chio",
+      "name": "Tacos al Pastor",
+      "price": "50"
+    },
+    {
+      "id": "f78SQLCZ6stUjsL6oNLF",
+      "isFeatured": false,
+      "name": "Agua de Horchata",
+      "price": "25",
+      "businessId": "N0zLz2jSih8z3DRpGCkc",
+      "isAvailable": true,
+      "description": "Agua fresca de horchata con hielos y canela espolvoreada encima",
+      "stock": 20,
+      "imageUrl": null,
+      "category": "BEBIDAS"
+    },
+    {
+      "id": "hLM2apmaCCh9MC9aQp77",
+      "category": "TACOS",
+      "imageUrl": null,
+      "stock": 20,
+      "isAvailable": true,
+      "description": "tacos al pastor, bistec",
+      "businessId": "N0zLz2jSih8z3DRpGCkc",
+      "price": "20",
+      "name": "tacos",
+      "isFeatured": true
+    },
+    {
+      "id": "iaUMBvxTojkXjk4l84iI",
+      "description": "sopa rica",
+      "businessId": "N0zLz2jSih8z3DRpGCkc",
+      "price": "12",
+      "isFeatured": false,
+      "imageUrl": null,
+      "category": "TACOS",
+      "isAvailable": true,
+      "name": "sopa",
+      "stock": 0
+    },
+    {
+      "id": "nbZlA4btRJguzBDpzmRI",
+      "businessId": "N0zLz2jSih8z3DRpGCkc",
+      "imageUrl": null,
+      "category": "TACOS",
+      "isFeatured": false,
+      "isAvailable": true,
+      "stock": 20,
+      "description": "Jajshhhas",
+      "name": "tortas",
+      "price": "20"
+    }
+  ]
+}

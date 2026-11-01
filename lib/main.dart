@@ -1,287 +1,153 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/foundation.dart'; // <--- IMPORTANTE: Agregué esto para usar kIsWeb
-
-// Tus imports originales
+import 'package:provider/provider.dart';
 import 'features/auth/auth_gate.dart';
-import 'firebase_options.dart';
-import 'theme/app_colors.dart';
-import 'theme/app_text.dart';
+import 'student/student_api.dart';
+import 'theme/student_colors.dart';
+import 'theme/student_text.dart';
 
-void main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // --- AQUÍ ESTÁ LA MAGIA ---
-  // Si es Web, usamos las llaves manuales. Si es Android, usa el archivo generado.
-  if (kIsWeb) {
-    await Firebase.initializeApp(
-      options: const FirebaseOptions(
-        apiKey: "AIzaSyDK5N-TA3bA7VKv5TJQqUXICA617wOywzU",
-        authDomain: "snackup-8fe96.firebaseapp.com",
-        projectId: "snackup-8fe96",
-        storageBucket: "snackup-8fe96.firebasestorage.app",
-        messagingSenderId: "685155856831",
-        appId: "1:685155856831:web:8047d0df9ed1522ff5b10a",
-        measurementId: "G-PE33SNB39W",
-      ),
-    );
-  } else {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-  }
-  // ---------------------------
-
-  // Configuración de notificaciones (solo intentamos si ya se inicializó)
-  try {
-    FirebaseMessaging messaging = FirebaseMessaging.instance;
-    await messaging.requestPermission(
-      alert: true, badge: true, sound: true,
-    );
-  } catch (e) {
-    print('Nota: Las notificaciones pueden no estar configuradas en Web o dieron error: $e');
-  }
-  
   runApp(const SnackUpApp());
 }
 
 class SnackUpApp extends StatelessWidget {
-  const SnackUpApp({super.key});
+  const SnackUpApp({super.key, this.api});
+  final StudentApi? api;
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'SnackUp UTSJR',
+  Widget build(BuildContext context) => ChangeNotifierProvider<StudentApi>(
+    create: (_) => (api ?? StudentApi())..restore(),
+    child: MaterialApp(
+      title: 'SnackUP · Alumnos',
       debugShowCheckedModeBanner: false,
-
-      // --- TEMA GLOBAL OPTIMIZADO ---
       theme: ThemeData(
         useMaterial3: true,
         fontFamily: 'Quicksand',
-
-        // COLOR SCHEME MEJORADO
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: AppColors.primary,
-          brightness: Brightness.light,
-          
-          // Primarios
-          primary: AppColors.primary,
-          onPrimary: Colors.white,
-          
-          // Secundarios
-          secondary: AppColors.accent,
-          onSecondary: Colors.white,
-          
-          // Terciarios
-          tertiary: AppColors.tertiary,
-          onTertiary: Colors.white,
-          
-          // Fondos y superficies
-          background: AppColors.background,
-          onBackground: AppColors.textPrimary,
-          surface: AppColors.componentBase,
-          onSurface: AppColors.textPrimary,
-          
-          // Variantes modernas
-          surfaceVariant: AppColors.componentBase.withOpacity(0.6),
-          outline: AppColors.borders,
-        ),
-
-        // TEXT THEME COMPLETO
-        textTheme: TextTheme(
-          // Display (Pantallas principales)
-          displayLarge: AppText.h1,
-          displayMedium: AppText.h1.copyWith(fontSize: 24), // H2
-          
-          // Headlines
-          headlineMedium: AppText.h3,
-          headlineSmall: AppText.h3.copyWith(fontSize: 18), // H4
-          
-          // Titles
-          titleLarge: AppText.h3.copyWith(fontWeight: FontWeight.w700),
-          titleMedium: AppText.body.copyWith(
-            fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
-          ),
-          titleSmall: AppText.body.copyWith(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
-          
-          // Body
+        scaffoldBackgroundColor: AppColors.background,
+        colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primary)
+            .copyWith(
+              primary: AppColors.primary,
+              onPrimary: Colors.white,
+              secondary: AppColors.accent,
+              onSecondary: AppColors.primary,
+              tertiary: AppColors.tertiary,
+              surface: Colors.white,
+              onSurface: AppColors.primary,
+              error: AppColors.error,
+              outline: AppColors.borders,
+            ),
+        textTheme: const TextTheme(
+          headlineMedium: AppText.h1,
+          headlineSmall: AppText.h3,
+          titleLarge: AppText.h3,
+          titleMedium: AppText.body,
           bodyLarge: AppText.body,
-          bodyMedium: AppText.body.copyWith(fontSize: 14),
+          bodyMedium: AppText.body,
           bodySmall: AppText.notes,
-          
-          // Labels (Botones, Chips)
-          labelLarge: AppText.body.copyWith(
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-          ),
-          labelMedium: AppText.notes.copyWith(fontWeight: FontWeight.w500),
-          labelSmall: AppText.notes.copyWith(fontSize: 12),
         ),
-
-        // COMPONENTES PRINCIPALES
-
-        // AppBar Moderno
-        appBarTheme: AppBarTheme(
-          backgroundColor: AppColors.background,
-          foregroundColor: AppColors.textPrimary,
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.white,
+          foregroundColor: AppColors.primary,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          titleTextStyle: AppText.h3,
+          centerTitle: false,
+        ),
+        cardTheme: CardThemeData(
+          color: Colors.white,
           elevation: 0,
           surfaceTintColor: Colors.transparent,
-          titleTextStyle: AppText.h3.copyWith(
-            fontWeight: FontWeight.w700,
-            fontSize: 20,
-          ),
-          centerTitle: false,
-          iconTheme: const IconThemeData(color: AppColors.textPrimary),
-        ),
-
-        // Botones Elevados (Primarios)
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
-            textStyle: AppText.body.copyWith(
-              fontWeight: FontWeight.w600,
-              fontSize: 16,
-            ),
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            elevation: 2,
-            shadowColor: AppColors.primary.withOpacity(0.3),
+          margin: const EdgeInsets.only(bottom: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+            side: const BorderSide(color: AppColors.borders),
           ),
         ),
-
-        // Botones Rellenados (Acento)
         filledButtonTheme: FilledButtonThemeData(
           style: FilledButton.styleFrom(
             backgroundColor: AppColors.accent,
-            foregroundColor: Colors.white,
-            textStyle: AppText.body.copyWith(
-              fontWeight: FontWeight.w600,
+            foregroundColor: AppColors.primary,
+            disabledBackgroundColor: AppColors.borders,
+            textStyle: const TextStyle(
+              fontFamily: 'Lato',
+              fontWeight: FontWeight.w700,
               fontSize: 16,
             ),
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+            minimumSize: const Size(48, 50),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(15),
             ),
           ),
         ),
-
-        // Botones de Texto
-        textButtonTheme: TextButtonThemeData(
-          style: TextButton.styleFrom(
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.accent,
             foregroundColor: AppColors.primary,
-            textStyle: AppText.body.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+            elevation: 0,
+            minimumSize: const Size(48, 50),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(15),
             ),
           ),
         ),
-
-        // Tarjetas Modernas
-        cardTheme: const CardThemeData(
-          color: AppColors.componentBase,
-          elevation: 0,
-          surfaceTintColor: Colors.transparent,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.all(Radius.circular(16)),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppColors.primary,
+            minimumSize: const Size(48, 46),
+            side: const BorderSide(color: AppColors.borders),
+            textStyle: const TextStyle(fontWeight: FontWeight.w700),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(15),
+            ),
           ),
         ),
-
-        // Campos de Texto Mejorados
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(foregroundColor: AppColors.tertiary),
+        ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          fillColor: AppColors.componentBase,
+          fillColor: AppColors.background,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 18,
+            vertical: 18,
+          ),
+          labelStyle: AppText.notes,
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
+            borderRadius: BorderRadius.circular(15),
+            borderSide: const BorderSide(color: AppColors.borders),
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
+            borderRadius: BorderRadius.circular(15),
+            borderSide: const BorderSide(color: AppColors.borders),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(
-              color: AppColors.primary,
-              width: 2,
-            ),
+            borderRadius: BorderRadius.circular(15),
+            borderSide: const BorderSide(color: AppColors.tertiary, width: 1.5),
           ),
-          errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(color: AppColors.error),
-          ),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 16,
-          ),
-          labelStyle: AppText.notes.copyWith(color: AppColors.textSecondary),
-          hintStyle: AppText.notes.copyWith(
-            color: AppColors.textSecondary.withOpacity(0.7),
-          ),
-          floatingLabelStyle: const TextStyle(color: AppColors.primary),
-          errorStyle: AppText.notes.copyWith(color: AppColors.error),
         ),
-
-        // ListTiles Modernas
-        listTileTheme: ListTileThemeData(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          tileColor: AppColors.componentBase,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 12,
-          ),
-          titleTextStyle: AppText.body.copyWith(
-            fontWeight: FontWeight.w500,
-          ),
-          subtitleTextStyle: AppText.notes,
-        ),
-
-        // Chips Estilizados
         chipTheme: ChipThemeData(
-          backgroundColor: AppColors.componentBase,
-          selectedColor: AppColors.primary,
-          labelStyle: AppText.notes,
-          secondaryLabelStyle: AppText.notes.copyWith(color: Colors.white),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          shape: const StadiumBorder(side: BorderSide.none),
-          checkmarkColor: Colors.white,
+          backgroundColor: AppColors.paleBlue,
+          selectedColor: AppColors.accent,
+          labelStyle: AppText.notes.copyWith(color: AppColors.primary),
+          side: BorderSide.none,
+          shape: const StadiumBorder(),
         ),
-
-        // Navigation Bar Mejorado
-        bottomNavigationBarTheme: BottomNavigationBarThemeData(
-          backgroundColor: AppColors.background,
+        bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+          backgroundColor: Colors.white,
           selectedItemColor: AppColors.primary,
           unselectedItemColor: AppColors.textSecondary,
-          selectedLabelStyle: AppText.notes.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
-          unselectedLabelStyle: AppText.notes,
-          showUnselectedLabels: true,
-          elevation: 8,
           type: BottomNavigationBarType.fixed,
+          selectedLabelStyle: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+          ),
+          unselectedLabelStyle: TextStyle(fontSize: 12),
+          elevation: 0,
         ),
-
-        // Dividers Consistente
-        dividerTheme: const DividerThemeData(
-          color: AppColors.borders,
-          thickness: 1,
-          space: 0,
-        ),
+        dividerTheme: const DividerThemeData(color: AppColors.borders),
       ),
-
-      home: const AuthWrapper(), // Asegúrate de que AuthWrapper esté en auth_gate.dart
-    );
-  }
+      home: const AuthWrapper(),
+    ),
+  );
 }

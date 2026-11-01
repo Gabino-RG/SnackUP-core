@@ -30,6 +30,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  http: ^1.6.0
+  socket_io_client: 3.0.2
+  shared_preferences: ^2.5.3
+  crypto: ^3.0.6
   firebase_core: ^2.27.0
   # Autenticación: para manejar login, registro, etc.
   firebase_auth: ^4.17.8
@@ -52,7 +56,6 @@ dependencies:
   image_picker: ^1.1.2      # Para abrir la galería/cámara del teléfono
   permission_handler: ^11.3.1 # Para pedir permisos de galería
   another_stepper: ^1.2.2 # (O la versión más reciente)
-  firebase_messaging: ^14.9.2 # (O la versión más reciente)
   audioplayers: ^6.0.0   # Para el sonido de alerta
   flutter_launcher_icons: "^0.13.1"
   

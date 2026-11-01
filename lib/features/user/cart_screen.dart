@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:snackup/theme/app_colors.dart';
-import 'package:snackup/theme/app_text.dart';
+import 'package:provider/provider.dart';
+import 'package:snackup/student/checkout.dart';
+import 'package:snackup/student/student_api.dart';
+import 'package:snackup/student/student_widgets.dart';
+import 'package:snackup/theme/student_colors.dart';
+import 'package:snackup/theme/student_text.dart';
+
+import 'show_qr_screen.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
@@ -11,728 +15,859 @@ class CartScreen extends StatefulWidget {
   State<CartScreen> createState() => _CartScreenState();
 }
 
+class _CartData {
+  final List<Map<String, dynamic>> rows;
+  final Map<String, Map<String, dynamic>> businesses;
+  final Map<String, CheckoutIntent> intents;
+  const _CartData(this.rows, this.businesses, this.intents);
+}
+
+class _ConfirmedCartError implements Exception {
+  final Object cause;
+  const _ConfirmedCartError(this.cause);
+}
+
 class _CartScreenState extends State<CartScreen> {
-  String _selectedPaymentMethod = 'Efectivo';
-  TimeOfDay? _selectedTime;
-  bool _isLoading = false;
+  StudentApi? _api;
+  String? _ownerId;
+  int _revision = -1;
+  Future<_CartData>? _future;
+  String? _busyBusiness;
+  String? _notice;
+  Object? _operationError;
 
-  final List<String> _paymentMethods = ['Efectivo', 'Tarjeta', 'Vale'];
+  CheckoutLedger get _ledger => CheckoutLedger(
+    storage: PreferencesCheckoutStorage(),
+    namespace: '${_api!.baseUrl}|${_ownerId ?? ''}',
+  );
 
-  Future<void> _pickTime() async {
-    final TimeOfDay? picked = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.fromDateTime(DateTime.now().add(const Duration(minutes: 30))),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
-              primary: AppColors.primary,
-              onPrimary: Colors.white,
-              surface: AppColors.background,
-              onSurface: AppColors.textPrimary,
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-    if (picked != null) {
-      setState(() {
-        _selectedTime = picked;
-      });
+  void _requireOwner() {
+    if (_ownerId == null || _api!.user?['id'] != _ownerId) {
+      throw const ApiException(
+        401,
+        'SESSION_CHANGED',
+        'Tu sesión cambió. Vuelve a abrir el carrito desde tu cuenta.',
+      );
     }
   }
 
-  Future<bool> _showConfirmDialog(String title, String content) async {
-    return await showDialog<bool>(
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final api = context.watch<StudentApi>();
+    _ownerId ??= api.user?['id'] as String?;
+    if (!identical(api, _api) || _revision != api.revision) {
+      _api = api;
+      _revision = api.revision;
+      _future = _load();
+    }
+  }
+
+  Future<_CartData> _load() async {
+    _requireOwner();
+    final results = await Future.wait([
+      _api!.getAll('/users/me/cart/items'),
+      _api!.getAll('/businesses'),
+    ]);
+    final intents = await _ledger.intents();
+    return _CartData(results[0], {
+      for (final business in results[1]) business['id'] as String: business,
+    }, intents);
+  }
+
+  Future<void> _reload() async {
+    final next = _load();
+    setState(() { _future = next; });
+    await next;
+  }
+
+  void _message(String text) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+  }
+
+  Map<String, dynamic>? _product(Map<String, dynamic> row) =>
+      row['product'] is Map
+      ? Map<String, dynamic>.from(row['product'] as Map)
+      : null;
+
+  int _quantity(Map<String, dynamic> row) =>
+      (row['quantity'] as num?)?.toInt() ?? 1;
+
+  int _cents(List<Map<String, dynamic>> rows) => rows.fold(0, (sum, row) {
+    final price = (_product(row)?['price'] as num?)?.toDouble() ?? 0;
+    return sum + (price * 100).round() * _quantity(row);
+  });
+
+  bool _available(Map<String, dynamic> row) {
+    final product = _product(row);
+    final stock = product?['stock'] as num?;
+    return product != null &&
+        row['available'] == true &&
+        product['isAvailable'] == true &&
+        (stock == null || stock >= _quantity(row));
+  }
+
+  Future<void> _edit(
+    Map<String, dynamic> row, {
+    int? quantity,
+    String? notes,
+  }) async {
+    if (_busyBusiness != null) return;
+    setState(() {
+      _busyBusiness = 'editing';
+      _operationError = null;
+    });
+    try {
+      _requireOwner();
+      await _api!.request(
+        'PATCH',
+        '/users/me/cart/items/${row['id']}',
+        body: {
+          if (quantity != null) 'quantity': quantity,
+          if (notes != null) 'notes': notes,
+        },
+      );
+    } catch (error) {
+      if (mounted) setState(() => _operationError = error);
+    } finally {
+      if (mounted) {
+        setState(() => _busyBusiness = null);
+        _refreshQuietly();
+      }
+    }
+  }
+
+  Future<void> _notes(Map<String, dynamic> row) async {
+    final controller = TextEditingController(
+      text: row['notes'] as String? ?? '',
+    );
+    final dialog = DialogRoute<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(
-          title,
-          style: AppText.h3.copyWith(color: AppColors.textPrimary),
-        ),
-        content: Text(
-          content,
-          style: AppText.body.copyWith(color: AppColors.textSecondary),
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Indicaciones para este producto'),
+        content: SizedBox(
+          width: 420,
+          child: TextField(
+            controller: controller,
+            maxLength: 500,
+            maxLines: 4,
+            decoration: const InputDecoration(
+              hintText: 'Por ejemplo: sin cebolla',
+            ),
+          ),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(
-              'Cancelar',
-              style: AppText.body.copyWith(color: AppColors.textSecondary),
-            ),
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Volver'),
           ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-            ),
-            child: Text(
-              'Confirmar',
-              style: AppText.body.copyWith(
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
-              ),
-            ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.pop(dialogContext, controller.text.trim()),
+            child: const Text('Guardar'),
           ),
         ],
       ),
-    ) ?? false;
+    );
+    final result = await Navigator.of(context).push(dialog);
+    await dialog.completed;
+    controller.dispose();
+    if (result != null && mounted) await _edit(row, notes: result);
   }
 
-  Future<void> _placeOrder(List<QueryDocumentSnapshot> cartDocs, double totalPrice) async {
-    final userId = FirebaseAuth.instance.currentUser?.uid;
-    if (userId == null) return;
-
-    if (cartDocs.isEmpty) {
-      _showError('Tu carrito está vacío.');
-      return;
-    }
-
-    setState(() => _isLoading = true);
-
+  Future<void> _remove(Map<String, dynamic> row) async {
+    if (_busyBusiness != null) return;
+    setState(() {
+      _busyBusiness = 'editing';
+      _operationError = null;
+    });
     try {
-      final allBusinessIds = cartDocs.map((doc) => (doc.data() as Map<String, dynamic>)['businessId']).toSet();
-      if (allBusinessIds.length > 1) {
-        _showError('Tu carrito tiene productos de varias tiendas. Por favor, haz pedidos separados.');
-        setState(() => _isLoading = false);
-        return;
-      }
-      final String businessId = allBusinessIds.first;
-
-      final userDoc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
-      if (!userDoc.exists || userDoc.data() == null) {
-        _showError('Error: No se encontraron tus datos de usuario.');
-        setState(() => _isLoading = false);
-        return;
-      }
-      final userData = userDoc.data()!;
-      
-      final List<Map<String, dynamic>> orderItems = cartDocs.map((doc) {
-        final data = doc.data() as Map<String, dynamic>;
-        return {
-          'productId': data['productId'],
-          'name': data['name'],
-          'quantity': data['quantity'],
-          'price': data['price'],
-          'notes': data['notes'] ?? '',
-        };
-      }).toList();
-
-      Timestamp? pickupTimestamp;
-      if (_selectedTime != null) {
-        final now = DateTime.now();
-        final scheduledDateTime = DateTime(
-          now.year, now.month, now.day,
-          _selectedTime!.hour, _selectedTime!.minute,
-        );
-        pickupTimestamp = Timestamp.fromDate(scheduledDateTime);
-      }
-      
-      final orderData = {
-        'businessId': businessId,
-        'userId': userId,
-        'userDisplayName': userData['displayName'] ?? 'Usuario',
-        'userNumeroDeControl': userData['numeroDeControl'] ?? '0000',
-        'status': 'pending',
-        'totalPrice': totalPrice,
-        'paymentMethod': _selectedPaymentMethod,
-        'createdAt': FieldValue.serverTimestamp(),
-        'scheduledPickupTime': pickupTimestamp,
-        'items': orderItems,
-      };
-
-      final batch = FirebaseFirestore.instance.batch();
-      final orderRef = FirebaseFirestore.instance.collection('orders').doc();
-      batch.set(orderRef, orderData);
-
-      for (var doc in cartDocs) {
-        batch.delete(doc.reference);
-      }
-      
-      await batch.commit();
-
-      _showSuccess('¡Pedido realizado con éxito!');
-
-    } catch (e) {
-      _showError('Error al crear el pedido: ${e.toString()}');
+      _requireOwner();
+      await _api!.request(
+        'DELETE',
+        '/users/me/cart/items/${row['id']}',
+      );
+    } catch (error) {
+      if (mounted) setState(() => _operationError = error);
     } finally {
       if (mounted) {
-        setState(() => _isLoading = false);
+        setState(() => _busyBusiness = null);
+        _refreshQuietly();
       }
     }
   }
 
-  void _showError(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: AppColors.error,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+  void _refreshQuietly() {
+    if (mounted) setState(() { _future = _load(); });
+  }
+
+  Future<Map<String, dynamic>?> _reviewPurchase(
+    String businessId,
+    String name,
+    List<Map<String, dynamic>> rows,
+    Map<String, dynamic>? business,
+  ) {
+    var payment = 'Efectivo';
+    var scheduled = false;
+    TimeOfDay? time;
+    String? error;
+    final total = _cents(rows) / 100;
+    return showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, update) => AlertDialog(
+          title: Text('Pedido en $name'),
+          content: SizedBox(
+            width: 440,
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ...rows.map(
+                    (row) => Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Text(
+                        '${_quantity(row)} × ${_product(row)?['name']?.toString() ?? 'Producto'} · ${money(
+                              ((_product(row)?['price'] as num?) ?? 0) *
+                                  _quantity(row),
+                            )}',
+                      ),
+                    ),
+                  ),
+                  Text('Total: ${money(total)}', style: AppText.h3),
+                  const SizedBox(height: 20),
+                  DropdownButtonFormField<String>(
+                    value: payment,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Forma de pago',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'Efectivo',
+                        child: Text('Efectivo'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'Transferencia',
+                        child: Text('Transferencia'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'Tarjeta',
+                        child: Text('Tarjeta'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'ValeComida',
+                        child: Text('Vale de comida'),
+                      ),
+                    ],
+                    onChanged: (value) =>
+                        update(() => payment = value ?? 'Efectivo'),
+                  ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'Elige el método que usarás con el negocio. Esta confirmación no realiza un cargo.',
+                    style: AppText.notes,
+                  ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Programar recogida'),
+                    subtitle: const Text(
+                      'Para hoy, con al menos 5 minutos de anticipación',
+                    ),
+                    value: scheduled,
+                    onChanged: (value) => update(() {
+                      scheduled = value;
+                      error = null;
+                    }),
+                  ),
+                  if (scheduled) ...[
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.schedule),
+                      label: Text(
+                        time == null
+                            ? 'Elegir hora'
+                            : time!.format(dialogContext),
+                      ),
+                      onPressed: () async {
+                        final picked = await showTimePicker(
+                          context: dialogContext,
+                          initialTime:
+                              time ??
+                              TimeOfDay.fromDateTime(
+                                DateTime.now().add(const Duration(minutes: 15)),
+                              ),
+                        );
+                        if (picked != null) {
+                          update(() {
+                            time = picked;
+                            error = null;
+                          });
+                        }
+                      },
+                    ),
+                    Text(
+                      'Hora de este dispositivo (${DateTime.now().timeZoneName}). El negocio validará su horario${business?['timezone'] == null
+                              ? '.'
+                              : ': ${business!['timezone']}.'}',
+                      style: AppText.notes,
+                    ),
+                  ],
+                  if (error != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        error!,
+                        style: const TextStyle(color: AppColors.error),
+                      ),
+                    ),
+                  const SizedBox(height: 14),
+                  const Text(
+                    'Solo se compran los productos de este negocio. Los demás permanecerán en tu carrito.',
+                    style: AppText.notes,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Volver'),
+            ),
+            FilledButton(
+              onPressed: () {
+                DateTime? pickup;
+                if (scheduled) {
+                  if (time == null) {
+                    update(() => error = 'Elige una hora de recogida.');
+                    return;
+                  }
+                  final now = DateTime.now();
+                  pickup = DateTime(
+                    now.year,
+                    now.month,
+                    now.day,
+                    time!.hour,
+                    time!.minute,
+                  );
+                  if (pickup.isBefore(now.add(const Duration(minutes: 5)))) {
+                    update(
+                      () => error =
+                          'La recogida debe ser al menos 5 minutos después de ahora.',
+                    );
+                    return;
+                  }
+                }
+                final items =
+                    rows
+                        .map(
+                          (row) => <String, dynamic>{
+                            'productId': row['productId'],
+                            'quantity': _quantity(row),
+                            'notes': row['notes'] ?? '',
+                          },
+                        )
+                        .toList()
+                      ..sort(
+                        (a, b) => (a['productId'] as String).compareTo(
+                          b['productId'] as String,
+                        ),
+                      );
+                Navigator.pop(dialogContext, <String, dynamic>{
+                  'businessId': businessId,
+                  'items': items,
+                  'paymentMethod': payment,
+                  'expectedTotal': total,
+                  if (pickup != null)
+                    'scheduledPickupTime': pickup.toUtc().toIso8601String(),
+                });
+              },
+              child: const Text('Confirmar pedido'),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  void _showSuccess(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: AppColors.success,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+  bool _definitiveRejection(Object error) =>
+      error is ApiException &&
+      error.status >= 400 &&
+      error.status < 500 &&
+      ![401, 403, 408, 425, 429].contains(error.status) &&
+      error.code != 'IDEMPOTENCY_CONFLICT';
+
+  Future<void> _checkout(
+    String businessId,
+    String name,
+    List<Map<String, dynamic>> rows,
+    Map<String, dynamic>? business,
+  ) async {
+    if (_busyBusiness != null) return;
+    setState(() {
+      _busyBusiness = businessId;
+      _operationError = null;
+      _notice = null;
+    });
+    CheckoutIntent? intent;
+    final ledger = _ledger;
+    try {
+      final payload = await _reviewPurchase(businessId, name, rows, business);
+      if (payload == null || !mounted) return;
+      _requireOwner();
+      intent = await ledger.prepare(
+        businessId: businessId,
+        payload: payload,
+        rows: rows,
+      );
+      await _sendIntent(ledger, intent);
+    } catch (error) {
+      await _purchaseError(ledger, intent, error);
+    } finally {
+      if (mounted) {
+        setState(() => _busyBusiness = null);
+        _refreshQuietly();
+      }
+    }
+  }
+
+  Future<void> _retry(CheckoutIntent intent) async {
+    if (_busyBusiness != null) return;
+    final proceed =
+        intent.confirmed ||
+        await showDialog<bool>(
+              context: context,
+              builder: (dialogContext) => AlertDialog(
+                title: const Text('Comprobar compra pendiente'),
+                content: Text(
+                  'Se consultará el mismo pedido de ${money(intent.payload['expectedTotal'])}, con pago ${intent.payload['paymentMethod']}${intent.payload['scheduledPickupTime'] == null
+                          ? '.'
+                          : ' y recogida ${dateText(
+                                  intent.payload['scheduledPickupTime'],
+                                )}.'} No cambies sus productos mientras se confirma.',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(dialogContext, false),
+                    child: const Text('Volver'),
+                  ),
+                  FilledButton(
+                    onPressed: () => Navigator.pop(dialogContext, true),
+                    child: const Text('Comprobar'),
+                  ),
+                ],
+              ),
+            ) ==
+            true;
+    if (!proceed || !mounted) return;
+    setState(() {
+      _busyBusiness = intent.businessId;
+      _operationError = null;
+      _notice = null;
+    });
+    final ledger = _ledger;
+    try {
+      _requireOwner();
+      await _sendIntent(ledger, intent);
+    } catch (error) {
+      await _purchaseError(ledger, intent, error);
+    } finally {
+      if (mounted) {
+        setState(() => _busyBusiness = null);
+        _refreshQuietly();
+      }
+    }
+  }
+
+  Future<void> _purchaseError(
+    CheckoutLedger ledger,
+    CheckoutIntent? intent,
+    Object error,
+  ) async {
+    if (error is _ConfirmedCartError) {
+      if (mounted) {
+        setState(() {
+          _notice =
+              'Tu pedido está confirmado. Quedó pendiente revisar los productos del carrito; no se hará otra compra.';
+          _operationError = error.cause;
+        });
+      }
+      return;
+    }
+    if (intent != null && !intent.confirmed && _definitiveRejection(error)) {
+      await ledger.forget(intent);
+      if (mounted) {
+        setState(
+          () => _notice =
+              'El pedido no se creó. Revisa los precios, existencias y horario actualizados antes de confirmar otra vez.',
+        );
+      }
+    } else if (intent != null && mounted) {
+      setState(
+        () => _notice =
+            'Esta compra necesita comprobarse. Se conservó el mismo intento para evitar un pedido duplicado.',
+      );
+    }
+    if (mounted) setState(() => _operationError = error);
+  }
+
+  Future<void> _sendIntent(CheckoutLedger ledger, CheckoutIntent intent) async {
+    _requireOwner();
+    final api = _api!;
+    final account = api.user?['id'];
+    final confirmed = await ledger.send(intent, (payload, key) async {
+      _requireOwner();
+      final result = await api.request(
+        'POST',
+        '/orders',
+        body: payload,
+        headers: {'Idempotency-Key': key},
+      );
+      return Map<String, dynamic>.from(result as Map);
+    });
+    if (api.user?['id'] != account || !mounted) return;
+    try {
+      // Cart mutations are separate from the order transaction. Never replay POST
+      // on cleanup failure, and preserve any row edited after the reviewed snapshot.
+      final current = await api.getAll('/users/me/cart/items');
+      final removable = unchangedPurchasedRows(confirmed, current);
+      final changed = confirmed.cartSnapshot
+          .where(
+            (old) =>
+                current.any((row) => row['id'] == old['id']) &&
+                !removable.contains(old['id']),
+          )
+          .length;
+      for (final id in removable) {
+        _requireOwner();
+        // Recheck immediately before each delete, including changes from other tabs.
+        final fresh = await api.getAll('/users/me/cart/items');
+        if (!unchangedPurchasedRows(confirmed, fresh).contains(id)) continue;
+        _requireOwner();
+        try {
+          await api.request('DELETE', '/users/me/cart/items/$id');
+        } on ApiException catch (error) {
+          if (error.status != 404) rethrow;
+        }
+      }
+      await ledger.forget(confirmed);
+      if (!mounted || api.user?['id'] != account) return;
+      _message(
+        changed > 0
+            ? 'Pedido confirmado. Conservamos los productos que cambiaste para que los revises.'
+            : 'Pedido confirmado. Puedes consultar su estado y código de recogida.',
+      );
+      await Navigator.push(
+        context,
+        MaterialPageRoute<void>(
+          builder: (_) => ShowQrScreen(orderId: confirmed.orderId!),
+        ),
+      );
+    } catch (error) {
+      throw _ConfirmedCartError(error);
+    }
+  }
+
+  Widget _pendingCard(CheckoutIntent intent, _CartData data) => Card(
+    color: intent.confirmed
+        ? AppColors.success.withValues(alpha: .08)
+        : AppColors.warning.withValues(alpha: .13),
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            intent.confirmed
+                ? 'Pedido confirmado'
+                : 'Compra pendiente de comprobar',
+            style: AppText.h3,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            data.businesses[intent.businessId]?['name']?.toString() ??
+                'Negocio',
+          ),
+          Text(
+            '${money(intent.payload['expectedTotal'])} · ${dateText(intent.createdAt)}',
+          ),
+          const SizedBox(height: 8),
+          Text(
+            intent.confirmed
+                ? 'La compra ya se registró. Revisa los productos del carrito antes de retirarlos.'
+                : 'La respuesta de esta compra no está confirmada. Comprueba el mismo intento antes de hacer otro pedido en este negocio.',
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              FilledButton.icon(
+                onPressed: _busyBusiness == null ? () => _retry(intent) : null,
+                icon: const Icon(Icons.sync),
+                label: Text(
+                  intent.confirmed
+                      ? 'Retirar productos comprados'
+                      : 'Comprobar compra',
+                ),
+              ),
+              if (intent.orderId != null)
+                OutlinedButton(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute<void>(
+                      builder: (_) => ShowQrScreen(orderId: intent.orderId!),
+                    ),
+                  ),
+                  child: const Text('Ver pedido'),
+                ),
+            ],
+          ),
+        ],
+      ),
+    ),
+  );
+
+  Widget _row(Map<String, dynamic> row, bool locked) {
+    final product = _product(row);
+    final quantity = _quantity(row);
+    final price = product?['price'];
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: StudentImage(
+                  url: product?['imageUrl'],
+                  width: 68,
+                  height: 68,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      product?['name']?.toString() ??
+                          'Producto ya no disponible',
+                      style: AppText.body.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    Text(
+                      price == null
+                          ? 'Precio no disponible'
+                          : '${money(price)} por unidad',
+                      style: AppText.notes,
+                    ),
+                    if (!_available(row))
+                      const Text(
+                        'Revisa disponibilidad o cantidad',
+                        style: TextStyle(color: AppColors.error),
+                      ),
+                  ],
+                ),
+              ),
+              IconButton(
+                tooltip: 'Eliminar del carrito',
+                onPressed: locked ? null : () => _remove(row),
+                icon: const Icon(Icons.delete_outline),
+              ),
+            ],
+          ),
+          if ((row['notes'] as String? ?? '').isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text('Notas: ${row['notes']}'),
+            ),
+          Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 4,
+            children: [
+              IconButton(
+                tooltip: 'Restar una unidad',
+                onPressed: locked || quantity <= 1
+                    ? null
+                    : () => _edit(row, quantity: quantity - 1),
+                icon: const Icon(Icons.remove_circle_outline),
+              ),
+              Text(
+                '$quantity',
+                style: AppText.body.copyWith(fontWeight: FontWeight.w700),
+              ),
+              IconButton(
+                tooltip: 'Sumar una unidad',
+                onPressed: locked || quantity >= 99
+                    ? null
+                    : () => _edit(row, quantity: quantity + 1),
+                icon: const Icon(Icons.add_circle_outline),
+              ),
+              TextButton.icon(
+                onPressed: locked ? null : () => _notes(row),
+                icon: const Icon(Icons.edit_note),
+                label: const Text('Indicaciones'),
+              ),
+              if (price is num)
+                Text(money(price * quantity), style: AppText.body),
+            ],
+          ),
+        ],
       ),
     );
   }
 
   @override
-  Widget build(BuildContext context) {
-    final userId = FirebaseAuth.instance.currentUser?.uid;
-
-    if (userId == null) {
-      return _buildErrorState('Debes iniciar sesión para ver tu carrito');
-    }
-
-    final Stream<QuerySnapshot> cartStream = FirebaseFirestore.instance
-        .collection('users')
-        .doc(userId)
-        .collection('cart')
-        .snapshots();
-
-    return Scaffold(
-      body: StreamBuilder<QuerySnapshot>(
-        stream: cartStream,
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: AppColors.componentBase,
+    body: RefreshIndicator(
+      onRefresh: () async {
+        try {
+          await _reload();
+        } catch (_) {
+          /* FutureBuilder shows the error. */
+        }
+      },
+      child: FutureBuilder<_CartData>(
+        future: _future,
         builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return _buildErrorState('Error al cargar el carrito');
+          if (snapshot.hasError && !snapshot.hasData) {
+            return ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: [
+                ErrorPanel(error: snapshot.error!, onRetry: _refreshQuietly),
+              ],
+            );
           }
-          
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return _buildLoadingState();
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
           }
-          
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return _buildEmptyState();
+          final data = snapshot.data!;
+          final groups = <String, List<Map<String, dynamic>>>{};
+          for (final row in data.rows) {
+            final id =
+                _product(row)?['businessId']?.toString() ?? 'unavailable';
+            groups.putIfAbsent(id, () => []).add(row);
           }
-
-          final cartDocs = snapshot.data!.docs;
-          double totalPrice = 0;
-          for (var doc in cartDocs) {
-            final item = doc.data()! as Map<String, dynamic>;
-            totalPrice += (item['price'] ?? 0.0) * (item['quantity'] ?? 1);
-          }
-
-          return Column(
+          return ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(16),
             children: [
-              // HEADER INFORMATIVO
-              _buildCartHeader(cartDocs.length),
-              
-              // LISTA DE ITEMS
-              Expanded(
-                child: _buildCartItems(cartDocs),
+              if (snapshot.connectionState == ConnectionState.waiting ||
+                  _busyBusiness != null)
+                const LinearProgressIndicator(),
+              Text('Mi carrito', style: AppText.h1),
+              const SizedBox(height: 6),
+              const Text(
+                'Tus productos y notas se guardan en tu cuenta. Confirma un negocio a la vez.',
+                style: AppText.notes,
               ),
-              
-              // SECCIÓN DE CHECKOUT
-              _buildCheckoutArea(totalPrice, cartDocs),
+              const SizedBox(height: 16),
+              if (_notice != null)
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text(_notice!),
+                  ),
+                ),
+              if (_operationError != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Text(
+                    friendlyError(_operationError!),
+                    style: const TextStyle(color: AppColors.error),
+                  ),
+                ),
+              if (snapshot.hasError)
+                ErrorPanel(error: snapshot.error!, onRetry: _refreshQuietly),
+              ...data.intents.values.map(
+                (intent) => _pendingCard(intent, data),
+              ),
+              if (data.rows.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 48),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.shopping_bag_outlined,
+                        size: 64,
+                        color: AppColors.primary,
+                      ),
+                      SizedBox(height: 16),
+                      Text('Tu carrito está vacío', style: AppText.h3),
+                      SizedBox(height: 8),
+                      Text(
+                        'Explora los negocios y añade lo que se te antoje.',
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ...groups.entries.map((entry) {
+                final id = entry.key;
+                final rows = entry.value;
+                final business = data.businesses[id];
+                final name =
+                    business?['name']?.toString() ??
+                    'Productos sin negocio disponible';
+                final hasIntent = data.intents.containsKey(id);
+                final enabled =
+                    _busyBusiness == null &&
+                    !hasIntent &&
+                    rows.length <= 50 &&
+                    rows.every(_available);
+                return Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(name, style: AppText.h3),
+                        ...rows.map(
+                          (row) =>
+                              _row(row, _busyBusiness != null || hasIntent),
+                        ),
+                        const Divider(),
+                        Text(
+                          'Total del negocio: ${money(_cents(rows) / 100)}',
+                          style: AppText.h3,
+                        ),
+                        if (rows.length > 50)
+                          const Text(
+                            'Un pedido admite hasta 50 productos distintos.',
+                            style: TextStyle(color: AppColors.error),
+                          ),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton.icon(
+                            onPressed: enabled
+                                ? () => _checkout(id, name, rows, business)
+                                : null,
+                            icon: const Icon(Icons.shopping_bag_outlined),
+                            label: Text(
+                              hasIntent
+                                  ? 'Resuelve la compra pendiente'
+                                  : 'Revisar pedido de este negocio',
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }),
+              const SizedBox(height: 24),
             ],
           );
         },
       ),
-    );
-  }
-
-  Widget _buildCartHeader(int itemCount) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.primary.withOpacity(0.1),
-        border: Border(
-          bottom: BorderSide(color: AppColors.borders, width: 1),
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: AppColors.primary,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.shopping_cart_rounded,
-              color: Colors.white,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Mi Carrito',
-                  style: AppText.h3.copyWith(
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '$itemCount ${itemCount == 1 ? 'producto' : 'productos'} en tu pedido',
-                  style: AppText.notes.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCartItems(List<QueryDocumentSnapshot> cartDocs) {
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: cartDocs.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 12),
-      itemBuilder: (context, index) {
-        return _buildCartItem(cartDocs[index]);
-      },
-    );
-  }
-
-  Widget _buildCartItem(DocumentSnapshot doc) {
-    final item = doc.data()! as Map<String, dynamic>;
-    final notes = item['notes'] ?? '';
-    final quantity = item['quantity'] ?? 1;
-    final price = item['price'] ?? 0.0;
-    final subtotal = price * quantity;
-
-    return Material(
-      color: AppColors.background,
-      borderRadius: BorderRadius.circular(16),
-      elevation: 1,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            // IMAGEN DEL PRODUCTO
-            Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                color: AppColors.componentBase,
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.network(
-                  item['imageUrl'] ?? 'https://via.placeholder.com/100',
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      color: AppColors.componentBase,
-                      child: Icon(
-                        Icons.fastfood_rounded,
-                        color: AppColors.textSecondary.withOpacity(0.4),
-                        size: 24,
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-            
-            const SizedBox(width: 16),
-            
-            // INFORMACIÓN DEL PRODUCTO
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item['name'] ?? 'Producto',
-                    style: AppText.body.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          '${quantity}x',
-                          style: AppText.notes.copyWith(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '\$${price.toStringAsFixed(2)} c/u',
-                        style: AppText.notes.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (notes.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      notes,
-                      style: AppText.notes.copyWith(
-                        color: AppColors.textSecondary,
-                        fontStyle: FontStyle.italic,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                  const SizedBox(height: 8),
-                  Text(
-                    'Subtotal: \$${subtotal.toStringAsFixed(2)}',
-                    style: AppText.notes.copyWith(
-                      color: AppColors.success,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            
-            const SizedBox(width: 12),
-            
-            // BOTÓN DE ELIMINAR
-            IconButton(
-              icon: Icon(
-                Icons.delete_outline_rounded,
-                color: AppColors.error,
-                size: 20,
-              ),
-              onPressed: () async {
-                final confirmed = await _showConfirmDialog(
-                  'Eliminar Producto', 
-                  '¿Quieres eliminar "${item['name']}" del carrito?'
-                );
-                if (confirmed) {
-                  doc.reference.delete();
-                }
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCheckoutArea(double totalPrice, List<QueryDocumentSnapshot> cartDocs) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        border: Border(
-          top: BorderSide(color: AppColors.borders, width: 1),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, -5),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // MÉTODO DE PAGO
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Método de Pago',
-                style: AppText.body.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  color: AppColors.componentBase,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: DropdownButton<String>(
-                  value: _selectedPaymentMethod,
-                  isExpanded: true,
-                  underline: const SizedBox(),
-                  icon: Icon(Icons.arrow_drop_down_rounded, color: AppColors.textSecondary),
-                  items: _paymentMethods.map((method) {
-                    return DropdownMenuItem(
-                      value: method,
-                      child: Text(
-                        method,
-                        style: AppText.body.copyWith(color: AppColors.textPrimary),
-                      ),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    if (value != null) {
-                      setState(() => _selectedPaymentMethod = value);
-                    }
-                  },
-                ),
-              ),
-            ],
-          ),
-          
-          const SizedBox(height: 16),
-
-          // HORA DE RECOGIDA
-          Material(
-            color: AppColors.componentBase,
-            borderRadius: BorderRadius.circular(12),
-            child: InkWell(
-              onTap: _pickTime,
-              borderRadius: BorderRadius.circular(12),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.schedule_rounded,
-                      color: AppColors.primary,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _selectedTime == null ? 'Pedir Ahora (ASAP)' : 'Programado',
-                            style: AppText.body.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            _selectedTime != null 
-                                ? 'Recoger a las: ${_selectedTime!.format(context)}'
-                                : 'Recoger lo antes posible',
-                            style: AppText.notes.copyWith(
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: _selectedTime == null ? AppColors.primary : AppColors.accent,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        _selectedTime == null ? 'ASAP' : 'Programado',
-                        style: AppText.notes.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 10,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          if (_selectedTime != null) ...[
-            const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(
-                onPressed: () => setState(() => _selectedTime = null),
-                child: Text(
-                  'Quitar hora programada',
-                  style: AppText.notes.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ),
-            ),
-          ],
-          
-          const SizedBox(height: 20),
-          const Divider(height: 1, color: AppColors.borders),
-          const SizedBox(height: 16),
-
-          // TOTAL Y BOTÓN DE CONFIRMAR
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Total a Pagar:',
-                style: AppText.h3.copyWith(
-                  color: AppColors.textPrimary,
-                  fontSize: 18,
-                ),
-              ),
-              Text(
-                '\$${totalPrice.toStringAsFixed(2)}',
-                style: AppText.h1.copyWith(
-                  color: AppColors.success,
-                  fontSize: 24,
-                ),
-              ),
-            ],
-          ),
-          
-          const SizedBox(height: 16),
-
-          ElevatedButton(
-            onPressed: _isLoading ? null : () => _placeOrder(cartDocs, totalPrice),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              elevation: 2,
-              shadowColor: AppColors.primary.withOpacity(0.3),
-            ),
-            child: _isLoading
-              ? SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
-                )
-              : Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.check_circle_rounded, size: 20),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Confirmar Pedido',
-                      style: AppText.body.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ],
-                ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildErrorState(String message) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.shopping_cart_rounded,
-              size: 64,
-              color: AppColors.error.withOpacity(0.7),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              message,
-              style: AppText.h3.copyWith(
-                color: AppColors.textPrimary,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLoadingState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          CircularProgressIndicator(color: AppColors.primary),
-          const SizedBox(height: 16),
-          Text(
-            'Cargando tu carrito...',
-            style: AppText.body.copyWith(
-              color: AppColors.textSecondary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                color: AppColors.componentBase,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.shopping_cart_outlined,
-                size: 50,
-                color: AppColors.textSecondary.withOpacity(0.5),
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Tu carrito está vacío',
-              style: AppText.h3.copyWith(
-                color: AppColors.textPrimary,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Agrega algunos productos deliciosos para comenzar',
-              style: AppText.body.copyWith(
-                color: AppColors.textSecondary,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+    ),
+  );
 }

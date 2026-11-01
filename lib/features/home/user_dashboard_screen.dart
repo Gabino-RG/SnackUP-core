@@ -1,315 +1,245 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'user_home_screen.dart';
-import '../user/search_screen.dart';
+import 'package:provider/provider.dart';
+import 'package:snackup/student/student_api.dart';
+import 'package:snackup/theme/student_colors.dart';
+import 'package:snackup/theme/student_text.dart';
 import '../user/cart_screen.dart';
 import '../user/profile_orders_screen.dart';
-import 'package:snackup/theme/app_colors.dart';
-import 'package:snackup/theme/app_text.dart';
+import '../user/search_screen.dart';
+import 'user_home_screen.dart';
 
 class UserDashboardScreen extends StatefulWidget {
   const UserDashboardScreen({super.key});
-
   @override
   State<UserDashboardScreen> createState() => _UserDashboardScreenState();
 }
 
 class _UserDashboardScreenState extends State<UserDashboardScreen> {
   int _selectedIndex = 0;
-  final PageController _pageController = PageController();
 
-  static const List<Widget> _widgetOptions = <Widget>[
-    UserHomeScreen(),       // 0: Inicio
-    SearchScreen(),         // 1: Buscar
-    CartScreen(),           // 2: Carrito
-    ProfileOrdersScreen(),  // 3: Pedidos
-  ];
-
-  final List<String> _appBarTitles = [
-    'SnackUp UTSJR',
-    'Buscar Comida',
-    'Mi Carrito',
-    'Mis Pedidos'
-  ];
-
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-    _pageController.jumpToPage(index);
-  }
-
-  void _onPageChanged(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
+  Future<void> _logout() async {
+    final api = context.read<StudentApi>();
+    final messenger = ScaffoldMessenger.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Cerrar sesión'),
+        content: const Text('¿Quieres salir de tu cuenta de alumno?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Cerrar sesión'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await api.logout();
+    } catch (_) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Saliste de esta aplicación. No pudimos confirmar el cierre en el servidor.',
+          ),
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final user = context.watch<StudentApi>().user;
+    final orders = _selectedIndex == 1;
+    final desktopOrders = orders && MediaQuery.sizeOf(context).width >= 800;
+    final pages = <Widget>[
+      const UserHomeScreen(),
+      const ProfileOrdersScreen(
+        key: ValueKey('orders'),
+        initialTab: 0,
+        embedded: true,
+      ),
+      const ProfileOrdersScreen(
+        key: ValueKey('favorites'),
+        initialTab: 2,
+        embedded: true,
+      ),
+      const ProfileOrdersScreen(
+        key: ValueKey('profile'),
+        initialTab: 3,
+        embedded: true,
+      ),
+    ];
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          _appBarTitles[_selectedIndex],
-          style: AppText.h3.copyWith(
-            fontWeight: FontWeight.w700,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        backgroundColor: AppColors.background,
-        elevation: 0,
-        foregroundColor: AppColors.textPrimary,
-        actions: [
-          // BOTÓN DE CERRAR SESIÓN MEJORADO
-          IconButton(
-            icon: Icon(
-              Icons.logout_rounded,
-              color: AppColors.textSecondary,
-            ),
-            tooltip: 'Cerrar Sesión',
-            onPressed: () => _showLogoutDialog(context),
-          ),
-        ],
-      ),
-      body: PageView(
-        controller: _pageController,
-        physics: const NeverScrollableScrollPhysics(), // Desactiva scroll horizontal
-        onPageChanged: _onPageChanged,
-        children: _widgetOptions,
-      ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 10,
-              offset: const Offset(0, -2),
-            ),
-          ],
-        ),
-        child: BottomNavigationBar(
-          items: [
-            // INICIO
-            BottomNavigationBarItem(
-              icon: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: _selectedIndex == 0 
-                      ? AppColors.primary.withOpacity(0.1)
-                      : Colors.transparent,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.home_rounded,
-                  color: _selectedIndex == 0 
-                      ? AppColors.primary 
-                      : AppColors.textSecondary,
-                  size: 24,
-                ),
-              ),
-              activeIcon: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.2),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.home_rounded,
-                  color: AppColors.primary,
-                  size: 24,
-                ),
-              ),
-              label: 'Inicio',
-            ),
-            // BUSCAR
-            BottomNavigationBarItem(
-              icon: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: _selectedIndex == 1 
-                      ? AppColors.accent.withOpacity(0.1)
-                      : Colors.transparent,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.search_rounded,
-                  color: _selectedIndex == 1 
-                      ? AppColors.accent 
-                      : AppColors.textSecondary,
-                  size: 24,
-                ),
-              ),
-              activeIcon: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: AppColors.accent.withOpacity(0.2),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.search_rounded,
-                  color: AppColors.accent,
-                  size: 24,
-                ),
-              ),
-              label: 'Buscar',
-            ),
-            // CARRITO
-            BottomNavigationBarItem(
-              icon: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: _selectedIndex == 2 
-                      ? AppColors.tertiary.withOpacity(0.1)
-                      : Colors.transparent,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.shopping_cart_rounded,
-                  color: _selectedIndex == 2 
-                      ? AppColors.tertiary 
-                      : AppColors.textSecondary,
-                  size: 24,
-                ),
-              ),
-              activeIcon: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: AppColors.tertiary.withOpacity(0.2),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.shopping_cart_rounded,
-                  color: AppColors.tertiary,
-                  size: 24,
-                ),
-              ),
-              label: 'Carrito',
-            ),
-            // PEDIDOS
-            BottomNavigationBarItem(
-              icon: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: _selectedIndex == 3 
-                      ? AppColors.success.withOpacity(0.1)
-                      : Colors.transparent,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.receipt_long_rounded,
-                  color: _selectedIndex == 3 
-                      ? AppColors.success 
-                      : AppColors.textSecondary,
-                  size: 24,
-                ),
-              ),
-              activeIcon: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: AppColors.success.withOpacity(0.2),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.receipt_long_rounded,
-                  color: AppColors.success,
-                  size: 24,
-                ),
-              ),
-              label: 'Pedidos',
-            ),
-          ],
-          currentIndex: _selectedIndex,
-          selectedItemColor: AppColors.primary,
-          unselectedItemColor: AppColors.textSecondary,
-          selectedLabelStyle: AppText.notes.copyWith(
-            fontWeight: FontWeight.w600,
-            fontSize: 12,
-          ),
-          unselectedLabelStyle: AppText.notes.copyWith(
-            fontSize: 12,
-          ),
-          showUnselectedLabels: true,
-          type: BottomNavigationBarType.fixed,
-          backgroundColor: AppColors.background,
-          elevation: 8,
-          onTap: _onItemTapped,
-        ),
-      ),
-    );
-  }
-
-  void _showLogoutDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        toolbarHeight: orders ? 68 : 76,
+        titleSpacing: orders ? 10 : 16,
+        backgroundColor: orders ? AppColors.background : null,
+        surfaceTintColor: Colors.transparent,
+        scrolledUnderElevation: 0,
         title: Row(
           children: [
-            Icon(
-              Icons.logout_rounded,
-              color: AppColors.error,
-              size: 24,
+            Tooltip(
+              message: 'Inicio',
+              child: InkWell(
+                onTap: () => setState(() => _selectedIndex = 0),
+                borderRadius: BorderRadius.circular(15),
+                child: Container(
+                  width: orders ? 44 : 38,
+                  height: orders ? 44 : 38,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(orders ? 15 : 12),
+                  ),
+                  child: Icon(
+                    orders
+                        ? Icons.restaurant_menu_rounded
+                        : Icons.lunch_dining_rounded,
+                    color: AppColors.accent,
+                    size: orders ? 28 : 25,
+                  ),
+                ),
+              ),
             ),
-            const SizedBox(width: 12),
-            Text(
-              'Cerrar Sesión',
-              style: AppText.h3.copyWith(
-                color: AppColors.textPrimary,
+            SizedBox(width: orders ? 32 : 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (orders)
+                    Text(
+                      'Mis pedidos',
+                      style: AppText.h3.copyWith(fontSize: 26),
+                    )
+                  else
+                    RichText(
+                      text: TextSpan(
+                        style: AppText.h3.copyWith(fontSize: 22),
+                        children: const [
+                          TextSpan(text: 'Snack'),
+                          TextSpan(
+                            text: 'UP',
+                            style: TextStyle(color: AppColors.tertiary),
+                          ),
+                        ],
+                      ),
+                    ),
+                  Text(
+                    orders ? 'CAMPUS DINING' : 'Tu cafetería, a un toque',
+                    style: orders
+                        ? AppText.notes.copyWith(
+                            letterSpacing: 1.5,
+                            fontSize: 13,
+                          )
+                        : AppText.notes,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
             ),
           ],
         ),
-        content: Text(
-          '¿Estás seguro de que quieres cerrar sesión?',
-          style: AppText.body.copyWith(
-            color: AppColors.textSecondary,
-          ),
-        ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(
-              'Cancelar',
-              style: AppText.body.copyWith(
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              FirebaseAuth.instance.signOut();
-            },
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.logout_rounded, size: 18),
-                const SizedBox(width: 6),
-                Text(
-                  'Cerrar Sesión',
-                  style: AppText.body.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
+          IconButton(
+            tooltip: 'Buscar comida',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute<void>(
+                builder: (_) => Scaffold(
+                  appBar: AppBar(title: const Text('Buscar comida')),
+                  body: const SearchScreen(),
                 ),
-              ],
+              ),
+            ),
+            icon: const Icon(Icons.search_rounded),
+          ),
+          IconButton(
+            tooltip: 'Mi carrito',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute<void>(
+                builder: (_) => Scaffold(
+                  appBar: AppBar(title: const Text('Mi pedido')),
+                  body: const CartScreen(),
+                ),
+              ),
+            ),
+            icon: const Icon(Icons.shopping_bag_outlined),
+          ),
+          PopupMenuButton<String>(
+            tooltip: 'Mi cuenta',
+            onSelected: (value) {
+              if (value == 'profile') {
+                setState(() => _selectedIndex = 3);
+              } else {
+                _logout();
+              }
+            },
+            itemBuilder: (_) => [
+              PopupMenuItem(
+                value: 'profile',
+                child: Text(user?['displayName']?.toString() ?? 'Mi perfil'),
+              ),
+              const PopupMenuItem(
+                value: 'logout',
+                child: Text('Cerrar sesión'),
+              ),
+            ],
+            icon: CircleAvatar(
+              radius: orders ? 20 : 16,
+              backgroundColor: AppColors.paleBlue,
+              child: Text(
+                (user?['displayName']?.toString() ?? 'A').characters.first
+                    .toUpperCase(),
+                style: const TextStyle(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ),
           ),
+          const SizedBox(width: 6),
         ],
       ),
+      body: pages[_selectedIndex],
+      bottomNavigationBar: desktopOrders
+          ? null
+          : Container(
+              decoration: const BoxDecoration(
+                border: Border(top: BorderSide(color: AppColors.borders)),
+              ),
+              child: BottomNavigationBar(
+                currentIndex: _selectedIndex,
+                onTap: (index) => setState(() => _selectedIndex = index),
+                items: const [
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.storefront_outlined),
+                    activeIcon: Icon(Icons.storefront),
+                    label: 'Inicio',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.receipt_long_outlined),
+                    activeIcon: Icon(Icons.receipt_long),
+                    label: 'Pedidos',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.favorite_outline),
+                    activeIcon: Icon(Icons.favorite),
+                    label: 'Favoritos',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.person_outline),
+                    activeIcon: Icon(Icons.person),
+                    label: 'Perfil',
+                  ),
+                ],
+              ),
+            ),
     );
-  }
-
-  @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
   }
 }

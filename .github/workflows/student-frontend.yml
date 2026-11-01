@@ -1,0 +1,34 @@
+name: Frontend alumnos REST
+
+on:
+  workflow_dispatch:
+  push:
+    paths: ['lib/**', 'test/**', 'pubspec.yaml', 'pubspec.lock', 'web/**', 'assets/**', 'deploy/check_web_build.py', '.github/workflows/student-frontend.yml']
+  pull_request:
+    paths: ['lib/**', 'test/**', 'pubspec.yaml', 'pubspec.lock', 'web/**', 'assets/**', 'deploy/check_web_build.py', '.github/workflows/student-frontend.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  students:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.32.0'
+          channel: stable
+          cache: true
+      - run: flutter pub get --enforce-lockfile
+      - name: Analyze student code
+        run: flutter analyze --no-pub lib/main.dart lib/student lib/features/auth/auth_gate.dart lib/features/auth/login_screen.dart lib/features/auth/register_screen.dart lib/features/home/user_dashboard_screen.dart lib/features/home/user_home_screen.dart lib/features/user test
+      - run: flutter test --no-pub
+      - run: flutter build web --release --no-pub --no-web-resources-cdn --pwa-strategy=none
+      - run: python3 deploy/check_web_build.py build/web --base / --mode rest
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SnackUP-Alumnos-REST
+          path: build/web
+          retention-days: 14
