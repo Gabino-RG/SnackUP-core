@@ -84,8 +84,13 @@ auxiliares. La espera de admisión no retiene un hilo ni una conexión SQL; al
 agotarse responde 503 con `Retry-After: 1`. El frontend debe conservar la misma
 clave de idempotencia cuando reintente la creación del mismo pedido.
 
-La batería de carga mide tres workers en el perfil base de cuatro CPU, y un
-worker con dos hilos Argon2 en el perfil de dos CPU. Esas son configuraciones de
+La batería de carga mide tres workers en el perfil base de cuatro CPU, y dos
+workers con dos hilos Argon2 cada uno en el perfil de dos CPU. Con un solo worker
+en dos CPU, el intérprete de Python atiende todas las peticiones en una CPU y la
+otra queda casi solo para Argon2 y PostgreSQL: una ola de 200 logins durante la
+lectura dejaba entrar a un cuarto de los alumnos o, si se frenaban las lecturas,
+las llevaba a varios segundos. El login espera hasta 10 s
+(`SNACKUP_LOGIN_WAIT_SECONDS`). Esas son configuraciones de
 medición, no detección automática de hardware: definir `SNACKUP_WORKERS` y
 `SNACKUP_PASSWORD_CONCURRENCY` según el perfil elegido. No modificar los
 parámetros criptográficos de Argon2 para ocultar un límite de capacidad.

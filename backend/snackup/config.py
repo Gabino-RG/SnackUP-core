@@ -39,7 +39,7 @@ class Settings(BaseSettings):
     write_concurrency: int = 1
     mail_concurrency: int = 2
     session_concurrency: int = 4
-    login_wait_seconds: float = 8
+    login_wait_seconds: float = 10
     password_concurrency: int = 4
     outbox_retention_days: int = 7
     outbox_cleanup_batch: int = 1000
