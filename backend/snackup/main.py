@@ -70,10 +70,11 @@ def create_app(settings: Settings | None = None):
     app.state.db = database
     app.state.password_executor = ThreadPoolExecutor(max_workers=settings.password_concurrency,
                                                     thread_name_prefix='snackup-password')
-    from .admission import DatabaseAdmission
+    from .admission import DatabaseAdmission, edge_wait
     app.add_middleware(DatabaseAdmission, capacity=min(24, max(1, settings.pool_size + settings.max_overflow - 4)),
                        wait_seconds=settings.admission_wait_seconds, login_wait_seconds=settings.login_wait_seconds,
-                       write_concurrency=settings.write_concurrency)
+                       write_concurrency=settings.write_concurrency, mail_concurrency=settings.mail_concurrency,
+                       session_concurrency=settings.session_concurrency, login_concurrency=settings.password_concurrency)
     app.state.limiter = RateLimiter(settings)
     app.state.events = EventBridge(database, settings)
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=[urlsplit(settings.public_origin).hostname])
@@ -117,6 +118,7 @@ def create_app(settings: Settings | None = None):
     @app.middleware('http')
     async def guard(request: Request, call_next):
         started = time.monotonic()
+        queued = edge_wait(request.scope.get('headers', ()))  # Before this process saw it (proxy, accept queue, busy loop).
         path = request.url.path
         try:
             if request.method in {'POST', 'PUT', 'PATCH', 'DELETE'}:
@@ -161,7 +163,8 @@ def create_app(settings: Settings | None = None):
             response.headers['Cache-Control'] = 'no-store'
         if settings.environment == 'production':
             response.headers['Strict-Transport-Security'] = 'max-age=31536000'
-        log.info('%s %s %d %.0fms', request.method, path, response.status_code, (time.monotonic() - started) * 1000)
+        log.info('%s %s %d %.0fms%s', request.method, path, response.status_code, (time.monotonic() - started) * 1000,
+                 f' queued={queued * 1000:.0f}ms' if queued else '')
         return response
 
     for router in (v32_api.router, v32_chat.router, v3_identity.router, v3_admin.router, v3_operations.router, v3_media.router, v3_reviews.router, push.router):

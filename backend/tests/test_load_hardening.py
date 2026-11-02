@@ -207,6 +207,117 @@ def test_waiting_writes_allow_reads_and_release_permits_on_timeout_and_cancel(bl
     asyncio.run(exercise())
 
 
+async def _admit(middleware, method, path, headers=()):
+    messages = []
+    async def receive():
+        return {'type': 'http.request', 'body': b''}
+    async def send(message):
+        messages.append(message)
+    await middleware({'type': 'http', 'method': method, 'path': path, 'headers': list(headers)}, receive, send)
+    return messages[0]['status']
+
+
+def test_mail_and_session_requests_never_take_the_write_slot():
+    """Phase C B-12: a 16 s SMTP left kitchens with 503 for the whole send."""
+    from snackup.admission import DatabaseAdmission
+    from starlette.responses import JSONResponse
+    async def exercise():
+        started, release = asyncio.Event(), asyncio.Event()
+        async def endpoint(scope, receive, send):
+            if scope['path'].endswith(('/forgot-password', '/refresh')):
+                started.set()
+                await release.wait()
+            await JSONResponse({'ok': True})(scope, receive, send)
+        middleware = DatabaseAdmission(endpoint, capacity=4, wait_seconds=.03, write_concurrency=1,
+                                       mail_concurrency=1, session_concurrency=1)
+        mail = asyncio.create_task(_admit(middleware, 'POST', '/api/v1/auth/forgot-password'))
+        await started.wait()
+        started.clear()
+        session = asyncio.create_task(_admit(middleware, 'POST', '/api/legacy/v1/auth/refresh'))
+        await started.wait()
+        assert await _admit(middleware, 'POST', '/api/v1/orders') == 200
+        assert await _admit(middleware, 'PATCH', '/api/v1/orders/o-1/status') == 200
+        # Each lane still bounds itself.
+        assert await _admit(middleware, 'POST', '/api/v1/auth/resend-verification') == 503
+        assert await _admit(middleware, 'POST', '/api/v1/auth/logout') == 503
+        release.set()
+        assert (await mail, await session) == (200, 200)
+    asyncio.run(exercise())
+
+
+def test_login_wave_waits_in_its_lane_and_leaves_slots_for_reads():
+    """Phase C B-13: logins queued for Argon2 held every slot; reads stalled ~3 s."""
+    from snackup.admission import DatabaseAdmission
+    from starlette.responses import JSONResponse
+    async def exercise():
+        started, release = asyncio.Event(), asyncio.Event()
+        async def endpoint(scope, receive, send):
+            if scope['path'].endswith('/auth/login'):
+                started.set()
+                await release.wait()
+            await JSONResponse({'ok': True})(scope, receive, send)
+        middleware = DatabaseAdmission(endpoint, capacity=2, wait_seconds=.03, login_wait_seconds=.05,
+                                       login_concurrency=1)
+        first = asyncio.create_task(_admit(middleware, 'POST', '/api/v1/auth/login'))
+        await started.wait()
+        second = asyncio.create_task(_admit(middleware, 'POST', '/api/v1/auth/login'))
+        await asyncio.sleep(0)
+        assert await _admit(middleware, 'GET', '/api/v1/businesses') == 200
+        assert await second == 503
+        release.set()
+        assert await first == 200
+    asyncio.run(exercise())
+
+
+@pytest.mark.parametrize('path, lane', [
+    ('/api/v1/auth/register', 'mail'), ('/api/legacy/v1/student/register', 'mail'),
+    ('/api/v1/admin/users/u-1/reset-password', 'mail'), ('/api/legacy/v1/auth/forgot-password', 'mail'),
+    ('/api/v1/auth/refresh', 'session'), ('/api/v1/auth/logout', 'session'), ('/api/legacy/v1/auth/login', 'login'),
+    ('/api/v1/orders', 'write'), ('/api/v1/admin/users/u-1/reset-password/x', 'write'),
+    ('/api/v1/auth/register-extra', 'write'),
+])
+def test_admission_lane_classification(path, lane):
+    from snackup.admission import DatabaseAdmission
+    middleware = DatabaseAdmission(None, capacity=4, wait_seconds=1)
+    assert middleware.lane({'method': 'POST', 'path': path}) == lane
+    assert middleware.lane({'method': 'GET', 'path': path}) is None
+
+
+def test_time_queued_before_admission_counts_against_the_wait():
+    """Phase C B-14: rejections reached clients at ~8.4 s instead of 5 s."""
+    import time
+    from snackup.admission import DatabaseAdmission
+    from starlette.responses import JSONResponse
+    async def exercise():
+        started, release = asyncio.Event(), asyncio.Event()
+        async def endpoint(scope, receive, send):
+            if scope['path'].endswith('block'):
+                started.set()
+                await release.wait()
+            await JSONResponse({'ok': True})(scope, receive, send)
+        middleware = DatabaseAdmission(endpoint, capacity=1, wait_seconds=1)
+        def stamp(seconds_ago):
+            return [(b'x-snackup-edge-ms', str(int((time.time() - seconds_ago) * 1000)).encode())]
+        # A free slot is used even when the budget is already spent.
+        assert await _admit(middleware, 'GET', '/api/probe', stamp(3)) == 200
+        first = asyncio.create_task(_admit(middleware, 'GET', '/api/block'))
+        await started.wait()
+        clock = time.monotonic()
+        assert await _admit(middleware, 'GET', '/api/probe', stamp(3)) == 503
+        assert time.monotonic() - clock < .2
+        clock = time.monotonic()
+        assert await _admit(middleware, 'GET', '/api/probe', stamp(.7)) == 503
+        assert .2 < time.monotonic() - clock < .6
+        # Missing, malformed or implausible stamps keep the full wait.
+        for headers in ([], [(b'x-snackup-edge-ms', b'soon')], stamp(-30), stamp(3600)):
+            clock = time.monotonic()
+            assert await _admit(middleware, 'GET', '/api/probe', headers) == 503
+            assert time.monotonic() - clock >= .9
+        release.set()
+        assert await first == 200
+    asyncio.run(exercise())
+
+
 def test_retention_never_discards_pending_push(app):
     from snackup.push_models import PushDelivery
     now = utcnow()

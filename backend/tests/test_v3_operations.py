@@ -101,6 +101,10 @@ def test_order_count_advances_business_version_once_and_publishes_invalidation(a
     assert retry.status_code == 201 and retry.json() == created.json()
     after = client.get('/api/v1/businesses/business-1', headers=headers['student']).json()
     assert after['totalOrders'] == before['totalOrders'] + 1
+    with app.state.db.sessions() as db:
+        counted = db.scalar(select(func.count()).select_from(Order).where(Order.business_id == 'business-1'))
+    listed = client.get('/api/v1/businesses', headers=headers['student']).json()['data']
+    assert after['totalOrders'] == counted == next(b['totalOrders'] for b in listed if b['id'] == 'business-1')
     assert after['version'] == before['version'] + 1
     assert after['updatedAt'] > before['updatedAt']
     stale = client.patch('/api/v1/businesses/business-1/status', headers=headers['operator'],
