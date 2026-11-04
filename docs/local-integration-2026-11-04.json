@@ -1,0 +1,220 @@
+{
+  "date": "2026-11-04",
+  "branch": "codex/integracion-local-completa",
+  "sourceRevisions": {
+    "studentsAndBackend": "7c549b7b03ff05847cc6680d687237594e87e12e",
+    "panels": "9d8f7cb05c57ec5d6b89aca288d04e9d9295d5f5"
+  },
+  "environment": {
+    "origin": "http://localhost:18080",
+    "database": "PostgreSQL 17.11, isolated persistent cluster",
+    "workers": 1,
+    "redis": false,
+    "data": "Synthetic only"
+  },
+  "automated": {
+    "postgres": {
+      "checkedAtUtc": "2026-11-04T20:55:23Z",
+      "databaseEngine": "PostgreSQL 17.11, Windows x64",
+      "worktree": "C:/Users/video/.codex/worktrees/snackup-integracion-local/SnackUP-core",
+      "counts": {
+        "passed": 139,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 2,
+        "deselected": 1,
+        "selectedCases": 141
+      },
+      "runs": [
+        "postgres-20261104T205111Z",
+        "postgres-20261104T205413Z"
+      ],
+      "runnerDurationSeconds": 246.84,
+      "files": [
+        {
+          "file": "backend/tests/test_operations.py",
+          "passed": 11
+        },
+        {
+          "file": "backend/tests/test_admin.py",
+          "passed": 14
+        },
+        {
+          "file": "backend/tests/test_operations_concurrency.py",
+          "passed": 5
+        },
+        {
+          "file": "backend/tests/test_v3_operations_concurrency.py",
+          "passed": 13
+        },
+        {
+          "file": "backend/tests/test_v32_concurrency.py",
+          "passed": 24
+        },
+        {
+          "file": "backend/tests/test_v32_features.py",
+          "passed": 17
+        },
+        {
+          "file": "backend/tests/test_security_review.py",
+          "passed": 4
+        },
+        {
+          "file": "backend/tests/test_load_hardening.py",
+          "passed": 12,
+          "deselected": 1
+        },
+        {
+          "file": "backend/tests/test_v3_realtime.py",
+          "passed": 20,
+          "skipped": 1
+        },
+        {
+          "file": "backend/tests/test_v32_realtime.py",
+          "passed": 8
+        },
+        {
+          "file": "backend/tests/test_services.py",
+          "passed": 4,
+          "skipped": 1
+        },
+        {
+          "file": "backend/tests/test_integration.py",
+          "passed": 6
+        },
+        {
+          "file": "backend/tests/test_v3_operations.py",
+          "passed": 1,
+          "selectedTest": "test_optional_version_strict_states_privacy_and_terminal_reconnect_delta"
+        }
+      ],
+      "isolation": {
+        "newDisposableDatabaseForEachRun": true,
+        "uniqueSchemaPerTest": true,
+        "bothDisposableDatabasesRemoved": true,
+        "persistentIntegrationDatabaseModifiedByTests": false,
+        "maxSimultaneousPytestProcesses": 1,
+        "applicationSourcesModified": false
+      },
+      "verified": [
+        "Order idempotency, atomic stock reservations and concurrent last-unit purchase",
+        "Simultaneous cancellation, inventory restoration and consistent terminal states",
+        "Role, business and user isolation; committed session/roster revocation during lock waits",
+        "Scheduled closing, scheduler recovery and manual closure preservation",
+        "Chat-opening races, private chat notifications and deletion retry protection",
+        "Socket.IO wire frames, authorized subscriptions, payload filtering and revoked connection closure",
+        "SQL outbox commit-before-publish and retry following a simulated broker failure",
+        "Student-kitchen-admin API roundtrip and terminal-state recovery via updatedSince"
+      ],
+      "notVerified": [
+        "Redis multiworker event propagation, real broker publish/rate limit and long idle Redis subscription (Redis unavailable)",
+        "1000 simultaneous users or production capacity",
+        "Real network interruption and reconnection of deployed browser clients",
+        "TLS, hosting, backups or external institutional services"
+      ],
+      "warnings": [
+        "Installed Starlette TestClient warns that httpx is deprecated in favor of httpx2; tests passed."
+      ]
+    },
+    "integratedHttp": {
+      "passed": true,
+      "checks": [
+        "Independent student, kitchen and administrator sessions",
+        "Student purchase reserves stock once; same idempotency key returns same order",
+        "Canonical student order is visible in the legacy Kitchen API",
+        "Student/Kitchen cannot read Administration; administrator cannot operate Kitchen",
+        "Concurrent acceptance: one success and one version conflict",
+        "Kitchen preparation/readiness visible to student through authoritative REST reads",
+        "Invalid code rejected; correct delivery succeeds once and leaves active Kitchen orders",
+        "Business rating appears in Administration without private student identifiers; duplicate rejected",
+        "Product review stays separate from business rating; duplicate and identity exposure checks pass",
+        "Administration can register followup on the student business rating"
+      ],
+      "origin": "http://localhost:18080",
+      "startedAt": "2026-11-04T20:52:13.279986+00:00",
+      "scope": "HTTP integration of canonical students and legacy panels; no browser, load or production certification",
+      "orderId": "438ca820c0f7447e9c03918bcd18c069",
+      "productId": "integration-agua",
+      "finishedAt": "2026-11-04T20:53:23.879909+00:00"
+    },
+    "closures": {
+      "passed": true,
+      "checks": [
+        "Scheduled a future closure while all three roles see the business open",
+        "The live scheduler closed the business; Kitchen, Administration and student agree",
+        "Closed business rejects purchase without creating an order or reserving stock",
+        "New HTTP transports with existing access sessions recover the authoritative closed state",
+        "Manual reopening remains open after another scheduler cycle without a duplicate closure",
+        "Original availability and schedule restored; the processed-date audit marker is retained"
+      ],
+      "origin": "http://localhost:18080",
+      "mode": "closure",
+      "startedAt": "2026-11-04T20:53:32.372587+00:00",
+      "scope": "Real local scheduler and REST state; no Flutter outage UX, load or production certification",
+      "scheduledFor": "2026-11-04T14:55:00-06:00",
+      "availabilityRestored": true,
+      "finishedAt": "2026-11-04T20:55:57.877626+00:00"
+    },
+    "persistenceAfterApiAndPostgresRestart": {
+      "passed": true,
+      "checks": [
+        "Scheduler is healthy and all three identities authenticate on fresh connections",
+        "Availability, inventory, orders and ratings match the pre-restart baseline"
+      ],
+      "origin": "http://localhost:18080",
+      "mode": "verify",
+      "startedAt": "2026-11-04T20:58:40.855127+00:00",
+      "scope": "Real local scheduler and REST state; no Flutter outage UX, load or production certification",
+      "externalRestartRequired": true,
+      "finishedAt": "2026-11-04T20:59:11.986423+00:00"
+    },
+    "targetedPanelTests": {
+      "passed": 7,
+      "failed": 0,
+      "files": [
+        "app/test/operations/panel_text_test.dart",
+        "app/test/operations/business_portal_test.dart"
+      ],
+      "widths": [
+        320,
+        768,
+        1440
+      ]
+    }
+  },
+  "builds": {
+    "studentsWeb": "passed",
+    "panelsWeb": "passed after payment-label correction"
+  },
+  "observedBrowserChecks": [
+    "Student login, catalog, cart and creation of synthetic order #3 via UI",
+    "API stopped: student UI showed connection error; same order returned automatically after restart",
+    "Student session restored on page reload after restart",
+    "Kitchen UI accepted, started, marked ready and delivered order #3 using its pickup code",
+    "Kitchen order chat opened and synthetic message saved",
+    "Kitchen history showed 3 completed orders and MXN 54.00",
+    "Recompiled Kitchen history displayed Efectivo for canonical cash",
+    "Administration showed 2 business reviews, career/group aggregates and 1 followup case",
+    "Kitchen and Administration dark theme viewed at 390x844 and desktop 1366x768; viewport override restored",
+    "Start script repeated safely in PowerShell 7 and Windows PowerShell 5.1; API and PostgreSQL stopped and restarted with data preserved"
+  ],
+  "corrections": [
+    "Preserve source API payment values while presenting Spanish labels in panels",
+    "Compare process ownership timestamps as UTC ticks across PowerShell versions"
+  ],
+  "limits": [
+    "No 1000-user load certification",
+    "Redis multiworker cases not executed (2 skipped and 1 deselected)",
+    "No physical phone, HTTPS, production server or real institutional identity provider tested",
+    "SMTP, test mailbox and push disabled locally",
+    "Student UI has no chat screen; kitchen chat UI and backend chat were tested separately",
+    "No automatic backup or restore drill; restart persistence is not a backup test",
+    "QR camera capture not tested; delivery was verified with manual code",
+    "Browsers must use separate profiles for simultaneous roles because the refresh cookie is shared"
+  ],
+  "originalSourcesPreserved": [
+    "student lib/ and backend/ unchanged",
+    "backup branch untouched",
+    "no remote branch published or merged in this task"
+  ]
+}

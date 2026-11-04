@@ -1,0 +1,23 @@
+// Versioned deployment input; not deployed. See docs/security/CONTRATO.md.
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function ownsBusiness(businessId) {
+      return request.auth != null &&
+        firestore.get(/databases/(default)/documents/businesses/$(businessId)).data.ownerId == request.auth.uid;
+    }
+    match /product_images/{businessId}/{fileName} {
+      // Catalog images are public. Student uploads and cross-store writes denied.
+      allow read: if true;
+      allow create, update: if ownsBusiness(businessId) &&
+        request.resource.size > 0 && request.resource.size <= 5 * 1024 * 1024 &&
+        request.resource.contentType in ['image/jpeg','image/png','image/webp'] &&
+        fileName.matches('^[A-Za-z0-9_-]+[.](jpg|jpeg|png|webp)$');
+      allow delete: if ownsBusiness(businessId);
+    }
+    // Old catalog image URLs can remain visible; no new flat-path uploads.
+    match /product_images/{legacyFile} { allow read: if true; }
+    match /{allPaths=**} { allow read, write: if false; }
+  }
+}
+

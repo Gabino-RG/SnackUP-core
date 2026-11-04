@@ -1,4 +1,11 @@
-# SnackUP · frontend de alumnos REST
+# SnackUP · integración local de Alumnos, Cocina y Administración
+
+Esta rama reúne las tres interfaces con el mismo backend y una base PostgreSQL
+persistente para probar el sistema en una laptop. La guía vigente de esta copia
+es [INTEGRACION_LOCAL.md](INTEGRACION_LOCAL.md): incluye inicio, parada, cuentas
+ficticias, pruebas y límites pendientes de validar en el servidor definitivo.
+
+## Frontend de alumnos REST
 
 La interfaz de alumnos se conecta al backend FastAPI existente mediante `/api/v1`.
 Consulta [ALUMNOS_REST.md](ALUMNOS_REST.md) para instalar, ejecutar, probar e integrar
