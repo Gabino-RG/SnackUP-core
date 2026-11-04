@@ -1,0 +1,1417 @@
+{
+  "schema_version": "1.0",
+  "title": "Límites de entorno y alcance para la auditoría UI de SnackUP",
+  "created_at_utc": "2026-11-04T21:54:21.489Z",
+  "related_inventory": "docs/qa-paneles-inventory.json",
+  "scope": {
+    "worktree": "C:/Users/video/.codex/worktrees/snackup-integracion-local/SnackUP-core",
+    "launcher": "tools/integrated_server.py",
+    "assessed_origin": "http://localhost:18080",
+    "method": "Solo lectura de fuentes, configuración pública explícita del lanzador e inventario.",
+    "runtime_caveat": "Las conclusiones de configuración se aplican al lanzador indicado. Esta revisión no inspeccionó procesos, configuración privada, base de datos ni respuestas del servidor.",
+    "mutations": "Se escribe exclusivamente este documento. No se ejecutaron semillas, endpoints, acciones UI, pruebas ni cambios de app/backend.",
+    "secrets": "No se abrió el config.json privado ni se publicaron DSN, claves, tokens o contraseñas."
+  },
+  "status_semantics": {
+    "pending": "No se ejecutó o no se conoce si se cumple el prerrequisito. Falta de evidencia no se convierte automáticamente en bloqueo ni aprobación.",
+    "blocked": "La variante descrita no puede completarse mediante el recorrido UI y la configuración/fuente actuales por el motivo concreto registrado.",
+    "mapping_warning": "Los límites afectan variantes, no necesariamente toda la fila del inventario. Ejemplo: crear cuenta correctamente está bloqueado, pero abrir/cancelar/validar el formulario y mostrar el error siguen pendientes y son comprobables.",
+    "no_passes": "Este informe no contiene resultados passed ni acredita pruebas reales. ui_evidence queda vacío.",
+    "transition_rule": "Si durante la prueba UI se confirma que falta hardware, cuenta, dato o plazo requerido, marcar solo ese caso blocked y registrar la evidencia. No generar datos por API/DB para eludirlo."
+  },
+  "configuration_from_source": {
+    "environment": "development",
+    "password_login": true,
+    "self_registration": false,
+    "google_enabled": false,
+    "smtp_available": false,
+    "test_mailbox_enabled": false,
+    "push_enabled": false,
+    "redis_configured": false,
+    "workers": 1,
+    "listen_host": "127.0.0.1",
+    "https": false,
+    "source_ids": [
+      "local-settings",
+      "local-mail-disabled",
+      "local-push-disabled",
+      "local-network",
+      "access-options",
+      "canonical-options"
+    ],
+    "note": "Valores deducidos del código explícito del lanzador y las opciones del backend; no de una lectura de secretos ni de una llamada HTTP."
+  },
+  "documented_account_baseline": {
+    "source_id": "seed-baseline",
+    "declared_profiles": [
+      "Administración maestra",
+      "Operador de un local",
+      "Alumno con un registro académico ficticio"
+    ],
+    "declared_academic_context": "Una carrera y un grupo de prueba.",
+    "current_presence_verified": false,
+    "warning": "La semilla preserva cuentas existentes y no describe necesariamente todo el estado actual. No se infiere ausencia de otras cuentas ni se valida su contraseña a partir de este archivo.",
+    "additional_profiles_to_confirm_in_ui": [
+      "Administrador no maestro para comprobar ausencia de gestión de cuentas/solicitudes.",
+      "Otro operador de otro local para demostrar aislamiento de ambos negocios.",
+      "Solicitante pendiente y verificado para autorizar; pendiente no verificado para rechazos.",
+      "Cuenta de prueba suspendida o sin asignación, si ya existe.",
+      "Alumnos de otras carreras/grupos y suficientes alumnos distintos para paginación de chats."
+    ]
+  },
+  "administrative_review_scope": {
+    "conclusion": "El dashboard administrativo actual muestra y calcula opiniones del negocio, no reseñas individuales de productos.",
+    "administrative_source": {
+      "method": "GET",
+      "path": "/api/legacy/v1/admin/reviews",
+      "table": "reviews",
+      "model": "Review",
+      "fields_used": [
+        "rating",
+        "serviceRating",
+        "foodRating",
+        "comment",
+        "businessId",
+        "careerId",
+        "groupId",
+        "createdAt"
+      ],
+      "source_ids": [
+        "admin-review-feed",
+        "admin-review-query",
+        "food-service-model"
+      ]
+    },
+    "business_creation": {
+      "method": "POST",
+      "path": "/api/v1/orders/{id}/rating",
+      "current_student_ui_payload": [
+        "stars",
+        "comment"
+      ],
+      "result": "Crea Review del negocio; ese registro sí alimenta Administración y seguimiento.",
+      "source_ids": [
+        "student-business-payload",
+        "business-rating"
+      ]
+    },
+    "product_creation": {
+      "method": "POST",
+      "path": "/api/v1/orders/{id}/reviews",
+      "payload_shape": "reviews: [{productId, rating, comment}]",
+      "table": "product_reviews",
+      "model": "ProductReview",
+      "public_read_path": "/api/v1/products/{id}/reviews",
+      "ui_destination": "Reseñas públicas del platillo en la app de alumnos.",
+      "result": "No se mezcla con Review ni con las métricas/seguimiento actuales del dashboard.",
+      "compatibility_note": "El endpoint /reviews también admite el cuerpo histórico StarsInput y entonces delega al rating del negocio. La UI de platillos usa el cuerpo reviews[], por lo que sí crea ProductReview.",
+      "source_ids": [
+        "product-rating",
+        "product-table",
+        "product-feed",
+        "student-product-view"
+      ]
+    },
+    "dimensions": {
+      "conclusion": "Servicio y Alimentos son dimensiones opcionales de la opinión del negocio, no los promedios de ProductReview.",
+      "current_input_gap": "La UI de alumnos de esta entrega no envía foodRating/serviceRating; por tanto no permite generar nuevos valores separados mediante esos controles.",
+      "existing_rows": "Registros anteriores pueden contenerlos; no se consultó si existen. Sus valores pueden visualizarse sin que eso pruebe captura desde la UI actual.",
+      "source_ids": [
+        "student-business-payload",
+        "business-rating-schema",
+        "food-service-model"
+      ]
+    },
+    "ui_test_instruction": "Usar comentarios identificables diferentes al valorar negocio y platillo. Comprobar cada uno en su destino y no esperar que dos reseñas con 5 estrellas representen el mismo registro. Esta revisión no realizó esas operaciones.",
+    "ui_verification_status": "pending"
+  },
+  "triage_summary": {
+    "entries": 34,
+    "blocked_variants": 18,
+    "pending_prerequisite_or_execution": 16,
+    "ui_actions_performed": 0,
+    "api_calls_performed": 0,
+    "database_reads_or_writes": 0
+  },
+  "limits": [
+    {
+      "id": "LIMIT-SELF-REGISTRATION-SUCCESS",
+      "status": "blocked",
+      "category": "configuration",
+      "title": "Autorregistro y solicitud nueva de acceso",
+      "reason": "El lanzador fuerza SMTP vacío. auth/options devuelve selfRegistration=mail_available(...), por lo que Crea tu cuenta queda deshabilitado. No se puede abrir el formulario ni enviar una solicitud nueva por el recorrido normal del portal.",
+      "affected_inventory_ids": [
+        "AUTH-REQUEST-OPEN",
+        "ACCESS-REQUEST-NAME",
+        "ACCESS-REQUEST-EMAIL",
+        "ACCESS-REQUEST-ROLE",
+        "ACCESS-REQUEST-CONTEXT",
+        "ACCESS-REQUEST-PASSWORD",
+        "ACCESS-REQUEST-CONFIRM",
+        "ACCESS-REQUEST-VISIBILITY",
+        "ACCESS-REQUEST-SEND",
+        "ACCESS-REQUEST-BACK"
+      ],
+      "source_ids": [
+        "local-mail-disabled",
+        "mail-gate",
+        "access-options",
+        "canonical-options",
+        "portal-register-gate",
+        "register-mail"
+      ],
+      "required_to_complete": "Configurar correo y un buzón de prueba controlado en un entorno preparado, sin generar tokens ni usuarios por scripts.",
+      "ui_checks_still_pending": [
+        "Comprobar desde UI que Crea tu cuenta está deshabilitado. No marcar validaciones internas del formulario como probadas."
+      ],
+      "conditions": [],
+      "ui_evidence": [],
+      "verification_basis": "Lectura estática de fuentes/configuración explícita del lanzador; no prueba real ejecutada."
+    },
+    {
+      "id": "LIMIT-GOOGLE-SUCCESS",
+      "status": "blocked",
+      "category": "implementation",
+      "title": "Inicio de sesión con Google",
+      "reason": "Ambos contratos anuncian googleEnabled=false y el endpoint legacy de inicio devuelve GOOGLE_DISABLED. No es únicamente falta de una contraseña: esta entrega no implementa un flujo OAuth habilitable mediante los campos del lanzador.",
+      "affected_inventory_ids": [
+        "AUTH-GOOGLE"
+      ],
+      "source_ids": [
+        "access-options",
+        "canonical-options",
+        "google-disabled",
+        "portal-google-gate"
+      ],
+      "required_to_complete": "Implementar/configurar un proveedor OAuth, su retorno y credenciales autorizadas; entonces ejecutar el flujo en UI.",
+      "ui_checks_still_pending": [
+        "Comprobar botón deshabilitado y explicación visible; ese resultado no valida OAuth ni sus retornos."
+      ],
+      "conditions": [],
+      "ui_evidence": [],
+      "verification_basis": "Lectura estática de fuentes/configuración explícita del lanzador; no prueba real ejecutada."
+    },
+    {
+      "id": "LIMIT-RESET-DELIVERY",
+      "status": "blocked",
+      "category": "configuration",
+      "title": "Recibir correo de recuperación",
+      "reason": "Olvidé mi contraseña permanece disponible pero el backend rechaza el envío con EMAIL_UNAVAILABLE al faltar SMTP. No puede acreditarse correo recibido, enlace válido ni entrega externa.",
+      "affected_inventory_ids": [
+        "AUTH-FORGOT"
+      ],
+      "source_ids": [
+        "local-mail-disabled",
+        "forgot-mail",
+        "mail-token"
+      ],
+      "required_to_complete": "Correo habilitado y acceso autorizado al buzón destinatario.",
+      "ui_checks_still_pending": [
+        "Validar correo mal formado y mensaje visible de indisponibilidad al intentar recuperar desde UI; no afirmar correo enviado."
+      ],
+      "conditions": [],
+      "ui_evidence": [],
+      "verification_basis": "Lectura estática de fuentes/configuración explícita del lanzador; no prueba real ejecutada."
+    },
+    {
+      "id": "LIMIT-RESET-SUCCESS",
+      "status": "blocked",
+      "category": "configuration",
+      "title": "Cambiar contraseña mediante enlace recién enviado",
+      "reason": "Un nuevo token válido se entrega por correo; _mail_token se detiene antes de emitirlo cuando SMTP falta. El buzón de pruebas también está deshabilitado. El éxito completo de recuperación no se puede preparar desde la UI actual.",
+      "affected_inventory_ids": [
+        "RESET-PASSWORD",
+        "RESET-CONFIRM",
+        "RESET-SAVE",
+        "RESET-BACK"
+      ],
+      "source_ids": [
+        "local-push-disabled",
+        "mail-token",
+        "forgot-mail"
+      ],
+      "required_to_complete": "Obtener por el recorrido real un enlace vigente en un entorno con correo. Un token antiguo, inválido o fabricado no demuestra el caso de éxito.",
+      "ui_checks_still_pending": [
+        "Si el usuario ya tiene un enlace legítimo vigente, documentar su procedencia sin publicar el token y revisar de nuevo este bloqueo."
+      ],
+      "conditions": [
+        "No se consultaron tokens ni buzones; no se presume que exista un enlace vigente."
+      ],
+      "ui_evidence": [],
+      "verification_basis": "Lectura estática de fuentes/configuración explícita del lanzador; no prueba real ejecutada."
+    },
+    {
+      "id": "LIMIT-CREATE-ACCOUNT-SUCCESS",
+      "status": "blocked",
+      "category": "configuration",
+      "title": "Crear una cuenta desde Administración",
+      "reason": "El formulario es alcanzable para master, pero POST admin/users llama queue_verification antes de confirmar la transacción. Con SMTP vacío el caso de alta válida devuelve EMAIL_UNAVAILABLE; la transacción se revierte.",
+      "affected_inventory_ids": [
+        "ADMIN-CREATE-ACCOUNT-OPEN",
+        "MANAGE-ACCOUNT-CREATE",
+        "ACCOUNT-FORM-NAME",
+        "ACCOUNT-FORM-EMAIL",
+        "ACCOUNT-FORM-PASSWORD",
+        "ACCOUNT-FORM-ROLE",
+        "ACCOUNT-FORM-BUSINESS",
+        "ACCOUNT-FORM-ACTIVE",
+        "ACCOUNT-FORM-SAVE",
+        "ACCOUNT-FORM-CLOSE",
+        "ACCOUNT-FORM-KEEP",
+        "ACCOUNT-FORM-DISCARD",
+        "ACCOUNT-FORM-VALIDATION"
+      ],
+      "source_ids": [
+        "create-account-mail",
+        "mail-token",
+        "transaction-rollback",
+        "local-mail-disabled"
+      ],
+      "required_to_complete": "Correo habilitado y buzón controlado; crear la cuenta exclusivamente desde la UI.",
+      "ui_checks_still_pending": [
+        "Abrir/cerrar y descartar el formulario, comprobar campos requeridos, correo, longitud de contraseña, rol/local y mensaje de indisponibilidad al guardar.",
+        "Después del error verificar en la lista que no apareció una cuenta parcialmente creada; esta observación sigue pendiente."
+      ],
+      "conditions": [],
+      "ui_evidence": [],
+      "verification_basis": "Lectura estática de fuentes/configuración explícita del lanzador; no prueba real ejecutada."
+    },
+    {
+      "id": "LIMIT-CHANGE-ACCOUNT-EMAIL",
+      "status": "blocked",
+      "category": "configuration",
+      "title": "Guardar una cuenta existente con un correo diferente",
+      "reason": "PATCH admin/users/{id} exige enviar verificación cuando cambia el correo. Con SMTP vacío esa variante falla y se revierte; no debe confundirse con editar nombre, rol o estado manteniendo el correo.",
+      "affected_inventory_ids": [
+        "MANAGE-ACCOUNT-EDIT",
+        "ACCOUNT-FORM-EMAIL",
+        "ACCOUNT-FORM-SAVE"
+      ],
+      "source_ids": [
+        "update-account-mail",
+        "mail-token",
+        "transaction-rollback",
+        "local-mail-disabled"
+      ],
+      "required_to_complete": "Correo habilitado y acceso al nuevo buzón.",
+      "ui_checks_still_pending": [
+        "Mostrar el error y comprobar que el correo anterior se conserva en UI.",
+        "La edición sin cambio de correo puede probarse por separado con una cuenta de prueba adecuada."
+      ],
+      "conditions": [],
+      "ui_evidence": [],
+      "verification_basis": "Lectura estática de fuentes/configuración explícita del lanzador; no prueba real ejecutada."
+    },
+    {
+      "id": "LIMIT-EDIT-EXISTING-ACCOUNT",
+      "status": "pending",
+      "category": "data_and_permissions",
+      "title": "Editar cuenta sin cambiar su correo",
+      "reason": "La edición de nombre, rol, local o acceso no necesita SMTP si el correo sigue igual, pero requiere master y una cuenta existente apropiada. Cada actualización revoca sesiones; la cuenta maestra y el acceso propio tienen protecciones.",
+      "affected_inventory_ids": [
+        "MANAGE-ACCOUNT-EDIT",
+        "ACCOUNT-FORM-NAME",
+        "ACCOUNT-FORM-ROLE",
+        "ACCOUNT-FORM-BUSINESS",
+        "ACCOUNT-FORM-ACTIVE",
+        "ACCOUNT-FORM-SAVE"
+      ],
+      "source_ids": [
+        "update-account-mail",
+        "portal-account-form",
+        "portal-master-gate"
+      ],
+      "required_to_complete": "Identificar en UI una cuenta ficticia existente y documentar su rol/estado inicial; mantener recuperable el acceso de prueba.",
+      "ui_checks_still_pending": [
+        "Validar protección de la propia cuenta y cambios autorizados en una cuenta de prueba; no interpretar controles ocultos como un fallo."
+      ],
+      "conditions": [
+        "No se consultó la base ni se confirmó qué cuentas existen ahora."
+      ],
+      "ui_evidence": [],
+      "verification_basis": "Lectura estática de fuentes/configuración explícita del lanzador; no prueba real ejecutada."
+    },
+    {
+      "id": "LIMIT-NEW-ACCESS-REQUEST-PIPELINE",
+      "status": "blocked",
+      "category": "configuration",
+      "title": "Generar una solicitud nueva y llegar a su decisión",
+      "reason": "Las solicitudes nuevas dependen del autorregistro bloqueado por SMTP. Autorizar también exige email_verified tanto en la solicitud como en el usuario. Marcar identidad confirmada en UI no sustituye esa verificación.",
+      "affected_inventory_ids": [
+        "ACCESS-DECISION-DECISION",
+        "ACCESS-DECISION-ROLE",
+        "ACCESS-DECISION-BUSINESS",
+        "ACCESS-DECISION-IDENTITY",
+        "ACCESS-DECISION-NOTE",
+        "ACCESS-DECISION-SAVE",
+        "ACCESS-DECISION-CLOSE",
+        "ACCESS-DECISION-KEEP",
+        "ACCESS-DECISION-DISCARD",
+        "ACCESS-DECISION-VALIDATION",
+        "ACCESS-LIST-REVIEW"
+      ],
+      "source_ids": [
+        "register-mail",
+        "access-decision",
+        "local-mail-disabled"
+      ],
+      "required_to_complete": "Habilitar correo y originar/verificar la solicitud desde su recorrido real.",
+      "ui_checks_still_pending": [
+        "Abrir la lista de solicitudes y comprobar su estado actual; una lista vacía no valida el editor de decisión."
+      ],
+      "conditions": [],
+      "ui_evidence": [],
+      "verification_basis": "Lectura estática de fuentes/configuración explícita del lanzador; no prueba real ejecutada."
+    },
+    {
+      "id": "LIMIT-EXISTING-ACCESS-REQUEST",
+      "status": "pending",
+      "category": "data_and_permissions",
+      "title": "Revisar una solicitud que ya exista",
+      "reason": "La lista y el editor podrían ser utilizables si hay una solicitud pendiente previa. Rechazar no requiere correo verificado; autorizar sí. No se ha leído la base ni confirmado ninguna solicitud actual.",
+      "affected_inventory_ids": [
+        "ACCESS-DECISION-DECISION",
+        "ACCESS-DECISION-ROLE",
+        "ACCESS-DECISION-BUSINESS",
+        "ACCESS-DECISION-IDENTITY",
+        "ACCESS-DECISION-NOTE",
+        "ACCESS-DECISION-SAVE",
+        "ACCESS-DECISION-CLOSE",
+        "ACCESS-DECISION-KEEP",
+        "ACCESS-DECISION-DISCARD",
+        "ACCESS-DECISION-VALIDATION",
+        "ACCESS-LIST-REFRESH",
+        "ACCESS-LIST-RETRY",
+        "ACCESS-LIST-REVIEW",
+        "ACCESS-LIST-PAGE-PREVIOUS",
+        "ACCESS-LIST-PAGE-NEXT",
+        "ACCESS-LIST-BACK"
+      ],
+      "source_ids": [
+        "access-decision",
+        "portal-master-gate"
+      ],
+      "required_to_complete": "Comprobar desde UI si existe una solicitud pendiente de prueba y si su correo está verificado.",
+      "ui_checks_still_pending": [
+        "Actualizar/reintentar/listar/volver son comprobables sin solicitudes; revisión y paginación requieren filas.",
+        "Si no existen filas, registrar esos casos blocked por falta de datos alcanzables; no crear una solicitud por API o semilla."
+      ],
+      "conditions": [],
+      "ui_evidence": [],
+      "verification_basis": "Lectura estática de fuentes/configuración explícita del lanzador; no prueba real ejecutada."
+    },
+    {
+      "id": "LIMIT-ROLE-COVERAGE",
+      "status": "pending",
+      "category": "data_and_permissions",
+      "title": "Perfiles adicionales y aislamiento entre locales",
+      "reason": "La semilla documentada contiene master, operador de un local y un alumno; no acredita la presencia actual de un admin no maestro, otro operador/local, una cuenta suspendida o una solicitud pendiente. Crear cuentas nuevas está bloqueado por SMTP.",
+      "affected_inventory_ids": [
+        "PORTAL-RESTRICTED",
+        "ADMIN-MANAGE-OPEN",
+        "ADMIN-CREATE-ACCOUNT-OPEN",
+        "ADMIN-ACCESS-OPEN",
+        "MANAGE-TAB-USERS",
+        "MANAGE-ACCOUNT-EDIT",
+        "ACCOUNT-FORM-NAME",
+        "ACCOUNT-FORM-EMAIL",
+        "ACCOUNT-FORM-PASSWORD",
+        "ACCOUNT-FORM-ROLE",
+        "ACCOUNT-FORM-BUSINESS",
+        "ACCOUNT-FORM-ACTIVE",
+        "ACCOUNT-FORM-SAVE",
+        "ACCOUNT-FORM-CLOSE",
+        "ACCOUNT-FORM-KEEP",
+        "ACCOUNT-FORM-DISCARD",
+        "ACCOUNT-FORM-VALIDATION"
+      ],
+      "source_ids": [
+        "seed-baseline",
+        "portal-master-gate",
+        "portal-account-form",
+        "create-account-mail"
+      ],
+      "required_to_complete": "Confirmar en UI los perfiles ficticios existentes y usar sesiones separadas. Si falta un perfil, anotar el caso específico como blocked hasta disponer de él mediante el proceso autorizado.",
+      "ui_checks_still_pending": [
+        "Comprobar los ámbitos de las cuentas disponibles sin asumir que cubren todos los roles."
+      ],
+      "conditions": [
+        "No se declara inexistente una cuenta solo por no figurar en la semilla. No publicar credenciales nuevas."
+      ],
+      "ui_evidence": [],
+      "verification_basis": "Lectura estática de fuentes/configuración explícita del lanzador; no prueba real ejecutada."
+    },
+    {
+      "id": "LIMIT-UNASSIGNED-ACCOUNT-SETUP",
+      "status": "blocked",
+      "category": "unreachable_state_setup",
+      "title": "Fabricar operador sin local desde los formularios normales",
+      "reason": "El editor requiere un local para role=business; la autorización también lo exige. Aunque el portal tiene un aviso para una cuenta recibida sin asignación, el caso no se puede preparar mediante esos formularios normales.",
+      "affected_inventory_ids": [
+        "PORTAL-RESTRICTED"
+      ],
+      "source_ids": [
+        "portal-account-form",
+        "access-decision"
+      ],
+      "required_to_complete": "Una cuenta existente en ese estado o un entorno dedicado que lo contemple. No alterar datos por fuera de UI en esta auditoría.",
+      "ui_checks_still_pending": [
+        "Si una cuenta ya muestra ese aviso, comprobar el bloqueo de los paneles y Cerrar sesión; su existencia actual no se ha comprobado."
+      ],
+      "conditions": [],
+      "ui_evidence": [],
+      "verification_basis": "Lectura estática de fuentes/configuración explícita del lanzador; no prueba real ejecutada."
+    },
+    {
+      "id": "LIMIT-PUSH-DELIVERY",
+      "status": "blocked",
+      "category": "configuration",
+      "title": "Notificaciones push a dispositivo",
+      "reason": "El lanzador fija push_enabled=false y no configura proveedores. El aviso visual, el sondeo de chat y el sonido en una pestaña no acreditan una notificación push al teléfono.",
+      "affected_inventory_ids": [],
+      "source_ids": [
+        "local-push-disabled",
+        "settings-production"
+      ],
+      "required_to_complete": "Proveedor push autorizado, credenciales, suscripción del dispositivo y prueba real en un entorno preparado.",
+      "ui_checks_still_pending": [
+        "Avisos en pantalla y sonido local se auditan por sus filas de Cocina, por separado."
+      ],
+      "conditions": [],
+      "ui_evidence": [],
+      "verification_basis": "Lectura estática de fuentes/configuración explícita del lanzador; no prueba real ejecutada."
+    },
+    {
+      "id": "LIMIT-CAMERA-SCAN",
+      "status": "pending",
+      "category": "hardware",
+      "title": "Capturar y entregar usando QR con cámara",
+      "reason": "DeliveryScanner depende de MobileScanner, cámara disponible, permiso del navegador y un QR legible del pedido. No se ha comprobado ese hardware ni permiso; no corresponde declararlo bloqueado solo por usar localhost.",
+      "affected_inventory_ids": [
+        "ORDER-DELIVERY-CONFIRM",
+        "ORDER-QR-OPEN",
+        "ORDER-QR-CAPTURE",
+        "ORDER-QR-MANUAL",
+        "ORDER-QR-BACK"
+      ],
+      "source_ids": [
+        "qr-camera"
+      ],
+      "required_to_complete": "Cámara y permiso efectivos, un QR legítimo visible al sensor y pedido listo propio.",
+      "ui_checks_still_pending": [
+        "Abrir/cancelar escáner; si falla cámara comprobar explicación y retorno a código manual.",
+        "Si se confirma ausencia de cámara o permiso negado, marcar captura blocked y mantener probado/pending por separado el fallback manual."
+      ],
+      "conditions": [],
+      "ui_evidence": [],
+      "verification_basis": "Lectura estática de fuentes/configuración explícita del lanzador; no prueba real ejecutada."
+    },
+    {
+      "id": "LIMIT-SOUND-OUTPUT",
+      "status": "pending",
+      "category": "hardware",
+      "title": "Escuchar alerta de Cocina",
+      "reason": "El control ejecuta un asset de audio y se desactiva si el reproductor falla. Ver el icono activado no demuestra salida audible ni volumen suficiente.",
+      "affected_inventory_ids": [
+        "KITCHEN-SOUND"
+      ],
+      "source_ids": [
+        "sound"
+      ],
+      "required_to_complete": "Salida de audio funcional, volumen y permiso de reproducción; comprobación humana de la alerta.",
+      "ui_checks_still_pending": [
+        "Activar/desactivar control y comprobar el aviso visual; no declarar sonido audible por una captura de pantalla."
+      ],
+      "conditions": [],
+      "ui_evidence": [],
+      "verification_basis": "Lectura estática de fuentes/configuración explícita del lanzador; no prueba real ejecutada."
+    },
+    {
+      "id": "LIMIT-IMAGE-PICKER",
+      "status": "pending",
+      "category": "filesystem_dialog",
+      "title": "Elegir/subir/quitar imagen de producto",
+      "reason": "El editor usa la galería/selector nativo y valida el archivo antes de subir. Para éxito y rechazos concretos hacen falta archivos existentes apropiados y control del diálogo; no hay un bloqueo de SMTP.",
+      "affected_inventory_ids": [
+        "PRODUCT-IMAGE-CHOOSE",
+        "PRODUCT-IMAGE-REMOVE",
+        "PRODUCT-SAVE-CREATE",
+        "PRODUCT-SAVE-EDIT"
+      ],
+      "source_ids": [
+        "image-picker"
+      ],
+      "required_to_complete": "Seleccionar desde UI una imagen de prueba existente y documentar formato/tamaño; comprobar cancelación y vista previa.",
+      "ui_checks_still_pending": [
+        "Cancelar selector y quitar una imagen son casos distintos de subir y guardar correctamente."
+      ],
+      "conditions": [],
+      "ui_evidence": [],
+      "verification_basis": "Lectura estática de fuentes/configuración explícita del lanzador; no prueba real ejecutada."
+    },
+    {
+      "id": "LIMIT-MOBILE-LAN",
+      "status": "blocked",
+      "category": "network",
+      "title": "Abrir desde un teléfono real por la red local",
+      "reason": "El servidor se enlaza a 127.0.0.1 y usa origen HTTP localhost. La dirección localhost de otro dispositivo apunta a ese dispositivo; esta configuración no permite una prueba de teléfono por LAN.",
+      "affected_inventory_ids": [],
+      "source_ids": [
+        "local-network",
+        "local-settings",
+        "guide-limits"
+      ],
+      "required_to_complete": "Preparar dirección accesible, origen permitido y HTTPS para un entorno de prueba de red. Este documento no cambia el servidor.",
+      "ui_checks_still_pending": [
+        "Emulación de anchura móvil en la laptop sigue pendiente/probable; no sustituye cámara, teclado o notificaciones de un móvil real."
+      ],
+      "conditions": [],
+      "ui_evidence": [],
+      "verification_basis": "Lectura estática de fuentes/configuración explícita del lanzador; no prueba real ejecutada."
+    },
+    {
+      "id": "LIMIT-PRODUCT-DELETE",
+      "status": "pending",
+      "category": "destructive_ui",
+      "title": "Eliminar producto",
+      "reason": "DELETE marca is_deleted/is_available y conserva el registro histórico; no es borrado físico. Aun así, no se ofrece restaurar el producto desde este editor, por lo que la operación no es reversible por la misma UI.",
+      "affected_inventory_ids": [
+        "PRODUCT-DELETE-OPEN",
+        "PRODUCT-DELETE-CONFIRM",
+        "PRODUCT-DELETE-CANCEL"
+      ],
+      "source_ids": [
+        "product-delete"
+      ],
+      "required_to_complete": "Producto ficticio prescindible creado o identificado desde UI; comprobar primero cancelar y después el resultado en catálogo/Alumno.",
+      "ui_checks_still_pending": [
+        "No se declara bloqueado por ser destructivo; registrar claramente el producto y efecto para no eliminar evidencia útil."
+      ],
+      "conditions": [],
+      "ui_evidence": [],
+      "verification_basis": "Lectura estática de fuentes/configuración explícita del lanzador; no prueba real ejecutada."
+    },
+    {
+      "id": "LIMIT-CHAT-PERMANENT-DELETE",
+      "status": "pending",
+      "category": "destructive_ui",
+      "title": "Cerrar y borrar conversación",
+      "reason": "La operación elimina físicamente mensajes y conversación para ambos participantes; conserva únicamente comprobantes criptográficos de cierre. No hay recuperación del contenido desde UI.",
+      "affected_inventory_ids": [
+        "CHAT-DELETE-OPEN",
+        "CHAT-DELETE-CONFIRM",
+        "CHAT-DELETE-CANCEL"
+      ],
+      "source_ids": [
+        "chat-delete"
+      ],
+      "required_to_complete": "Conversación de prueba prescindible; conservar evidencia del intercambio antes del borrado y comprobar desaparición en ambas interfaces.",
+      "ui_checks_still_pending": [
+        "Cancelar conserva la conversación; confirmar es una operación diferente y todavía pendiente.",
+        "No confundir el borrado con archivar o cerrar únicamente la ventana."
+      ],
+      "conditions": [],
+      "ui_evidence": [],
+      "verification_basis": "Lectura estática de fuentes/configuración explícita del lanzador; no prueba real ejecutada."
+    },
+    {
+      "id": "LIMIT-CHAT-PAGINATION",
+      "status": "pending",
+      "category": "data_volume",
+      "title": "Paginación de conversaciones",
+      "reason": "Una conversación se reutiliza por pareja alumno/local. Abrir repetidamente el chat del mismo alumno no genera más filas. Superar 20 conversaciones de Cocina requiere suficientes alumnos distintos disponibles; no se confirmó ese volumen.",
+      "affected_inventory_ids": [
+        "CHAT-PAGE-PREVIOUS",
+        "CHAT-PAGE-NEXT"
+      ],
+      "source_ids": [
+        "chat-scope",
+        "seed-baseline",
+        "create-account-mail"
+      ],
+      "required_to_complete": "Más de 20 conversaciones reales originadas desde UI con cuentas existentes; si faltan perfiles y no se pueden crear por correo, marcar el caso bloqueado.",
+      "ui_checks_still_pending": [
+        "Los botones deshabilitados en la primera/única página se verifican independientemente."
+      ],
+      "conditions": [],
+      "ui_evidence": [],
+      "verification_basis": "Lectura estática de fuentes/configuración explícita del lanzador; no prueba real ejecutada."
+    },
+    {
+      "id": "LIMIT-DATA-PAGINATION",
+      "status": "pending",
+      "category": "data_volume",
+      "title": "Páginas adicionales y Ver más",
+      "reason": "Paginación requiere superar los umbrales reales: catálogo 20, gestión 20, historial/pedidos especiales 30, solicitudes 30; Administración carga hasta 200 por recurso y revela comentarios de 15 en 15. No se consultaron los conteos actuales.",
+      "affected_inventory_ids": [
+        "CATALOG-PAGE-PREVIOUS",
+        "CATALOG-PAGE-NEXT",
+        "HISTORY-PAGE-PREVIOUS",
+        "HISTORY-PAGE-NEXT",
+        "SPECIAL-PAGE-PREVIOUS",
+        "SPECIAL-PAGE-NEXT",
+        "ADMIN-LOAD-MORE",
+        "ADMIN-REVIEWS-MORE",
+        "ADMIN-ATTENTION-MORE",
+        "MANAGE-PAGE-PREVIOUS",
+        "MANAGE-PAGE-NEXT",
+        "ACCESS-LIST-PAGE-PREVIOUS",
+        "ACCESS-LIST-PAGE-NEXT"
+      ],
+      "source_ids": [
+        "admin-page-cap",
+        "admin-history-cap",
+        "catalog-page-limit",
+        "management-page-limit",
+        "kitchen-history-page-limit",
+        "request-page-limit",
+        "v32-page-limits"
+      ],
+      "required_to_complete": "Alcanzar el volumen con operaciones UI o aprovechar registros ya existentes; si no es alcanzable, documentar la falta de datos por control.",
+      "ui_checks_still_pending": [
+        "Comprobar límites de primera/última página y estados vacíos; no dar por probada página siguiente por aparecer su icono."
+      ],
+      "conditions": [],
+      "ui_evidence": [],
+      "verification_basis": "Lectura estática de fuentes/configuración explícita del lanzador; no prueba real ejecutada."
+    },
+    {
+      "id": "LIMIT-CHAT-EXPIRY",
+      "status": "pending",
+      "category": "elapsed_time",
+      "title": "Caducidad real de conversación",
+      "reason": "La caducidad se basa en 24 horas reales sin actividad. Bajo la regla de no alterar datos ni reloj, no se puede acelerar con cambios a lastActivityAt.",
+      "affected_inventory_ids": [
+        "CHAT-REFRESH",
+        "CHAT-SELECT",
+        "CHAT-SEND"
+      ],
+      "source_ids": [
+        "chat-duration"
+      ],
+      "required_to_complete": "Conversación legítima que cumpla 24 horas sin actividad y comprobación posterior desde UI.",
+      "ui_checks_still_pending": [
+        "Borrado explícito y caducidad no son la misma prueba. No declarar probado TTL por cerrar manualmente."
+      ],
+      "conditions": [],
+      "ui_evidence": [],
+      "verification_basis": "Lectura estática de fuentes/configuración explícita del lanzador; no prueba real ejecutada."
+    },
+    {
+      "id": "LIMIT-CHAT-MESSAGE-CAP",
+      "status": "pending",
+      "category": "data_volume",
+      "title": "Límite de 1,000 mensajes",
+      "reason": "El backend permite hasta 1,000 mensajes por conversación y limita la frecuencia. La existencia del límite en código no demuestra que se haya alcanzado desde UI.",
+      "affected_inventory_ids": [
+        "CHAT-REFRESH",
+        "CHAT-SEND"
+      ],
+      "source_ids": [
+        "chat-limit"
+      ],
+      "required_to_complete": "Alcanzar legítimamente el volumen desde UI si forma parte de la auditoría; no usar scripts de envío.",
+      "ui_checks_still_pending": [
+        "Enviar uno o varios mensajes verifica intercambio básico, no el límite de capacidad."
+      ],
+      "conditions": [],
+      "ui_evidence": [],
+      "verification_basis": "Lectura estática de fuentes/configuración explícita del lanzador; no prueba real ejecutada."
+    },
+    {
+      "id": "LIMIT-PICKUP-DEADLINE",
+      "status": "pending",
+      "category": "elapsed_time",
+      "title": "Cancelar un pedido listo no recogido",
+      "reason": "El control solo se habilita después del plazo calculado desde readyAt o scheduledPickupTime, el posterior, más pickupTimeoutMinutes. El mínimo es 5 minutos; necesita un pedido propio listo no entregado.",
+      "affected_inventory_ids": [
+        "CLOSING-TIMEOUT",
+        "CLOSING-TIMEOUT-SAVE",
+        "SPECIAL-NOT-COLLECTED-OPEN",
+        "SPECIAL-NOT-COLLECTED-CONFIRM",
+        "SPECIAL-NOT-COLLECTED-CANCEL"
+      ],
+      "source_ids": [
+        "special-timeout"
+      ],
+      "required_to_complete": "Preparar pedido desde UI, configurar un plazo permitido y esperar el tiempo real; actualizar la pantalla después.",
+      "ui_checks_still_pending": [
+        "Antes del plazo comprobar bloqueo; después cancelar y verificar resultado. No modificar timestamps."
+      ],
+      "conditions": [],
+      "ui_evidence": [],
+      "verification_basis": "Lectura estática de fuentes/configuración explícita del lanzador; no prueba real ejecutada."
+    },
+    {
+      "id": "LIMIT-DAILY-CLOSING",
+      "status": "pending",
+      "category": "elapsed_time",
+      "title": "Cierre automático y prórroga del día",
+      "reason": "El cierre se registra una vez por día/local. Si ya se procesó, reabrir manualmente no limpia last_auto_close_date y posponer devuelve CLOSING_ALREADY_PROCESSED. No se leyó el estado actual.",
+      "affected_inventory_ids": [
+        "KITCHEN-RECEPTION-OPEN",
+        "CLOSING-SAVE",
+        "CLOSING-POSTPONE-OPEN",
+        "CLOSING-POSTPONE-PICK",
+        "CLOSING-POSTPONE-CONFIRM",
+        "CLOSING-POSTPONE-CANCEL"
+      ],
+      "source_ids": [
+        "daily-close",
+        "postpone-once"
+      ],
+      "required_to_complete": "Comprobar en UI si el cierre del día sigue disponible. Si ya ocurrió, esperar otro día; no reiniciar datos para repetir.",
+      "ui_checks_still_pending": [
+        "Conservar la prueba de reapertura manual y rechazo de prórroga como casos separados de un nuevo cierre automático."
+      ],
+      "conditions": [],
+      "ui_evidence": [],
+      "verification_basis": "Lectura estática de fuentes/configuración explícita del lanzador; no prueba real ejecutada."
+    },
+    {
+      "id": "LIMIT-VOUCHER-DAILY",
+      "status": "pending",
+      "category": "data_and_time",
+      "title": "Vales y su liberación",
+      "reason": "El alumno puede tener una reserva/consumo activo por día de campus; la liberación requiere pedido cancelado y vale no consumido. No se confirmó si el alumno disponible ya agotó su vale hoy.",
+      "affected_inventory_ids": [
+        "SPECIAL-NOT-COLLECTED-OPEN",
+        "SPECIAL-NOT-COLLECTED-CONFIRM",
+        "SPECIAL-NOT-COLLECTED-CANCEL",
+        "SPECIAL-VOUCHER-OPEN",
+        "SPECIAL-VOUCHER-CONFIRM",
+        "SPECIAL-VOUCHER-CANCEL"
+      ],
+      "source_ids": [
+        "voucher-limit",
+        "special-timeout"
+      ],
+      "required_to_complete": "Crear pedido con Vale de comida desde Alumnos, alcanzar la cancelación adecuada desde UI y confirmar que no se canjeó. Si está consumido, esperar otro día o usar otro alumno existente.",
+      "ui_checks_still_pending": [
+        "El rechazo de vale consumido no valida una liberación exitosa; no modificar la reserva directamente."
+      ],
+      "conditions": [],
+      "ui_evidence": [],
+      "verification_basis": "Lectura estática de fuentes/configuración explícita del lanzador; no prueba real ejecutada."
+    },
+    {
+      "id": "LIMIT-HISTORIC-ANALYTICS",
+      "status": "pending",
+      "category": "data_and_time",
+      "title": "Tendencias de varios días y filtros académicos",
+      "reason": "Las opiniones nuevas reciben hora del servidor y carrera/grupo del padrón. UI no permite elegir fechas antiguas ni inventar carrera/grupo. La semilla solo documenta una carrera y un grupo; no confirma los datos actuales.",
+      "affected_inventory_ids": [
+        "ADMIN-FILTER-CAREER",
+        "ADMIN-PICKER-CAREER-SEARCH",
+        "ADMIN-PICKER-CAREER-SELECT",
+        "ADMIN-PICKER-CAREER-CANCEL",
+        "ADMIN-FILTER-GROUP",
+        "ADMIN-PICKER-GROUP-SEARCH",
+        "ADMIN-PICKER-GROUP-SELECT",
+        "ADMIN-PICKER-GROUP-CANCEL",
+        "ADMIN-PERIOD-WEEK",
+        "ADMIN-PERIOD-MONTH",
+        "ADMIN-PERIOD-QUARTER",
+        "ADMIN-PERIOD-ALL",
+        "ADMIN-HOUR-ALL",
+        "ADMIN-HOUR-MORNING",
+        "ADMIN-HOUR-AFTERNOON",
+        "ADMIN-HOUR-EVENING",
+        "ADMIN-TREND-TOOLTIP",
+        "ADMIN-CHARTS-READ"
+      ],
+      "source_ids": [
+        "student-explicit-date",
+        "seed-baseline",
+        "admin-academic-read"
+      ],
+      "required_to_complete": "Usar opiniones previas reales accesibles desde UI o esperar los días/horas necesarios. Para otras carreras/grupos se necesitan cuentas institucionales existentes con esas atribuciones.",
+      "ui_checks_still_pending": [
+        "Datos de hoy permiten medias/histograma/filtro vacío, pero no certifican separación temporal entre varios días ni identidad de carreras distintas."
+      ],
+      "conditions": [],
+      "ui_evidence": [],
+      "verification_basis": "Lectura estática de fuentes/configuración explícita del lanzador; no prueba real ejecutada."
+    },
+    {
+      "id": "LIMIT-FOOD-SERVICE-NEW-DATA",
+      "status": "blocked",
+      "category": "missing_ui_control",
+      "title": "Crear puntuaciones separadas de Servicio y Alimentos",
+      "reason": "RateOrderScreen envía únicamente stars y comment. El backend acepta foodRating/serviceRating por otro esquema y Administración los calcula, pero la UI de alumnos actual carece de esos controles.",
+      "affected_inventory_ids": [
+        "ADMIN-CHARTS-READ",
+        "ADMIN-REVIEW-DETAIL"
+      ],
+      "source_ids": [
+        "student-business-payload",
+        "business-rating-schema",
+        "food-service-model"
+      ],
+      "required_to_complete": "Un flujo UI que exponga esas dimensiones, si se decide incorporarlo, o registros anteriores legítimos para comprobar solo su visualización. No generar datos por API.",
+      "ui_checks_still_pending": [
+        "La ausencia de puntuación debe mostrar Sin valoraciones/—. Eso es comprobable con opiniones actuales sin esas dimensiones.",
+        "Si ya existen valores, verlos no acredita su captura mediante la UI actual."
+      ],
+      "conditions": [],
+      "ui_evidence": [],
+      "verification_basis": "Lectura estática de fuentes/configuración explícita del lanzador; no prueba real ejecutada."
+    },
+    {
+      "id": "LIMIT-PRODUCT-REVIEW-IN-ADMIN",
+      "status": "blocked",
+      "category": "missing_ui_feature",
+      "title": "Ver reseñas de productos en las gráficas y seguimiento administrativos",
+      "reason": "Administración solicita admin/reviews y el backend selecciona Review, la opinión del negocio. Las reseñas de productos se almacenan en ProductReview y se consultan por products/{id}/reviews; el dashboard no usa esa fuente ni tiene selector de producto.",
+      "affected_inventory_ids": [
+        "ADMIN-COMMENT-SEARCH",
+        "ADMIN-CHARTS-READ",
+        "ADMIN-REVIEW-DETAIL",
+        "FOLLOWUP-STATUS",
+        "FOLLOWUP-ASSIGNEE",
+        "FOLLOWUP-NOTE",
+        "FOLLOWUP-SAVE",
+        "FOLLOWUP-RETRY",
+        "FOLLOWUP-CLOSE",
+        "FOLLOWUP-READ-HISTORY",
+        "FOLLOWUP-COPY-COMMENT"
+      ],
+      "source_ids": [
+        "admin-review-feed",
+        "admin-review-query",
+        "business-rating",
+        "product-rating",
+        "product-table",
+        "product-feed",
+        "student-product-view"
+      ],
+      "required_to_complete": "Si ese alcance se requiere, implementar una vista/contrato administrativo para reseñas de producto. No mezclar automáticamente sus puntuaciones con las del negocio.",
+      "ui_checks_still_pending": [
+        "Verificar en Alumnos la reseña pública del platillo y, por separado, valorar el negocio para comprobar su reflejo en Administración.",
+        "La ausencia en Administración de una reseña de platillo no demuestra un fallo de sincronización: son conjuntos diferentes."
+      ],
+      "conditions": [],
+      "ui_evidence": [],
+      "verification_basis": "Lectura estática de fuentes/configuración explícita del lanzador; no prueba real ejecutada."
+    },
+    {
+      "id": "LIMIT-ACADEMIC-CRUD",
+      "status": "blocked",
+      "category": "missing_ui_feature",
+      "title": "Importar o editar padrón/carreras/grupos desde estos paneles",
+      "reason": "El árbol REST del panel solo lee el catálogo académico para filtros; no expone pantallas de importación ni CRUD académico. La semilla es ficticia, no una verificación con la universidad.",
+      "affected_inventory_ids": [
+        "ADMIN-FILTER-CAREER",
+        "ADMIN-FILTER-GROUP"
+      ],
+      "source_ids": [
+        "admin-academic-read",
+        "seed-baseline",
+        "prior-inventory-scope"
+      ],
+      "required_to_complete": "Una interfaz/autorización para gestionar el padrón y datos institucionales provistos; no sustituirlo con correos inventados.",
+      "ui_checks_still_pending": [
+        "Buscar/seleccionar los valores existentes en filtros es un caso separado y sigue pendiente."
+      ],
+      "conditions": [],
+      "ui_evidence": [],
+      "verification_basis": "Lectura estática de fuentes/configuración explícita del lanzador; no prueba real ejecutada."
+    },
+    {
+      "id": "LIMIT-EXPORT",
+      "status": "blocked",
+      "category": "missing_ui_feature",
+      "title": "Descargar reportes CSV/PDF",
+      "reason": "El inventario alcanzable contiene historial, resumen y estadísticas en pantalla, sin control de exportación. No se puede probar una descarga que la UI no ofrece.",
+      "affected_inventory_ids": [
+        "KITCHEN-NAV-SALES",
+        "V32-NAV-STATS",
+        "ADMIN-CHARTS-READ"
+      ],
+      "source_ids": [
+        "admin-review-feed",
+        "prior-inventory-scope"
+      ],
+      "required_to_complete": "Implementación explícita de exportación si forma parte del alcance contratado.",
+      "ui_checks_still_pending": [
+        "Las cifras y filtros visibles se prueban independientemente."
+      ],
+      "conditions": [],
+      "ui_evidence": [],
+      "verification_basis": "Lectura estática de fuentes/configuración explícita del lanzador; no prueba real ejecutada."
+    },
+    {
+      "id": "LIMIT-ACCOUNT-BUSINESS-DELETE",
+      "status": "blocked",
+      "category": "missing_ui_feature",
+      "title": "Borrado definitivo de cuentas o locales",
+      "reason": "Los formularios expuestos crean/editan y cambian activo/suspendido/inactivo; no tienen acción de borrado definitivo. No equivale al borrado de un producto o una conversación.",
+      "affected_inventory_ids": [
+        "BUSINESS-FORM-ACTIVE",
+        "ACCOUNT-FORM-ACTIVE"
+      ],
+      "source_ids": [
+        "portal-account-form",
+        "update-account-mail",
+        "prior-inventory-scope"
+      ],
+      "required_to_complete": "Definir e implementar ese alcance si se necesita; actualmente no hay botón que auditar.",
+      "ui_checks_still_pending": [
+        "Activar/desactivar o suspender se prueban con sus reglas y preservación de historial."
+      ],
+      "conditions": [],
+      "ui_evidence": [],
+      "verification_basis": "Lectura estática de fuentes/configuración explícita del lanzador; no prueba real ejecutada."
+    },
+    {
+      "id": "LIMIT-FOLLOWUP-OLDER-PAGES",
+      "status": "blocked",
+      "category": "missing_ui_control",
+      "title": "Consultar más de 50 eventos de un seguimiento",
+      "reason": "El repositorio solicita history?page=1&limit=50 y el diálogo solo muestra aviso de eventos anteriores, sin navegación a otra página.",
+      "affected_inventory_ids": [
+        "FOLLOWUP-READ-HISTORY"
+      ],
+      "source_ids": [
+        "admin-history-cap"
+      ],
+      "required_to_complete": "Agregar navegación si se requiere recuperar eventos anteriores desde el panel.",
+      "ui_checks_still_pending": [
+        "Comprobar hasta 50 eventos y el aviso si hay más requiere historial existente; no declarar navegación inexistente como probada."
+      ],
+      "conditions": [],
+      "ui_evidence": [],
+      "verification_basis": "Lectura estática de fuentes/configuración explícita del lanzador; no prueba real ejecutada."
+    },
+    {
+      "id": "LIMIT-EXTERNAL-PAYMENT",
+      "status": "blocked",
+      "category": "not_integrated",
+      "title": "Cobros reales con tarjeta/transferencia",
+      "reason": "La selección de método de pago declara que no realiza cargos; el flujo registra cómo pagará el alumno. No acredita procesamiento bancario, terminal, devolución ni conciliación externa.",
+      "affected_inventory_ids": [
+        "KITCHEN-NAV-SALES",
+        "ORDER-DELIVERY-CONFIRM",
+        "V32-NAV-STATS"
+      ],
+      "source_ids": [
+        "payments-not-charge"
+      ],
+      "required_to_complete": "Integración y entorno de prueba de un proveedor de pagos, si el producto debe efectuar cobros.",
+      "ui_checks_still_pending": [
+        "Los pedidos con distintos métodos y sus etiquetas/totales se pueden probar desde UI sin realizar un cargo."
+      ],
+      "conditions": [],
+      "ui_evidence": [],
+      "verification_basis": "Lectura estática de fuentes/configuración explícita del lanzador; no prueba real ejecutada."
+    },
+    {
+      "id": "LIMIT-PRODUCTION-CAPACITY",
+      "status": "blocked",
+      "category": "environment_not_equivalent",
+      "title": "Certificar producción, 1,000 alumnos o varios workers",
+      "reason": "El lanzador es development, un worker, sin Redis y enlazado a localhost. Un recorrido manual no equivale a una prueba de carga ni valida coordinación entre procesos, HTTPS, disponibilidad o hardware final.",
+      "affected_inventory_ids": [],
+      "source_ids": [
+        "local-network",
+        "local-settings",
+        "settings-production",
+        "guide-limits"
+      ],
+      "required_to_complete": "Entorno de despliegue definido y pruebas de capacidad/operación específicas con la arquitectura final; esta auditoría UI no las reemplaza.",
+      "ui_checks_still_pending": [
+        "La integración funcional local de pantallas puede validarse sin declarar capacidad de producción."
+      ],
+      "conditions": [],
+      "ui_evidence": [],
+      "verification_basis": "Lectura estática de fuentes/configuración explícita del lanzador; no prueba real ejecutada."
+    }
+  ],
+  "sources": [
+    {
+      "id": "local-settings",
+      "file": "tools/integrated_server.py",
+      "anchor": "def local_settings(config):",
+      "line": 50,
+      "file_sha256": "c4d5a81f7e045f456378289a22f43b6e43acf30d6687ff0899760e6d80741f95"
+    },
+    {
+      "id": "local-mail-disabled",
+      "file": "tools/integrated_server.py",
+      "anchor": "smtp_host='', smtp_from='', smtp_user='', smtp_password='',",
+      "line": 65,
+      "file_sha256": "c4d5a81f7e045f456378289a22f43b6e43acf30d6687ff0899760e6d80741f95"
+    },
+    {
+      "id": "local-push-disabled",
+      "file": "tools/integrated_server.py",
+      "anchor": "enable_test_mailbox=False, background_events=True, push_enabled=False",
+      "line": 66,
+      "file_sha256": "c4d5a81f7e045f456378289a22f43b6e43acf30d6687ff0899760e6d80741f95"
+    },
+    {
+      "id": "local-network",
+      "file": "tools/integrated_server.py",
+      "anchor": "uvicorn.run(app, host='127.0.0.1', port=18080, workers=1,",
+      "line": 156,
+      "file_sha256": "c4d5a81f7e045f456378289a22f43b6e43acf30d6687ff0899760e6d80741f95"
+    },
+    {
+      "id": "mail-gate",
+      "file": "backend/snackup/mailer.py",
+      "anchor": "def mail_available(",
+      "line": 9,
+      "file_sha256": "641f506e2c23a2b944260c25601572191ff34dcbf078f1918c383974c58ac181"
+    },
+    {
+      "id": "access-options",
+      "file": "backend/snackup/identity.py",
+      "anchor": "def access_options(",
+      "line": 137,
+      "file_sha256": "0e0b7fe4050f158aeff78ae086ecbcf81677b6be568676bb530bd7e599238888"
+    },
+    {
+      "id": "register-mail",
+      "file": "backend/snackup/identity.py",
+      "anchor": "def register(",
+      "line": 218,
+      "file_sha256": "0e0b7fe4050f158aeff78ae086ecbcf81677b6be568676bb530bd7e599238888"
+    },
+    {
+      "id": "forgot-mail",
+      "file": "backend/snackup/identity.py",
+      "anchor": "def forgot_password(",
+      "line": 277,
+      "file_sha256": "0e0b7fe4050f158aeff78ae086ecbcf81677b6be568676bb530bd7e599238888"
+    },
+    {
+      "id": "mail-token",
+      "file": "backend/snackup/identity.py",
+      "anchor": "def _mail_token(",
+      "line": 102,
+      "file_sha256": "0e0b7fe4050f158aeff78ae086ecbcf81677b6be568676bb530bd7e599238888"
+    },
+    {
+      "id": "google-disabled",
+      "file": "backend/snackup/identity.py",
+      "anchor": "@router.get(\"/auth/google/start\")",
+      "line": 349,
+      "file_sha256": "0e0b7fe4050f158aeff78ae086ecbcf81677b6be568676bb530bd7e599238888"
+    },
+    {
+      "id": "canonical-options",
+      "file": "backend/snackup/v3_identity.py",
+      "anchor": "def options(request:",
+      "line": 200,
+      "file_sha256": "176aed1c57b6b15683321dbfa69436a2f6d02aea28d9a54e6958232cc33b676b"
+    },
+    {
+      "id": "create-account-mail",
+      "file": "backend/snackup/admin.py",
+      "anchor": "def create_user(",
+      "line": 105,
+      "file_sha256": "dd2e3e2c49ac36928b2abf860dfc975eb07181686d2d9e35196751b355bd8ff5"
+    },
+    {
+      "id": "update-account-mail",
+      "file": "backend/snackup/admin.py",
+      "anchor": "def update_user(",
+      "line": 128,
+      "file_sha256": "dd2e3e2c49ac36928b2abf860dfc975eb07181686d2d9e35196751b355bd8ff5"
+    },
+    {
+      "id": "access-decision",
+      "file": "backend/snackup/admin.py",
+      "anchor": "def decide_access(",
+      "line": 172,
+      "file_sha256": "dd2e3e2c49ac36928b2abf860dfc975eb07181686d2d9e35196751b355bd8ff5"
+    },
+    {
+      "id": "transaction-rollback",
+      "file": "backend/snackup/db.py",
+      "anchor": "session.rollback()",
+      "line": 73,
+      "file_sha256": "9ff20f11802426c27e7ef702bbd1df63fd35b0100fde63daba491d4cde1df65b"
+    },
+    {
+      "id": "seed-baseline",
+      "file": "tools/seed_integrated.py",
+      "anchor": "accounts = [",
+      "line": 53,
+      "file_sha256": "e3ee7808a46df25d5110026f27b6c5a6014b42408a90324d2dc34f9ec367bf28"
+    },
+    {
+      "id": "portal-register-gate",
+      "file": "app/lib/features/portal/rest_portal_app.dart",
+      "anchor": "_busy || _accessOptions?.selfRegistration != true",
+      "line": 552,
+      "file_sha256": "c7c4db44a54819dad6b9408adab45da6171d1ee3b33b6a70378526b1745fd3c1"
+    },
+    {
+      "id": "portal-google-gate",
+      "file": "app/lib/features/portal/rest_portal_app.dart",
+      "anchor": "_busy || _accessOptions?.googleEnabled != true",
+      "line": 315,
+      "file_sha256": "c7c4db44a54819dad6b9408adab45da6171d1ee3b33b6a70378526b1745fd3c1"
+    },
+    {
+      "id": "portal-master-gate",
+      "file": "app/lib/features/portal/rest_portal_app.dart",
+      "anchor": "onAccessRequests: !account.canManageAccounts",
+      "line": 146,
+      "file_sha256": "c7c4db44a54819dad6b9408adab45da6171d1ee3b33b6a70378526b1745fd3c1"
+    },
+    {
+      "id": "portal-account-form",
+      "file": "app/lib/features/operations/admin_management.dart",
+      "anchor": "Future<void> _user([PortalUser? user])",
+      "line": 134,
+      "file_sha256": "b51f1495b28183ea1f3c93501d5e3697f2542c0c6756748854c5869753061323"
+    },
+    {
+      "id": "qr-camera",
+      "file": "app/lib/features/operations/order_dialogs.dart",
+      "anchor": "class DeliveryScanner",
+      "line": 209,
+      "file_sha256": "db88a9f2a9aac8a5eba0081d7ecd9b1a7a1c9ecf5f262556db9e42203cfd3ded"
+    },
+    {
+      "id": "sound",
+      "file": "app/lib/features/operations/business_portal.dart",
+      "anchor": "Future<void> _notify()",
+      "line": 129,
+      "file_sha256": "669d24ed2019d979d0bbf1dec13d21a8594c39c29c51d2d11d87559a5b75266f"
+    },
+    {
+      "id": "image-picker",
+      "file": "app/lib/features/catalog/catalog_screen.dart",
+      "anchor": "final image = await ImagePicker().pickImage(",
+      "line": 337,
+      "file_sha256": "c2a2015f16b83c5312b2f731c66f56fd4f10e4da8a8620e7726d8db93ba40851"
+    },
+    {
+      "id": "product-delete",
+      "file": "backend/snackup/operations.py",
+      "anchor": "def delete_product(",
+      "line": 245,
+      "file_sha256": "12e5c9c8f758d971c2f119d7fac6d2c3dcb09b3899ad30172be286d0d1ee2de1"
+    },
+    {
+      "id": "chat-delete",
+      "file": "backend/snackup/v32_chat.py",
+      "anchor": "def close_chat(",
+      "line": 77,
+      "file_sha256": "af45dfb8410407a32da3c65f66fdd0e74274477234a6957836fda33af4270a7b"
+    },
+    {
+      "id": "chat-scope",
+      "file": "backend/snackup/v32_chat.py",
+      "anchor": "def open_chat(",
+      "line": 108,
+      "file_sha256": "af45dfb8410407a32da3c65f66fdd0e74274477234a6957836fda33af4270a7b"
+    },
+    {
+      "id": "chat-duration",
+      "file": "backend/snackup/v32_chat.py",
+      "anchor": "TTL = timedelta(hours=24)",
+      "line": 20,
+      "file_sha256": "af45dfb8410407a32da3c65f66fdd0e74274477234a6957836fda33af4270a7b"
+    },
+    {
+      "id": "chat-limit",
+      "file": "backend/snackup/v32_chat.py",
+      "anchor": "422, 'CHAT_MESSAGE_LIMIT'",
+      "line": 171,
+      "file_sha256": "af45dfb8410407a32da3c65f66fdd0e74274477234a6957836fda33af4270a7b"
+    },
+    {
+      "id": "special-timeout",
+      "file": "app/lib/features/operations/v32_screens.dart",
+      "anchor": "DateTime? deadline(",
+      "line": 63,
+      "file_sha256": "945c87b06c89803d102d7fef65d6a765b314d316a12e4944c5a41de93477add6"
+    },
+    {
+      "id": "daily-close",
+      "file": "backend/snackup/v32_services.py",
+      "anchor": "def close_if_due(",
+      "line": 39,
+      "file_sha256": "105fc803486ee398fb3017b7fb6d500784f60cb97536a4d237d46071ed265645"
+    },
+    {
+      "id": "postpone-once",
+      "file": "backend/snackup/v32_api.py",
+      "anchor": "require(business.last_auto_close_date != day",
+      "line": 71,
+      "file_sha256": "f86757784df1a08be929839c9d29d67808268da38f9cf00dc003cf8581ef5634"
+    },
+    {
+      "id": "voucher-limit",
+      "file": "backend/snackup/v32_services.py",
+      "anchor": "def reserve_voucher(",
+      "line": 102,
+      "file_sha256": "105fc803486ee398fb3017b7fb6d500784f60cb97536a4d237d46071ed265645"
+    },
+    {
+      "id": "payments-not-charge",
+      "file": "lib/features/user/cart_screen.dart",
+      "anchor": "Esta confirmación no realiza un cargo.",
+      "line": 271,
+      "file_sha256": "1059b614bb5b96b76dd0197806128799d915f3be548686d17290832d10982b0f"
+    },
+    {
+      "id": "admin-review-feed",
+      "file": "app/lib/features/admin/data/rest_admin_repository.dart",
+      "anchor": "this.reviews = 'admin/reviews'",
+      "line": 11,
+      "file_sha256": "8dd8d276c9629ffefd346ef193aca4e0529c8efc02213b2e9f67eddcac4bda35"
+    },
+    {
+      "id": "admin-review-query",
+      "file": "backend/snackup/admin.py",
+      "anchor": "return page_result(db, select(Review).order_by(",
+      "line": 284,
+      "file_sha256": "dd2e3e2c49ac36928b2abf860dfc975eb07181686d2d9e35196751b355bd8ff5"
+    },
+    {
+      "id": "business-rating",
+      "file": "backend/snackup/v3_reviews.py",
+      "anchor": "def rate_business(",
+      "line": 140,
+      "file_sha256": "f154e065ddfb45c67cdc73bb89aff658628c72ef31d937375b8cddfc4ed47bec"
+    },
+    {
+      "id": "product-rating",
+      "file": "backend/snackup/v3_reviews.py",
+      "anchor": "def review_products(",
+      "line": 161,
+      "file_sha256": "f154e065ddfb45c67cdc73bb89aff658628c72ef31d937375b8cddfc4ed47bec"
+    },
+    {
+      "id": "product-feed",
+      "file": "backend/snackup/v3_reviews.py",
+      "anchor": "def list_product_reviews(",
+      "line": 195,
+      "file_sha256": "f154e065ddfb45c67cdc73bb89aff658628c72ef31d937375b8cddfc4ed47bec"
+    },
+    {
+      "id": "product-table",
+      "file": "backend/snackup/review_models.py",
+      "anchor": "class ProductReview",
+      "line": 14,
+      "file_sha256": "3cb7d86bf2cbede2d96360039212a78522fdb6050b09b3c7cd0c19fbeb7721e4"
+    },
+    {
+      "id": "student-business-payload",
+      "file": "lib/features/user/rate_order_screen.dart",
+      "anchor": "body: {'stars': _stars!, 'comment': _comment.text.trim()}",
+      "line": 91,
+      "file_sha256": "71edcb6da13e1c96f9d37c5961a2f0ff8839ab953987ae1fd3e86631161f8c89"
+    },
+    {
+      "id": "student-product-view",
+      "file": "lib/student/product_reviews.dart",
+      "anchor": "class PublicProductReviews",
+      "line": 6,
+      "file_sha256": "4a4f85d92f2302c5df4c86831ce3e02c83cf27d55b121a625826120240b92383"
+    },
+    {
+      "id": "food-service-model",
+      "file": "app/lib/features/admin/domain/admin_models.dart",
+      "anchor": "double? get service => average(",
+      "line": 187,
+      "file_sha256": "51a76dcab31f0b3c696ff95728d9de1b11cfb4380fd0371bf7d8008c21668e83"
+    },
+    {
+      "id": "business-rating-schema",
+      "file": "backend/snackup/v3_reviews.py",
+      "anchor": "class RatingInput",
+      "line": 46,
+      "file_sha256": "f154e065ddfb45c67cdc73bb89aff658628c72ef31d937375b8cddfc4ed47bec"
+    },
+    {
+      "id": "admin-academic-read",
+      "file": "app/lib/features/admin/data/rest_admin_repository.dart",
+      "anchor": "'admin/academic-catalog'",
+      "line": 187,
+      "file_sha256": "8dd8d276c9629ffefd346ef193aca4e0529c8efc02213b2e9f67eddcac4bda35"
+    },
+    {
+      "id": "admin-history-cap",
+      "file": "app/lib/features/admin/data/rest_admin_repository.dart",
+      "anchor": "query: {'page': '1', 'limit': '50'}",
+      "line": 243,
+      "file_sha256": "8dd8d276c9629ffefd346ef193aca4e0529c8efc02213b2e9f67eddcac4bda35"
+    },
+    {
+      "id": "admin-page-cap",
+      "file": "app/lib/features/admin/data/rest_admin_repository.dart",
+      "anchor": "query: {'page': '${pages[path]}', 'limit': '200'}",
+      "line": 132,
+      "file_sha256": "8dd8d276c9629ffefd346ef193aca4e0529c8efc02213b2e9f67eddcac4bda35"
+    },
+    {
+      "id": "student-explicit-date",
+      "file": "backend/snackup/admin.py",
+      "anchor": "def create_review_record(",
+      "line": 347,
+      "file_sha256": "dd2e3e2c49ac36928b2abf860dfc975eb07181686d2d9e35196751b355bd8ff5"
+    },
+    {
+      "id": "guide-limits",
+      "file": "INTEGRACION_LOCAL.md",
+      "anchor": "SMTP, el buzón de pruebas y las notificaciones push están desactivados",
+      "line": 108,
+      "file_sha256": "bcdb36836840719ae61a6cc373270b5ccfbe036a7e74eb6d69c0cad1acd1c8da"
+    },
+    {
+      "id": "settings-production",
+      "file": "backend/snackup/config.py",
+      "anchor": "if self.environment == 'production':",
+      "line": 111,
+      "file_sha256": "84c27ee49295eef755fcf598645b9a97c07b9b62f4cd44ec65c7c573c8e67f8f"
+    },
+    {
+      "id": "prior-inventory-scope",
+      "file": "docs/qa-paneles-inventory.json",
+      "anchor": "\"not_exposed_in_this_rest_ui\"",
+      "line": 322,
+      "file_sha256": "1b90f410865c74645c5fc4d479c5526b15793386bf45b2c9fa7de6bdb275a245"
+    },
+    {
+      "id": "catalog-page-limit",
+      "file": "app/lib/catalog/catalog.dart",
+      "anchor": "const CatalogQuery({this.page = 1, this.limit = 20",
+      "line": 125,
+      "file_sha256": "5bfeca1fafa3adf81c7bf1e0f0df6cce2c040fdf20a22faa1da48aa6a9d11552"
+    },
+    {
+      "id": "management-page-limit",
+      "file": "app/lib/operations/operations_repository.dart",
+      "anchor": "Future<OperationsPage<BusinessRecord>> businesses(",
+      "line": 210,
+      "file_sha256": "78a35e70b1d80d75f6376e7cbb2a6884d42dd3c29c844ad0453cfb7f0d258ad6"
+    },
+    {
+      "id": "kitchen-history-page-limit",
+      "file": "app/lib/operations/operations_repository.dart",
+      "anchor": "Future<OrderHistory> history(",
+      "line": 170,
+      "file_sha256": "78a35e70b1d80d75f6376e7cbb2a6884d42dd3c29c844ad0453cfb7f0d258ad6"
+    },
+    {
+      "id": "request-page-limit",
+      "file": "app/lib/features/operations/access_requests_screen.dart",
+      "anchor": "query: {'page': '$_page', 'limit': '30'}",
+      "line": 37,
+      "file_sha256": "62a7b2446cff9d21da19e882e2472dea0c4f6121ea47b8b1b2c1fe6ae30f3ae3"
+    },
+    {
+      "id": "v32-page-limits",
+      "file": "app/lib/operations/v32_repository.dart",
+      "anchor": "Future<Map<String, dynamic>> orders(",
+      "line": 104,
+      "file_sha256": "ea0f55cf3520655f45ce36b196689f71a4a67790d1972ba0977989216381e664"
+    }
+  ]
+}

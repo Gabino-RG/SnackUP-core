@@ -1,0 +1,2522 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-11-04",
+  "timezone": "America/Mexico_City",
+  "acceptanceStatus": "partial_with_confirmed_defect",
+  "applicationOrigin": "http://localhost:18080",
+  "method": {
+    "execution": "El agente principal operó las pantallas reales de Alumnos, Cocina y Administración con las cuentas locales existentes.",
+    "documentation": "Este archivo transcribe observaciones comunicadas por el agente principal. El agente que documenta no operó navegador, no ejecutó pruebas y no escribió datos de aplicación.",
+    "newDataRule": "Los resultados nuevos aquí registrados proceden de acciones de la interfaz real; no se crearon mediante fixtures, semillas ni mutaciones HTTP por script.",
+    "priorData": "La base conservaba datos de pruebas anteriores. No era una base vacía. Los totales generales observados incluyen esos datos.",
+    "evidenceType": "live_ui_observation_relayed_by_primary_agent",
+    "screenshots": [],
+    "screenshotNote": "No se comunicaron rutas de capturas para asociarlas a este registro; no se inventan archivos de evidencia.",
+    "viewportCoverage": "Administración:1366×900 en claro/oscuro y menú→Opiniones a390px de ancho. Cocina:PC y chat390×844 legible. No hay matriz visual completa de todos los controles.",
+    "inventoryPolicy": "El mapeo documenta únicamente subconjuntos observados. No marca completa una acción del inventario cuando quedan variantes, estados o formatos sin recorrer. docs/qa-alumnos-inventory.json se conserva sin modificar.",
+    "laterReadOnlyCorroboration": "Para explicar que15:54 no produjo un segundo cierre automático se consultó last_auto_close_date en lectura: hoy ya estaba procesado por la prueba anterior14:55. No se alteró ni reinició este marcador.",
+    "serviceFailureTesting": "El agente principal detuvo y reinició los servicios reales mediante scripts operativos sin semillas. Los errores, recuperación y persistencia aquí registrados se observaron después desde las pantallas; no se insertaron pedidos por esos scripts.",
+    "buildObservation": {
+      "staffReleaseBuild": "tercera compilación release de paneles, comunicada correcta en38 segundos",
+      "studentUiEdited": false,
+      "studentUiModificationAuthorization": "Pendiente para cambios de código de Alumnos; este registro no los realiza.",
+      "newStaffBuildChatSendAndPostSendDraftCleanupVerified": true,
+      "studentRootCodeUnchangedReported": true,
+      "backendUnchangedReported": true,
+      "backupBranchUnchangedReported": true,
+      "unchangedScopeProvenance": "Declaración del agente principal; este agente documental no efectuó una nueva auditoría Git."
+    }
+  },
+  "actors": {
+    "student": "alumno.demo@utsjr.edu.mx",
+    "kitchen": "operator@staff.example.edu",
+    "administrator": "master@staff.example.edu"
+  },
+  "scenario": {
+    "business": "Cafetería integración",
+    "orderNumber": 4,
+    "createdDateLocal": "2026-11-04",
+    "createdTimeShownLocal": "15:37",
+    "product": "Torta",
+    "quantity": 1,
+    "unitPrice": 35.5,
+    "orderTotal": 35.5,
+    "currency": "MXN",
+    "paymentMethod": "Efectivo",
+    "notes": "Sin cebolla; salsa aparte.",
+    "completion": "Entregado en la aplicación",
+    "physicalScope": "No consta preparación, entrega física, pago real ni evaluación de calidad del alimento. Se verificó el flujo de software.",
+    "pickupCodeHandling": "El código mostrado por Alumnos se utilizó desde la pantalla de Cocina y fue aceptado. Se omite su valor de este documento por no ser necesario para reproducir el procedimiento."
+  },
+  "comments": {
+    "businessRating": "Pude crear el pedido, seguir su preparación y confirmar la entrega desde la aplicación. Las indicaciones se conservaron correctamente.",
+    "productReview": "Prueba funcional desde mi pedido #4: el producto, el precio y las indicaciones llegaron correctamente a Cocina. Esta opinión verifica la aplicación, no la calidad del alimento."
+  },
+  "evidence": [
+    {
+      "id": "UI-01",
+      "role": "student",
+      "screen": "Inicio de sesión",
+      "actions": [
+        "Intentar acceso con campos vacíos",
+        "Iniciar sesión con la cuenta de alumno existente"
+      ],
+      "observed": [
+        "La interfaz mostró validaciones para el acceso vacío",
+        "La cuenta de alumno inició sesión y accedió al catálogo"
+      ],
+      "result": "observed_as_expected",
+      "notEstablished": [
+        "Envío con Enter",
+        "Credenciales incorrectas",
+        "Dominio parecido o personal",
+        "Bloqueo de doble envío"
+      ]
+    },
+    {
+      "id": "UI-02",
+      "role": "student",
+      "screen": "Catálogo y detalle de Torta",
+      "actions": [
+        "Consultar Cafetería integración",
+        "Guardar Torta como favorito con notas",
+        "Cambiar cantidad de 1 a 2 y de 2 a 1"
+      ],
+      "observed": [
+        "El catálogo real mostró Cafetería integración",
+        "Torta mostró precio de 35.50 MXN",
+        "El favorito quedó guardado con notas",
+        "Los controles de cantidad permitieron la secuencia 1 → 2 → 1"
+      ],
+      "result": "observed_as_expected",
+      "notEstablished": [
+        "Eliminar favorito",
+        "Límite superior de cantidad",
+        "Stock ilimitado",
+        "Productos ocultos o agotados",
+        "Precio que cambia durante guardado"
+      ]
+    },
+    {
+      "id": "UI-03",
+      "role": "student",
+      "screen": "Carrito abierto desde detalle del producto",
+      "actions": [
+        "Abrir Ver carrito",
+        "Cambiar cantidad de 1 a 2 y de 2 a 1",
+        "Guardar indicaciones del carrito"
+      ],
+      "observed": [
+        "El carrito mostró Torta y su precio",
+        "Los controles de cantidad permitieron la secuencia 1 → 2 → 1",
+        "Se guardaron las notas exactas: Sin cebolla; salsa aparte.",
+        "No apareció botón de regreso ni navegación inferior en este acceso al carrito"
+      ],
+      "result": "defect_observed",
+      "findingIds": [
+        "DEFECT-01"
+      ],
+      "notEstablished": [
+        "Cancelar edición de notas",
+        "Máximo de 500 caracteres",
+        "Eliminar el último artículo",
+        "Comportamiento del botón externo Atrás del navegador o sistema"
+      ]
+    },
+    {
+      "id": "UI-04",
+      "role": "student",
+      "screen": "Revisión y confirmación del pedido",
+      "actions": [
+        "Revisar el pedido de la cafetería",
+        "Usar Efectivo",
+        "Confirmar el pedido desde el formulario"
+      ],
+      "observed": [
+        "Se creó el pedido #4 el 4 de noviembre a las 15:37 mostradas",
+        "El pedido contenía 1 Torta por 35.50 MXN",
+        "Las notas fueron Sin cebolla; salsa aparte."
+      ],
+      "result": "observed_as_expected",
+      "notEstablished": [
+        "Otros métodos de pago",
+        "Pago real",
+        "Recogida programada",
+        "Doble clic",
+        "Pérdida de respuesta",
+        "Compra simultánea",
+        "Carrito con varios negocios"
+      ]
+    },
+    {
+      "id": "UI-05",
+      "role": "kitchen",
+      "screen": "Pedidos activos de Cocina",
+      "actions": [
+        "Consultar el pedido #4 con la cuenta de operador",
+        "Aceptar",
+        "Iniciar preparación",
+        "Marcar listo"
+      ],
+      "observed": [
+        "Cocina recibió el mismo pedido #4",
+        "Producto, cantidad, precio e indicaciones coincidieron con Alumnos",
+        "Las tres acciones avanzaron el pedido hasta Listo"
+      ],
+      "result": "observed_as_expected",
+      "notEstablished": [
+        "Concurrencia de operadores",
+        "Conflicto de versión",
+        "Rechazo de pedidos",
+        "Transiciones mediante pérdida de conexión"
+      ]
+    },
+    {
+      "id": "UI-06",
+      "role": "student",
+      "screen": "Pedidos activos y código de recogida",
+      "actions": [
+        "Consultar pedido #4 en Activos",
+        "Abrir su detalle/código"
+      ],
+      "observed": [
+        "El pedido apareció Listo",
+        "Se mostraron QR y código de recogida del mismo pedido"
+      ],
+      "result": "observed_as_expected",
+      "notEstablished": [
+        "Actualización espontánea sin acción del usuario",
+        "Entrega de notificaciones push o WebSocket",
+        "Ocultación del código en todas las demás etapas",
+        "Aislamiento frente a otra cuenta de alumno"
+      ]
+    },
+    {
+      "id": "UI-07",
+      "role": "student",
+      "screen": "Código de recogida",
+      "actions": [
+        "Pulsar Copiar código",
+        "Consultar el portapapeles con la herramienta disponible"
+      ],
+      "observed": [
+        "La interfaz mostró un aviso de copia",
+        "La consulta del portapapeles devolvió contenido vacío"
+      ],
+      "result": "inconclusive",
+      "notEstablished": [
+        "Que el código haya quedado efectivamente en el portapapeles",
+        "Que el contenido vacío pruebe un fallo del botón: podría corresponder al ámbito del portapapeles consultado"
+      ],
+      "nextUiCheck": "Pulsar Copiar y pegar manualmente en un campo de texto de la misma sesión de usuario, sin alterar ni enviar datos, para comparar el valor."
+    },
+    {
+      "id": "UI-08",
+      "role": "kitchen",
+      "screen": "Entrega del pedido #4",
+      "actions": [
+        "Intentar entrega sin código",
+        "Intentar con INCORRECTO",
+        "Introducir el código observado en la pantalla de Alumnos"
+      ],
+      "observed": [
+        "El formulario rechazó código vacío",
+        "Rechazó INCORRECTO",
+        "Aceptó el código de la interfaz de Alumnos y completó la entrega en la aplicación"
+      ],
+      "result": "observed_as_expected",
+      "notEstablished": [
+        "Segundo intento de entrega después de completar",
+        "Lectura por cámara/escáner",
+        "Entrega física del alimento"
+      ]
+    },
+    {
+      "id": "UI-09",
+      "role": "kitchen",
+      "screen": "Historial y totales",
+      "actions": [
+        "Consultar el historial después de la entrega"
+      ],
+      "observed": [
+        "El pedido #4 apareció Entregado",
+        "La pantalla mostró 4 pedidos y 89.50 MXN en el agregado observado"
+      ],
+      "aggregateContext": {
+        "ordersShown": 4,
+        "amountShown": 89.5,
+        "priorOrdersIncluded": 3,
+        "newUiScenarioOrders": 1
+      },
+      "result": "observed_as_expected",
+      "notEstablished": [
+        "Que los cuatro pedidos se hayan generado en este recorrido",
+        "Conciliación de dinero recibido",
+        "Exportación o filtros de otros periodos"
+      ]
+    },
+    {
+      "id": "UI-10",
+      "role": "student",
+      "screen": "Historial y calificación de cafetería",
+      "actions": [
+        "Abrir pedido #4 en Historial",
+        "Seleccionar 5 estrellas para cafetería",
+        "Enviar el comentario de comments.businessRating"
+      ],
+      "observed": [
+        "La calificación se guardó",
+        "El pedido mostró Calificado y desapareció la opción de calificar cafetería"
+      ],
+      "rating": 5,
+      "commentRef": "comments.businessRating",
+      "result": "observed_as_expected",
+      "notEstablished": [
+        "Valores de 0 a 4 estrellas",
+        "Comentario vacío o límite de longitud",
+        "Respuesta perdida",
+        "Intento directo de reseña duplicada",
+        "Pedido ajeno o pendiente"
+      ]
+    },
+    {
+      "id": "UI-11",
+      "role": "student",
+      "screen": "Calificar platillos y reseñas públicas de Torta",
+      "actions": [
+        "Seleccionar Torta del pedido #4",
+        "Seleccionar 5 estrellas",
+        "Enviar el comentario de comments.productReview",
+        "Abrir/expandir la reseña pública del producto"
+      ],
+      "observed": [
+        "La reseña del platillo se guardó",
+        "La reseña pública mostró exactamente el comentario enviado sin identidad del alumno",
+        "El producto mostró stock 29"
+      ],
+      "rating": 5,
+      "commentRef": "comments.productReview",
+      "stockShownAfterScenario": 29,
+      "result": "observed_as_expected",
+      "notEstablished": [
+        "La calidad o sabor del alimento",
+        "Todos los valores de estrellas",
+        "Más de un platillo por pedido",
+        "Paginación pública",
+        "Reseña duplicada",
+        "Ausencia de identidad en todo el contrato HTTP"
+      ]
+    },
+    {
+      "id": "UI-12",
+      "role": "student",
+      "screen": "Inicio",
+      "actions": [
+        "Consultar la tarjeta de Cafetería integración después de calificar"
+      ],
+      "observed": [
+        "Inicio mostró promedio de cafetería 3.3"
+      ],
+      "averageRatingShown": 3.3,
+      "result": "observed_as_expected",
+      "notEstablished": [
+        "Que el promedio corresponda solo al pedido #4: incluye calificaciones anteriores",
+        "Actualización instantánea sin nueva lectura"
+      ]
+    },
+    {
+      "id": "UI-13",
+      "role": "administrator",
+      "screen": "Acceso y panel de opiniones",
+      "actions": [
+        "Iniciar sesión con la cuenta maestra desde la interfaz",
+        "Consultar métricas, distribución y opinión del pedido #4"
+      ],
+      "observed": [
+        "La sesión nueva de Administración mostró 4 opiniones",
+        "Promedio 3.3 y 1 opinión negativa equivalente a 25%",
+        "Distribución: 5 estrellas=1, 4 estrellas=2 y 0 estrellas=1",
+        "Desarrollo Software mostró promedio 3.3 sobre 4 opiniones",
+        "Apareció el comentario exacto de cafetería con 5 estrellas y hora mostrada 15:42",
+        "La opinión pública del platillo conservó su texto diferente; Administración mostró el comentario de cafetería"
+      ],
+      "metricsShown": {
+        "reviews": 4,
+        "average": 3.3,
+        "negative": 1,
+        "negativePercentage": 25,
+        "distribution": {
+          "5": 1,
+          "4": 2,
+          "0": 1
+        },
+        "career": {
+          "name": "Desarrollo Software",
+          "average": 3.3,
+          "reviews": 4
+        }
+      },
+      "businessReview": {
+        "stars": 5,
+        "timeShownLocal": "15:42",
+        "commentRef": "comments.businessRating"
+      },
+      "result": "observed_as_expected",
+      "notEstablished": [
+        "Seguimientos administrativos",
+        "Filtros y exportaciones",
+        "Gestión de cuentas o locales",
+        "Permisos negativos de otros perfiles",
+        "Todos los datos de otras carreras"
+      ]
+    },
+    {
+      "id": "UI-14",
+      "role": "administrator",
+      "screen": "Detalle de opinión y seguimiento",
+      "actions": [
+        "Abrir la opinión nueva del pedido #4",
+        "Guardar seguimiento En revisión",
+        "Guardar seguimiento Resuelto"
+      ],
+      "observed": [
+        "Detalle mostró General5; Servicio y Alimentos Sin informar.",
+        "En revisión quedó guardado con responsable y nota exactos; el historial mostró15:45 y casos pendientes cambió de2 a3.",
+        "Resuelto guardó una segunda nota; los pendientes cambiaron de3 a2."
+      ],
+      "result": "observed_as_expected",
+      "followup": {
+        "assignee": "Revisión funcional de SnackUP",
+        "inReviewNote": "Se comprobó desde las pantallas que la opinión del pedido #4 actualiza el promedio, la distribución de estrellas y la gráfica por carrera.",
+        "inReviewTimeShownLocal": "15:45",
+        "resolvedNote": "Revisión concluida: el comentario y las cinco estrellas coinciden entre Alumno y Administración; el historial de seguimiento conserva el acuerdo anterior.",
+        "pendingCounters": [
+          2,
+          3,
+          2
+        ]
+      },
+      "notEstablished": [
+        "Conflictos simultáneos de seguimiento",
+        "Seguimientos de otras cuentas"
+      ]
+    },
+    {
+      "id": "UI-15",
+      "role": "administrator",
+      "screen": "Atención: filtros de seguimiento",
+      "actions": [
+        "Seleccionar Resueltos",
+        "Seleccionar Pendientes",
+        "Seleccionar En revisión",
+        "Volver a Todos"
+      ],
+      "observed": [
+        "Resueltos incluyó la opinión nueva.",
+        "Pendientes excluyó la opinión resuelta.",
+        "En revisión mostró un caso anterior.",
+        "Todos restauró la vista completa."
+      ],
+      "result": "observed_as_expected",
+      "notEstablished": [
+        "Paginación de un volumen mayor de casos"
+      ]
+    },
+    {
+      "id": "UI-16",
+      "role": "administrator",
+      "screen": "Opiniones: texto y solo negativas",
+      "actions": [
+        "Buscar Pude crear el pedido",
+        "Limpiar filtros",
+        "Activar solo0–2 estrellas"
+      ],
+      "observed": [
+        "La búsqueda aisló1 opinión, promedio5.0, negativas0, carrera5.0/1 y Servicio/Alimentos Sin valoración.",
+        "Limpiar restauró4 opiniones y promedio3.3.",
+        "Solo0–2 mostró1 opinión, promedio0.0 y100% negativas."
+      ],
+      "result": "observed_as_expected",
+      "textFilter": "Pude crear el pedido",
+      "notEstablished": [
+        "Todos los caracteres especiales o límites del buscador"
+      ]
+    },
+    {
+      "id": "UI-17",
+      "role": "administrator",
+      "screen": "Opiniones: combinación de filtros",
+      "actions": [
+        "Elegir Local integración",
+        "Buscar/seleccionar carrera Desarrollo Software",
+        "Seleccionar grupo DEMO-1",
+        "Elegir periodo7d y horario Mañana",
+        "Limpiar filtros"
+      ],
+      "observed": [
+        "La combinación produjo0 opiniones, métricas con guion y ausencia de calificaciones.",
+        "Limpiar restauró4 opiniones."
+      ],
+      "result": "observed_as_expected",
+      "filterCombination": {
+        "local": "integración",
+        "career": "Desarrollo Software",
+        "group": "DEMO-1",
+        "period": "7d",
+        "timeOfDay": "Mañana"
+      },
+      "notEstablished": [
+        "Cada filtro individual con un conjunto de resultados positivo",
+        "Todos los periodos y horarios"
+      ]
+    },
+    {
+      "id": "UI-18",
+      "role": "administrator",
+      "screen": "Navegación de escritorio y apariencia",
+      "actions": [
+        "Recorrer Resumen, Locales, Opiniones y Atención",
+        "Alternar modo claro y oscuro",
+        "Usar Ver opiniones en el local"
+      ],
+      "observed": [
+        "A1366×900 las secciones fueron recorridas en escritorio.",
+        "Se observaron ambos modos de color.",
+        "Las tarjetas correspondientes mostraron3.3.",
+        "Ver opiniones del local aplicó su filtro."
+      ],
+      "result": "observed_as_expected",
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "notEstablished": [
+        "Matriz móvil de estas pantallas",
+        "Todos los contrastes y estados de foco",
+        "Persistencia del tema tras reiniciar"
+      ]
+    },
+    {
+      "id": "UI-19",
+      "role": "administrator",
+      "screen": "Gestión de locales y consulta de operación",
+      "actions": [
+        "Buscar integración",
+        "Abrir editar y guardar sin cambiar campos",
+        "Consultar Horario y actualizar"
+      ],
+      "observed": [
+        "La búsqueda devolvió1 local.",
+        "Guardar sin cambios informó éxito.",
+        "La consulta de Horario y su actualización se recorrieron en modo lectura."
+      ],
+      "result": "observed_as_expected",
+      "notEstablished": [
+        "Cambiar datos del local",
+        "Crear o desactivar un local",
+        "Permisos de escritura de otros perfiles"
+      ]
+    },
+    {
+      "id": "UI-20",
+      "role": "administrator",
+      "screen": "Cuentas y solicitudes",
+      "actions": [
+        "Consultar lista de cuentas",
+        "Inspeccionar edición de operator",
+        "Enviar Crear cuenta con campos vacíos",
+        "Consultar y actualizar Solicitudes"
+      ],
+      "observed": [
+        "La lista mostró6 cuentas.",
+        "Se inspeccionó la cuenta operator sin modificar roles.",
+        "Crear cuenta vacía mostró3 errores de validación y no creó una cuenta.",
+        "Solicitudes mostró0 y se actualizó correctamente."
+      ],
+      "result": "observed_as_expected",
+      "accountsShown": 6,
+      "emptyCreateValidationErrors": 3,
+      "requestsShown": 0,
+      "notEstablished": [
+        "Alta de cuenta válida",
+        "Cambios de rol",
+        "Aprobación o rechazo de una solicitud real"
+      ]
+    },
+    {
+      "id": "UI-21",
+      "role": "kitchen",
+      "screen": "Estadísticas en PC",
+      "actions": [
+        "Consultar7 días",
+        "Cambiar a30 días y actualizar"
+      ],
+      "observed": [
+        "7d mostró4 entregados por89.50 MXN.",
+        "Desglose:3 aguas por54.00 MXN y1 Torta por35.50 MXN.",
+        "30d actualizado mantuvo los mismos totales."
+      ],
+      "result": "observed_as_expected",
+      "metricsShown": {
+        "delivered": 4,
+        "amount": 89.5,
+        "products": [
+          {
+            "name": "agua",
+            "quantity": 3,
+            "amount": 54
+          },
+          {
+            "name": "Torta",
+            "quantity": 1,
+            "amount": 35.5
+          }
+        ]
+      },
+      "priorDataIncluded": true,
+      "notEstablished": [
+        "Que todos los pedidos del agregado se hayan creado mediante este recorrido",
+        "Exportación o conciliación de pagos"
+      ]
+    },
+    {
+      "id": "UI-22",
+      "role": "kitchen",
+      "screen": "Catálogo: disponibilidad y filtros",
+      "actions": [
+        "Desactivar disponibilidad de Torta",
+        "Elegir No disponibles",
+        "Reactivar Torta",
+        "Elegir Disponibles"
+      ],
+      "observed": [
+        "Con Torta desactivada, No disponibles mostró1 producto.",
+        "Tras reactivar Torta, Disponibles mostró3 productos."
+      ],
+      "result": "observed_as_expected",
+      "finalTortaAvailability": true,
+      "notEstablished": [
+        "Sincronización simultánea con una pantalla de Alumnos ya abierta durante el cambio"
+      ]
+    },
+    {
+      "id": "UI-23",
+      "role": "kitchen",
+      "screen": "Editar Torta: precio, existencias y descarte",
+      "actions": [
+        "Introducir precio-1",
+        "Guardar precio35.50",
+        "Introducir existencias-1",
+        "Cancelar y luego Volver en diálogo de descarte",
+        "Restaurar existencias29 y guardar"
+      ],
+      "observed": [
+        "El precio negativo fue rechazado.",
+        "35.50 se guardó correctamente.",
+        "Existencias negativas fueron rechazadas.",
+        "Cancelar pidió Descartar; Volver mantuvo el editor.",
+        "Se restauró29 y se guardó correctamente."
+      ],
+      "result": "observed_as_expected",
+      "finalProductValues": {
+        "name": "Torta",
+        "price": 35.5,
+        "stock": 29
+      },
+      "notEstablished": [
+        "Máximos numéricos",
+        "Conflictos de versión del producto"
+      ]
+    },
+    {
+      "id": "UI-24",
+      "role": "kitchen",
+      "screen": "Agregar producto: validaciones y cancelación",
+      "actions": [
+        "Enviar formulario vacío",
+        "Alternar control de stock y destacado",
+        "Cancelar formulario modificado",
+        "Confirmar Descartar"
+      ],
+      "observed": [
+        "Vacío señaló nombre, categoría y precio obligatorios.",
+        "Los controles de stock y destacado se pudieron alternar.",
+        "El diálogo de cambios pendientes permitió descartar sin crear producto."
+      ],
+      "result": "observed_as_expected",
+      "createdProduct": false,
+      "notEstablished": [
+        "Alta válida de producto",
+        "Carga de imagen",
+        "Límite de productos destacados"
+      ]
+    },
+    {
+      "id": "UI-25",
+      "role": "kitchen",
+      "screen": "Mi local: nombre requerido y cancelación",
+      "actions": [
+        "Vaciar Nombre",
+        "Intentar guardar",
+        "Cerrar y confirmar Descartar"
+      ],
+      "observed": [
+        "El nombre vacío mostró error.",
+        "Cerrar/Descartar preservó el nombre original del local."
+      ],
+      "result": "observed_as_expected",
+      "notEstablished": [
+        "Cambio válido de nombre o descripción",
+        "Carga de imagen del local"
+      ]
+    },
+    {
+      "id": "UI-26",
+      "role": "kitchen",
+      "screen": "Cierre automático y posposición",
+      "actions": [
+        "Intentar cierre automático sin hora",
+        "Guardar hora15:54",
+        "Esperar el horario configurado",
+        "Intentar posponer a15:57"
+      ],
+      "observed": [
+        "La hora vacía mostró validación.",
+        "La configuración15:54 se guardó, pero no produjo otro cierre automático.",
+        "La fecha de cierre ya estaba procesada hoy por la prueba anterior de14:55. La consulta de ese dato fue solo lectura.",
+        "Posponer a15:57 fue rechazado con CLOSING_ALREADY_PROCESSED, coherente con un cierre ya procesado en la fecha."
+      ],
+      "result": "partially_observed_new_automatic_closure_not_executed",
+      "automaticClosure": {
+        "newUiAutomaticExecutionVerified": false,
+        "configuredTime": "15:54",
+        "priorProcessedTime": "14:55",
+        "priorProcessedDate": "2026-11-04",
+        "readOnlyCorroboration": "last_auto_close_date correspondía a hoy; no se modificó para forzar la prueba.",
+        "postponementError": "CLOSING_ALREADY_PROCESSED"
+      },
+      "timePicker": {
+        "status": "inconclusive",
+        "observation": "En entrada manual15/57 el selector mostró un error aunque después permitió confirmar15:57. No se aisló si correspondía a la interacción de la herramienta.",
+        "nextUiCheck": "Repetir entrada manual y visual del selector mediante interacción humana observable; no declarar defecto todavía."
+      },
+      "notEstablished": [
+        "Una nueva ejecución automática generada exclusivamente por este recorrido UI",
+        "Posposición exitosa en un día no procesado"
+      ]
+    },
+    {
+      "id": "UI-27",
+      "role": "kitchen",
+      "screen": "Restauración de horarios y espera",
+      "actions": [
+        "Desactivar cierre automático",
+        "Dejar hora vacía",
+        "Probar espera4",
+        "Restaurar espera30"
+      ],
+      "observed": [
+        "La espera4 fue rechazada.",
+        "Al terminar se restauró cierre automático apagado, hora vacía y espera30."
+      ],
+      "result": "observed_as_expected",
+      "finalOperatingConfiguration": {
+        "autoCloseEnabled": false,
+        "closeTimeLocal": null,
+        "pickupTimeoutMinutes": 30
+      },
+      "notEstablished": [
+        "Valores límite adicionales de espera"
+      ]
+    },
+    {
+      "id": "UI-28",
+      "role": "kitchen",
+      "screen": "Cerrar recepción desde encabezado y consultar Horarios",
+      "actions": [
+        "Pulsar Cerrar recepción",
+        "Confirmar cierre",
+        "Consultar la vista Horarios previamente cargada"
+      ],
+      "observed": [
+        "El encabezado confirmó el estado cerrado.",
+        "Horarios conservó el valor Abierto en caché, inconsistente con el cierre manual real."
+      ],
+      "result": "defect_observed",
+      "findingIds": [
+        "DEFECT-02"
+      ],
+      "notEstablished": [
+        "Corrección y nueva verificación de la vista Horarios"
+      ]
+    },
+    {
+      "id": "UI-29",
+      "role": "student",
+      "screen": "Local cerrado, favoritos y perfil",
+      "actions": [
+        "Consultar Inicio después del cierre manual",
+        "Explorar menú y producto del local cerrado",
+        "Consultar favorito",
+        "Abrir Perfil e Historial de consumo"
+      ],
+      "observed": [
+        "Inicio mostró Cerrado.",
+        "El menú siguió siendo explorable.",
+        "Producto mostró Local cerrado y Añadir al carrito quedó bloqueado.",
+        "Añadir del favorito quedó bloqueado.",
+        "Perfil mostró datos correctos de la cuenta.",
+        "Historial de consumo abrió los pedidos entregados."
+      ],
+      "result": "observed_as_expected",
+      "notEstablished": [
+        "Edición del perfil",
+        "Otros grupos o carreras",
+        "Permisos sobre otra cuenta"
+      ]
+    },
+    {
+      "id": "UI-30",
+      "role": "student",
+      "screen": "Reseña duplicada del platillo del pedido #4",
+      "actions": [
+        "Abrir Calificar platillos del pedido #4",
+        "Elegir5 estrellas e intentar la reseña ya existente"
+      ],
+      "observed": [
+        "La pantalla informó: Este platillo ya tenía una reseña tuya en este pedido."
+      ],
+      "result": "observed_as_expected",
+      "duplicateMessage": "Este platillo ya tenía una reseña tuya en este pedido",
+      "notEstablished": [
+        "Otras condiciones de duplicación concurrente"
+      ]
+    },
+    {
+      "id": "UI-31",
+      "role": "student",
+      "screen": "Volver a pedir con local cerrado y carrito vacío",
+      "actions": [
+        "Volver a pedir el pedido #4 con el local cerrado",
+        "Añadir Torta al carrito con sus notas",
+        "Eliminar el artículo",
+        "Recargar la aplicación"
+      ],
+      "observed": [
+        "Volver a pedir agregó Torta y notas al carrito, sin crear un nuevo pedido.",
+        "La confirmación de compra permaneció deshabilitada por el local cerrado.",
+        "Eliminar dejó el carrito vacío y sin botón para regresar: segunda ruta real que reproduce el defecto.",
+        "Recargar restauró la sesión del alumno."
+      ],
+      "result": "defect_observed",
+      "findingIds": [
+        "DEFECT-01"
+      ],
+      "newOrderCreated": false,
+      "notEstablished": [
+        "Reintentar compra después de reapertura",
+        "Cambios de precio o productos no disponibles durante Volver a pedir"
+      ]
+    },
+    {
+      "id": "UI-32",
+      "role": "student",
+      "screen": "Búsqueda",
+      "actions": [
+        "Buscar Torta",
+        "Limpiar búsqueda",
+        "Buscar zz-sin-resultados"
+      ],
+      "observed": [
+        "Torta devolvió2 resultados.",
+        "Limpiar volvió al estado inicial.",
+        "zz-sin-resultados mostró No encontramos productos."
+      ],
+      "result": "observed_as_expected",
+      "notEstablished": [
+        "Confirmación por Enter",
+        "Respuesta antigua más lenta que la nueva",
+        "Error de conexión en búsqueda",
+        "Límite de160 caracteres"
+      ]
+    },
+    {
+      "id": "UI-33",
+      "role": "student",
+      "screen": "Acceso: correo, credenciales y Enter",
+      "actions": [
+        "Probar alumno@example.com",
+        "Probar la cuenta demo con contraseña incorrecta",
+        "Introducir contraseña correcta y pulsar Enter"
+      ],
+      "observed": [
+        "El correo externo fue rechazado con el aviso de usar correo @utsjr.edu.mx.",
+        "Las credenciales incorrectas mostraron Correo o contraseña incorrectos.",
+        "La contraseña correcta y Enter iniciaron sesión."
+      ],
+      "result": "observed_as_expected",
+      "rejectedAddress": "alumno@example.com",
+      "notEstablished": [
+        "Todos los formatos de correo y dominios parecidos",
+        "Bloqueo de múltiples envíos simultáneos"
+      ]
+    },
+    {
+      "id": "UI-34",
+      "role": "kitchen_and_student",
+      "screen": "Reapertura, favorito y carrito desde encabezado",
+      "actions": [
+        "Confirmar reapertura desde Cocina",
+        "En Alumnos abrir Favoritos y confirmar Añadir al carrito",
+        "Abrir carrito desde el encabezado"
+      ],
+      "observed": [
+        "La reapertura quedó confirmada.",
+        "La confirmación Añadir guardó Torta con las notas del favorito.",
+        "El carrito abierto desde el encabezado sí mostró Atrás, a diferencia de los otros accesos defectuosos."
+      ],
+      "result": "observed_as_expected",
+      "notesEvidence": "Se comunicó conservación de las notas con coma; no se proporcionó una nueva transcripción literal.",
+      "notEstablished": [
+        "Corrección de las entradas desde Producto o Volver a pedir"
+      ]
+    },
+    {
+      "id": "UI-35",
+      "role": "student_and_kitchen",
+      "screen": "Compra con recogida programada",
+      "actions": [
+        "Activar Programar recogida e intentar confirmar sin hora",
+        "Abrir selector y aceptar la hora por defecto16:17",
+        "Confirmar pedido en Efectivo",
+        "Consultar el pedido en Cocina"
+      ],
+      "observed": [
+        "Sin hora apareció Elige una hora.",
+        "El selector mostró etiquetas en inglés Select time / Cancel / OK.",
+        "Se creó #5 a las16:02 con1 Torta de35.50 MXN, Efectivo, recogida16:17 y notas conservadas.",
+        "Cocina mostró el mismo #5 y la recogida16:17."
+      ],
+      "result": "observed_with_localization_defect",
+      "findingIds": [
+        "DEFECT-05"
+      ],
+      "order": {
+        "number": 5,
+        "createdDateLocal": "2026-11-04",
+        "createdTimeShownLocal": "16:02",
+        "product": "Torta",
+        "quantity": 1,
+        "unitPrice": 35.5,
+        "total": 35.5,
+        "currency": "MXN",
+        "paymentMethod": "Efectivo",
+        "scheduledPickupTimeShownLocal": "16:17",
+        "notes": "Notas con coma procedentes del favorito; texto literal no comunicado en esta actualización."
+      },
+      "notEstablished": [
+        "Recogida con menos de5 minutos",
+        "Todos los husos horarios",
+        "Cancelación del selector",
+        "La anomalía anterior de entrada manual15/57 queda sin resolver por esta selección por defecto"
+      ]
+    },
+    {
+      "id": "UI-36",
+      "role": "kitchen",
+      "screen": "Nueva compilación: Horarios, borrador y validación",
+      "actions": [
+        "Abrir Horarios en la nueva compilación",
+        "Cerrar recepción desde el encabezado y confirmar",
+        "Escribir espera40 sin guardar",
+        "Reabrir desde encabezado y confirmar",
+        "Guardar espera30",
+        "Intentar espera4",
+        "Actualizar"
+      ],
+      "observed": [
+        "Apareció aviso de que el cierre de hoy ya fue procesado y el horario corresponde al próximo día; Posponer quedó deshabilitado.",
+        "Después del cierre manual confirmado, Horarios cambió automáticamente a Cerrado.",
+        "Después de reabrir, Horarios mostró Abierto y conservó el borrador40 sin guardar.",
+        "Guardar30 funcionó;4 mostró error sin conservar el aviso anterior de guardado.",
+        "Actualizar restauró el valor guardado30.",
+        "El pedido #5 persistió Nuevo tras cerrar y reabrir recepción."
+      ],
+      "result": "fix_verified_for_observed_cases",
+      "findingIds": [
+        "DEFECT-02"
+      ],
+      "finalPickupTimeoutMinutes": 30,
+      "finalBusinessOpen": true,
+      "notEstablished": [
+        "Una nueva ejecución del cierre automático en fecha sin procesar",
+        "Todas las carreras de edición simultánea"
+      ]
+    },
+    {
+      "id": "UI-37",
+      "role": "kitchen",
+      "screen": "Chat anterior: contexto y borrador",
+      "actions": [
+        "Abrir chat desde pedido #5 en la compilación anterior",
+        "Escribir borrador y volver mediante Atrás"
+      ],
+      "observed": [
+        "El encabezado decía Chat Pedido #5, pero contenía mensajes del #3.",
+        "El backend mantiene una conversación por alumno y negocio, por lo que el rótulo por pedido era engañoso.",
+        "Se reprodujo pérdida del borrador al volver mediante Atrás."
+      ],
+      "result": "defects_observed",
+      "findingIds": [
+        "DEFECT-03",
+        "DEFECT-04"
+      ],
+      "scopeNote": "La presencia de mensajes de pedidos anteriores del mismo alumno-negocio no prueba acceso a conversaciones ajenas.",
+      "notEstablished": [
+        "Exposición de mensajes a otro alumno o negocio"
+      ]
+    },
+    {
+      "id": "UI-38",
+      "role": "kitchen",
+      "screen": "Chat: envío, persistencia y cancelación de borrado",
+      "actions": [
+        "Enviar mensaje sobre la recogida del pedido #5",
+        "Cambiar a lista y reabrir conversación",
+        "Abrir Cerrar y borrar",
+        "Pulsar Volver en la confirmación irreversible"
+      ],
+      "observed": [
+        "El mensaje exacto apareció a las16:05 y persistió al cambiar de lista y reabrir.",
+        "Cerrar y borrar mostró advertencia irreversible.",
+        "Volver canceló la acción; no se borró la conversación."
+      ],
+      "result": "observed_as_expected",
+      "message": "Recibimos el pedido #5 con recogida a las 16:17. Estamos verificando desde la aplicación que se conservan la hora y las indicaciones.",
+      "timeShownLocal": "16:05",
+      "conversationDeleted": false,
+      "notEstablished": [
+        "Confirmar el borrado irreversible",
+        "Respuesta desde una interfaz de chat de Alumnos"
+      ]
+    },
+    {
+      "id": "UI-39",
+      "role": "kitchen",
+      "screen": "Cancelación del pedido programado #5",
+      "actions": [
+        "Elegir Cancelar pedido y Otro motivo sin detalle",
+        "Completar el motivo y confirmar"
+      ],
+      "observed": [
+        "Sin detalle apareció Explica el motivo.",
+        "El pedido #5 quedó Cancelado con el motivo exacto.",
+        "Resumen mostró89.50 MXN,4 entregados y1 cancelación.",
+        "Historial expandido del #5 conservó el motivo."
+      ],
+      "result": "observed_as_expected",
+      "cancellationReason": "Cancelación del ensayo funcional solicitado: ya se comprobó la recogida programada y ahora se verifica su reflejo en el historial del alumno.",
+      "summaryShown": {
+        "totalSold": 89.5,
+        "delivered": 4,
+        "cancelled": 1
+      },
+      "actorBoundary": "Esta cancelación se realizó en Cocina. No equivale a probar el botón de cancelación de Alumnos.",
+      "notEstablished": [
+        "Cancelación iniciada por el alumno",
+        "Medición de devolución de stock después de esta cancelación"
+      ]
+    },
+    {
+      "id": "UI-40",
+      "role": "kitchen",
+      "screen": "Resumen: intervalo de fechas",
+      "actions": [
+        "Elegir Desde1 de noviembre y Hasta3 de noviembre",
+        "Cambiar Hasta al4 de noviembre"
+      ],
+      "observed": [
+        "El intervalo1–3 de noviembre mostró0 importe,0 entregados y0 cancelaciones.",
+        "Hasta4 de noviembre restauró89.50 MXN,4 entregados y1 cancelación."
+      ],
+      "result": "observed_as_expected",
+      "dateRanges": [
+        {
+          "from": "2026-11-01",
+          "to": "2026-11-03",
+          "totalSold": 0,
+          "delivered": 0,
+          "cancelled": 0
+        },
+        {
+          "from": "2026-11-01",
+          "to": "2026-11-04",
+          "totalSold": 89.5,
+          "delivered": 4,
+          "cancelled": 1
+        }
+      ],
+      "priorDataIncluded": true,
+      "notEstablished": [
+        "Otros límites de fecha o husos horarios"
+      ]
+    },
+    {
+      "id": "UI-41",
+      "role": "kitchen",
+      "screen": "Caída real de API y PostgreSQL y recuperación",
+      "actions": [
+        "El supervisor detuvo API y PostgreSQL reales mediante scripts operativos sin semillas",
+        "Actualizar Historial en Cocina",
+        "Consultar Tablero durante la indisponibilidad",
+        "Reiniciar ambos servicios"
+      ],
+      "observed": [
+        "Historial mostró error con Reintentar.",
+        "Tablero mostró Datos desactualizados y bloqueó el control Recibir.",
+        "Después del reinicio el tablero se recuperó automáticamente.",
+        "Historial conservó #5 Cancelado, #4 Entregado y los mismos totales."
+      ],
+      "result": "observed_as_expected",
+      "failureMethod": "Parada y arranque de servicios existentes; no se insertaron datos ni se ejecutaron fixtures.",
+      "persistenceShown": {
+        "order5": "cancelled",
+        "order4": "completed",
+        "totalSold": 89.5,
+        "delivered": 4,
+        "cancelled": 1
+      },
+      "notEstablished": [
+        "Que se pulsara Reintentar en Cocina en este caso",
+        "Caída inesperada con una transacción en curso",
+        "Restauración desde respaldo"
+      ]
+    },
+    {
+      "id": "UI-42",
+      "role": "student",
+      "screen": "Historial tras reinicio y pedido cancelado",
+      "actions": [
+        "Consultar Historial después de reiniciar servicios",
+        "Abrir detalle del pedido #5"
+      ],
+      "observed": [
+        "#5 siguió Cancelado y conservó el motivo.",
+        "No apareció Calificar para el pedido cancelado.",
+        "El detalle indicó que el código no puede usarse para recoger."
+      ],
+      "result": "observed_as_expected",
+      "notEstablished": [
+        "Todas las reglas de privacidad del código",
+        "Otro alumno intentando abrir el pedido"
+      ]
+    },
+    {
+      "id": "UI-43",
+      "role": "student",
+      "screen": "Segunda caída real de API y recuperación automática",
+      "actions": [
+        "Detener API real",
+        "Observar error tras actualización automática de Alumnos",
+        "Reiniciar API y observar recuperación"
+      ],
+      "observed": [
+        "Alumnos mostró error durante la interrupción.",
+        "Tras reiniciar recuperó automáticamente el pedido #5.",
+        "El objetivo Reintentar había desaparecido antes del intento de pulsarlo; no se ejecutó ese clic."
+      ],
+      "result": "observed_as_expected",
+      "retryButtonClicked": false,
+      "recoveredAutomatically": true,
+      "notEstablished": [
+        "El funcionamiento del botón Reintentar de Alumnos en ese recorrido",
+        "Compra en curso durante la caída"
+      ]
+    },
+    {
+      "id": "UI-44",
+      "role": "kitchen",
+      "screen": "Nueva compilación de chat: contexto, borrador y móvil",
+      "actions": [
+        "Abrir Operación y Conversación del alumno",
+        "Comprobar mensaje anterior",
+        "Escribir borrador",
+        "Ir a Productos, luego Operación y reabrir conversación",
+        "Observar chat a390×844"
+      ],
+      "observed": [
+        "El nuevo rótulo Conversación del alumno explicó que incluye pedidos anteriores.",
+        "La misma conversación conservó el mensaje de las16:05.",
+        "El texto exacto del borrador se restauró en el campo, verificado con el control enfocado en el árbol de accesibilidad.",
+        "La captura a390×844 mostró entrada y controles legibles; el reajuste asíncrono de diseño se estabilizó."
+      ],
+      "result": "fix_partially_verified",
+      "findingIds": [
+        "DEFECT-03",
+        "DEFECT-04"
+      ],
+      "restoredDraft": "Borrador conservado al cambiar de pantalla.",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshotObserved": true,
+      "screenshotPathCommunicated": false,
+      "notEstablished": [
+        "Repetición de la ruta Atrás que produjo el fallo original",
+        "Persistencia del borrador tras recargar página",
+        "Todas las pantallas en móvil"
+      ]
+    },
+    {
+      "id": "UI-45",
+      "role": "kitchen_and_administrator",
+      "screen": "Salida de sesión con borrador y cambio a Administración",
+      "actions": [
+        "Cerrar sesión de Cocina con el borrador existente",
+        "Iniciar sesión de Administración"
+      ],
+      "observed": [
+        "Se realizó el cierre de sesión con borrador y el acceso a Administración.",
+        "No se volvió a entrar a Cocina para comprobar la limpieza del borrador."
+      ],
+      "result": "partial_pending_draft_cleanup_check",
+      "notEstablished": [
+        "Que el borrador se haya eliminado correctamente al cerrar sesión",
+        "Que otro usuario de Cocina no lo vea"
+      ],
+      "nextUiCheck": "Volver a autenticar la cuenta de Cocina y abrir la conversación para verificar la política de limpieza del borrador sin enviar texto."
+    },
+    {
+      "id": "UI-46",
+      "role": "administrator",
+      "screen": "Persistencia y tercera caída de API con Reintentar real",
+      "actions": [
+        "Consultar Administración después del reinicio",
+        "Detener API y pulsar Actualizar",
+        "Reiniciar API y pulsar realmente Reintentar"
+      ],
+      "observed": [
+        "Administración conservó4 opiniones, promedio3.3 y la opinión nueva Resuelta.",
+        "Actualizar durante la caída mostró aviso de que mantiene la lectura anterior.",
+        "Después del reinicio se pulsó Reintentar y desapareció el error."
+      ],
+      "result": "observed_as_expected",
+      "retryButtonClicked": true,
+      "metricsShown": {
+        "reviews": 4,
+        "average": 3.3,
+        "order4Followup": "resolved"
+      },
+      "notEstablished": [
+        "Guardado de seguimiento mientras la API estaba indisponible",
+        "Carga con múltiples administradores"
+      ]
+    },
+    {
+      "id": "UI-47",
+      "role": "kitchen_and_administrator",
+      "screen": "Nueva compilación de chat: logout, Atrás y borrador vacío",
+      "actions": [
+        "Cerrar sesión de Cocina con borrador, entrar a Administración, salir y volver a Cocina",
+        "Abrir Conversaciones del local y seleccionar la conversación del mensaje16:05",
+        "Escribir nuevo borrador y usar Atrás",
+        "Reabrir conversaciones y seleccionar la misma conversación",
+        "Vaciar campo con Ctrl+A/Backspace y volver a abrir"
+      ],
+      "observed": [
+        "Después de la secuencia de logout/login el campo apareció vacío y el contador mostró1000; limpieza al salir verificada.",
+        "El nuevo texto se conservó después de Atrás y reapertura; el árbol de accesibilidad con el campo enfocado mostró el texto exacto.",
+        "Atrás regresó a Cocina.",
+        "El encabezado pasó a Abrir conversaciones sin insignia tras la lectura.",
+        "Vaciar el campo y reabrir dejó texto vacío y contador1000; borrador vacío también actualizó la caché."
+      ],
+      "result": "fix_verified_for_reported_ui_cases",
+      "findingIds": [
+        "DEFECT-04"
+      ],
+      "restoredDraft": "Borrador para comprobar el botón Atrás.",
+      "logoutCleanupVerified": true,
+      "originalBackRouteVerified": true,
+      "emptyDraftCacheUpdateVerified": true,
+      "notEstablished": [
+        "Envío exitoso y limpieza del borrador como consecuencia de enviar en esta nueva compilación: el envío de las16:05 se realizó antes.",
+        "Persistencia del borrador después de recargar navegador"
+      ]
+    },
+    {
+      "id": "UI-48",
+      "role": "administrator",
+      "screen": "Navegación móvil a Opiniones",
+      "actions": [
+        "Abrir menú móvil",
+        "Elegir Opiniones"
+      ],
+      "observed": [
+        "El cajón de navegación se cerró al elegir Opiniones.",
+        "La pantalla mostró4 opiniones y promedio3.3."
+      ],
+      "result": "observed_as_expected",
+      "viewport": {
+        "width": 390,
+        "heightReported": false
+      },
+      "metricsShown": {
+        "reviews": 4,
+        "average": 3.3
+      },
+      "notEstablished": [
+        "Todas las rutas administrativas en móvil",
+        "Todas las variantes de alto de pantalla"
+      ]
+    },
+    {
+      "id": "UI-49",
+      "role": "student",
+      "screen": "Acceso: visibilidad de contraseña",
+      "actions": [
+        "Pulsar Mostrar contraseña",
+        "Volver a pulsar para ocultar"
+      ],
+      "observed": [
+        "El control cambió a Ocultar contraseña y después volvió al estado anterior."
+      ],
+      "result": "observed_as_expected",
+      "notEstablished": [
+        "Todos los lectores de pantalla y teclados móviles"
+      ]
+    },
+    {
+      "id": "UI-50",
+      "role": "student",
+      "screen": "Favoritos y detalle de Torta después de cancelar #5",
+      "actions": [
+        "Eliminar Torta de favoritos",
+        "Consultar Favoritos vacío",
+        "Volver a guardar favorito con notas",
+        "Consultar existencias del producto"
+      ],
+      "observed": [
+        "Eliminar dejó Favoritos vacío.",
+        "Se restauró Torta con las notas exactas.",
+        "Torta mostró stock29 después de la cancelación del pedido #5 y antes de crear #6."
+      ],
+      "result": "observed_as_expected",
+      "favoriteNotes": "Sin cebolla, salsa aparte.",
+      "stockShown": 29,
+      "stockObservationPosition": "Después de cancelar #5; antes de crear #6.",
+      "notEstablished": [
+        "Lectura de stock posterior a cancelar #6"
+      ]
+    },
+    {
+      "id": "UI-51",
+      "role": "student",
+      "screen": "Actualizar producto existente en el carrito",
+      "actions": [
+        "Abrir diálogo Actualizar carrito",
+        "Pulsar Volver",
+        "Reabrir y pulsar Guardar cambios"
+      ],
+      "observed": [
+        "Volver conservó la entrada existente.",
+        "Guardar cambios mantuvo cantidad1 y las notas del producto."
+      ],
+      "result": "observed_as_expected",
+      "quantityAfterSave": 1,
+      "notesAfterSave": "Sin cebolla, salsa aparte.",
+      "notEstablished": [
+        "Sustitución por cantidades distintas en esa confirmación",
+        "Cambio de precio simultáneo"
+      ]
+    },
+    {
+      "id": "UI-52",
+      "role": "student",
+      "screen": "Confirmación y detalle del pedido #6",
+      "actions": [
+        "Confirmar compra inmediata en Efectivo",
+        "Abrir detalle del pedido creado"
+      ],
+      "observed": [
+        "La interfaz creó #6 el4 de noviembre a las16:20.",
+        "Contenía1 Torta por35.50 MXN, Efectivo, sin recogida programada, con notas del favorito.",
+        "El detalle mostró pedido pendiente."
+      ],
+      "result": "observed_as_expected",
+      "order": {
+        "number": 6,
+        "createdDateLocal": "2026-11-04",
+        "createdTimeShownLocal": "16:20",
+        "product": "Torta",
+        "quantity": 1,
+        "unitPrice": 35.5,
+        "total": 35.5,
+        "currency": "MXN",
+        "paymentMethod": "Efectivo",
+        "scheduledPickup": false,
+        "notes": "Sin cebolla, salsa aparte."
+      },
+      "notEstablished": [
+        "Comprobación del pedido #6 desde Cocina en esta actualización",
+        "Cargo o alimento físico"
+      ]
+    },
+    {
+      "id": "UI-53",
+      "role": "student",
+      "screen": "Regreso desde el pedido #6 al carrito vacío",
+      "actions": [
+        "Pulsar Atrás desde detalle del pedido",
+        "Recargar la aplicación"
+      ],
+      "observed": [
+        "Atrás regresó al carrito vacío sin control para salir dentro de la aplicación.",
+        "La recarga recuperó la sesión del alumno."
+      ],
+      "result": "defect_observed",
+      "findingIds": [
+        "DEFECT-01"
+      ],
+      "notEstablished": [
+        "Corrección del carrito"
+      ]
+    },
+    {
+      "id": "UI-54",
+      "role": "student",
+      "screen": "Cancelación desde Alumnos del pedido pendiente #6",
+      "actions": [
+        "Abrir tarjeta de #6 en Activos y elegir Cancelar",
+        "Observar confirmación sin motivo",
+        "Pulsar Conservar pedido",
+        "Reabrir cancelación, escribir motivo y confirmar",
+        "Consultar Historial y Activos"
+      ],
+      "observed": [
+        "El botón final Cancelar estuvo deshabilitado mientras faltaba motivo.",
+        "Conservar pedido regresó a #6 todavía activo.",
+        "Al confirmar con motivo, Historial mostró #6 Cancelado y el texto exacto.",
+        "No apareció opción de calificar.",
+        "Activos quedó vacío."
+      ],
+      "result": "observed_as_expected",
+      "cancellationReason": "Prueba solicitada: cancelación desde Alumnos antes de que Cocina acepte el pedido.",
+      "cancelledByRole": "student",
+      "notEstablished": [
+        "Que Cocina ya haya mostrado #6 Cancelado: pendiente del próximo recorrido",
+        "Carrera de cancelación contra aceptación simultánea",
+        "Lectura de stock posterior a la cancelación"
+      ]
+    },
+    {
+      "id": "UI-55",
+      "role": "kitchen",
+      "screen": "Historial y tablero después de cancelación de Alumnos #6",
+      "actions": [
+        "Consultar #6 en Historial",
+        "Consultar resumen y tablero"
+      ],
+      "observed": [
+        "#6 apareció Cancelado con la nota exacta del alumno.",
+        "Resumen mostró89.50 MXN,4 entregados y2 cancelaciones.",
+        "Tablero mostró0 activos.",
+        "La interfaz mostró el código técnico user_other como motivo."
+      ],
+      "result": "observed_with_presentation_defect",
+      "findingIds": [
+        "DEFECT-06"
+      ],
+      "cancellationReason": "Prueba solicitada: cancelación desde Alumnos antes de que Cocina acepte el pedido.",
+      "rawLabelShown": "Motivo: user_other",
+      "metricsShown": {
+        "totalSold": 89.5,
+        "delivered": 4,
+        "cancelled": 2,
+        "active": 0
+      },
+      "notEstablished": [
+        "Resultado final de la corrección de la etiqueta de motivo"
+      ]
+    },
+    {
+      "id": "UI-56",
+      "role": "kitchen",
+      "screen": "Nueva compilación de chat: envío y limpieza posterior",
+      "actions": [
+        "Enviar mensaje de confirmación de cancelación #6 desde la interfaz",
+        "Ir a Conversaciones y reabrir",
+        "Enfocar editor"
+      ],
+      "observed": [
+        "El texto exacto apareció a las16:22.",
+        "Al reabrir se observó un único mensaje persistente.",
+        "El editor enfocado quedó vacío y el contador mostró1000 caracteres."
+      ],
+      "result": "observed_as_expected",
+      "message": "Cocina confirmó la cancelación del pedido #6 solicitada desde Alumnos.",
+      "timeShownLocal": "16:22",
+      "newBuildSuccessfulSendVerified": true,
+      "postSendDraftCacheCleanupVerified": true,
+      "notEstablished": [
+        "Persistencia de borradores después de recargar navegador",
+        "Aislamiento entre dos alumnos distintos"
+      ]
+    },
+    {
+      "id": "UI-57",
+      "role": "kitchen",
+      "screen": "Tercera compilación de paneles: motivo de cancelación legible",
+      "actions": [
+        "Compilar release de paneles y recargar",
+        "Abrir Historial y expandir #6"
+      ],
+      "observed": [
+        "La compilación release de paneles terminó correctamente en38 segundos según el agente principal.",
+        "La recarga conservó la sesión de operator.",
+        "El historial mostró6 filas.",
+        "El pedido #6 expandido mostró Motivo: Otro motivo indicado por el alumno seguido del motivo íntegro.",
+        "Los totales persistieron en89.50 MXN,4 entregados y2 cancelaciones."
+      ],
+      "result": "fix_verified_for_reported_ui_cases",
+      "findingIds": [
+        "DEFECT-06"
+      ],
+      "reasonLabelShown": "Motivo: Otro motivo indicado por el alumno",
+      "reasonTextShown": "Prueba solicitada: cancelación desde Alumnos antes de que Cocina acepte el pedido.",
+      "metricsShown": {
+        "totalSold": 89.5,
+        "delivered": 4,
+        "cancelled": 2,
+        "historyRows": 6
+      },
+      "buildObservation": {
+        "scope": "staff release build3",
+        "reportedDurationSeconds": 38,
+        "result": "success",
+        "reportedBy": "primary_agent"
+      },
+      "notEstablished": [
+        "Todos los códigos de cancelación en todos los perfiles",
+        "Cambios en Alumnos, backend o rama de respaldo: el agente principal informó que no se hicieron"
+      ]
+    },
+    {
+      "id": "UI-58",
+      "role": "administrator",
+      "screen": "Retest final de opiniones y estado visible",
+      "actions": [
+        "Consultar4 opiniones y promedio3.3",
+        "Filtrar por Pude crear"
+      ],
+      "observed": [
+        "La vista sin filtro mostró4 opiniones y3.3.",
+        "El filtro Pude crear mostró1 opinión y promedio5.0.",
+        "Distribución5 estrellas:1 opinión y100%.",
+        "Carrera mostró5.0 sobre1 opinión.",
+        "Servicio y Alimentos permanecieron sin valoración.",
+        "La pestaña quedó filtrada y en modo oscuro; se informó restablecimiento del viewport sin dimensiones finales."
+      ],
+      "result": "observed_as_expected",
+      "reportProvenance": "Observación del agente principal transmitida por integration_review.",
+      "filterText": "Pude crear",
+      "unfilteredMetricsShown": {
+        "reviews": 4,
+        "average": 3.3
+      },
+      "filteredMetricsShown": {
+        "reviews": 1,
+        "average": 5.0,
+        "distribution": {
+          "5": 1
+        },
+        "fiveStarPercentage": 100,
+        "careerAverage": 5.0,
+        "careerReviews": 1,
+        "service": "Sin valoración",
+        "food": "Sin valoración"
+      },
+      "finalVisibleState": {
+        "filterText": "Pude crear",
+        "theme": "dark",
+        "viewportResetReported": true,
+        "finalViewportDimensionsReported": false
+      },
+      "notEstablished": [
+        "Nuevas puntuaciones separadas de Servicio y Alimentos",
+        "Matriz visual adicional después de restablecer viewport"
+      ]
+    }
+  ],
+  "findings": [
+    {
+      "id": "DEFECT-01",
+      "severity": "P2",
+      "status": "confirmed_not_fixed",
+      "title": "Carrito abierto desde Producto no ofrece regreso dentro de la interfaz",
+      "observedViaUi": "Desde Producto > Ver carrito se vieron Mi carrito, artículos y revisión de pedido, sin botón Atrás ni navegación inferior. Posteriormente, Historial > Volver a pedir reprodujo el acceso sin regreso; al eliminar Torta se observó realmente el estado vacío sin navegación. Después de crear #6, Atrás desde su detalle volvió nuevamente al carrito vacío sin salida visible; recargar recuperó sesión.",
+      "sourceCorroboration": [
+        {
+          "file": "lib/features/user/product_detail_screen.dart",
+          "line": 276,
+          "detail": "Empuja CartScreen directamente."
+        },
+        {
+          "file": "lib/features/user/cart_screen.dart",
+          "line": 727,
+          "detail": "Scaffold del carrito no define AppBar ni navegación inferior."
+        },
+        {
+          "file": "lib/features/user/cart_screen.dart",
+          "line": 792,
+          "detail": "El estado vacío invita a explorar, pero solo contiene texto e icono."
+        },
+        {
+          "file": "lib/features/user/profile_orders_screen.dart",
+          "line": 379,
+          "detail": "Volver a pedir empuja CartScreen directamente; este acceso adicional quedó confirmado después mediante UI-31."
+        },
+        {
+          "file": "lib/features/home/user_dashboard_screen.dart",
+          "line": 166,
+          "detail": "Desde Inicio, el carrito se envuelve con un Scaffold con AppBar; los accesos son inconsistentes."
+        }
+      ],
+      "impact": "Al desistir de comprar o vaciar el carrito, el acceso directo carece de salida visible hacia el catálogo dentro de la aplicación. No se afirma imposibilidad de usar controles externos de sistema/navegador.",
+      "inventoryIds": [
+        "PRODUCT-10",
+        "CART-01",
+        "ORDER-05",
+        "CART-05"
+      ],
+      "fixOrRetest": "Pendiente. Esta tarea solo documentó evidencia y no modificó fuentes.",
+      "evidenceIds": [
+        "UI-03",
+        "UI-31",
+        "UI-53"
+      ]
+    },
+    {
+      "id": "DEFECT-02",
+      "severity": "P2",
+      "status": "fixed_verified_for_reported_ui_cases",
+      "title": "Horarios conserva Abierto después de cerrar recepción desde el encabezado",
+      "observedViaUi": "El cierre manual fue confirmado; el encabezado y Alumnos mostraron Cerrado, pero Horarios previamente cargado permaneció Abierto.",
+      "evidenceIds": [
+        "UI-28",
+        "UI-29",
+        "UI-36"
+      ],
+      "impact": "La vista de operación puede mostrar un estado anterior y confundir al operador sobre recepción de pedidos. La compra del alumno sí quedó bloqueada.",
+      "fixOrRetest": "Nueva compilación verificada por el agente principal: cierre y reapertura desde encabezado actualizaron Horarios automáticamente; borrador40 preservado, guardado30 y error4 correctos; Actualizar restauró30.",
+      "verificationLimits": [
+        "No se afirma cobertura de todas las carreras simultáneas.",
+        "No se produjo otro cierre automático porque hoy estaba procesado."
+      ]
+    },
+    {
+      "id": "DEFECT-03",
+      "severity": "P2",
+      "status": "fixed_verified_for_reported_ui_cases",
+      "title": "Encabezado de chat por pedido inducía a interpretar como ajenos mensajes anteriores de la misma conversación",
+      "observedViaUi": "Chat Pedido #5 contenía mensajes del #3, mientras el modelo es una conversación por alumno y negocio.",
+      "evidenceIds": [
+        "UI-37",
+        "UI-44"
+      ],
+      "impact": "Contexto engañoso del chat; no demuestra fuga entre alumnos o negocios.",
+      "fixOrRetest": "La nueva compilación muestra Conversación del alumno, explica pedidos anteriores y conserva el mensaje de16:05; verificado visualmente."
+    },
+    {
+      "id": "DEFECT-04",
+      "severity": "P2",
+      "status": "fixed_verified_for_reported_ui_cases",
+      "title": "Borrador del chat se perdía al volver con Atrás",
+      "observedViaUi": "Pérdida reproducida con Atrás en la compilación anterior.",
+      "evidenceIds": [
+        "UI-37",
+        "UI-44",
+        "UI-45",
+        "UI-47",
+        "UI-56"
+      ],
+      "impact": "Pérdida de texto sin enviar al cambiar de pantalla.",
+      "fixOrRetest": "La nueva compilación conservó el borrador al cambiar secciones y al usar la ruta Atrás original. Logout→Admin→logout→Cocina limpió el borrador; vaciar el campo y reabrir también conservó el vacío. Todo fue comprobado desde la interfaz. También se verificó envío en la nueva compilación y caché vacía después de enviar, salir a lista y reabrir.",
+      "remainingChecks": [
+        "No afirmar persistencia entre recargas del navegador; fuera del alcance de la corrección en memoria."
+      ]
+    },
+    {
+      "id": "DEFECT-05",
+      "severity": "P3",
+      "status": "confirmed_not_fixed",
+      "title": "Selector de recogida programada conserva textos en inglés",
+      "observedViaUi": "Al programar pedido #5 apareció Select time / Cancel / OK dentro de la aplicación en español.",
+      "evidenceIds": [
+        "UI-35"
+      ],
+      "impact": "Localización incompleta de un control usado para comprar; se pudo seleccionar16:17 y crear el pedido.",
+      "inventoryIds": [
+        "CHECKOUT-04"
+      ],
+      "fixOrRetest": "Pendiente localización y comprobación de selección/cancelación en español."
+    },
+    {
+      "id": "DEFECT-06",
+      "severity": "P3",
+      "status": "fixed_verified_for_reported_ui_cases",
+      "title": "Historial de Cocina presenta código técnico de motivo de cancelación",
+      "observedViaUi": "En la cancelación del pedido #6 se mostró Motivo: user_other en lugar de una etiqueta para personas. La nota explicativa sí coincidió.",
+      "evidenceIds": [
+        "UI-55",
+        "UI-57"
+      ],
+      "impact": "Presentación incompleta del motivo; la cancelación, su nota y los totales sí se reflejaron correctamente.",
+      "fixOrRetest": "Tercera compilación release de paneles verificada: Historial #6 mostró Otro motivo indicado por el alumno y el motivo completo; sesión,6 filas y totales persistieron.",
+      "verificationLimits": [
+        "El retest comunicado corresponde a user_other del pedido #6; no se infiere que se probaron visualmente todos los códigos."
+      ]
+    }
+  ],
+  "studentInventoryMapping": [
+    {
+      "id": "AUTH-01",
+      "coverage": "partial",
+      "evidenceIds": [
+        "UI-01",
+        "UI-33"
+      ],
+      "observedSubset": "Validación de correo vacío y acceso con correo autorizado. Observación adicional: Correo de dominio externo rechazado; no todos los formatos posibles."
+    },
+    {
+      "id": "AUTH-02",
+      "coverage": "partial",
+      "evidenceIds": [
+        "UI-01",
+        "UI-33"
+      ],
+      "observedSubset": "Validación de contraseña vacía; no se acreditó envío con Enter. Observación adicional: La contraseña correcta con Enter inició sesión."
+    },
+    {
+      "id": "AUTH-04",
+      "coverage": "partial",
+      "evidenceIds": [
+        "UI-01",
+        "UI-33"
+      ],
+      "observedSubset": "Inicio de sesión correcto. Observación adicional: Contraseña incorrecta mostró rechazo y la correcta permitió acceso."
+    },
+    {
+      "id": "HOME-04",
+      "coverage": "partial",
+      "evidenceIds": [
+        "UI-02",
+        "UI-12",
+        "UI-29"
+      ],
+      "observedSubset": "Cafetería real y promedio visible después de calificar. Observación posterior: La tarjeta mostró Cerrado tras cierre manual desde Cocina."
+    },
+    {
+      "id": "CAT-01",
+      "coverage": "partial",
+      "evidenceIds": [
+        "UI-02"
+      ],
+      "observedSubset": "Catálogo de Cafetería integración visible; no se recorrieron todas las variantes de disponibilidad."
+    },
+    {
+      "id": "PRODUCT-01",
+      "coverage": "partial",
+      "evidenceIds": [
+        "UI-02",
+        "UI-11",
+        "UI-29",
+        "UI-50"
+      ],
+      "observedSubset": "Torta, precio, reseña y stock visibles. Observación posterior: Detalle indicó Local cerrado. Observación posterior: Stock29 fue leído después de cancelar #5 y antes de crear #6."
+    },
+    {
+      "id": "PRODUCT-02",
+      "coverage": "partial",
+      "evidenceIds": [
+        "UI-02"
+      ],
+      "observedSubset": "Disminuir de 2 a 1."
+    },
+    {
+      "id": "PRODUCT-03",
+      "coverage": "partial",
+      "evidenceIds": [
+        "UI-02"
+      ],
+      "observedSubset": "Aumentar de 1 a 2."
+    },
+    {
+      "id": "PRODUCT-04",
+      "coverage": "partial",
+      "evidenceIds": [
+        "UI-02"
+      ],
+      "observedSubset": "Notas guardadas con favorito; no se acreditó límite de longitud."
+    },
+    {
+      "id": "PRODUCT-05",
+      "coverage": "partial",
+      "evidenceIds": [
+        "UI-03",
+        "UI-04",
+        "UI-29"
+      ],
+      "observedSubset": "Torta añadida al carrito y posteriormente comprada desde la interfaz. Observación posterior: Añadir al carrito bloqueado por cierre del local."
+    },
+    {
+      "id": "PRODUCT-08",
+      "coverage": "partial",
+      "evidenceIds": [
+        "UI-02",
+        "UI-50"
+      ],
+      "observedSubset": "Guardar favorito con notas; quitar no recorrido. Observación posterior: Favorito eliminado y restaurado con notas exactas."
+    },
+    {
+      "id": "PRODUCT-10",
+      "coverage": "defect_confirmed",
+      "evidenceIds": [
+        "UI-03"
+      ],
+      "findingIds": [
+        "DEFECT-01"
+      ],
+      "observedSubset": "Abre el carrito, pero falta regreso visible en esa ruta."
+    },
+    {
+      "id": "PUBLIC-01",
+      "coverage": "partial",
+      "evidenceIds": [
+        "UI-11"
+      ],
+      "observedSubset": "Texto exacto de la reseña visible sin identidad; vacío y paginación no recorridos."
+    },
+    {
+      "id": "CART-01",
+      "coverage": "partial_with_defect",
+      "evidenceIds": [
+        "UI-03",
+        "UI-04",
+        "UI-31",
+        "UI-34",
+        "UI-35",
+        "UI-53"
+      ],
+      "findingIds": [
+        "DEFECT-01"
+      ],
+      "observedSubset": "Artículo, notas y precio visibles; falta navegación de regreso. Observación posterior: Carrito vacío tras eliminar desde Volver a pedir; vuelve a faltar navegación de regreso. Observación adicional: Carrito desde encabezado permitió regreso y compra programada; otras entradas siguen defectuosas. Observación posterior: Desde el detalle del pedido nuevo, Atrás volvió al carrito vacío sin salida; defecto reafirmado."
+    },
+    {
+      "id": "CART-02",
+      "coverage": "partial",
+      "evidenceIds": [
+        "UI-03"
+      ],
+      "observedSubset": "Restar de 2 a 1."
+    },
+    {
+      "id": "CART-03",
+      "coverage": "partial",
+      "evidenceIds": [
+        "UI-03"
+      ],
+      "observedSubset": "Sumar de 1 a 2."
+    },
+    {
+      "id": "CART-04",
+      "coverage": "partial",
+      "evidenceIds": [
+        "UI-03",
+        "UI-05"
+      ],
+      "observedSubset": "Guardar notas exactas y comprobar que llegaron a Cocina."
+    },
+    {
+      "id": "CHECKOUT-01",
+      "coverage": "partial",
+      "evidenceIds": [
+        "UI-04"
+      ],
+      "observedSubset": "Revisión de un negocio con un producto; cancelación y varios negocios no recorridos."
+    },
+    {
+      "id": "CHECKOUT-02",
+      "coverage": "partial",
+      "evidenceIds": [
+        "UI-04",
+        "UI-35"
+      ],
+      "observedSubset": "Método Efectivo; no hay prueba de cargo o de los demás métodos. Observación adicional: Segundo pedido con Efectivo; demás métodos pendientes."
+    },
+    {
+      "id": "CHECKOUT-06",
+      "coverage": "partial",
+      "evidenceIds": [
+        "UI-04",
+        "UI-05",
+        "UI-35",
+        "UI-52"
+      ],
+      "observedSubset": "Confirmación simple creó el pedido real y Cocina lo recibió; idempotencia, concurrencia y fallos no probados en este recorrido. Observación adicional: Confirmación simple creó #5 programado visible en Cocina; no prueba idempotencia bajo fallo. Observación posterior: Tercer pedido del recorrido creado por UI: #6 inmediato, Efectivo,1 Torta35.50."
+    },
+    {
+      "id": "ORDER-01",
+      "coverage": "partial",
+      "evidenceIds": [
+        "UI-06",
+        "UI-10",
+        "UI-42",
+        "UI-54"
+      ],
+      "observedSubset": "Activos y después Historial; no todas las pestañas y formatos. Observación adicional: Historial conservó #5 Cancelado después del reinicio. Observación posterior: Historial conservó #6 cancelado y Activos quedó vacío."
+    },
+    {
+      "id": "PICKUP-01",
+      "coverage": "partial",
+      "evidenceIds": [
+        "UI-06",
+        "UI-09",
+        "UI-10",
+        "UI-42",
+        "UI-52",
+        "UI-54"
+      ],
+      "observedSubset": "Listo en Alumnos y Entregado en historiales; no todos los estados de detalle. Observación adicional: Detalle del cancelado conservó motivo y avisó que el código no puede usarse. Observación posterior: Detalle pendiente y luego historial cancelado con motivo; no se ofreció calificación."
+    },
+    {
+      "id": "PICKUP-02",
+      "coverage": "partial",
+      "evidenceIds": [
+        "UI-06",
+        "UI-08",
+        "UI-42"
+      ],
+      "observedSubset": "QR/código del pedido listo y aceptación en Cocina; aislamiento y ocultación en otros estados no recorridos. Observación adicional: Pedido cancelado no ofreció código utilizable según la pantalla; aislamiento entre cuentas sigue pendiente."
+    },
+    {
+      "id": "PICKUP-03",
+      "coverage": "inconclusive",
+      "evidenceIds": [
+        "UI-07"
+      ],
+      "observedSubset": "Aviso de copia mostrado, contenido del portapapeles no verificado."
+    },
+    {
+      "id": "RATING-01",
+      "coverage": "partial",
+      "evidenceIds": [
+        "UI-10",
+        "UI-42",
+        "UI-54"
+      ],
+      "observedSubset": "Formulario de pedido entregado y estado Calificado posterior. Observación adicional: El pedido cancelado no mostró Calificar. Observación posterior: El cancelado #6 no ofreció calificación."
+    },
+    {
+      "id": "RATING-02",
+      "coverage": "partial",
+      "evidenceIds": [
+        "UI-10"
+      ],
+      "observedSubset": "Seleccionar 5 estrellas; 0–4 no recorridas en esta prueba real."
+    },
+    {
+      "id": "RATING-03",
+      "coverage": "partial",
+      "evidenceIds": [
+        "UI-10",
+        "UI-13"
+      ],
+      "observedSubset": "Comentario exacto guardado y visible en Administración; vacío y longitud máxima no recorridos."
+    },
+    {
+      "id": "RATING-04",
+      "coverage": "partial",
+      "evidenceIds": [
+        "UI-10",
+        "UI-13"
+      ],
+      "observedSubset": "Envío, confirmación, estado Calificado y observación cruzada en Administración."
+    },
+    {
+      "id": "REVIEW-01",
+      "coverage": "partial",
+      "evidenceIds": [
+        "UI-11"
+      ],
+      "observedSubset": "Acceso desde pedido propio entregado; cambio de cuenta/pendiente/ajeno no recorridos."
+    },
+    {
+      "id": "REVIEW-02",
+      "coverage": "partial",
+      "evidenceIds": [
+        "UI-11"
+      ],
+      "observedSubset": "Seleccionar Torta comprada en el pedido #4."
+    },
+    {
+      "id": "REVIEW-03",
+      "coverage": "partial",
+      "evidenceIds": [
+        "UI-11"
+      ],
+      "observedSubset": "Seleccionar 5 estrellas para el platillo; otros valores no recorridos."
+    },
+    {
+      "id": "REVIEW-04",
+      "coverage": "partial",
+      "evidenceIds": [
+        "UI-11"
+      ],
+      "observedSubset": "Comentario exacto sobre funcionamiento de la aplicación, separado de calidad del alimento."
+    },
+    {
+      "id": "REVIEW-05",
+      "coverage": "partial",
+      "evidenceIds": [
+        "UI-11",
+        "UI-13"
+      ],
+      "observedSubset": "Reseña guardada y visible públicamente; el comentario de cafetería distinto aparece en Administración."
+    },
+    {
+      "id": "NAV-01",
+      "coverage": "partial",
+      "evidenceIds": [
+        "UI-29",
+        "UI-31"
+      ],
+      "observedSubset": "Recorrido de Inicio, perfil, favoritos e historial; la recarga conservó sesión. No acredita la matriz móvil completa."
+    },
+    {
+      "id": "CAT-03",
+      "coverage": "partial",
+      "evidenceIds": [
+        "UI-29"
+      ],
+      "observedSubset": "Menú cerrado explorable y acceso al producto; no habilitó compra."
+    },
+    {
+      "id": "CART-05",
+      "coverage": "partial",
+      "evidenceIds": [
+        "UI-31"
+      ],
+      "observedSubset": "Eliminar Torta dejó carrito vacío sin crear pedido."
+    },
+    {
+      "id": "ORDER-05",
+      "coverage": "partial_with_defect",
+      "evidenceIds": [
+        "UI-31"
+      ],
+      "observedSubset": "Volver a pedir conservó Torta y notas aun cerrado; solo agregó al carrito y mantuvo compra deshabilitada.",
+      "findingIds": [
+        "DEFECT-01"
+      ]
+    },
+    {
+      "id": "FAV-01",
+      "coverage": "partial",
+      "evidenceIds": [
+        "UI-29",
+        "UI-50"
+      ],
+      "observedSubset": "Favorito visible con acción Añadir bloqueada por cierre. Observación posterior: Se observó estado vacío y después favorito restaurado con notas."
+    },
+    {
+      "id": "FAV-03",
+      "coverage": "partial",
+      "evidenceIds": [
+        "UI-29",
+        "UI-34"
+      ],
+      "observedSubset": "Solo se observó la rama deshabilitada por local cerrado; no el diálogo de confirmación exitoso. Observación adicional: Con negocio reabierto, la confirmación Añadir guardó Torta y notas del favorito."
+    },
+    {
+      "id": "PROFILE-01",
+      "coverage": "partial",
+      "evidenceIds": [
+        "UI-29"
+      ],
+      "observedSubset": "Se observaron datos correctos de la cuenta actual, sin registrar aquí valores privados adicionales."
+    },
+    {
+      "id": "PROFILE-02",
+      "coverage": "partial",
+      "evidenceIds": [
+        "UI-29"
+      ],
+      "observedSubset": "Historial de consumo abrió entregados."
+    },
+    {
+      "id": "REVIEW-06",
+      "coverage": "partial",
+      "evidenceIds": [
+        "UI-30"
+      ],
+      "observedSubset": "La duplicada mostró el aviso de reseña ya existente; no se documenta una reseña adicional."
+    },
+    {
+      "id": "SEARCH-01",
+      "coverage": "partial",
+      "evidenceIds": [
+        "UI-32"
+      ],
+      "observedSubset": "Torta devolvió2 y la consulta inexistente mostró vacío; concurrencia de respuestas y longitud no probadas."
+    },
+    {
+      "id": "SEARCH-03",
+      "coverage": "partial",
+      "evidenceIds": [
+        "UI-32"
+      ],
+      "observedSubset": "Limpiar restableció el estado inicial."
+    },
+    {
+      "id": "NAV-03",
+      "coverage": "partial",
+      "evidenceIds": [
+        "UI-34"
+      ],
+      "observedSubset": "Carrito desde el encabezado tiene Atrás; no corrige las rutas directas defectuosas."
+    },
+    {
+      "id": "CHECKOUT-03",
+      "coverage": "partial",
+      "evidenceIds": [
+        "UI-35"
+      ],
+      "observedSubset": "Activar programación permitió seleccionar hora; sin hora se bloqueó confirmación."
+    },
+    {
+      "id": "CHECKOUT-04",
+      "coverage": "partial_with_localization_defect",
+      "evidenceIds": [
+        "UI-35"
+      ],
+      "observedSubset": "Se aceptó hora por defecto16:17; Cancelar y entrada manual no verificados. Selector en inglés.",
+      "findingIds": [
+        "DEFECT-05"
+      ]
+    },
+    {
+      "id": "CHECKOUT-05",
+      "coverage": "partial",
+      "evidenceIds": [
+        "UI-35"
+      ],
+      "observedSubset": "Sin hora mostró Elige una hora; no se ejecutaron límites de menos de5 minutos o husos horarios."
+    },
+    {
+      "id": "ORDER-07",
+      "coverage": "partial",
+      "evidenceIds": [
+        "UI-43"
+      ],
+      "observedSubset": "Error y recuperación automática tras parada real de API. El clic Reintentar no ocurrió porque el botón ya había desaparecido."
+    },
+    {
+      "id": "AUTH-03",
+      "coverage": "partial",
+      "evidenceIds": [
+        "UI-49"
+      ],
+      "observedSubset": "Mostrar/Ocultar alternó en ambas direcciones; matriz de accesibilidad completa pendiente."
+    },
+    {
+      "id": "FAV-04",
+      "coverage": "partial",
+      "evidenceIds": [
+        "UI-50"
+      ],
+      "observedSubset": "Eliminar Torta dejó la lista vacía; posteriormente se restauró el favorito."
+    },
+    {
+      "id": "PRODUCT-06",
+      "coverage": "partial",
+      "evidenceIds": [
+        "UI-51"
+      ],
+      "observedSubset": "Volver en Actualizar carrito conservó entrada; Guardar cambios mantuvo1 y notas; no se probó reemplazar por otra cantidad."
+    },
+    {
+      "id": "ORDER-02",
+      "coverage": "partial",
+      "evidenceIds": [
+        "UI-54"
+      ],
+      "observedSubset": "Tarjeta activa abrió Cancelar; Conservar mantuvo el pedido activo."
+    },
+    {
+      "id": "ORDER-03",
+      "coverage": "partial",
+      "evidenceIds": [
+        "UI-54",
+        "UI-55"
+      ],
+      "observedSubset": "Cancelación iniciada por Alumnos: sin motivo deshabilitada; Conservar no canceló; motivo válido produjo Cancelado e historial. Cocina confirmó después #6 Cancelado con nota exacta; el agregado mostró2 cancelaciones y0 activos."
+    }
+  ],
+  "remainingCoverage": {
+    "policy": "Cualquier control, variante, formato o condición sin evidencia explícita permanece pendiente. Ninguna acción compuesta del inventario se declara completamente terminada mediante este registro.",
+    "inventoryActions": 100,
+    "mappedActionsWithSomeObservation": 54,
+    "unmappedActions": 46,
+    "fullyCompletedInventoryActions": 0,
+    "confirmedDefects": 2,
+    "inconclusiveActions": [
+      "PICKUP-03"
+    ],
+    "examplesPending": [
+      "Corregir y repetir navegación del carrito en las dos rutas directas",
+      "Localizar selector de hora al español y comprobar cancelar/aceptar",
+      "Copiar y pegar código con comprobación visible",
+      "Matriz móvil/PC completa",
+      "Búsqueda con respuestas fuera de orden y límites de longitud",
+      "Una nueva ejecución automática en fecha no procesada mediante UI",
+      "Entrada manual del selector de hora anteriormente inconclusa",
+      "Chat con dos alumnos/negocios distintos para comprobar aislamiento",
+      "Altas válidas de cuenta/producto, imágenes y correo habilitado",
+      "Fallos de conexión durante una mutación pendiente",
+      "Concurrencia real y capacidad de mil usuarios"
+    ],
+    "inconclusiveCases": [
+      {
+        "id": "PICKUP-03",
+        "evidenceId": "UI-07",
+        "reason": "Contenido del portapapeles no comprobado."
+      },
+      {
+        "id": "TIME-PICKER-01",
+        "evidenceId": "UI-26",
+        "reason": "Entrada manual mostró error aunque aceptó15:57; interacción de herramienta no aislada."
+      }
+    ],
+    "confirmedDefectsTotal": 6,
+    "verifiedFixedDefects": [
+      "DEFECT-02",
+      "DEFECT-03",
+      "DEFECT-04",
+      "DEFECT-06"
+    ],
+    "partiallyVerifiedFixes": [],
+    "unfixedDefects": [
+      "DEFECT-01",
+      "DEFECT-05"
+    ],
+    "authorizationPendingFindings": [
+      "DEFECT-01",
+      "DEFECT-05"
+    ],
+    "environmentLimitsDocument": "docs/qa-environment-limits.json"
+  },
+  "priorAutomation": {
+    "studentPassed": 58,
+    "panelsPassed": 165,
+    "totalPassed": 223,
+    "classification": "Resultados automatizados anteriores, separados de este recorrido por pantallas. No constituyen nueva evidencia de interfaz real.",
+    "report": "C:/Users/video/Documents/JC/SnackUP-Integracion-Local/reports/full-app-qa/full-suite-summary.json"
+  },
+  "limitations": [
+    "Los agregados contienen datos previos; no se presenta esta ejecución como una base limpia.",
+    "No acredita capacidad de producción, mil usuarios simultáneos, rendimiento del servidor final ni entrega de correo.",
+    "No acredita pago, preparación o entrega física de comida ni calidad del producto.",
+    "El aviso de Copiar código no basta para certificar contenido del portapapeles.",
+    "La observación visual de reseñas sin identidad no sustituye una auditoría completa de privacidad del API.",
+    "El defecto del carrito sigue abierto; no se modificó código ni se hicieron commits en esta tarea.",
+    "Guardar una hora de cierre cuando la fecha ya estaba procesada no prueba una nueva ejecución automática. La reprogramación no se forzó alterando el historial.",
+    "En la caída de Alumnos hubo recuperación automática; no se ejecutó el clic Reintentar. En Administración sí se pulsó Reintentar y desapareció el error.",
+    "Las paradas reales demuestran la recuperación observada, no capacidad de producción ni seguridad de una transacción interrumpida.",
+    "El alcance móvil cubre chat390×844 y navegación administrativa Menú→Opiniones a390px; no todas las pantallas.",
+    "El registro contiene tres pedidos nuevos creados por pantallas: #4 entregado/calificado, #5 programado y cancelado desde Cocina, #6 inmediato y cancelado desde Alumnos. Cocina confirmó #6 y su motivo; no demuestra exhaustividad.",
+    "La etiqueta de cancelación #6 quedó corregida y verificada; los dos defectos de Alumnos continúan abiertos y sujetos a autorización de cambios. Los límites de alcance/configuración están separados de los resultados UI."
+  ],
+  "viewportObservations": [
+    {
+      "role": "administrator",
+      "width": 1366,
+      "height": 900,
+      "themes": [
+        "light",
+        "dark"
+      ],
+      "evidenceId": "UI-18"
+    },
+    {
+      "role": "kitchen",
+      "deviceClass": "PC",
+      "exactDimensionsReported": false,
+      "evidenceIds": [
+        "UI-21",
+        "UI-22",
+        "UI-23",
+        "UI-24",
+        "UI-25",
+        "UI-26",
+        "UI-27",
+        "UI-28"
+      ]
+    },
+    {
+      "role": "kitchen",
+      "width": 390,
+      "height": 844,
+      "scope": "Conversación, campo de borrador y controles de chat",
+      "evidenceId": "UI-44",
+      "screenshotObserved": true,
+      "screenshotPathCommunicated": false
+    },
+    {
+      "role": "administrator",
+      "width": 390,
+      "heightReported": false,
+      "scope": "Abrir menú → Opiniones; cajón cerrado y métricas4/3.3",
+      "evidenceId": "UI-48"
+    }
+  ],
+  "endingStateObserved": {
+    "qualification": "Últimos estados comunicados por el agente principal; no se realizaron lecturas adicionales para completar valores no observados.",
+    "businessOpenLastObserved": true,
+    "businessOpenEvidence": "UI-36",
+    "pickupTimeoutMinutesLastObserved": 30,
+    "pickupTimeoutEvidence": "UI-36",
+    "newUiOrdersThisRecord": 3,
+    "order4Status": "completed",
+    "order5Status": "cancelled",
+    "kitchenSummary": {
+      "delivered": 4,
+      "cancelled": 2,
+      "activeLastObserved": 0,
+      "totalSold": 89.5,
+      "historyRows": 6,
+      "evidenceId": "UI-57",
+      "activeEvidenceId": "UI-55"
+    },
+    "adminSummary": {
+      "scope": "filtro activo",
+      "filterText": "Pude crear",
+      "reviews": 1,
+      "average": 5.0,
+      "distribution": {
+        "5": 1
+      },
+      "fiveStarPercentage": 100,
+      "careerAverage": 5.0,
+      "careerReviews": 1,
+      "service": "Sin valoración",
+      "food": "Sin valoración",
+      "unfilteredMetricsLastObserved": {
+        "reviews": 4,
+        "average": 3.3
+      },
+      "order4FollowupLastObserved": "resolved",
+      "followupEvidenceId": "UI-46",
+      "theme": "dark",
+      "viewportResetReported": true,
+      "finalViewportDimensionsReported": false,
+      "evidenceId": "UI-58"
+    },
+    "studentOrder5RecoveredAutomaticallyAfterApiRestart": true,
+    "studentRecoveryEvidence": "UI-43",
+    "chatMessagePersisted": true,
+    "chatDraftSectionNavigationVerified": true,
+    "chatDraftCleanupAfterLogoutVerified": true,
+    "stockAfterOrder5Cancellation": "29 observado en UI-50, antes de crear #6.",
+    "chatOriginalBackRouteVerified": true,
+    "chatDraftEmptyCacheVerified": true,
+    "chatDraftLastObserved": "vacío tras enviar y reabrir",
+    "chatDraftEvidence": "UI-56",
+    "chatNewBuildSendAndPostSendDraftCleanupVerified": true,
+    "order6StatusInStudentUi": "cancelled",
+    "order6KitchenStatusVerification": "verified_cancelled_with_exact_reason",
+    "order6Evidence": "UI-54",
+    "studentActiveOrdersLastObserved": "vacío",
+    "studentFavoriteTortaLastObserved": {
+      "saved": true,
+      "notes": "Sin cebolla, salsa aparte.",
+      "evidenceId": "UI-50"
+    },
+    "tortaStockObservedAfterOrder5CancellationBeforeOrder6": 29,
+    "stockAfterOrder6Cancellation": "Sin lectura comunicada; pendiente.",
+    "order6KitchenEvidence": "UI-55",
+    "chatLatestMessageTimeShownLocal": "16:22",
+    "chatLatestMessageEvidence": "UI-56",
+    "order6CancellationLabel": "Otro motivo indicado por el alumno",
+    "order6CancellationLabelEvidence": "UI-57"
+  },
+  "additionalScenarios": [
+    {
+      "orderNumber": 5,
+      "createdDateLocal": "2026-11-04",
+      "createdTimeShownLocal": "16:02",
+      "scheduledPickupTimeShownLocal": "16:17",
+      "product": "Torta",
+      "quantity": 1,
+      "unitPrice": 35.5,
+      "orderTotal": 35.5,
+      "currency": "MXN",
+      "paymentMethod": "Efectivo",
+      "notesEvidence": "Notas con coma del favorito conservadas; literal no comunicado.",
+      "finalStatus": "cancelled",
+      "cancelledByRole": "kitchen",
+      "cancellationReason": "Cancelación del ensayo funcional solicitado: ya se comprobó la recogida programada y ahora se verifica su reflejo en el historial del alumno.",
+      "sourceEvidenceIds": [
+        "UI-35",
+        "UI-39",
+        "UI-42"
+      ]
+    },
+    {
+      "orderNumber": 6,
+      "createdDateLocal": "2026-11-04",
+      "createdTimeShownLocal": "16:20",
+      "scheduledPickup": false,
+      "product": "Torta",
+      "quantity": 1,
+      "unitPrice": 35.5,
+      "orderTotal": 35.5,
+      "currency": "MXN",
+      "paymentMethod": "Efectivo",
+      "notes": "Sin cebolla, salsa aparte.",
+      "finalStatus": "cancelled",
+      "cancelledByRole": "student",
+      "cancellationReason": "Prueba solicitada: cancelación desde Alumnos antes de que Cocina acepte el pedido.",
+      "kitchenVerification": "verified_cancelled_with_exact_reason",
+      "sourceEvidenceIds": [
+        "UI-52",
+        "UI-54",
+        "UI-55"
+      ]
+    }
+  ],
+  "scopeAndConfigurationLimits": {
+    "classification": "static_scope_and_configuration_review_not_new_ui_observations",
+    "sourceDocument": "docs/qa-environment-limits.json",
+    "sourceDocumentMethod": "Solo lectura de fuentes, configuración pública explícita del lanzador e inventario.",
+    "sourceDocumentRuntimeCaveat": "Las conclusiones de configuración se aplican al lanzador indicado. Esta revisión no inspeccionó procesos, configuración privada, base de datos ni respuestas del servidor.",
+    "sourceDocumentCounts": {
+      "entries": 34,
+      "blocked_variants": 18,
+      "pending_prerequisite_or_execution": 16,
+      "ui_actions_performed": 0,
+      "api_calls_performed": 0,
+      "database_reads_or_writes": 0
+    },
+    "sourceReadingIsNotAcceptance": "Estos límites proceden de revisión de código y configuración explícita del lanzador. No se contabilizan como nuevos pasos UI aprobados ni como llamadas o verificaciones de servicios externos.",
+    "items": [
+      {
+        "id": "SCOPE-STUDENT-CHAT",
+        "status": "not_exposed_in_reachable_ui",
+        "description": "La app actual de Alumnos no expone una pantalla o entrada de chat en el recorrido desde main.dart/AuthWrapper. Los envíos probados fueron desde Cocina; no se afirma conversación bidireccional desde una UI de alumno.",
+        "sourceFiles": [
+          "lib/main.dart",
+          "lib/features/auth/auth_gate.dart",
+          "lib/features/home/user_dashboard_screen.dart",
+          "docs/qa-alumnos-inventory.json"
+        ],
+        "sourceBasis": "Lectura de navegación de código e inventario de acciones alcanzables."
+      },
+      {
+        "id": "CONFIG-INSTITUTIONAL-IDENTITY",
+        "status": "not_configured_or_verified_for_official_institutional_identity",
+        "description": "Las cuentas del recorrido son locales de prueba. El padrón académico documentado es ficticio; no se acredita integración o verificación contra cuenta, padrón, API o SSO oficial de la universidad. Un dominio institucional de correo no prueba esa verificación.",
+        "sourceDocumentSections": [
+          "documented_account_baseline"
+        ],
+        "sourceLimitIds": [
+          "LIMIT-ACADEMIC-CRUD"
+        ],
+        "sourceIds": [
+          "seed-baseline",
+          "admin-academic-read"
+        ]
+      },
+      {
+        "id": "CONFIG-SMTP",
+        "status": "disabled_in_documented_launcher",
+        "description": "El lanzador explícito deja SMTP y buzón de pruebas deshabilitados. Autorregistro, entrega de confirmaciones/recuperación y altas que requieran correo no pueden certificarse como exitosos con esa configuración.",
+        "sourceLimitIds": [
+          "LIMIT-SELF-REGISTRATION-SUCCESS",
+          "LIMIT-RESET-DELIVERY",
+          "LIMIT-RESET-SUCCESS"
+        ],
+        "sourceIds": [
+          "local-mail-disabled",
+          "mail-gate",
+          "access-options",
+          "canonical-options"
+        ]
+      },
+      {
+        "id": "CONFIG-OAUTH",
+        "status": "disabled_not_implemented_as_enabled_flow",
+        "description": "Los contratos anuncian googleEnabled=false; no existe un inicio OAuth habilitado que este recorrido haya completado.",
+        "sourceLimitIds": [
+          "LIMIT-GOOGLE-SUCCESS"
+        ],
+        "sourceIds": [
+          "access-options",
+          "canonical-options",
+          "google-disabled",
+          "portal-google-gate"
+        ]
+      },
+      {
+        "id": "CONFIG-PUSH",
+        "status": "disabled_in_documented_launcher",
+        "description": "push_enabled=false y sin proveedores configurados en el lanzador. Avisos de pantalla, sondeo, sonido o recuperación automática no acreditan push al teléfono.",
+        "sourceLimitIds": [
+          "LIMIT-PUSH-DELIVERY"
+        ],
+        "sourceIds": [
+          "local-push-disabled",
+          "settings-production"
+        ]
+      },
+      {
+        "id": "SCOPE-FOOD-SERVICE",
+        "status": "not_exposed_as_student_inputs",
+        "description": "La UI de calificación de Alumnos envía stars/comment, sin controles separados de Servicio y Alimentos. Sin informar/Sin valoración en la opinión nueva es coherente con ese alcance; no se fabricaron dimensiones por API.",
+        "sourceLimitIds": [
+          "LIMIT-FOOD-SERVICE-NEW-DATA"
+        ],
+        "sourceIds": [
+          "student-business-payload",
+          "business-rating-schema",
+          "food-service-model"
+        ]
+      },
+      {
+        "id": "CONFIG-PRODUCTION",
+        "status": "not_certified",
+        "description": "El lanzador local es development, un worker, localhost, sin HTTPS/Redis configurados. La revisión manual no certifica1000 alumnos, despliegue ni capacidad del servidor final.",
+        "sourceLimitIds": [
+          "LIMIT-PRODUCTION-CAPACITY"
+        ],
+        "sourceIds": [
+          "local-network",
+          "local-settings",
+          "settings-production",
+          "guide-limits"
+        ]
+      },
+      {
+        "id": "AUTHORIZATION-STUDENT-FIXES",
+        "status": "awaiting_user_authorization",
+        "description": "El código raíz de Alumnos se conservó. Las correcciones del regreso del carrito y del selector en inglés están identificadas pero requieren autorización para modificar esa parte.",
+        "findingIds": [
+          "DEFECT-01",
+          "DEFECT-05"
+        ],
+        "sourceBasis": "Alcance indicado por el agente principal; no es un resultado de configuración ni una función UI ejecutada."
+      }
+    ]
+  }
+}

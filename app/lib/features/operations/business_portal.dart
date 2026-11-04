@@ -403,6 +403,7 @@ class _BusinessPortalState extends State<BusinessPortal>
                           5 => V32OperationsScreen(
                             repository: widget.v32!,
                             businessId: widget.businessId,
+                            businessVersion: b?.version,
                           ),
                           _ => _settings(),
                         },
@@ -745,14 +746,14 @@ class _BusinessPortalState extends State<BusinessPortal>
               if (widget.v32 != null)
                 OutlinedButton.icon(
                   icon: const Icon(Icons.chat_outlined),
-                  label: const Text('Chat del pedido'),
+                  label: const Text('Chat con el alumno'),
                   onPressed: disabled
                       ? null
                       : () => Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (_) => Scaffold(
                               appBar: AppBar(
-                                title: Text('Chat · Pedido #${o.number}'),
+                                title: const Text('Chat con el alumno'),
                               ),
                               body: KitchenChatScreen(
                                 repository: widget.v32!,

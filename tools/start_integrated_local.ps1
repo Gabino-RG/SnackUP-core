@@ -2,12 +2,14 @@
 <#
 .SYNOPSIS
 Starts only the isolated SnackUP integration environment. No downloads/builds.
+Demo data is added only when -SeedDemoData is explicitly supplied.
 #>
 [CmdletBinding()]
 param(
     [string]$ConfigPath = 'C:/Users/video/Documents/JC/SnackUP-Integracion-Local/config.json',
     [string]$PythonPath = 'C:/Users/video/Documents/Codex/2026-10-14/h/work/SnackUP-core/backend/.venv/Scripts/python.exe',
-    [ValidateRange(15, 180)][int]$StartupTimeoutSeconds = 60
+    [ValidateRange(15, 180)][int]$StartupTimeoutSeconds = 60,
+    [switch]$SeedDemoData
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -132,8 +134,10 @@ except Exception as error:
 '@
     & $PythonPath -c $migrationCode $ConfigPath $repo
     if ($LASTEXITCODE -ne 0) { throw 'No se pudieron aplicar las migraciones locales.' }
-    & $PythonPath (Join-Path $PSScriptRoot 'seed_integrated.py') --config $ConfigPath
-    if ($LASTEXITCODE -ne 0) { throw 'No se pudieron preparar las cuentas sinteticas.' }
+    if ($SeedDemoData) {
+        & $PythonPath (Join-Path $PSScriptRoot 'seed_integrated.py') --config $ConfigPath
+        if ($LASTEXITCODE -ne 0) { throw 'No se pudieron preparar las cuentas sinteticas.' }
+    }
     if ((Get-Listeners).Count -gt 0) { throw 'Otro proceso ocupo 18080 durante la preparacion; no se inicia un segundo servidor.' }
 
     $stamp = Get-Date -Format 'yyyyMMdd-HHmmss-fff'

@@ -1,0 +1,1996 @@
+{
+  "schemaVersion": 1,
+  "createdAt": "2026-11-04T21:34:40.628852+00:00",
+  "scope": "Reachable student interface from lib/main.dart -> AuthWrapper -> UserDashboardScreen plus conditional registration/reset routes",
+  "method": "Read-only inspection of source and previously completed Flutter reports. This inventory does not execute application requests or create application data.",
+  "userConstraint": "All new application data and acceptance evidence must come from real UI actions. Do not run fixtures, seeds, HTTP mutation scripts or mocked suites for new acceptance results.",
+  "statusMeaning": {
+    "pending": "No real UI evidence is recorded in this inventory. Existing automated tests do not mark the real interface as passed."
+  },
+  "requiredViewports": [
+    "mobile approximately360–390 CSSpx",
+    "desktop approximately1280 CSSpx"
+  ],
+  "requiredCommonChecks": [
+    "Control reachable by pointer/touch and keyboard where applicable",
+    "Readable text and no overflow",
+    "Loading, empty, failure and success states where implemented",
+    "No secrets or student identity exposed to another role",
+    "Return navigation keeps the current authenticated identity"
+  ],
+  "previousAutomation": {
+    "label": "Automated tests executed earlier; not real-interface acceptance",
+    "report": "C:/Users/video/Documents/JC/SnackUP-Integracion-Local/reports/full-app-qa/full-suite-summary.json",
+    "student": {
+      "tests": 58,
+      "passed": 58,
+      "failed": 0,
+      "skipped": 0,
+      "files": 10,
+      "finishedAt": "2026-11-04T21:26:14.6271030Z"
+    },
+    "panels": {
+      "tests": 165,
+      "passed": 165,
+      "failed": 0,
+      "skipped": 0,
+      "files": 26,
+      "finishedAt": "2026-11-04T21:26:37.3150707Z"
+    },
+    "totalPassed": 223
+  },
+  "reachabilityNotes": [
+    "Category headings in the cafeteria menu are read-only grouping; no interactive category/price filter exists on the reachable student route.",
+    "The tune icon in the home search banner belongs to the single search tap target; it does not open a separate filter dialog.",
+    "Activos/Historial/Favoritos are navigation tabs; no independent arbitrary order-status filter is exposed.",
+    "No chat entry is reachable in the current student screen graph inspected here; do not mark a student chat UI as tested.",
+    "Payment selection records a method; the student confirmation expressly does not charge money.",
+    "Registration/recovery actions require server auth/options selfRegistration and working mail to complete; an unavailable prerequisite is not a passed UI test.",
+    "Old lib/features/business screens and old auth login/register/role-selection files are not reachable from the current root AuthWrapper; excluded from student acceptance inventory.",
+    "LocalRegistrationHint is compile-time conditional and excluded from the normal institutional build; a demo hint is not student production behavior.",
+    "Order state is explicitly refreshable in the reachable student UI; this inventory does not claim push/WebSocket notification delivery."
+  ],
+  "counts": {
+    "actions": 100,
+    "pending": 100,
+    "passedRealUi": 0,
+    "bySection": {
+      "access": 10,
+      "registration": 9,
+      "password_reset": 3,
+      "navigation": 6,
+      "home": 4,
+      "catalog": 3,
+      "search": 4,
+      "product": 10,
+      "public_reviews": 4,
+      "cart": 5,
+      "checkout": 9,
+      "orders": 7,
+      "pickup": 6,
+      "business_rating": 5,
+      "product_rating": 6,
+      "favorites": 4,
+      "profile": 3,
+      "session": 2
+    }
+  },
+  "actions": [
+    {
+      "id": "AUTH-01",
+      "section": "access",
+      "controlOrAction": "Correo institucional en inicio de sesión",
+      "source": "lib/student/auth_screens.dart",
+      "sourceLine": 22,
+      "sourceAnchor": "class LoginScreen",
+      "expected": "Validar vacío, formato, dominio exacto institucional y mayúsculas; rechazar dominio personal o parecido.",
+      "prerequisites": [],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": [
+        {
+          "file": "test/student_email_policy_test.dart",
+          "name": "institutional address accepts exact domain including uppercase",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        },
+        {
+          "file": "test/student_email_policy_test.dart",
+          "name": "personal, demo and lookalike domains are rejected",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        }
+      ]
+    },
+    {
+      "id": "AUTH-02",
+      "section": "access",
+      "controlOrAction": "Contraseña y envío con Enter",
+      "source": "lib/student/auth_screens.dart",
+      "sourceLine": 22,
+      "sourceAnchor": "class LoginScreen",
+      "expected": "Vacía muestra validación; Enter ejecuta el mismo inicio de sesión que el botón.",
+      "prerequisites": [
+        "authorized_student_account"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "AUTH-03",
+      "section": "access",
+      "controlOrAction": "Mostrar / Ocultar contraseña",
+      "source": "lib/student/auth_screens.dart",
+      "sourceLine": 193,
+      "sourceAnchor": "tooltip: _hide",
+      "expected": "Alternar visibilidad sin cambiar el valor ni enviar el formulario.",
+      "prerequisites": [],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "AUTH-04",
+      "section": "access",
+      "controlOrAction": "Iniciar sesión",
+      "source": "lib/student/auth_screens.dart",
+      "sourceLine": 46,
+      "sourceAnchor": "Future<void> _login",
+      "expected": "Acceso válido abre Inicio; credenciales inválidas muestran error; durante envío se bloquea repetición.",
+      "prerequisites": [
+        "authorized_student_account"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "AUTH-05",
+      "section": "access",
+      "controlOrAction": "Cuenta de otro perfil y Volver al inicio de sesión",
+      "source": "lib/features/auth/auth_gate.dart",
+      "sourceLine": 57,
+      "sourceAnchor": "if (api.user?['role']",
+      "expected": "Cocina/Administración no entran al portal de alumnos; botón cierra la sesión local.",
+      "prerequisites": [
+        "authorized_staff_account"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": [
+        {
+          "file": "test/widget_test.dart",
+          "name": "kitchen or admin login cannot enter student application",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        }
+      ]
+    },
+    {
+      "id": "AUTH-06",
+      "section": "access",
+      "controlOrAction": "Reintentar conexión en opciones de acceso",
+      "source": "lib/student/auth_screens.dart",
+      "sourceLine": 237,
+      "sourceAnchor": "child: const Text('Reintentar conexión')",
+      "expected": "Después de fallo de lectura de auth/options, vuelve a consultar y recupera disponibilidad de acciones.",
+      "prerequisites": [
+        "temporary_connection_loss"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "AUTH-07",
+      "section": "access",
+      "controlOrAction": "Reintentar restauración de sesión",
+      "source": "lib/features/auth/auth_gate.dart",
+      "sourceLine": 51,
+      "sourceAnchor": "if (api.restoreError != null)",
+      "expected": "Conserva contexto ante fallo de transporte; restaurar vuelve a mostrar el perfil correcto.",
+      "prerequisites": [
+        "existing_session",
+        "temporary_connection_loss"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": [
+        {
+          "file": "test/student_api_test.dart",
+          "name": "restore exposes transport failures while preserving known session",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        }
+      ]
+    },
+    {
+      "id": "AUTH-08",
+      "section": "access",
+      "controlOrAction": "Crear cuenta de alumno",
+      "source": "lib/student/auth_screens.dart",
+      "sourceLine": 254,
+      "sourceAnchor": "child: const Text('Crear cuenta de alumno')",
+      "expected": "Abre registro cuando selfRegistration es true; deshabilitado y explicado cuando false.",
+      "prerequisites": [
+        "registration_enabled_or_disabled_cases"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": [
+        {
+          "file": "test/widget_test.dart",
+          "name": "student app opens without Firebase and respects disabled registration",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        }
+      ]
+    },
+    {
+      "id": "AUTH-09",
+      "section": "access",
+      "controlOrAction": "Olvidé mi contraseña: cancelar y enviar enlace",
+      "source": "lib/student/auth_screens.dart",
+      "sourceLine": 268,
+      "sourceAnchor": "child: const Text('Olvidé mi contraseña')",
+      "expected": "Valida correo, evita doble envío, permite cancelar, presenta respuesta genérica sin revelar existencia de cuenta.",
+      "prerequisites": [
+        "registration_enabled",
+        "working_mail_delivery"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "AUTH-10",
+      "section": "access",
+      "controlOrAction": "Reenviar confirmación: cancelar y enviar enlace",
+      "source": "lib/student/auth_screens.dart",
+      "sourceLine": 274,
+      "sourceAnchor": "child: const Text('Reenviar confirmación de correo')",
+      "expected": "Valida correo y muestra respuesta genérica; probar apertura/cierre del diálogo.",
+      "prerequisites": [
+        "registration_enabled",
+        "working_mail_delivery"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "REG-01",
+      "section": "registration",
+      "controlOrAction": "Nombre completo",
+      "source": "lib/student/auth_screens.dart",
+      "sourceLine": 294,
+      "sourceAnchor": "class RegisterScreen",
+      "expected": "No vacío tras trim; máximo160 caracteres.",
+      "prerequisites": [
+        "registration_enabled"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "REG-02",
+      "section": "registration",
+      "controlOrAction": "Matrícula o número de control",
+      "source": "lib/student/auth_screens.dart",
+      "sourceLine": 392,
+      "sourceAnchor": "labelText: 'Matrícula o número de control'",
+      "expected": "No vacía tras trim; máximo50; no inventa carrera ni autorización.",
+      "prerequisites": [
+        "registration_enabled"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "REG-03",
+      "section": "registration",
+      "controlOrAction": "Correo institucional de registro",
+      "source": "lib/student/auth_screens.dart",
+      "sourceLine": 294,
+      "sourceAnchor": "class RegisterScreen",
+      "expected": "Dominio exacto; los correos personales no llegan al registro.",
+      "prerequisites": [
+        "registration_enabled"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": [
+        {
+          "file": "test/registration_privacy_test.dart",
+          "name": "personal email never reaches registration API",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        }
+      ]
+    },
+    {
+      "id": "REG-04",
+      "section": "registration",
+      "controlOrAction": "Contraseña nueva y confirmación",
+      "source": "lib/student/auth_screens.dart",
+      "sourceLine": 17,
+      "sourceAnchor": "String? _newPasswordError",
+      "expected": "Probar longitudes11/12/128/129 y coincidencia/no coincidencia.",
+      "prerequisites": [
+        "registration_enabled"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "REG-05",
+      "section": "registration",
+      "controlOrAction": "Protección de Datos",
+      "source": "lib/student/auth_screens.dart",
+      "sourceLine": 466,
+      "sourceAnchor": "key: const ValueKey('open-data-protection')",
+      "expected": "Abrir documento, leer desplazándose y cerrar; abrirlo no marca consentimiento.",
+      "prerequisites": [
+        "registration_enabled"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": [
+        {
+          "file": "test/registration_privacy_test.dart",
+          "name": "both supplied documents are readable on mobile and opening them does not accept",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        }
+      ]
+    },
+    {
+      "id": "REG-06",
+      "section": "registration",
+      "controlOrAction": "Política de Privacidad",
+      "source": "lib/student/auth_screens.dart",
+      "sourceLine": 475,
+      "sourceAnchor": "key: const ValueKey('open-privacy-policy')",
+      "expected": "Abrir documento, leer desplazándose y cerrar; abrirlo no marca consentimiento.",
+      "prerequisites": [
+        "registration_enabled"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": [
+        {
+          "file": "test/registration_privacy_test.dart",
+          "name": "both supplied documents are readable on mobile and opening them does not accept",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        }
+      ]
+    },
+    {
+      "id": "REG-07",
+      "section": "registration",
+      "controlOrAction": "Casilla de consentimiento",
+      "source": "lib/student/auth_screens.dart",
+      "sourceLine": 486,
+      "sourceAnchor": "key: const ValueKey('registration-consent')",
+      "expected": "Sin marcar no permite registro; marcar habilita; desmarcar bloquea de nuevo.",
+      "prerequisites": [
+        "registration_enabled"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": [
+        {
+          "file": "test/registration_privacy_test.dart",
+          "name": "valid form cannot register until explicit consent and unchecking blocks it again",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        }
+      ]
+    },
+    {
+      "id": "REG-08",
+      "section": "registration",
+      "controlOrAction": "Enviar registro",
+      "source": "lib/student/auth_screens.dart",
+      "sourceLine": 312,
+      "sourceAnchor": "Future<void> _register",
+      "expected": "Envía correo/contraseña/nombre/matrícula; respuesta genérica sin crear sesión; no interpreta correo como padrón.",
+      "prerequisites": [
+        "registration_enabled",
+        "authorized_registration_record",
+        "working_mail_delivery"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": [
+        {
+          "file": "test/widget_test.dart",
+          "name": "registration sends canonical fields and shows generic receipt without session",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        }
+      ]
+    },
+    {
+      "id": "REG-09",
+      "section": "registration",
+      "controlOrAction": "Volver a iniciar sesión después de registro",
+      "source": "lib/student/auth_screens.dart",
+      "sourceLine": 364,
+      "sourceAnchor": "child: const Text('Volver a iniciar sesión')",
+      "expected": "Regresa al acceso sin afirmar confirmación de correo.",
+      "prerequisites": [
+        "registration_receipt"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "RESET-01",
+      "section": "password_reset",
+      "controlOrAction": "Abrir enlace de recuperación",
+      "source": "lib/student/auth_screens.dart",
+      "sourceLine": 559,
+      "sourceAnchor": "class PasswordResetScreen",
+      "expected": "Lee token del fragmento, lo limpia de la URL y presenta estado apropiado; error de token no muestra datos privados.",
+      "prerequisites": [
+        "valid_or_invalid_reset_link"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": [
+        {
+          "file": "test/student_api_test.dart",
+          "name": "password reset waits for and supersedes in-flight restoration",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        }
+      ]
+    },
+    {
+      "id": "RESET-02",
+      "section": "password_reset",
+      "controlOrAction": "Guardar nueva contraseña",
+      "source": "lib/student/auth_screens.dart",
+      "sourceLine": 579,
+      "sourceAnchor": "Future<void> _reset",
+      "expected": "Valida12–128 y confirmación; bloquea doble envío; informa rechazo o éxito.",
+      "prerequisites": [
+        "valid_reset_link"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "RESET-03",
+      "section": "password_reset",
+      "controlOrAction": "Volver desde recuperación",
+      "source": "lib/student/auth_screens.dart",
+      "sourceLine": 559,
+      "sourceAnchor": "class PasswordResetScreen",
+      "expected": "Regresa al acceso desde cancelación, éxito o enlace inválido.",
+      "prerequisites": [
+        "reset_link"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "NAV-01",
+      "section": "navigation",
+      "controlOrAction": "Inicio / Pedidos / Favoritos / Perfil",
+      "source": "lib/features/home/user_dashboard_screen.dart",
+      "sourceLine": 59,
+      "sourceAnchor": "final pages = <Widget>",
+      "expected": "Cada destino muestra la sección correcta y conserva aislamiento por cuenta; comprobar móvil.",
+      "prerequisites": [
+        "student_session"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": [
+        {
+          "file": "test/student_navigation_design_test.dart",
+          "name": "mobile student navigation exposes orders favorites profile and cart",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        }
+      ]
+    },
+    {
+      "id": "NAV-02",
+      "section": "navigation",
+      "controlOrAction": "Buscar comida de la barra superior",
+      "source": "lib/features/home/user_dashboard_screen.dart",
+      "sourceLine": 149,
+      "sourceAnchor": "tooltip: 'Buscar comida'",
+      "expected": "Abre búsqueda y permite volver al destino anterior.",
+      "prerequisites": [
+        "student_session"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "NAV-03",
+      "section": "navigation",
+      "controlOrAction": "Mi carrito de la barra superior",
+      "source": "lib/features/home/user_dashboard_screen.dart",
+      "sourceLine": 162,
+      "sourceAnchor": "tooltip: 'Mi carrito'",
+      "expected": "Abre carrito real del usuario y permite volver.",
+      "prerequisites": [
+        "student_session"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": [
+        {
+          "file": "test/student_navigation_design_test.dart",
+          "name": "mobile student navigation exposes orders favorites profile and cart",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        }
+      ]
+    },
+    {
+      "id": "NAV-04",
+      "section": "navigation",
+      "controlOrAction": "Mi cuenta: Perfil",
+      "source": "lib/features/home/user_dashboard_screen.dart",
+      "sourceLine": 175,
+      "sourceAnchor": "tooltip: 'Mi cuenta'",
+      "expected": "Abre perfil propio desde el menú del avatar.",
+      "prerequisites": [
+        "student_session"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "NAV-05",
+      "section": "navigation",
+      "controlOrAction": "Mi cuenta: Cerrar sesión y Cancelar",
+      "source": "lib/features/home/user_dashboard_screen.dart",
+      "sourceLine": 20,
+      "sourceAnchor": "Future<void> _logout",
+      "expected": "Cancelar conserva sesión; confirmar cierra rutas privadas incluso si el servidor no responde.",
+      "prerequisites": [
+        "student_session",
+        "temporary_connection_loss_case"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": [
+        {
+          "file": "test/student_session_navigation_test.dart",
+          "name": "logout removes a private route and its cached student content",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        },
+        {
+          "file": "test/student_session_navigation_test.dart",
+          "name": "offline logout still removes routes containing the prior student data",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        }
+      ]
+    },
+    {
+      "id": "NAV-06",
+      "section": "navigation",
+      "controlOrAction": "Icono Inicio",
+      "source": "lib/features/home/user_dashboard_screen.dart",
+      "sourceLine": 87,
+      "sourceAnchor": "message: 'Inicio'",
+      "expected": "Regresa a Inicio desde Pedidos incluso en escritorio donde se oculta navegación inferior.",
+      "prerequisites": [
+        "student_session"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": [
+        {
+          "file": "test/student_navigation_design_test.dart",
+          "name": "desktop orders retain three reference tabs and aggregate the actual order quantities",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        }
+      ]
+    },
+    {
+      "id": "HOME-01",
+      "section": "home",
+      "controlOrAction": "Deslizar para actualizar Inicio y Reintentar",
+      "source": "lib/features/home/user_home_screen.dart",
+      "sourceLine": 41,
+      "sourceAnchor": "Future<void> _reload",
+      "expected": "Recarga destacados y cafeterías; los fallos aparecen sin sustituirse por datos ficticios.",
+      "prerequisites": [
+        "student_session",
+        "temporary_connection_loss_case"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "HOME-02",
+      "section": "home",
+      "controlOrAction": "Buscador del encabezado de Inicio",
+      "source": "lib/features/home/user_home_screen.dart",
+      "sourceLine": 126,
+      "sourceAnchor": "label: 'Buscar comida'",
+      "expected": "Abre la pantalla de búsqueda al pulsar el contenedor.",
+      "prerequisites": [
+        "student_session"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "HOME-03",
+      "section": "home",
+      "controlOrAction": "Tarjeta destacada y desplazamiento horizontal",
+      "source": "lib/features/home/user_home_screen.dart",
+      "sourceLine": 276,
+      "sourceAnchor": "Widget _featuredCard",
+      "expected": "Muestra nombre/precio/imagen y abre detalle por ID real; probar varios destacados y estado vacío.",
+      "prerequisites": [
+        "featured_product_and_empty_case"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "HOME-04",
+      "section": "home",
+      "controlOrAction": "Tarjeta de cafetería",
+      "source": "lib/features/home/user_home_screen.dart",
+      "sourceLine": 362,
+      "sourceAnchor": "Widget _businessCard",
+      "expected": "Muestra abierta/cerrada y promedio cuando existe; abre menú de esa cafetería.",
+      "prerequisites": [
+        "business_open_and_closed_cases"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "CAT-01",
+      "section": "catalog",
+      "controlOrAction": "Menú por cafetería",
+      "source": "lib/features/user/menu_screen.dart",
+      "sourceLine": 40,
+      "sourceAnchor": "Future<List<dynamic>> _fetch",
+      "expected": "Agrupa por categoría; omite indisponibles/stock0 y conserva stock ilimitado; no es un filtro interactivo.",
+      "prerequisites": [
+        "catalog_with_available_unavailable_zero_unlimited_stock"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": [
+        {
+          "file": "test/student_catalog_test.dart",
+          "name": "menu hides zero stock and unavailable products while retaining unlimited stock",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        }
+      ]
+    },
+    {
+      "id": "CAT-02",
+      "section": "catalog",
+      "controlOrAction": "Deslizar para actualizar menú y Reintentar",
+      "source": "lib/features/user/menu_screen.dart",
+      "sourceLine": 48,
+      "sourceAnchor": "Future<void> _reload",
+      "expected": "Actualiza catálogo/disponibilidad y recupera tras fallo.",
+      "prerequisites": [
+        "student_session",
+        "temporary_connection_loss_case"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "CAT-03",
+      "section": "catalog",
+      "controlOrAction": "Tarjeta de producto del menú",
+      "source": "lib/features/user/menu_screen.dart",
+      "sourceLine": 157,
+      "sourceAnchor": "class CatalogProductCard",
+      "expected": "Abre detalle usando ID y no valores históricos; puede explorar menú cerrado sin permitir compra.",
+      "prerequisites": [
+        "product_and_closed_business_case"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "SEARCH-01",
+      "section": "search",
+      "controlOrAction": "Escribir búsqueda",
+      "source": "lib/features/user/search_screen.dart",
+      "sourceLine": 41,
+      "sourceAnchor": "void _changed",
+      "expected": "Recorta espacios; espera350ms; máximo160; consulta todas cafeterías; una respuesta antigua no reemplaza la nueva.",
+      "prerequisites": [
+        "student_session"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": [
+        {
+          "file": "test/student_catalog_test.dart",
+          "name": "search ignores an older result and clears immediately",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        }
+      ]
+    },
+    {
+      "id": "SEARCH-02",
+      "section": "search",
+      "controlOrAction": "Buscar con Enter",
+      "source": "lib/features/user/search_screen.dart",
+      "sourceLine": 59,
+      "sourceAnchor": "void _searchNow",
+      "expected": "Cancela espera y envía consulta inmediatamente; vacía muestra orientación.",
+      "prerequisites": [
+        "student_session"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "SEARCH-03",
+      "section": "search",
+      "controlOrAction": "Limpiar búsqueda",
+      "source": "lib/features/user/search_screen.dart",
+      "sourceLine": 113,
+      "sourceAnchor": "tooltip: 'Limpiar búsqueda'",
+      "expected": "Limpia texto y resultados inmediatamente sin mostrar resultados antiguos.",
+      "prerequisites": [
+        "search_with_results"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": [
+        {
+          "file": "test/student_catalog_test.dart",
+          "name": "search ignores an older result and clears immediately",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        }
+      ]
+    },
+    {
+      "id": "SEARCH-04",
+      "section": "search",
+      "controlOrAction": "Reintentar búsqueda",
+      "source": "lib/features/user/search_screen.dart",
+      "sourceLine": 155,
+      "sourceAnchor": "onRetry: _searchNow",
+      "expected": "Recupera misma consulta tras fallo; probar sin resultados y navegación al producto.",
+      "prerequisites": [
+        "temporary_connection_loss_case"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "PRODUCT-01",
+      "section": "product",
+      "controlOrAction": "Detalle, precio, disponibilidad y reseñas",
+      "source": "lib/features/user/product_detail_screen.dart",
+      "sourceLine": 69,
+      "sourceAnchor": "Future<void> _load",
+      "expected": "Carga datos actuales, estado cerrado/inactivo/agotado y fallback de imagen; Reintentar recupera fallo.",
+      "prerequisites": [
+        "product",
+        "temporary_connection_loss_case"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "PRODUCT-02",
+      "section": "product",
+      "controlOrAction": "Disminuir cantidad",
+      "source": "lib/features/user/product_detail_screen.dart",
+      "sourceLine": 443,
+      "sourceAnchor": "tooltip: 'Disminuir cantidad'",
+      "expected": "Decrementa hasta1; límite inferior deshabilitado; total se recalcula.",
+      "prerequisites": [
+        "available_product"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "PRODUCT-03",
+      "section": "product",
+      "controlOrAction": "Aumentar cantidad",
+      "source": "lib/features/user/product_detail_screen.dart",
+      "sourceLine": 456,
+      "sourceAnchor": "tooltip: 'Aumentar cantidad'",
+      "expected": "Límite min(stock,99); stocknull permite99; cerrado o indisponible bloquea.",
+      "prerequisites": [
+        "finite_unlimited_zero_stock_cases"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "PRODUCT-04",
+      "section": "product",
+      "controlOrAction": "Indicaciones de producto",
+      "source": "lib/features/user/product_detail_screen.dart",
+      "sourceLine": 407,
+      "sourceAnchor": "maxLength: 500",
+      "expected": "Máximo500; conserva texto al guardar carrito/favorito; notas existentes precargadas.",
+      "prerequisites": [
+        "product"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": [
+        {
+          "file": "test/student_catalog_test.dart",
+          "name": "null stock permits cart save with IDs, quantity and notes only",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        }
+      ]
+    },
+    {
+      "id": "PRODUCT-05",
+      "section": "product",
+      "controlOrAction": "Añadir al carrito",
+      "source": "lib/features/user/product_detail_screen.dart",
+      "sourceLine": 163,
+      "sourceAnchor": "Future<void> _saveCart",
+      "expected": "Relee producto/local; guarda ID/cantidad/notas; cerrado o sin disponibilidad bloquea; no crea pedido.",
+      "prerequisites": [
+        "open_business_and_stock"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": [
+        {
+          "file": "test/student_catalog_test.dart",
+          "name": "null stock permits cart save with IDs, quantity and notes only",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        },
+        {
+          "file": "test/student_catalog_test.dart",
+          "name": "a closed business disables cart even when product is available",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        }
+      ]
+    },
+    {
+      "id": "PRODUCT-06",
+      "section": "product",
+      "controlOrAction": "Actualizar producto existente: Volver / Guardar cambios",
+      "source": "lib/features/user/product_detail_screen.dart",
+      "sourceLine": 203,
+      "sourceAnchor": "title: const Text('Actualizar producto en el carrito')",
+      "expected": "Explica sustitución de cantidad/notas; cancelar conserva; confirmar sustituye sin duplicar.",
+      "prerequisites": [
+        "product_already_in_cart"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": [
+        {
+          "file": "test/student_catalog_test.dart",
+          "name": "existing cart entry requires confirmation before replacement",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        }
+      ]
+    },
+    {
+      "id": "PRODUCT-07",
+      "section": "product",
+      "controlOrAction": "Cambio de precio al guardar",
+      "source": "lib/features/user/product_detail_screen.dart",
+      "sourceLine": 188,
+      "sourceAnchor": "if (oldPrice != current",
+      "expected": "Detiene guardado y exige revisar total actualizado antes de volver a guardar.",
+      "prerequisites": [
+        "price_changed_from_kitchen_ui"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": [
+        {
+          "file": "test/student_catalog_test.dart",
+          "name": "cart save stops when the current price changes",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        }
+      ]
+    },
+    {
+      "id": "PRODUCT-08",
+      "section": "product",
+      "controlOrAction": "Guardar / Quitar favorito",
+      "source": "lib/features/user/product_detail_screen.dart",
+      "sourceLine": 133,
+      "sourceAnchor": "Future<void> _favoriteAction",
+      "expected": "Alterna favorito por ID real y guarda notas sin enviar autor/precio.",
+      "prerequisites": [
+        "product"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": [
+        {
+          "file": "test/student_catalog_test.dart",
+          "name": "favorite uses canonical product ID and saves its notes",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        }
+      ]
+    },
+    {
+      "id": "PRODUCT-09",
+      "section": "product",
+      "controlOrAction": "Guardar notas del favorito",
+      "source": "lib/features/user/product_detail_screen.dart",
+      "sourceLine": 426,
+      "sourceAnchor": "updateNotes: true",
+      "expected": "Aparece con favorito y notas distintas; actualiza indicaciones del favorito.",
+      "prerequisites": [
+        "saved_favorite"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "PRODUCT-10",
+      "section": "product",
+      "controlOrAction": "Ver carrito desde detalle",
+      "source": "lib/features/user/product_detail_screen.dart",
+      "sourceLine": 272,
+      "sourceAnchor": "tooltip: 'Ver carrito'",
+      "expected": "Abre carrito y vuelve sin perder aislamiento de sesión.",
+      "prerequisites": [
+        "student_session"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "PUBLIC-01",
+      "section": "public_reviews",
+      "controlOrAction": "Leer reseñas públicas",
+      "source": "lib/student/product_reviews.dart",
+      "sourceLine": 6,
+      "sourceAnchor": "class PublicProductReviews",
+      "expected": "Muestra puntuación0–5, fecha y comentario sin nombre/matrícula; vacío muestra mensaje.",
+      "prerequisites": [
+        "reviewed_and_unreviewed_products"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": [
+        {
+          "file": "test/student_product_reviews_test.dart",
+          "name": "public product reviews page through API and render comments",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        }
+      ]
+    },
+    {
+      "id": "PUBLIC-02",
+      "section": "public_reviews",
+      "controlOrAction": "Reseñas Anteriores",
+      "source": "lib/student/product_reviews.dart",
+      "sourceLine": 92,
+      "sourceAnchor": "child: const Text('Anteriores')",
+      "expected": "Retrocede una página; deshabilitado en primera.",
+      "prerequisites": [
+        "more_than_five_product_reviews_created_via_ui"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": [
+        {
+          "file": "test/student_product_reviews_test.dart",
+          "name": "public product reviews page through API and render comments",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        }
+      ]
+    },
+    {
+      "id": "PUBLIC-03",
+      "section": "public_reviews",
+      "controlOrAction": "Reseñas Siguientes",
+      "source": "lib/student/product_reviews.dart",
+      "sourceLine": 97,
+      "sourceAnchor": "child: const Text('Siguientes')",
+      "expected": "Avanza una página; deshabilitado en última; páginas de5.",
+      "prerequisites": [
+        "more_than_five_product_reviews_created_via_ui"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": [
+        {
+          "file": "test/student_product_reviews_test.dart",
+          "name": "public product reviews page through API and render comments",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        }
+      ]
+    },
+    {
+      "id": "PUBLIC-04",
+      "section": "public_reviews",
+      "controlOrAction": "Reintentar reseñas",
+      "source": "lib/student/product_reviews.dart",
+      "sourceLine": 57,
+      "sourceAnchor": "child: const Text('Reintentar reseñas')",
+      "expected": "Conserva número de página y recupera después de fallo.",
+      "prerequisites": [
+        "temporary_connection_loss_case"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "CART-01",
+      "section": "cart",
+      "controlOrAction": "Leer carrito / recargar / estado vacío",
+      "source": "lib/features/user/cart_screen.dart",
+      "sourceLine": 66,
+      "sourceAnchor": "Future<_CartData> _load",
+      "expected": "Agrupa por negocio, suma cantidad×precio actual y presenta indisponibilidad; usuario correcto.",
+      "prerequisites": [
+        "cart_empty_and_nonempty_cases"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "CART-02",
+      "section": "cart",
+      "controlOrAction": "Restar una unidad",
+      "source": "lib/features/user/cart_screen.dart",
+      "sourceLine": 695,
+      "sourceAnchor": "tooltip: 'Restar una unidad'",
+      "expected": "Actualiza cantidad del artículo; no baja de1; bloqueo durante operación.",
+      "prerequisites": [
+        "cart_item"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "CART-03",
+      "section": "cart",
+      "controlOrAction": "Sumar una unidad",
+      "source": "lib/features/user/cart_screen.dart",
+      "sourceLine": 706,
+      "sourceAnchor": "tooltip: 'Sumar una unidad'",
+      "expected": "Actualiza cantidad hasta99; carrito debe advertir stock insuficiente antes de comprar.",
+      "prerequisites": [
+        "cart_item"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "CART-04",
+      "section": "cart",
+      "controlOrAction": "Indicaciones: Volver / Guardar",
+      "source": "lib/features/user/cart_screen.dart",
+      "sourceLine": 141,
+      "sourceAnchor": "Future<void> _notes",
+      "expected": "Edita máximo500; cancelar no cambia servidor, guardar aplica texto recortado.",
+      "prerequisites": [
+        "cart_item"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "CART-05",
+      "section": "cart",
+      "controlOrAction": "Eliminar del carrito",
+      "source": "lib/features/user/cart_screen.dart",
+      "sourceLine": 179,
+      "sourceAnchor": "Future<void> _remove",
+      "expected": "Elimina solo fila seleccionada; actualiza totales y no afecta pedidos.",
+      "prerequisites": [
+        "cart_item"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "CHECKOUT-01",
+      "section": "checkout",
+      "controlOrAction": "Revisar pedido de un negocio",
+      "source": "lib/features/user/cart_screen.dart",
+      "sourceLine": 205,
+      "sourceAnchor": "Future<Map<String, dynamic>?> _reviewPurchase",
+      "expected": "Lista productos, cantidades, total y advertencia de compra por negocio; Volver no crea pedido.",
+      "prerequisites": [
+        "cart_items_in_one_or_more_businesses"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "CHECKOUT-02",
+      "section": "checkout",
+      "controlOrAction": "Forma de pago",
+      "source": "lib/features/user/cart_screen.dart",
+      "sourceLine": 245,
+      "sourceAnchor": "labelText: 'Forma de pago'",
+      "expected": "Seleccionar Efectivo/Transferencia/Tarjeta/Vale de comida; solo registra método, no realiza cargo.",
+      "prerequisites": [
+        "cart_item",
+        "voucher_entitlement_for_success_case"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "CHECKOUT-03",
+      "section": "checkout",
+      "controlOrAction": "Programar recogida",
+      "source": "lib/features/user/cart_screen.dart",
+      "sourceLine": 276,
+      "sourceAnchor": "title: const Text('Programar recogida')",
+      "expected": "Alternar switch; al activarlo muestra hora/dispositivo/zona del negocio.",
+      "prerequisites": [
+        "cart_item"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "CHECKOUT-04",
+      "section": "checkout",
+      "controlOrAction": "Elegir hora: aceptar / cancelar",
+      "source": "lib/features/user/cart_screen.dart",
+      "sourceLine": 295,
+      "sourceAnchor": "final picked = await showTimePicker",
+      "expected": "Usa hora de hoy; cancelar selector no inventa hora.",
+      "prerequisites": [
+        "scheduled_pickup_enabled"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "CHECKOUT-05",
+      "section": "checkout",
+      "controlOrAction": "Validar recogida programada",
+      "source": "lib/features/user/cart_screen.dart",
+      "sourceLine": 345,
+      "sourceAnchor": "error = 'Elige una hora de recogida.'",
+      "expected": "Sin hora bloquea; menos de5min bloquea; backend valida cierre y día/zona.",
+      "prerequisites": [
+        "cart_item",
+        "scheduled_pickup_cases"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "CHECKOUT-06",
+      "section": "checkout",
+      "controlOrAction": "Confirmar pedido",
+      "source": "lib/features/user/cart_screen.dart",
+      "sourceLine": 403,
+      "sourceAnchor": "Future<void> _checkout",
+      "expected": "Persiste intento antes de POST, bloquea doble envío, usa idempotencia, abre pedido creado y limpia solo filas compradas sin cambios posteriores.",
+      "prerequisites": [
+        "open_business_and_stock"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": [
+        {
+          "file": "test/student_orders_test.dart",
+          "name": "Safe checkout ledger two tabs with the same payload and server snapshot derive one UUID",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        },
+        {
+          "file": "test/student_orders_test.dart",
+          "name": "Safe checkout ledger cleanup keeps rows changed in quantity, notes or server update timestamp",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        },
+        {
+          "file": "test/student_orders_test.dart",
+          "name": "Safe checkout ledger failure to persist prevents starting a purchase",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        }
+      ]
+    },
+    {
+      "id": "CHECKOUT-07",
+      "section": "checkout",
+      "controlOrAction": "Comprobar compra pendiente: Volver / Comprobar",
+      "source": "lib/features/user/cart_screen.dart",
+      "sourceLine": 437,
+      "sourceAnchor": "Future<void> _retry",
+      "expected": "Ante resultado incierto conserva payload/clave; no fabrica pedido ni crea segundo intento; conserva compras de otros negocios.",
+      "prerequisites": [
+        "lost_response_during_ui_purchase"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": [
+        {
+          "file": "test/student_orders_test.dart",
+          "name": "Safe checkout ledger lost response survives reloading and retries the exact saved payload/key",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        },
+        {
+          "file": "test/student_orders_test.dart",
+          "name": "a lost checkout response restores the same attempt and only clears its business",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        }
+      ]
+    },
+    {
+      "id": "CHECKOUT-08",
+      "section": "checkout",
+      "controlOrAction": "Compra rechazada / ocupación / conflicto",
+      "source": "lib/features/user/cart_screen.dart",
+      "sourceLine": 396,
+      "sourceAnchor": "bool _definitiveRejection",
+      "expected": "Muestra rechazo real; conserva incertidumbre para401/403/408/425/429 y conflicto de idempotencia; no reenvía mutación por sí sola.",
+      "prerequisites": [
+        "ui_operation_error_case"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": [
+        {
+          "file": "test/student_orders_test.dart",
+          "name": "Safe checkout ledger an unresolved purchase refuses a changed payload instead of a new UUID",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        },
+        {
+          "file": "test/student_api_test.dart",
+          "name": "a lost POST response is never automatically repeated",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        }
+      ]
+    },
+    {
+      "id": "CHECKOUT-09",
+      "section": "checkout",
+      "controlOrAction": "Finalizar limpieza de compra ya confirmada",
+      "source": "lib/features/user/cart_screen.dart",
+      "sourceLine": 437,
+      "sourceAnchor": "Future<void> _retry",
+      "expected": "Reutiliza orderId sin volver a crear pedido cuando falló limpieza del carrito.",
+      "prerequisites": [
+        "confirmed_purchase_cleanup_failure"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": [
+        {
+          "file": "test/student_orders_test.dart",
+          "name": "Safe checkout ledger confirmed cleanup failure leaves the order reusable without sending POST",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        }
+      ]
+    },
+    {
+      "id": "ORDER-01",
+      "section": "orders",
+      "controlOrAction": "Activos / Historial / Favoritos",
+      "source": "lib/features/user/profile_orders_screen.dart",
+      "sourceLine": 526,
+      "sourceAnchor": "Widget _orderTabs",
+      "expected": "Cambian contenido y estado seleccionado; escritorio mantiene pestañas; no es filtro por estado arbitrario.",
+      "prerequisites": [
+        "student_session"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": [
+        {
+          "file": "test/student_navigation_design_test.dart",
+          "name": "desktop orders retain three reference tabs and aggregate the actual order quantities",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        },
+        {
+          "file": "test/student_navigation_design_test.dart",
+          "name": "mobile student navigation exposes orders favorites profile and cart",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        }
+      ]
+    },
+    {
+      "id": "ORDER-02",
+      "section": "orders",
+      "controlOrAction": "Tarjeta de pedido activo y hoja de acciones",
+      "source": "lib/features/user/profile_orders_screen.dart",
+      "sourceLine": 475,
+      "sourceAnchor": "Future<void> _activeOrderActions",
+      "expected": "Resumen correcto; abre detalles/código; Cancelar disponible solo pending.",
+      "prerequisites": [
+        "active_order_created_via_ui"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": [
+        {
+          "file": "test/student_order_summary_test.dart",
+          "name": "pending and accepted share received step while preparation and ready advance it",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        }
+      ]
+    },
+    {
+      "id": "ORDER-03",
+      "section": "orders",
+      "controlOrAction": "Cancelar pendiente: motivo / Conservar / Cancelar",
+      "source": "lib/features/user/profile_orders_screen.dart",
+      "sourceLine": 167,
+      "sourceAnchor": "Future<void> _cancel",
+      "expected": "Motivo no vacío hasta500; Conservar no muta; cancelar envía user_other/notas/version y cambia a historial; aceptado ya no cancelable.",
+      "prerequisites": [
+        "pending_order_created_via_ui"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": [
+        {
+          "file": "test/student_orders_test.dart",
+          "name": "student cancellation sends the required reason notes and expectedVersion",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        }
+      ]
+    },
+    {
+      "id": "ORDER-04",
+      "section": "orders",
+      "controlOrAction": "Cargar más pedidos / reintentar página",
+      "source": "lib/features/user/profile_orders_screen.dart",
+      "sourceLine": 138,
+      "sourceAnchor": "Future<void> _more",
+      "expected": "Carga páginas20 sin duplicados; evita respuesta antigua; botón bloqueado durante lectura.",
+      "prerequisites": [
+        "more_than_twenty_history_orders_created_via_ui"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "ORDER-05",
+      "section": "orders",
+      "controlOrAction": "Volver a pedir: revisar / Volver / Añadir al carrito",
+      "source": "lib/features/user/profile_orders_screen.dart",
+      "sourceLine": 243,
+      "sourceAnchor": "Future<void> _reorder",
+      "expected": "Relee precios y stock; conserva notas/cantidad, omite no disponibles y explica reemplazos; no compra automáticamente.",
+      "prerequisites": [
+        "historical_order_created_via_ui"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "ORDER-06",
+      "section": "orders",
+      "controlOrAction": "Cerrar aviso de error",
+      "source": "lib/features/user/profile_orders_screen.dart",
+      "sourceLine": 1038,
+      "sourceAnchor": "tooltip: 'Cerrar aviso'",
+      "expected": "Oculta el aviso sin cambiar estado de pedido.",
+      "prerequisites": [
+        "order_action_error"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "ORDER-07",
+      "section": "orders",
+      "controlOrAction": "Actualizar pedidos con gesto / Reintentar",
+      "source": "lib/features/user/profile_orders_screen.dart",
+      "sourceLine": 1048,
+      "sourceAnchor": "onRefresh: () async",
+      "expected": "Recarga activos, historial, favoritos y perfil; error visible sin datos ficticios.",
+      "prerequisites": [
+        "student_session",
+        "temporary_connection_loss_case"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "PICKUP-01",
+      "section": "pickup",
+      "controlOrAction": "Ver detalle y progreso del pedido",
+      "source": "lib/features/user/show_qr_screen.dart",
+      "sourceLine": 79,
+      "sourceAnchor": "Widget _content",
+      "expected": "Pending/accepted/preparing/ready/completed/cancelled muestran estado, resumen, notas y total correctos.",
+      "prerequisites": [
+        "orders_in_each_state_created_and_transitioned_via_ui"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": [
+        {
+          "file": "test/student_orders_test.dart",
+          "name": "accepted orders explain their state and do not expose the pickup secret",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        },
+        {
+          "file": "test/student_order_summary_test.dart",
+          "name": "pending and accepted share received step while preparation and ready advance it",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        }
+      ]
+    },
+    {
+      "id": "PICKUP-02",
+      "section": "pickup",
+      "controlOrAction": "Código/QR de recogida",
+      "source": "lib/features/user/show_qr_screen.dart",
+      "sourceLine": 86,
+      "sourceAnchor": "final ready = status",
+      "expected": "Solo visible cuando ready y pertenece a la cuenta; no usa matrícula; oculto al cambiar cuenta o al completar/cancelar.",
+      "prerequisites": [
+        "ready_order_created_via_ui"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": [
+        {
+          "file": "test/student_orders_test.dart",
+          "name": "ready orders show their server pickupCode, never student control number",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        },
+        {
+          "file": "test/student_orders_test.dart",
+          "name": "another account cannot render a pickup code",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        },
+        {
+          "file": "test/student_orders_test.dart",
+          "name": "account changes hide a previously displayed secret immediately",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        }
+      ]
+    },
+    {
+      "id": "PICKUP-03",
+      "section": "pickup",
+      "controlOrAction": "Copiar código",
+      "source": "lib/features/user/show_qr_screen.dart",
+      "sourceLine": 185,
+      "sourceAnchor": "label: const Text('Copiar código')",
+      "expected": "Copia únicamente código vigente del pedido propio; error de portapapeles debe mostrarse.",
+      "prerequisites": [
+        "ready_order_created_via_ui",
+        "clipboard_permission"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "PICKUP-04",
+      "section": "pickup",
+      "controlOrAction": "Actualizar estado",
+      "source": "lib/features/user/show_qr_screen.dart",
+      "sourceLine": 317,
+      "sourceAnchor": "label: const Text('Actualizar estado')",
+      "expected": "Consulta estado real después de transición desde Cocina; probar refresco sin cerrar pantalla.",
+      "prerequisites": [
+        "order_transitioned_from_kitchen_ui"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "PICKUP-05",
+      "section": "pickup",
+      "controlOrAction": "Abrir Calificar cafetería desde detalle",
+      "source": "lib/features/user/show_qr_screen.dart",
+      "sourceLine": 295,
+      "sourceAnchor": "label: const Text('Calificar cafetería')",
+      "expected": "Disponible en entregado sin rating; abre formulario del pedido correcto.",
+      "prerequisites": [
+        "unrated_completed_order_created_via_ui"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "PICKUP-06",
+      "section": "pickup",
+      "controlOrAction": "Abrir Calificar platillos desde detalle",
+      "source": "lib/features/user/show_qr_screen.dart",
+      "sourceLine": 310,
+      "sourceAnchor": "label: const Text('Calificar platillos')",
+      "expected": "Disponible en entregado; elige solo productos comprados en ese pedido.",
+      "prerequisites": [
+        "completed_order_created_via_ui"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "RATING-01",
+      "section": "business_rating",
+      "controlOrAction": "Acceso al formulario de cafetería",
+      "source": "lib/features/user/rate_order_screen.dart",
+      "sourceLine": 8,
+      "sourceAnchor": "class RateOrderScreen",
+      "expected": "Bloquea pedido ajeno/pendiente/ya evaluado; regreso Volver al pedido funciona.",
+      "prerequisites": [
+        "pending_completed_rated_orders"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": [
+        {
+          "file": "test/student_orders_test.dart",
+          "name": "pending orders cannot be rated",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        }
+      ]
+    },
+    {
+      "id": "RATING-02",
+      "section": "business_rating",
+      "controlOrAction": "Selector de0/1/2/3/4/5 estrellas",
+      "source": "lib/features/user/rate_order_screen.dart",
+      "sourceLine": 170,
+      "sourceAnchor": "List.generate(",
+      "expected": "Cada valor es explícito; sin selección Enviar deshabilitado; cero es válido y distinto a no elegir.",
+      "prerequisites": [
+        "unrated_completed_order_created_via_ui"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": [
+        {
+          "file": "test/student_orders_test.dart",
+          "name": "zero stars is an explicit valid completed-order rating",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        }
+      ]
+    },
+    {
+      "id": "RATING-03",
+      "section": "business_rating",
+      "controlOrAction": "Comentario opcional de cafetería",
+      "source": "lib/features/user/rate_order_screen.dart",
+      "sourceLine": 187,
+      "sourceAnchor": "maxLength: 1000",
+      "expected": "Vacío permitido; máximo1000; contenido se recorta y no incluye identidad.",
+      "prerequisites": [
+        "unrated_completed_order_created_via_ui"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "RATING-04",
+      "section": "business_rating",
+      "controlOrAction": "Enviar calificación de cafetería",
+      "source": "lib/features/user/rate_order_screen.dart",
+      "sourceLine": 62,
+      "sourceAnchor": "Future<void> _submit",
+      "expected": "Una por pedido; confirma éxito y vuelve; aparece en Administración sin mezclarse con reseña de platillo.",
+      "prerequisites": [
+        "unrated_completed_order_created_via_ui"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": [
+        {
+          "file": "test/student_orders_test.dart",
+          "name": "zero stars is an explicit valid completed-order rating",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        }
+      ]
+    },
+    {
+      "id": "RATING-05",
+      "section": "business_rating",
+      "controlOrAction": "Reconciliar error o respuesta perdida de calificación",
+      "source": "lib/features/user/rate_order_screen.dart",
+      "sourceLine": 78,
+      "sourceAnchor": "_reload();",
+      "expected": "Consulta isRated antes de permitir repetir; no duplica reseña.",
+      "prerequisites": [
+        "lost_rating_response_ui_case"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "REVIEW-01",
+      "section": "product_rating",
+      "controlOrAction": "Acceso al formulario de platillos",
+      "source": "lib/student/product_reviews.dart",
+      "sourceLine": 108,
+      "sourceAnchor": "class RateProductScreen",
+      "expected": "Solo pedido propio entregado; cambio de cuenta elimina controles anteriores.",
+      "prerequisites": [
+        "completed_order_created_via_ui"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": [
+        {
+          "file": "test/student_product_reviews_test.dart",
+          "name": "pending and foreign orders never expose the product rating form",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        },
+        {
+          "file": "test/student_product_reviews_test.dart",
+          "name": "account switch removes the previous order rating controls",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        }
+      ]
+    },
+    {
+      "id": "REVIEW-02",
+      "section": "product_rating",
+      "controlOrAction": "Seleccionar platillo",
+      "source": "lib/student/product_reviews.dart",
+      "sourceLine": 288,
+      "sourceAnchor": "labelText: 'Platillo de tu pedido'",
+      "expected": "Listado solo de IDs comprados, sin duplicados; excluye los ya enviados en esta pantalla.",
+      "prerequisites": [
+        "completed_order_with_one_or_more_products"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "REVIEW-03",
+      "section": "product_rating",
+      "controlOrAction": "Selector0/1/2/3/4/5 estrellas del platillo",
+      "source": "lib/student/product_reviews.dart",
+      "sourceLine": 313,
+      "sourceAnchor": "key: ValueKey('product-rating-$value')",
+      "expected": "Sin platillo o puntuación no envía; cero explícito permitido.",
+      "prerequisites": [
+        "completed_order_created_via_ui"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": [
+        {
+          "file": "test/student_product_reviews_test.dart",
+          "name": "review sends purchased product and zero score without author or business rating fields",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        }
+      ]
+    },
+    {
+      "id": "REVIEW-04",
+      "section": "product_rating",
+      "controlOrAction": "Comentario opcional de platillo",
+      "source": "lib/student/product_reviews.dart",
+      "sourceLine": 326,
+      "sourceAnchor": "maxLength: 2000",
+      "expected": "Vacío permitido; máximo2000; el comentario no modifica la valoración de cafetería.",
+      "prerequisites": [
+        "completed_order_created_via_ui"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "REVIEW-05",
+      "section": "product_rating",
+      "controlOrAction": "Enviar reseña de platillo",
+      "source": "lib/student/product_reviews.dart",
+      "sourceLine": 173,
+      "sourceAnchor": "Future<void> _save",
+      "expected": "Envía productId/rating/comment; limpia selección tras éxito; aparece públicamente sin autor ni matrícula.",
+      "prerequisites": [
+        "unreviewed_product_in_completed_order"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": [
+        {
+          "file": "test/student_product_reviews_test.dart",
+          "name": "review sends purchased product and zero score without author or business rating fields",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        }
+      ]
+    },
+    {
+      "id": "REVIEW-06",
+      "section": "product_rating",
+      "controlOrAction": "Reseña duplicada",
+      "source": "lib/student/product_reviews.dart",
+      "sourceLine": 221,
+      "sourceAnchor": "error.code == 'REVIEW_EXISTS'",
+      "expected": "Reconcilia REVIEW_EXISTS como ya guardada y evita nuevo envío del mismo platillo.",
+      "prerequisites": [
+        "already_reviewed_product_in_completed_order"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": [
+        {
+          "file": "test/student_product_reviews_test.dart",
+          "name": "duplicate review is reconciled without enabling another submission",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        }
+      ]
+    },
+    {
+      "id": "FAV-01",
+      "section": "favorites",
+      "controlOrAction": "Lista Favoritos / estado vacío",
+      "source": "lib/features/user/profile_orders_screen.dart",
+      "sourceLine": 774,
+      "sourceAnchor": "Widget _favorites",
+      "expected": "Muestra producto/precio/notas y no disponibles, solo de la cuenta actual.",
+      "prerequisites": [
+        "favorite_and_empty_cases"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "FAV-02",
+      "section": "favorites",
+      "controlOrAction": "Ver producto desde favorito",
+      "source": "lib/features/user/profile_orders_screen.dart",
+      "sourceLine": 844,
+      "sourceAnchor": "child: const Text('Ver producto')",
+      "expected": "Abre detalle del ID guardado.",
+      "prerequisites": [
+        "saved_favorite"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "FAV-03",
+      "section": "favorites",
+      "controlOrAction": "Añadir favorito al carrito: Volver / Añadir",
+      "source": "lib/features/user/profile_orders_screen.dart",
+      "sourceLine": 392,
+      "sourceAnchor": "Future<void> _favoriteToCart",
+      "expected": "Relee producto y carrito; confirma precio/cantidad1/notas y reemplazo; no realiza compra.",
+      "prerequisites": [
+        "available_saved_favorite",
+        "same_product_in_cart_case"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "FAV-04",
+      "section": "favorites",
+      "controlOrAction": "Quitar favorito",
+      "source": "lib/features/user/profile_orders_screen.dart",
+      "sourceLine": 453,
+      "sourceAnchor": "Future<void> _removeFavorite",
+      "expected": "Elimina solo favorito elegido; actualiza lista y no altera pedido/carrito.",
+      "prerequisites": [
+        "saved_favorite"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "PROFILE-01",
+      "section": "profile",
+      "controlOrAction": "Perfil y datos institucionales",
+      "source": "lib/features/user/profile_orders_screen.dart",
+      "sourceLine": 861,
+      "sourceAnchor": "Widget _profile",
+      "expected": "Muestra usuario/correo/matrícula/carrera/grupo desde servidor; no edición libre ni derivación por correo.",
+      "prerequisites": [
+        "authorized_student_with_academic_record"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "PROFILE-02",
+      "section": "profile",
+      "controlOrAction": "Historial de consumo",
+      "source": "lib/features/user/profile_orders_screen.dart",
+      "sourceLine": 923,
+      "sourceAnchor": "title: const Text('Historial de consumo')",
+      "expected": "Abre historial de la cuenta con pedido correcto.",
+      "prerequisites": [
+        "student_session"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": []
+    },
+    {
+      "id": "PROFILE-03",
+      "section": "profile",
+      "controlOrAction": "Cerrar sesión desde Perfil",
+      "source": "lib/features/user/profile_orders_screen.dart",
+      "sourceLine": 981,
+      "sourceAnchor": "label: const Text('Cerrar sesión')",
+      "expected": "Cancelar conserva; confirmar sale y elimina rutas privadas; probar desconexión.",
+      "prerequisites": [
+        "student_session",
+        "temporary_connection_loss_case"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": [
+        {
+          "file": "test/student_session_navigation_test.dart",
+          "name": "logout removes a private route and its cached student content",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        },
+        {
+          "file": "test/student_session_navigation_test.dart",
+          "name": "offline logout still removes routes containing the prior student data",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        }
+      ]
+    },
+    {
+      "id": "SESSION-01",
+      "section": "session",
+      "controlOrAction": "Cambio de identidad y revocación",
+      "source": "lib/features/auth/auth_gate.dart",
+      "sourceLine": 35,
+      "sourceAnchor": "if (_observedIdentity && userId != _seenUserId)",
+      "expected": "Elimina pantallas privadas de cuenta anterior al entrar otra cuenta/rechazarse refresh.",
+      "prerequisites": [
+        "two_authorized_student_accounts",
+        "session_revocation_via_authorized_ui"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": [
+        {
+          "file": "test/student_session_navigation_test.dart",
+          "name": "switching identity disposes the previous student route before showing new home",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        },
+        {
+          "file": "test/student_session_navigation_test.dart",
+          "name": "server revocation closes the private route after refresh is rejected",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        }
+      ]
+    },
+    {
+      "id": "SESSION-02",
+      "section": "session",
+      "controlOrAction": "Recuperación autenticada tras401",
+      "source": "lib/student/student_api.dart",
+      "sourceLine": 25,
+      "sourceAnchor": "class StudentApi",
+      "expected": "Renueva una vez ante401 simultáneos, no entrega respuesta de sesión anterior ni ejecuta compra como otra identidad.",
+      "prerequisites": [
+        "session_expiration_or_revocation_case"
+      ],
+      "status": "pending",
+      "realUiEvidence": [],
+      "existingAutomatedTests": [
+        {
+          "file": "test/student_api_test.dart",
+          "name": "concurrent 401s share one refresh and retry with new bearer",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        },
+        {
+          "file": "test/student_api_test.dart",
+          "name": "pending purchase is not retried under a different refreshed identity",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        },
+        {
+          "file": "test/student_api_test.dart",
+          "name": "a pre-logout response never reaches the new session",
+          "status": "passed_previous_automated_run",
+          "coverage": "related_not_real_ui_evidence"
+        }
+      ]
+    }
+  ]
+}

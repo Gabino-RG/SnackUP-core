@@ -122,7 +122,7 @@ void main() {
     },
   );
   testWidgets(
-    'late poll cannot restore conversation content after changing view',
+    'late poll cannot restore a departed chat and its draft is retained',
     (tester) async {
       final repo = DelayedChat();
       await tester.pumpWidget(
@@ -138,11 +138,8 @@ void main() {
       );
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField), 'borrador');
-      await tester.tap(find.text('Conversaciones'));
-      await tester.pumpAndSettle();
       await tester.pump(const Duration(seconds: 10));
-      await tester.tap(find.text('Confirmar'));
-      await tester.pumpAndSettle();
+      await tester.pumpWidget(const SizedBox());
       repo.pending.complete([
         {
           'id': 'late',
@@ -154,8 +151,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Mensaje tardío'), findsNothing);
       expect(find.text('Enviar mensaje'), findsNothing);
-      expect(find.text('No hay conversaciones activas.'), findsOneWidget);
-      await tester.pumpWidget(const SizedBox());
+      expect(repo.chatDraft('chat'), 'borrador');
     },
   );
   test(

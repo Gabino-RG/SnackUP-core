@@ -5,6 +5,22 @@ import 'models.dart';
 class V32Repository {
   V32Repository(this.api);
   final ApiClient api;
+  // Drafts belong only to this authenticated session, never to browser storage.
+  final Map<String, String> _chatDrafts = {};
+
+  String chatDraft(String chatId) => _chatDrafts[chatId] ?? '';
+
+  void saveChatDraft(String chatId, String text) {
+    if (text.isEmpty) {
+      _chatDrafts.remove(chatId);
+    } else {
+      _chatDrafts[chatId] = text;
+    }
+  }
+
+  void clearChatDraft(String chatId) => _chatDrafts.remove(chatId);
+  void clearChatDrafts() => _chatDrafts.clear();
+
   String id(String value) => Uri.encodeComponent(value);
   Future<Map<String, dynamic>> business(String businessId) async {
     final result = object(
@@ -95,10 +111,13 @@ class V32Repository {
       'chats/${id(chatId)}/messages',
       body: {'text': text.trim()},
     );
+    // A newer draft written while this request was pending must survive.
+    if (chatDraft(chatId).trim() == text.trim()) clearChatDraft(chatId);
   }
 
   Future<void> closeChat(String chatId) async {
     await api.json('DELETE', 'chats/${id(chatId)}');
+    clearChatDraft(chatId);
   }
 
   Future<Map<String, dynamic>> orders(

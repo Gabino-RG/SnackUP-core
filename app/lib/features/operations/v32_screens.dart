@@ -395,9 +395,11 @@ class V32OperationsScreen extends StatefulWidget {
     super.key,
     required this.repository,
     required this.businessId,
+    this.businessVersion,
   });
   final V32Repository repository;
   final String businessId;
+  final int? businessVersion;
   @override
   State<V32OperationsScreen> createState() => _V32OperationsScreenState();
 }
@@ -438,6 +440,7 @@ class _V32OperationsScreenState extends State<V32OperationsScreen> {
             1 => ClosingScreen(
               repository: widget.repository,
               businessId: widget.businessId,
+              businessVersion: widget.businessVersion,
             ),
             2 => SpecialOrdersScreen(
               repository: widget.repository,
@@ -460,10 +463,12 @@ class ClosingScreen extends StatefulWidget {
     required this.repository,
     required this.businessId,
     this.readOnly = false,
+    this.businessVersion,
   });
   final V32Repository repository;
   final String businessId;
   final bool readOnly;
+  final int? businessVersion;
   @override
   State<ClosingScreen> createState() => _ClosingScreenState();
 }
@@ -472,11 +477,30 @@ class _ClosingScreenState extends State<ClosingScreen> {
   Map<String, dynamic>? _business;
   final _time = TextEditingController(), _timeout = TextEditingController();
   bool _enabled = false, _busy = false;
+  bool _refreshAfterBusy = false;
   String? _error, _notice;
+
+  bool get _closingProcessedToday =>
+      _business?['timezone'] == 'America/Mexico_City' &&
+      _business?['lastAutoCloseDate'] == dayKey(campusNow());
   @override
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void didUpdateWidget(covariant ClosingScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.businessVersion != null &&
+        widget.businessVersion != oldWidget.businessVersion &&
+        widget.businessVersion != _business?['version']) {
+      if (_busy) {
+        _refreshAfterBusy = true;
+      } else {
+        unawaited(_load(preserveInputs: true));
+      }
+    }
   }
 
   @override
@@ -486,28 +510,38 @@ class _ClosingScreenState extends State<ClosingScreen> {
     super.dispose();
   }
 
-  Future<void> _load() async {
+  Future<void> _load({bool preserveInputs = false}) async {
     setState(() {
       _busy = true;
       _error = null;
+      _notice = null;
     });
     try {
       final b = await widget.repository.business(widget.businessId);
       if (!mounted) return;
       setState(() {
+        if (!preserveInputs || _business == null) {
+          _enabled = b['autoCloseEnabled'] == true;
+          _time.text = b['closeTimeLocal'] as String? ?? '';
+          _timeout.text = '${b['pickupTimeoutMinutes']}';
+        }
         _business = b;
-        _enabled = b['autoCloseEnabled'] == true;
-        _time.text = b['closeTimeLocal'] as String? ?? '';
-        _timeout.text = '${b['pickupTimeoutMinutes']}';
       });
     } catch (e) {
       if (mounted)
         setState(() {
           _error = v32Message(e);
+          _notice = null;
           _business = null;
         });
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() => _busy = false);
+        if (_refreshAfterBusy) {
+          _refreshAfterBusy = false;
+          unawaited(_load(preserveInputs: true));
+        }
+      }
     }
   }
 
@@ -581,8 +615,11 @@ class _ClosingScreenState extends State<ClosingScreen> {
       ),
       if (_busy) const LinearProgressIndicator(),
       if (_error != null)
-        Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
-      if (_notice != null) Text(_notice!),
+        Text(
+          _error!,
+          style: TextStyle(color: Theme.of(context).colorScheme.error),
+        ),
+      if (_notice != null && _error == null) Text(_notice!),
       Align(
         alignment: Alignment.centerLeft,
         child: TextButton.icon(
@@ -594,6 +631,15 @@ class _ClosingScreenState extends State<ClosingScreen> {
       if (_business != null) ...[
         Text('Zona horaria del local: ${_business!['timezone']}'),
         Text('Estado: ${_business!['isOpen'] == true ? 'Abierto' : 'Cerrado'}'),
+        if (_closingProcessedToday)
+          const ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(Icons.info_outline),
+            title: Text('El cierre automático de hoy ya se ejecutó.'),
+            subtitle: Text(
+              'El horario que guardes se aplicará a partir del próximo día. Hoy, la apertura y el cierre son manuales.',
+            ),
+          ),
         if (_business!['postponedCloseAt'] != null)
           Text('Cierre pospuesto: ${_business!['postponedCloseAt']}'),
         if (widget.readOnly)
@@ -638,9 +684,10 @@ class _ClosingScreenState extends State<ClosingScreen> {
                         !RegExp(
                           r'^(?:[01][0-9]|2[0-3]):[0-5][0-9]$',
                         ).hasMatch(time)) {
-                      setState(
-                        () => _error = 'Escribe una hora entre 00:00 y 23:59.',
-                      );
+                      setState(() {
+                        _notice = null;
+                        _error = 'Escribe una hora entre 00:00 y 23:59.';
+                      });
                       return;
                     }
                     _save(
@@ -657,6 +704,7 @@ class _ClosingScreenState extends State<ClosingScreen> {
           OutlinedButton(
             onPressed:
                 _busy ||
+                    _closingProcessedToday ||
                     _business!['autoCloseEnabled'] != true ||
                     _business!['timezone'] != 'America/Mexico_City'
                 ? null
@@ -691,10 +739,10 @@ class _ClosingScreenState extends State<ClosingScreen> {
                 : () {
                     final value = int.tryParse(_timeout.text);
                     if (value == null || value < 5 || value > 180) {
-                      setState(
-                        () => _error =
-                            'La espera debe estar entre 5 y 180 minutos.',
-                      );
+                      setState(() {
+                        _notice = null;
+                        _error = 'La espera debe estar entre 5 y 180 minutos.';
+                      });
                       return;
                     }
                     _save(
@@ -739,6 +787,7 @@ class _KitchenChatScreenState extends State<KitchenChatScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _draft.addListener(_rememberDraft);
     _start();
     _poll = Timer.periodic(const Duration(seconds: 10), (_) {
       if (_visible) _load();
@@ -756,8 +805,24 @@ class _KitchenChatScreenState extends State<KitchenChatScreen>
     _revision++;
     _poll?.cancel();
     WidgetsBinding.instance.removeObserver(this);
+    _draft.removeListener(_rememberDraft);
     _draft.dispose();
     super.dispose();
+  }
+
+  void _rememberDraft() {
+    final selected = _chat;
+    if (selected != null) {
+      widget.repository.saveChatDraft(selected, _draft.text);
+    }
+  }
+
+  void _restoreDraft() {
+    final text = _chat == null ? '' : widget.repository.chatDraft(_chat!);
+    _draft.value = TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
+    );
   }
 
   Future<void> _start() async {
@@ -768,7 +833,10 @@ class _KitchenChatScreenState extends State<KitchenChatScreen>
           widget.businessId,
           widget.orderId!,
         );
-        if (mounted) _chat = requiredText(chat, 'id');
+        if (mounted) {
+          _chat = requiredText(chat, 'id');
+          _restoreDraft();
+        }
       } catch (e) {
         if (mounted) setState(() => _error = v32Message(e));
       } finally {
@@ -807,6 +875,7 @@ class _KitchenChatScreenState extends State<KitchenChatScreen>
           _loadFailed = true;
           _error = v32Message(e);
           if (e is ApiException && e.code == 'CHAT_NOT_FOUND') {
+            if (selected != null) widget.repository.clearChatDraft(selected);
             _chat = null;
             _messages = [];
             _draft.clear();
@@ -817,22 +886,15 @@ class _KitchenChatScreenState extends State<KitchenChatScreen>
     }
   }
 
-  Future<void> _select(String? id) async {
+  void _select(String? id) {
     if (_writing || _loading) return;
-    if (_draft.text.isNotEmpty &&
-        !await confirmOperation(
-          context,
-          'Cambiar conversación',
-          'Se descartará el mensaje sin enviar.',
-        ))
-      return;
     if (!mounted) return;
     setState(() {
       _revision++;
       _loading = false;
       _chat = id;
       _messages = [];
-      _draft.clear();
+      _restoreDraft();
       _error = null;
     });
     _load();
@@ -931,7 +993,7 @@ class _KitchenChatScreenState extends State<KitchenChatScreen>
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             const Text(
-              'Los mensajes se actualizan cada 10 segundos mientras esta pantalla está abierta. Las conversaciones vencen tras 24 horas de inactividad. Para iniciar una, usa “Chat del pedido” en Cocina.',
+              'Los mensajes se actualizan cada 10 segundos mientras esta pantalla está abierta. Las conversaciones vencen tras 24 horas de inactividad. Para iniciar una, usa “Chat con el alumno” en Cocina. Esta conversación puede incluir mensajes de pedidos anteriores del mismo alumno.',
             ),
             if (_error != null)
               Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
@@ -977,11 +1039,7 @@ class _KitchenChatScreenState extends State<KitchenChatScreen>
                   for (final chat in _chats)
                     ListTile(
                       leading: const Icon(Icons.chat_bubble_outline),
-                      title: Text(
-                        chat['orderId'] == null
-                            ? 'Consulta de alumno'
-                            : 'Pedido ${chat['orderId']}',
-                      ),
+                      title: const Text('Conversación del alumno'),
                       subtitle: Text(
                         'Último mensaje: ${campusStamp(DateTime.tryParse('${chat['lastActivityAt']}'))}',
                       ),

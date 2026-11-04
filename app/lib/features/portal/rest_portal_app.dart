@@ -88,6 +88,7 @@ class _RestPortalAppState extends State<RestPortalApp> {
     _appearance.dispose();
     _client?.close();
     _canonicalClient?.close();
+    _v32?.clearChatDrafts();
     super.dispose();
   }
 
@@ -97,6 +98,7 @@ class _RestPortalAppState extends State<RestPortalApp> {
     builder: (context, _) {
       final session = widget.session;
       final account = session.account;
+      if (_dataGeneration != session.generation) _v32?.clearChatDrafts();
       final authenticated =
           session.phase == PortalSessionPhase.authenticated && account != null;
       if (authenticated) _prepareDataSession();

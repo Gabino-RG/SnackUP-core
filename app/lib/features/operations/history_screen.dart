@@ -187,9 +187,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                             '${item.quantity} × ${item.name}${item.notes.isEmpty ? '' : ' · ${item.notes}'}',
                           ),
                         if (o.cancelReason != null)
-                          Text(
-                            'Motivo: ${o.cancelReason == 'not_picked_up' ? 'Pedido no recogido' : cancelReasons[o.cancelReason] ?? o.cancelReason}',
-                          ),
+                          Text('Motivo: ${cancelReasonLabel(o.cancelReason)}'),
                         if (o.cancelNotes?.isNotEmpty ?? false)
                           Text(o.cancelNotes!),
                       ],
