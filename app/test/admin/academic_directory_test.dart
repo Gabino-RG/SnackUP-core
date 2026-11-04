@@ -67,7 +67,164 @@ class LiveReferences extends DemoAdminRepository
   );
 }
 
+class CareerIdentityReferences extends LiveReferences {
+  @override
+  Future<AdminReferenceData> loadReferences() async => AdminReferenceData(
+    configuration,
+    AcademicDirectory(const [
+      AcademicEntry(id: 'career-a', name: 'Carrera vigente', kind: 'career'),
+      AcademicEntry(id: 'career-b', name: 'Carrera vigente', kind: 'career'),
+    ]),
+  );
+  @override
+  Future<AdminPage> loadNextPage({bool reset = false}) async => AdminPage(
+    businesses: const [AdminBusiness(id: 'local', name: 'Local dinámico')],
+    reviews: [
+      for (final row in [
+        ('old', 'career-a', 'Nombre anterior', 0),
+        ('new', 'career-a', 'Carrera vigente', 4),
+        ('other', 'career-b', 'Carrera vigente', 5),
+        ('legacy', null, 'Carrera histórica', 2),
+      ])
+        AdminReview(
+          id: row.$1,
+          businessId: 'local',
+          careerId: row.$2,
+          career: row.$3,
+          rating: row.$4,
+          createdAt: DateTime.now().toUtc().subtract(const Duration(days: 1)),
+        ),
+    ],
+  );
+}
+
+class SparseTrendReferences extends LiveReferences {
+  @override
+  Future<AdminPage> loadNextPage({bool reset = false}) async {
+    final anchor = DateTime.now().toUtc().subtract(const Duration(days: 8));
+    final first = DateTime.utc(anchor.year, anchor.month, anchor.day, 12);
+    return AdminPage(
+      businesses: const [AdminBusiness(id: 'local', name: 'Local dinámico')],
+      reviews: [
+        for (final row in [('a', 0, 0), ('b', 0, 4), ('c', 3, 0), ('d', 7, 5)])
+          AdminReview(
+            id: row.$1,
+            businessId: 'local',
+            rating: row.$3,
+            createdAt: first.add(Duration(days: row.$2)),
+          ),
+      ],
+    );
+  }
+}
+
+class MissingDimensionReferences extends LiveReferences {
+  int? dimension;
+  @override
+  Future<AdminPage> loadNextPage({bool reset = false}) async => AdminPage(
+    businesses: const [AdminBusiness(id: 'local', name: 'Local dinámico')],
+    reviews: [
+      AdminReview(
+        id: 'zero',
+        businessId: 'local',
+        rating: 0,
+        serviceRating: dimension,
+        foodRating: dimension,
+        createdAt: DateTime.now().toUtc().subtract(const Duration(days: 1)),
+      ),
+    ],
+  );
+}
+
 void main() {
+  testWidgets('trend uses daily means, zero-to-five axes and actual day gaps', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 1100);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AdminDashboardScreen(repository: SparseTrendReferences()),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final chart = tester.widget<LineChart>(find.byType(LineChart)).data;
+    expect(chart.minY, 0);
+    expect(chart.maxY, 5);
+    expect(chart.minX, 0);
+    expect(chart.maxX, 7);
+    expect(chart.lineBarsData.single.spots.map((s) => s.x), [0.0, 3.0, 7.0]);
+    expect(chart.lineBarsData.single.spots.map((s) => s.y), [2.0, 0.0, 5.0]);
+    expect(chart.lineBarsData.single.isCurved, false);
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets('missing dimension semantics differ from an actual zero rating', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 1100);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final semantics = tester.ensureSemantics();
+    try {
+      final repo = MissingDimensionReferences();
+      await tester.pumpWidget(
+        MaterialApp(home: AdminDashboardScreen(repository: repo)),
+      );
+      await tester.pumpAndSettle();
+      Finder dimension(String label) => find.byWidgetPredicate(
+        (w) => w is LinearProgressIndicator && w.semanticsLabel == label,
+      );
+      for (final label in ['Servicio', 'Alimentos']) {
+        await tester.ensureVisible(dimension(label));
+        await tester.pumpAndSettle();
+        expect(
+          tester.getSemantics(dimension(label)).getSemanticsData().value,
+          'Sin valoraciones',
+        );
+      }
+      repo.dimension = 0;
+      await tester.tap(find.byTooltip('Actualizar datos'));
+      await tester.pumpAndSettle();
+      for (final label in ['Servicio', 'Alimentos']) {
+        await tester.ensureVisible(dimension(label));
+        await tester.pumpAndSettle();
+        expect(
+          tester.getSemantics(dimension(label)).getSemanticsData().value,
+          '0%',
+        );
+      }
+      expect(tester.takeException(), isNull);
+    } finally {
+      semantics.dispose();
+    }
+  });
+  testWidgets(
+    'career chart uses readable names and preserves separate identities',
+    (tester) async {
+      tester.view.physicalSize = const Size(1440, 1100);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AdminDashboardScreen(repository: CareerIdentityReferences()),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Carrera vigente'), findsNWidgets(2));
+      expect(find.text('Carrera histórica'), findsOneWidget);
+      expect(find.text('2.0 ★ · 2'), findsOneWidget);
+      expect(find.text('5.0 ★ · 1'), findsOneWidget);
+      expect(find.text('Nombre anterior'), findsNothing);
+      expect(find.textContaining('career-a'), findsNothing);
+      expect(find.textContaining('career-b'), findsNothing);
+      expect(find.textContaining('Datos autodeclarados'), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
   test(
     'master access is explicit, bound to admin role, and changes session identity',
     () {

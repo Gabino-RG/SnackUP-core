@@ -198,7 +198,12 @@ class ReviewStatistics {
   Map<String, ReviewStatistics> get byCareer {
     final grouped = <String, List<AdminReview>>{};
     for (final review in reviews) {
-      grouped.putIfAbsent(review.career, () => []).add(review);
+      // Snapshot names can change or be shared by distinct careers. Legacy
+      // reviews without an identifier cannot safely be assigned to either one.
+      final key = review.careerId == null
+          ? 'legacy:${review.career}'
+          : 'id:${review.careerId}';
+      grouped.putIfAbsent(key, () => []).add(review);
     }
     return grouped.map((key, value) => MapEntry(key, ReviewStatistics(value)));
   }

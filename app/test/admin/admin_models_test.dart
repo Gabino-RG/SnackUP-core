@@ -5,6 +5,79 @@ import 'package:snackup/features/admin/data/admin_repository.dart';
 import 'package:snackup/features/admin/data/demo_admin_repository.dart';
 
 void main() {
+  test('career averages keep one identity together after a name change', () {
+    final groups = ReviewStatistics(const [
+      AdminReview(
+        id: 'old',
+        businessId: 'b',
+        careerId: 'c1',
+        career: 'Anterior',
+        rating: 0,
+      ),
+      AdminReview(
+        id: 'new',
+        businessId: 'b',
+        careerId: 'c1',
+        career: 'Actual',
+        rating: 4,
+      ),
+    ]).byCareer;
+    expect(groups.length, 1);
+    expect(groups.values.single.rating, 2);
+    expect(groups.values.single.validCount, 2);
+  });
+  test(
+    'career averages never merge different identifiers with the same name',
+    () {
+      final groups = ReviewStatistics(const [
+        AdminReview(
+          id: 'one',
+          businessId: 'b',
+          careerId: 'c1',
+          career: 'Software',
+          rating: 1,
+        ),
+        AdminReview(
+          id: 'two',
+          businessId: 'b',
+          careerId: 'c2',
+          career: 'Software',
+          rating: 5,
+        ),
+      ]).byCareer;
+      expect(groups.length, 2);
+      expect(groups.values.map((g) => g.rating), unorderedEquals([1.0, 5.0]));
+    },
+  );
+  test('legacy career names remain separate from identified careers', () {
+    final groups = ReviewStatistics(const [
+      AdminReview(
+        id: 'identified',
+        businessId: 'b',
+        careerId: 'c1',
+        career: 'Software',
+        rating: 5,
+      ),
+      AdminReview(
+        id: 'legacy-one',
+        businessId: 'b',
+        career: 'Software',
+        rating: 0,
+      ),
+      AdminReview(
+        id: 'legacy-two',
+        businessId: 'b',
+        career: 'Software',
+        rating: 4,
+      ),
+    ]).byCareer;
+    expect(groups.length, 2);
+    final legacy = groups.values.singleWhere(
+      (g) => g.reviews.first.careerId == null,
+    );
+    expect(legacy.validCount, 2);
+    expect(legacy.rating, 2);
+  });
   test('global mean weights each individual opinion, not each business', () {
     final stats = ReviewStatistics([
       const AdminReview(id: 'a', businessId: 'one', rating: 1),

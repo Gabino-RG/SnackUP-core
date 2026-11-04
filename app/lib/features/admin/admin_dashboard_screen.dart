@@ -164,6 +164,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
 
   String _businessName(String id) =>
       _businesses[id]?.name ?? 'Local sin registrar';
+  String _careerName(ReviewStatistics stats) {
+    final review = stats.reviews.first;
+    return _academics.name(review.careerId) ?? review.career;
+  }
   String _mean(double? value) => value?.toStringAsFixed(1) ?? '—';
   void _resetFilters() => setState(() {
     _businessId = null;
@@ -1225,6 +1229,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
         borderRadius: BorderRadius.circular(3),
         child: LinearProgressIndicator(
           value: (value ?? 0) / 5,
+          semanticsLabel: label,
+          semanticsValue: value == null ? 'Sin valoraciones' : null,
           minHeight: 5,
           color: color,
           backgroundColor: PanelPalette.of(context).border,
@@ -1364,7 +1370,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                                         children: [
                                           Expanded(
                                             child: Text(
-                                              e.key,
+                                              _careerName(e.value),
                                               style: const TextStyle(
                                                 fontSize: 12,
                                                 fontWeight: FontWeight.w600,
@@ -1385,6 +1391,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                                         borderRadius: BorderRadius.circular(4),
                                         child: LinearProgressIndicator(
                                           value: (e.value.rating ?? 0) / 5,
+                                          semanticsLabel: _careerName(e.value),
+                                          semanticsValue: e.value.rating == null
+                                              ? 'Sin valoraciones'
+                                              : null,
                                           minHeight: 8,
                                           backgroundColor: PanelPalette.of(context).border,
                                           color: PanelPalette.of(context).accent,
@@ -1415,7 +1425,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                   _explanation(
                     Icons.people_outline,
                     'Carrera y grupo',
-                    'Datos autodeclarados; no equivalen a un padrón verificado. Los campos ausentes aparecen como “Sin informar”.',
+                    'Carrera y grupo registrados en la opinión; pueden incluir datos históricos o importados. Los campos ausentes aparecen como “Sin informar”.',
                   ),
                   const SizedBox(height: 18),
                   _explanation(

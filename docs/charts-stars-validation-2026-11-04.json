@@ -1,0 +1,87 @@
+{
+  "date": "2026-11-04",
+  "scope": "Focused verification of administrative charts and star ratings",
+  "tests": {
+    "administrationAndBusinessMetrics": {
+      "passed": 33,
+      "failed": 0
+    },
+    "studentOrdersAndProductReviews": {
+      "passed": 21,
+      "failed": 0
+    }
+  },
+  "liveApi": {
+    "passed": true,
+    "scope": "Synthetic local rating API and expected chart values",
+    "checks": [
+      "Out-of-range six-star rating rejected",
+      "Explicit zero stars stored once; duplicate rejected",
+      "Administration returns zero-star review; missing food/service remain null"
+    ],
+    "expectedUi": {
+      "reviewCount": 3,
+      "generalAverage": 2.6666666666666665,
+      "generalDisplay": "2.7",
+      "histogram": {
+        "0": 1,
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 2,
+        "5": 0
+      },
+      "negativePercent": 33.333333333333336,
+      "foodAverage": 4.0,
+      "serviceAverage": 5.0
+    },
+    "finishedAt": "2026-11-04T21:17:35.224178+00:00"
+  },
+  "browserObserved": {
+    "mixedRatings": {
+      "values": [
+        4,
+        4,
+        0
+      ],
+      "averageShown": "2.7",
+      "count": 3,
+      "fourStarPercent": "67%",
+      "zeroStarPercent": "33%"
+    },
+    "negativeFilter": {
+      "count": 1,
+      "averageShown": "0.0",
+      "negativePercent": "100%"
+    },
+    "noResults": {
+      "averageShown": "—",
+      "message": "No hay opiniones que coincidan con los filtros."
+    },
+    "missingDimensionsAfterRebuild": [
+      "Servicio Sin valoraciones",
+      "Alimentos Sin valoraciones"
+    ],
+    "unfilteredRestored": true
+  },
+  "widgetScenarios": [
+    "Career rename preserves one group by identifier",
+    "Homonymous careers remain separate",
+    "Legacy ratings without identifiers remain separate",
+    "Current career labels are displayed without exposing internal keys",
+    "Daily means [2,0,5] at day offsets [0,3,7], chart y-axis 0–5",
+    "Missing scores are distinguished from valid zero scores"
+  ],
+  "fixes": [
+    "Aggregate career chart by careerId instead of snapshot name",
+    "Accessible progress labels say Sin valoraciones for missing dimensions",
+    "Replace outdated academic attribution explanation with a description compatible with historical data"
+  ],
+  "build": "Release panel build passed and was reloaded in browser",
+  "limits": [
+    "Multi-day line tested with controlled widget data; persistent demonstration data currently cover one day",
+    "Live zero-star submission used the canonical API; student star controls were tested in Flutter widget tests",
+    "No student or backend source changes; this report does not certify production load"
+  ],
+  "evidenceDirectory": "C:\\Users\\video\\Documents\\JC\\SnackUP-Integracion-Local\\reports"
+}
