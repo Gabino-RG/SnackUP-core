@@ -8,6 +8,8 @@ Private JSON fields: database_url (postgresql+psycopg, database must be
 snackup_integration), secret_key (32+ random characters), media_dir (absolute,
 outside the checkout). Optional students_web and panels_web are absolute build
 directories; defaults are build/web and app/build/web in this checkout.
+Optional services_file points to a private, external JSON for real SMTP/push
+providers. Services remain disabled when it is absent; no credentials are made.
 No .env or inherited SNACKUP_* configuration is used. This launcher is local
 HTTP development, one worker, no Redis; it does not certify production capacity.
 Use separate browser profiles for simultaneous student/kitchen/admin accounts:
@@ -49,6 +51,8 @@ def configuration(path: Path):
 
 def local_settings(config):
     from snackup.config import Settings
+    from integration_services import service_settings
+    services = service_settings(config, ROOT)
     # BaseSettings still reads the environment with _env_file=None. Remove only
     # these variables while constructing explicit settings, then restore them.
     inherited = {k: v for k, v in os.environ.items() if k.startswith('SNACKUP_')}
@@ -62,8 +66,7 @@ def local_settings(config):
             institution_id='integration-institution', institution_name='SnackUP · prueba integrada',
             cafeteria_id='integration-cafeteria', cafeteria_name='Cafetería de prueba',
             admin_email_domains='staff.example.edu', student_email_domains='utsjr.edu.mx',
-            smtp_host='', smtp_from='', smtp_user='', smtp_password='',
-            enable_test_mailbox=False, background_events=True, push_enabled=False)
+            enable_test_mailbox=False, background_events=True, **services)
     finally:
         os.environ.update(inherited)
 

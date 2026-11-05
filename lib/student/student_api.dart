@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:socket_io_client/socket_io_client.dart' as io;
 
 import 'api_platform.dart' as platform;
+import '../notifications/browser_push.dart';
 
 class ApiException implements Exception {
   const ApiException(this.status, this.code, this.message, {this.details});
@@ -55,13 +56,46 @@ class StudentApi extends ChangeNotifier {
   Set<String> _subscribed = {};
   bool _subscribing = false;
   bool _subscriptionChanged = false;
+  // Unsent messages stay in this session only, never in browser storage.
+  final Map<String, String> _chatDrafts = {};
+  final Set<String> _uncertainChatSends = {};
 
   Map<String, dynamic>? get user => _user;
   bool get restoring => _restoring;
   Object? get restoreError => _restoreError;
   bool get signedIn => _user != null && _accessToken != null;
   int get revision => _revision;
+  int get sessionGeneration => _generation;
   String get baseUrl => _baseUrl;
+
+  String chatDraft(String chatId) => _chatDrafts[chatId] ?? '';
+
+  bool chatSendUncertain(String chatId) => _uncertainChatSends.contains(chatId);
+
+  void setChatSendUncertain(String chatId, bool uncertain) {
+    if (!signedIn) return;
+    if (uncertain) {
+      _uncertainChatSends.add(chatId);
+    } else {
+      _uncertainChatSends.remove(chatId);
+    }
+  }
+
+  void saveChatDraft(String chatId, String text) {
+    if (!signedIn) return;
+    if (text.isEmpty) {
+      _chatDrafts.remove(chatId);
+    } else {
+      _chatDrafts[chatId] = text;
+    }
+  }
+
+  void clearChatDraft(String chatId, {String? matchingText}) {
+    if (matchingText == null ||
+        _chatDrafts[chatId]?.trim() == matchingText.trim()) {
+      _chatDrafts.remove(chatId);
+    }
+  }
 
   static String _resolveBaseUrl(String? explicit) {
     const configured = String.fromEnvironment('SNACKUP_API_BASE_URL');
@@ -246,6 +280,13 @@ class StudentApi extends ChangeNotifier {
     _restoreError = null;
     invalidate();
     await _authOperation(() async {
+      // End delivery on this browser even when the API is unreachable. Cleanup
+      // is best effort and must never prevent revoking the session below.
+      try {
+        await deactivateBrowserPush().timeout(const Duration(seconds: 3));
+      } catch (_) {
+        // The server logout still runs if the browser cannot unsubscribe.
+      }
       await _send(
         'POST',
         '/auth/logout',
@@ -372,6 +413,8 @@ class StudentApi extends ChangeNotifier {
     _refreshToken = null;
     _accessExpires = null;
     _user = null;
+    _chatDrafts.clear();
+    _uncertainChatSends.clear();
     _businesses.clear();
     _seenEvents.clear();
     _stopSocket();

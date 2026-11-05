@@ -17,6 +17,7 @@ services:
       SNACKUP_PUSH_FCM_CREDENTIALS_FILE: /run/snackup-push/fcm-service-account.json
       SNACKUP_PUSH_APNS_KEY_FILE: /run/snackup-push/apns-key.p8
       SNACKUP_PUSH_WEBPUSH_PRIVATE_KEY_FILE: /run/snackup-push/webpush-vapid.pem
+      # Exact hosts only; WNS uses the fixed Microsoft namespace validated in push.py.
       SNACKUP_PUSH_WEBPUSH_ALLOWED_HOSTS: ${SNACKUP_PUSH_WEBPUSH_ALLOWED_HOSTS:-fcm.googleapis.com,updates.push.services.mozilla.com,web.push.apple.com}
     volumes:
       - type: bind

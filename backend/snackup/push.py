@@ -29,7 +29,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.orm import Session
 
-from .auth import as_utc, current_user, ensure_account, verify_access_token
+from .auth import as_utc, current_user, decode_access_token, ensure_account, verify_access_token
 from .db import get_db, new_id, utcnow
 from .errors import ApiError
 from .identity_models import RefreshSession, User
@@ -57,13 +57,129 @@ class DeviceResponse(BaseModel):
     updatedAt: str
 
 
-def _webpush_subscription(token, settings):
-    """Only configured push services may receive credentials or encrypted data.
+class PushOptionsResponse(BaseModel):
+    enabled: bool
+    webPushPublicKey: str | None
 
-    Registrations cannot turn the worker into an arbitrary HTTP client. Hosts
-    must match exactly (no suffix matching), and redirects are disabled on send.
-    The endpoint cannot contain credentials, a custom port, query or fragment.
+
+def _valid_vapid_subject(subject):
+    """Supported RFC 8292 contact URIs; validate syntax without DNS or I/O.
+
+    HTTPS paths are valid contacts. Keep the existing deployment policy of no
+    query, fragment or credentials; reject controls and malformed URI escapes.
     """
+    if (not isinstance(subject, str) or not 1 <= len(subject) <= 2048
+            or any(ord(c) < 33 or ord(c) > 126 for c in subject)
+            or re.search(r'[\\"<>^`{|}\[\]]', subject)
+            or re.search(r'%(?![0-9a-fA-F]{2})', subject)
+            or '?' in subject or '#' in subject):
+        return False
+    try:
+        address = urlsplit(subject)
+        if address.scheme == "mailto":
+            if address.netloc or '%' in address.path:
+                return False
+            from email_validator import EmailNotValidError, validate_email
+            try:
+                validate_email(address.path, check_deliverability=False, allow_smtputf8=False)
+            except EmailNotValidError:
+                return False
+            return True
+        host = address.hostname or ""
+        if (address.scheme != "https" or address.username is not None or address.password is not None
+                or address.port is not None and not 1 <= address.port <= 65535
+                or len(host) > 253 or '.' not in host or re.fullmatch(r'[0-9.]+', host)):
+            return False
+        return all(re.fullmatch(r'[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?', label)
+                   for label in host.split('.'))
+    except (ValueError, TypeError):
+        return False
+
+
+def _webpush_vapid(settings):
+    """Load an existing signing key; never create keys or replace the contact."""
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import ec
+    from py_vapid import Vapid
+    path = settings.push_webpush_private_key_file
+    if not _valid_vapid_subject(settings.push_webpush_subject) or not path or not 1 <= path.stat().st_size <= 16384:
+        raise ValueError("Invalid VAPID configuration")
+    private = serialization.load_pem_private_key(path.read_bytes(), password=None)
+    if not isinstance(private, ec.EllipticCurvePrivateKey) or not isinstance(private.curve, ec.SECP256R1):
+        raise ValueError("Invalid VAPID signing key")
+    # py-vapid 1.9.6's _check_sub incorrectly rejects HTTPS contacts with paths.
+    # Only replace that URI check above. Vapid still checks aud and signs ES256;
+    # pywebpush supplies the push-service audience and its 12-hour expiration.
+    return Vapid(private_key=private, conf={"no-strict": True})
+
+
+def webpush_public_key(settings) -> str | None:
+    """Expose only the public P-256 point; private signing material stays local."""
+    from cryptography.exceptions import UnsupportedAlgorithm
+    path = settings.push_webpush_private_key_file
+    if not settings.push_enabled or not path or not _valid_vapid_subject(settings.push_webpush_subject):
+        return None
+    try:
+        if not 1 <= path.stat().st_size <= 16384:
+            return None
+        from cryptography.hazmat.primitives import serialization
+        from cryptography.hazmat.primitives.asymmetric import ec
+        private = serialization.load_pem_private_key(path.read_bytes(), password=None)
+        if not isinstance(private, ec.EllipticCurvePrivateKey) or not isinstance(private.curve, ec.SECP256R1):
+            return None
+        public = private.public_key().public_bytes(
+            serialization.Encoding.X962, serialization.PublicFormat.UncompressedPoint)
+        return base64.urlsafe_b64encode(public).decode('ascii').rstrip('=')
+    except (OSError, ValueError, TypeError, UnsupportedAlgorithm):
+        return None
+
+
+@router.get('/push/options', response_model=PushOptionsResponse, tags=['V3 · Dispositivos'])
+def push_options(request: Request, response: Response):
+    key = webpush_public_key(request.app.state.settings)
+    response.headers['Cache-Control'] = 'no-store'
+    return {'enabled': key is not None, 'webPushPublicKey': key}
+
+
+def _is_wns_host(host):
+    """One DNS label in Microsoft's dedicated WNS namespace, never a suffix lookalike."""
+    return isinstance(host, str) and re.fullmatch(
+        r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.notify\.windows\.com", host) is not None
+
+
+def _webpush_endpoint(endpoint, settings):
+    """Validate without I/O; keep Microsoft's opaque channel query unchanged.
+
+    Other providers use exact configured hosts and forbid query strings. WNS
+    uses a fixed, single-label Microsoft namespace: no configurable wildcards,
+    arbitrary suffixes, nested domains, credentials, fragments or custom ports.
+    All actual sends additionally disable redirects.
+    """
+    if not isinstance(endpoint, str) or any(c.isspace() or ord(c) < 32 or ord(c) == 127 for c in endpoint):
+        raise ValueError
+    address = urlsplit(endpoint)
+    wns = _is_wns_host(address.hostname)
+    allowed = {host.strip().lower() for host in settings.push_webpush_allowed_hosts.split(",") if host.strip()}
+    if (address.scheme != "https" or not (wns or address.hostname in allowed)
+            or address.username is not None or address.password is not None
+            or address.port not in {None, 443} or "#" in endpoint
+            or (not wns and "?" in endpoint) or not address.path.startswith("/")
+            or not re.fullmatch(r"[a-z0-9.-]+", address.hostname or "")
+            or re.fullmatch(r"[0-9.]+", address.hostname or "")):
+        raise ValueError
+    return urlunsplit(("https", address.hostname, address.path, address.query if wns else "", ""))
+
+
+def _webpush_headers(endpoint):
+    # WNS requires raw binary delivery for the encrypted Web Push payload.
+    # These nonstandard headers must never be sent to the other providers.
+    if _is_wns_host(urlsplit(endpoint).hostname):
+        return {"X-WNS-Type": "wns/raw", "Content-Type": "application/octet-stream"}
+    return {}
+
+
+def _webpush_subscription(token, settings):
+    """Only authorized push services may receive credentials or encrypted data."""
     try:
         value = json.loads(token)
         if not isinstance(value, dict) or set(value) - {"endpoint", "keys", "expirationTime"}:
@@ -71,14 +187,7 @@ def _webpush_subscription(token, settings):
         endpoint, keys = value["endpoint"], value["keys"]
         if not isinstance(endpoint, str) or not isinstance(keys, dict) or set(keys) != {"auth", "p256dh"}:
             raise ValueError
-        address = urlsplit(endpoint)
-        allowed = {host.strip().lower() for host in settings.push_webpush_allowed_hosts.split(",") if host.strip()}
-        if (address.scheme != "https" or address.hostname not in allowed or address.username or address.password
-                or address.port not in {None, 443} or address.query or address.fragment
-                or not address.path.startswith("/") or any(c.isspace() for c in endpoint)
-                or not re.fullmatch(r"[a-z0-9.-]+", address.hostname or "")
-                or re.fullmatch(r"[0-9.]+", address.hostname or "")):
-            raise ValueError
+        endpoint = _webpush_endpoint(endpoint, settings)
         for name, expected in (("auth", 16), ("p256dh", 65)):
             encoded = keys[name]
             if not isinstance(encoded, str) or not re.fullmatch(r"[A-Za-z0-9_-]+={0,2}", encoded):
@@ -91,7 +200,6 @@ def _webpush_subscription(token, settings):
                 ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP256R1(), decoded)
             keys[name] = base64.urlsafe_b64encode(decoded).decode().rstrip("=")
         # Ignore browser expiration metadata: it is not an authorization claim.
-        endpoint = urlunsplit(("https", address.hostname, address.path, "", ""))
         return {"endpoint": endpoint, "keys": keys}
     except (ValueError, KeyError, TypeError, AttributeError):
         raise ApiError(422, "INVALID_DEVICE_TOKEN", "La suscripción de notificaciones no es válida.") from None
@@ -143,6 +251,23 @@ def _device_json(device):
     return {"id": device.id, "platform": device.platform, "provider": device.provider,
             "lastActiveAt": as_utc(device.last_active_at).isoformat(),
             "createdAt": as_utc(device.created_at).isoformat(), "updatedAt": as_utc(device.updated_at).isoformat()}
+
+
+@router.get('/users/me/devices/current', response_model=DeviceResponse | None, tags=['V3 · Dispositivos'])
+def current_device(request: Request, response: Response, user: User = Depends(request_user),
+                   db: Session = Depends(get_db, scope='function')):
+    """Read only the device bound to this session family, without its token."""
+    settings = request.app.state.settings
+    bearer = request.headers['authorization'].partition(' ')[2]
+    verify_access_token(bearer, db, settings)
+    claims = decode_access_token(bearer, settings)
+    session = db.get(RefreshSession, claims['sid'])
+    response.headers['Cache-Control'] = 'no-store'
+    if session is None or session.user_id != user.id or session.device_id is None:
+        return None
+    device = db.scalar(select(Device).where(Device.id == session.device_id, Device.user_id == user.id,
+                                           Device.session_family_id == session.family_id))
+    return _device_json(device) if device is not None else None
 
 
 @router.post("/users/me/devices", status_code=201, response_model=DeviceResponse,
@@ -280,6 +405,28 @@ def _provider_error(status, headers, invalid=False):
     return PushResult("permanent", "PROVIDER_REJECTED")
 
 
+def _webpush_error(status, headers, *, wns=False):
+    """Provider-safe diagnostics: numeric HTTP status only, never response text."""
+    if type(status) is not int or not 100 <= status <= 599:
+        return PushResult("retry", "WEBPUSH_INVALID_HTTP_STATUS")
+    if wns and status == 406:
+        # Microsoft uses 406 for throttling. Other providers retain their
+        # existing permanent-rejection handling for this status.
+        result = PushResult("retry", "PROVIDER_TEMPORARY", retry_after=max(60, _retry_after(headers)))
+    else:
+        result = _provider_error(status, headers, status in {404, 410})
+    return PushResult(result.kind, f"{result.code}_HTTP_{status}", retry_after=result.retry_after)
+
+
+def _webpush_exception_code(error):
+    # Exception messages may include endpoints, subscriptions or credentials.
+    # A bounded ASCII type name is sufficient to diagnose library/transport errors.
+    name = type(error).__name__
+    if re.fullmatch(r"[A-Za-z][A-Za-z0-9_]{0,47}", name):
+        return "WEBPUSH_TRANSPORT_" + name.upper()
+    return "WEBPUSH_TRANSPORT_FAILED"
+
+
 class FCMProvider:
     def __init__(self, settings):
         self.settings, self.credentials, self.guard = settings, None, threading.Lock()
@@ -376,7 +523,7 @@ class WebPushProvider:
 
     def configured(self):
         return bool(self.settings.push_webpush_private_key_file and
-                    self.settings.push_webpush_subject.startswith(("mailto:", "https://")))
+                    _valid_vapid_subject(self.settings.push_webpush_subject))
 
     def send(self, token, payload):
         settings = self.settings
@@ -386,6 +533,7 @@ class WebPushProvider:
             subscription = _webpush_subscription(token, settings)
         except ApiError:
             return PushResult("invalid", "TOKEN_INVALID")
+        wns = _is_wns_host(urlsplit(subscription["endpoint"]).hostname)
         import requests
         from pywebpush import WebPushException, webpush
         class BoundedSession(requests.Session):
@@ -393,23 +541,24 @@ class WebPushProvider:
                 kwargs.update(allow_redirects=False, timeout=settings.push_http_timeout_seconds)
                 return super().request(method, url, **kwargs)
         try:
+            vapid = _webpush_vapid(settings)
             with BoundedSession() as session:
                 result = webpush(subscription, json.dumps(payload, separators=(",", ":")),
-                    vapid_private_key=str(settings.push_webpush_private_key_file),
+                    vapid_private_key=vapid,
                     vapid_claims={"sub": settings.push_webpush_subject}, ttl=3600,
+                    headers=_webpush_headers(subscription["endpoint"]),
                     timeout=settings.push_http_timeout_seconds, requests_session=session)
             if 200 <= result.status_code < 300:
                 return PushResult("accepted")
-            return _provider_error(result.status_code, result.headers, result.status_code in {404, 410})
+            return _webpush_error(result.status_code, result.headers, wns=wns)
         except WebPushException as error:
             if error.response is not None:
-                return _provider_error(error.response.status_code, error.response.headers,
-                                       error.response.status_code in {404, 410})
+                return _webpush_error(error.response.status_code, error.response.headers, wns=wns)
             return PushResult("permanent", "WEBPUSH_INVALID_SUBSCRIPTION")
         except (OSError, ValueError, TypeError):
             return PushResult("unconfigured", "WEBPUSH_INVALID_CONFIGURATION")
-        except Exception:
-            return PushResult("retry", "WEBPUSH_TRANSPORT_FAILED")
+        except Exception as error:
+            return PushResult("retry", _webpush_exception_code(error))
 
 
 class PushDispatcher:

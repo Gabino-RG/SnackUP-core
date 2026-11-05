@@ -1,0 +1,42 @@
+{
+  "status": "push_provider_accepted_awaiting_user_display_confirmation",
+  "scope": "Operaciones UI contra backend y PostgreSQL local. No fixtures, seeds ni escrituras directas API/SQL.",
+  "observations": [
+    {
+      "id": "UI-CHAT-01",
+      "result": "passed",
+      "observed": "Alumno envió mensaje desde Perfil/Mis conversaciones. Cocina lo vio al abrir Chat del pedido #7 y respondió. Alumno vio respuesta persistida y su propio mensaje al reingresar y abrir Chat con Cocina desde pedido listo. No SQL/fixtures.",
+      "order": 7
+    },
+    {
+      "id": "UI-RATING-01",
+      "result": "passed",
+      "order": 7,
+      "observed": "Pedido creado desde UI y entregado mediante el código mostrado al alumno. Calificación General 5, Alimentos 4 y Servicio 3 con comentario VALIDACION-UI-P7. Administración mostró texto, carrera y valores exactos. El filtro del comentario aisló una opinión: promedio 5.0, Servicio 3.0/60%, Alimentos 4.0/80%, distribución de cinco estrellas 1/100% y carrera 5.0/1. No se insertaron valores mediante scripts API o SQL."
+    },
+    {
+      "id": "UI-PUSH-TIMEOUT-01",
+      "result": "fixed_and_verified",
+      "observed": "En el navegador integrado, Activar quedaba cargando sin mostrar el aviso de permisos. Tras la reparación y compilación release, la espera de 25 segundos devolvió un mensaje indicando que el navegador no respondió, con botones habilitados y sin afirmar éxito. No constituye una prueba de entrega."
+    },
+    {
+      "id": "UI-MOBILE-01",
+      "result": "passed",
+      "observed": "A 390×844, el detalle administrativo mostró las calificaciones 5/3/4 y el comentario. En Alumnos, el chat mostró ambos mensajes; el borrador se conservó al volver a Conversaciones y reabrir el local. Después se vació el borrador sin enviarlo. La simulación de tamaño de pantalla no acredita un teléfono físico."
+    },
+    {
+      "id": "UI-PUSH-REGISTER-01",
+      "result": "passed_user_observed",
+      "observed": "El usuario activó las notificaciones en Edge desde Cocina/Mi local. Su captura muestra: Notificaciones activadas para esta cuenta en este navegador. Una consulta SQL de solo lectura corroboró un dispositivo web/webpush registrado. Esto acredita activación, no recepción de un aviso."
+    },
+    {
+      "id": "UI-PUSH-DELIVERY-01",
+      "result": "provider_accepted_display_confirmation_pending",
+      "order": 8,
+      "observed": "El agente creó desde la UI de Alumnos un pedido de Agua de jamaica por 18.00 MXN, con nota de comprobación funcional sin entrega física, a las 22:53 del 4 de noviembre, hora de la universidad. El servidor creó una entrega push; la primera consulta mostró retry, attempts=1, WEBPUSH_TRANSPORT_FAILED, sin aceptación del proveedor.",
+      "diagnosis": "Preparar localmente el cifrado y la firma del registro real con curl=True, sin enviar ni imprimir credenciales, reprodujo VapidException en la validación del contacto. La expresión regular de py-vapid 1.9.6 rechaza el path de la URI HTTPS de contacto configurada; RFC 8292 permite una URI HTTPS. La repetición con la corrección preparó correctamente el mensaje. El archivo de cuerpo cifrado encrypted.data que creó la biblioteca durante esta comprobación se eliminó y no forma parte de Git.",
+      "correction": "Se validan las URI de contacto en el backend, se carga la clave PEM P-256 existente y se sustituye únicamente el validador defectuoso de sub de py-vapid. Se conservan contacto, clave, audiencia, expiración, firma, TLS y destinos permitidos. Además WNS 406 conserva reintentos con Retry-After y los errores internos guardan códigos HTTP o clase de excepción sin mensajes privados.",
+      "validation": "Comprobación local de cifrado/firma del registro real correcta; revisión independiente del cambio sin bloqueadores. Servidor reiniciado conservando PostgreSQL y la entrega pendiente. Sin alterar fechas ni estados mediante SQL, el reintento automático pasó a sent en el intento 5, last_error=null y sent_at presente. Esta aceptación del proveedor todavía requiere confirmar el aviso visible en Windows con el usuario."
+    }
+  ]
+}

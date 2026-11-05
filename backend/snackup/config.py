@@ -62,6 +62,8 @@ class Settings(BaseSettings):
     push_apns_sandbox: bool = False
     push_webpush_private_key_file: Path | None = None
     push_webpush_subject: str = ''
+    # Exact hosts only. push.py separately permits one valid DNS label under
+    # Microsoft's notify.windows.com namespace; no configured wildcards.
     push_webpush_allowed_hosts: str = 'fcm.googleapis.com,updates.push.services.mozilla.com,web.push.apple.com'
 
     @field_validator('push_fcm_credentials_file', 'push_apns_key_file', 'push_webpush_private_key_file', mode='before')

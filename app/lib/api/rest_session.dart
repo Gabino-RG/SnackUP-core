@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import '../notifications/browser_push.dart';
 import 'api_client.dart';
 
 enum PortalSessionPhase {
@@ -353,6 +354,12 @@ class RestSession extends ChangeNotifier {
     logoutPending = true;
     _changed();
     try {
+      // Try to stop local push delivery even when the API is unavailable.
+      // A browser error must never prevent server-side session revocation.
+      try {
+        await deactivateBrowserPush().timeout(const Duration(seconds: 3));
+      } catch (_) {}
+      if (!_current(generation)) return;
       await intentStore.writeLogoutPending(true);
       if (!_current(generation)) return;
       // Logout follows in-flight cookie rotations so a late login cannot undo it.

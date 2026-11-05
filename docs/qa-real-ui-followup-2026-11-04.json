@@ -1,0 +1,84 @@
+{
+  "status": "historical_followup_with_later_acceptance",
+  "note": "Estas cinco comprobaciones anteceden a la interrupción de control visual. La continuación de chat, calificaciones y notificaciones consta en qa-chat-ratings-push-2026-11-04.json; no se debe interpretar este registro histórico como el estado final de esas funciones.",
+  "observations": [
+    {
+      "id": "FOLLOWUP-01",
+      "role": "student",
+      "screen": "Acceso a /paneles/",
+      "actions": [
+        "Abrir /paneles/ conservando sesión del alumno"
+      ],
+      "observed": [
+        "Mensaje: Este acceso es para negocios y administración. Tu cuenta no tiene un rol habilitado para estos paneles.",
+        "Solo se ofrece Cerrar sesión; no aparece tablero de Cocina ni Administración."
+      ],
+      "result": "observed_as_expected"
+    },
+    {
+      "id": "FOLLOWUP-02",
+      "role": "kitchen",
+      "screen": "Acceso a Alumnos",
+      "actions": [
+        "Iniciar sesión real como operator y abrir raíz de Alumnos"
+      ],
+      "observed": [
+        "Portal de alumnos: Esta cuenta pertenece a otro perfil. Usa el portal de Cocina o Administración de tu equipo.",
+        "No se muestra catálogo o perfil de alumno; se ofrece volver al inicio de sesión."
+      ],
+      "result": "observed_as_expected"
+    },
+    {
+      "id": "FOLLOWUP-03",
+      "role": "kitchen",
+      "screen": "Catálogo en dos pestañas",
+      "actions": [
+        "Primera pestaña: abrir Cambiar precio de Torta, conservar35.50",
+        "Segunda pestaña del mismo operador: disponibilidad desactivar y restaurar medianteUI",
+        "Guardar precio en primera pestaña con versión anterior",
+        "Actualizar catálogo, reabrir precio y guardar35.50"
+      ],
+      "observed": [
+        "Primera petición rechazada: El producto cambió en otro dispositivo. Recarga antes de guardar.",
+        "Precio35.50, stock29 y disponible se conservaron",
+        "Tras recargar se mostró Producto actualizado."
+      ],
+      "result": "observed_as_expected",
+      "scope": "Conflicto de versión con dos pestañas reales; no acredita1000usuarios ni carrera de creación de pedidos."
+    },
+    {
+      "id": "FOLLOWUP-04",
+      "role": "kitchen",
+      "screen": "Pedidos y vales",
+      "actions": [
+        "Consultar activos (vacío), activar historial, elegir3Nov yvolver4Nov, refrescar"
+      ],
+      "observed": [
+        "Día4Nov muestra pedidos1a6 reales; #5 conserva hora16:17, todosEfectivo",
+        "Día3Nov sinpedidos",
+        "No ofrecióliberarvaleparaefectivo"
+      ],
+      "result": "observed_as_expected"
+    },
+    {
+      "id": "FOLLOWUP-05",
+      "role": "kitchen",
+      "screen": "Horarios del local QA existente",
+      "actions": [
+        "Entrar qa.cocina con cuenta previa; confirmar local abierto y cierreautoapagado sin marcadorprocesadohoy",
+        "Activar cierre21:34, guardar, Posponer medianteinputmanualHora21Minuto35 yconfirmar",
+        "Esperar tiempo real y refrescar a21:34:28",
+        "Observar cierre automático21:35",
+        "Desactivarauto yvaciarhora; reabrirmanualmente"
+      ],
+      "observed": [
+        "Inputmanual21:35aceptado en selector24h corregido",
+        "Prórroga guardada con2026-11-05T03:35:00Z;21:34:28aúnAbierto",
+        "A21:35recepcióncerrada/EstadoCerrado/banner cierreyaejecutadohoy/Posponerdeshabilitado",
+        "Trasrestauración abierto,autoapagado,hora vacía"
+      ],
+      "result": "observed_as_expected",
+      "scope": "Cierre real por scheduler y prórroga; no alteración de fechas ni last_auto_close_date, no pedidosnuevos por script."
+    }
+  ]
+}

@@ -16,6 +16,8 @@ import 'order_dialogs.dart';
 import 'history_screen.dart';
 import 'record_editor.dart';
 import '../../operations/v32_repository.dart';
+import '../../api/api_client.dart';
+import '../../notifications/push_notifications_card.dart';
 import 'v32_screens.dart';
 import 'chat_activity_button.dart';
 
@@ -234,7 +236,10 @@ class _BusinessPortalState extends State<BusinessPortal>
                 b?.cafeteriaName ?? 'Cafetería universitaria',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 11, color: PanelPalette.of(context).muted),
+                style: TextStyle(
+                  fontSize: 11,
+                  color: PanelPalette.of(context).muted,
+                ),
               ),
             ],
           ),
@@ -733,7 +738,9 @@ class _BusinessPortalState extends State<BusinessPortal>
                       if (item.notes.isNotEmpty)
                         Text(
                           'Nota: ${item.notes}',
-                          style: TextStyle(color: PanelPalette.of(context).danger),
+                          style: TextStyle(
+                            color: PanelPalette.of(context).danger,
+                          ),
                         ),
                     ],
                   ),
@@ -879,6 +886,15 @@ class _BusinessPortalState extends State<BusinessPortal>
               ? null
               : _open,
         ),
+        if (widget.v32 != null)
+          PushNotificationsCard(
+            sessionKey: widget.v32!.api,
+            request: (method, path, {body}) =>
+                widget.v32!.api.json(method, path, body: body),
+            errorMessage: v32Message,
+            registrationIsMissing: (error) =>
+                error is ApiException && error.status == 404,
+          ),
       ],
     );
   }

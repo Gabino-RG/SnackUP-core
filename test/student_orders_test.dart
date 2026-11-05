@@ -593,7 +593,7 @@ void main() {
     await tester.tap(button);
     await tester.pumpAndSettle();
     expect(api.ratingPosts, 1);
-    expect(api.ratingBody, {'stars': 0, 'comment': ''});
+    expect(api.ratingBody, {'rating': 0, 'comment': ''});
     await tester.pumpWidget(const SizedBox());
     api.dispose();
   });

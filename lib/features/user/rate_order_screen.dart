@@ -20,6 +20,8 @@ class _RateOrderScreenState extends State<RateOrderScreen> {
   int _revision = -1;
   Future<Map<String, dynamic>>? _future;
   int? _stars;
+  int? _foodRating;
+  int? _serviceRating;
   bool _saving = false;
   Object? _error;
 
@@ -57,7 +59,9 @@ class _RateOrderScreenState extends State<RateOrderScreen> {
     return order;
   }
 
-  void _reload() => setState(() { _future = _load(); });
+  void _reload() => setState(() {
+    _future = _load();
+  });
 
   Future<void> _submit() async {
     if (_saving || _stars == null) return;
@@ -88,7 +92,12 @@ class _RateOrderScreenState extends State<RateOrderScreen> {
       await _api!.request(
         'POST',
         '/orders/${widget.orderId}/rating',
-        body: {'stars': _stars!, 'comment': _comment.text.trim()},
+        body: {
+          'rating': _stars!,
+          'comment': _comment.text.trim(),
+          if (_foodRating != null) 'foodRating': _foodRating,
+          if (_serviceRating != null) 'serviceRating': _serviceRating,
+        },
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -169,16 +178,36 @@ class _RateOrderScreenState extends State<RateOrderScreen> {
                 runSpacing: 10,
                 children: List.generate(
                   6,
-                  (value) => ChoiceChip(
-                    key: ValueKey('rating-$value'),
+                  (value) => _ratingChoice(
+                    chipKey: ValueKey('rating-$value'),
+                    aspect: 'Calificación general',
+                    score: value,
                     selected: _stars == value,
-                    onSelected: _saving
-                        ? null
-                        : (_) => setState(() => _stars = value),
-                    avatar: const Icon(Icons.star, size: 18),
-                    label: Text('$value'),
+                    onSelected: () => setState(() => _stars = value),
                   ),
                 ),
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'Aspectos del servicio (opcionales)',
+                style: AppText.h3,
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Califica solo los aspectos que pudiste valorar. Dejar uno sin seleccionar no equivale a darle cero estrellas.',
+                style: AppText.notes,
+              ),
+              const SizedBox(height: 16),
+              _optionalRating(
+                label: 'Alimentos',
+                value: _foodRating,
+                onChanged: (value) => setState(() => _foodRating = value),
+              ),
+              const SizedBox(height: 16),
+              _optionalRating(
+                label: 'Servicio',
+                value: _serviceRating,
+                onChanged: (value) => setState(() => _serviceRating = value),
               ),
               const SizedBox(height: 24),
               TextField(
@@ -212,6 +241,63 @@ class _RateOrderScreenState extends State<RateOrderScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _optionalRating({
+    required String label,
+    required int? value,
+    required ValueChanged<int?> onChanged,
+  }) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(label, style: AppText.body),
+      const SizedBox(height: 8),
+      Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          for (var score = 0; score <= 5; score++)
+            _ratingChoice(
+              aspect: label,
+              score: score,
+              selected: value == score,
+              onSelected: () => onChanged(score),
+            ),
+          _ratingChoice(
+            aspect: label,
+            selected: value == null,
+            onSelected: () => onChanged(null),
+          ),
+        ],
+      ),
+    ],
+  );
+
+  Widget _ratingChoice({
+    Key? chipKey,
+    required String aspect,
+    int? score,
+    required bool selected,
+    required VoidCallback onSelected,
+  }) {
+    final value = score == null
+        ? 'sin valorar'
+        : '$score ${score == 1 ? 'estrella' : 'estrellas'}';
+    return Semantics(
+      label: '$aspect: $value${selected ? ', seleccionado' : ''}',
+      button: true,
+      selected: selected,
+      enabled: !_saving,
+      onTap: _saving ? null : onSelected,
+      excludeSemantics: true,
+      child: ChoiceChip(
+        key: chipKey,
+        selected: selected,
+        onSelected: _saving ? null : (_) => onSelected(),
+        avatar: score == null ? null : const Icon(Icons.star, size: 18),
+        label: Text(score == null ? 'Sin valorar' : '$score'),
       ),
     );
   }

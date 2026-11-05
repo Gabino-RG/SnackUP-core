@@ -574,6 +574,10 @@ class _ClosingScreenState extends State<ClosingScreen> {
     final chosen = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.fromDateTime(campusNow()),
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+        child: child!,
+      ),
     );
     if (chosen == null || !mounted) return;
     final today = campusNow();
@@ -641,7 +645,9 @@ class _ClosingScreenState extends State<ClosingScreen> {
             ),
           ),
         if (_business!['postponedCloseAt'] != null)
-          Text('Cierre pospuesto: ${_business!['postponedCloseAt']}'),
+          Text(
+            'Cierre pospuesto: ${campusStamp(DateTime.tryParse('${_business!['postponedCloseAt']}'))} · hora de la universidad',
+          ),
         if (widget.readOnly)
           ListTile(
             contentPadding: EdgeInsets.zero,

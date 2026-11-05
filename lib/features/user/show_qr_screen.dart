@@ -10,6 +10,7 @@ import 'package:snackup/theme/student_colors.dart';
 import 'package:snackup/theme/student_text.dart';
 
 import 'rate_order_screen.dart';
+import 'student_chat_screen.dart';
 import 'package:snackup/student/product_reviews.dart';
 
 class ShowQrScreen extends StatefulWidget {
@@ -311,6 +312,20 @@ class _ShowQrScreenState extends State<ShowQrScreen> {
                     ),
                   ),
                 const SizedBox(height: 16),
+                OutlinedButton.icon(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute<void>(
+                      builder: (_) => StudentChatScreen(
+                        businessId: order['businessId'] as String,
+                        orderId: widget.orderId,
+                      ),
+                    ),
+                  ),
+                  icon: const Icon(Icons.chat_bubble_outline),
+                  label: const Text('Chat con Cocina'),
+                ),
+                const SizedBox(height: 12),
                 OutlinedButton.icon(
                   onPressed: _reload,
                   icon: const Icon(Icons.refresh),

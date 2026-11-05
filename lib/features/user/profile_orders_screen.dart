@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:snackup/student/student_api.dart';
 import 'package:snackup/student/student_widgets.dart';
+import 'package:snackup/student/push_notifications.dart';
 import 'package:snackup/theme/student_colors.dart';
 import 'package:snackup/theme/student_text.dart';
 
@@ -9,6 +10,7 @@ import 'cart_screen.dart';
 import 'product_detail_screen.dart';
 import 'rate_order_screen.dart';
 import 'show_qr_screen.dart';
+import 'student_chat_screen.dart';
 import 'package:snackup/student/product_reviews.dart';
 import 'package:snackup/student/order_summary.dart';
 
@@ -500,6 +502,11 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
               ),
               onTap: () => Navigator.pop(sheetContext, 'details'),
             ),
+            ListTile(
+              leading: const Icon(Icons.chat_bubble_outline),
+              title: const Text('Chat con Cocina'),
+              onTap: () => Navigator.pop(sheetContext, 'chat'),
+            ),
             if (order['status'] == 'pending')
               ListTile(
                 leading: const Icon(Icons.cancel_outlined),
@@ -513,6 +520,8 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
     if (!mounted) return;
     if (action == 'cancel') {
       await _cancel(order);
+    } else if (action == 'chat') {
+      await _openChat(order, data);
     } else if (action == 'details') {
       await Navigator.push(
         context,
@@ -522,6 +531,18 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
       );
     }
   }
+
+  Future<void> _openChat(Map<String, dynamic> order, _ProfileData data) =>
+      Navigator.push(
+        context,
+        MaterialPageRoute<void>(
+          builder: (_) => StudentChatScreen(
+            businessId: order['businessId'] as String,
+            orderId: order['id'] as String,
+            businessName: data.businessNames[order['businessId']],
+          ),
+        ),
+      );
 
   Widget _orderTabs() => SizedBox(
     height: 74,
@@ -708,6 +729,13 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
                     onPressed: _busy == null ? () => _reorder(order) : null,
                     child: const Text('Volver a pedir'),
                   ),
+                OutlinedButton.icon(
+                  onPressed: _busy == null
+                      ? () => _openChat(order, data)
+                      : null,
+                  icon: const Icon(Icons.chat_bubble_outline),
+                  label: const Text('Chat con Cocina'),
+                ),
                 if (status == 'completed' && order['isRated'] != true)
                   FilledButton.icon(
                     onPressed: _busy == null
@@ -947,6 +975,20 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
         ),
       ),
       const SizedBox(height: 16),
+      const StudentPushNotificationsCard(),
+      const SizedBox(height: 16),
+      Card(
+        child: ListTile(
+          leading: const Icon(Icons.forum_outlined),
+          title: const Text('Mis conversaciones'),
+          subtitle: const Text('Consulta tus mensajes con Cocina'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute<void>(builder: (_) => const StudentChatScreen()),
+          ),
+        ),
+      ),
       OutlinedButton.icon(
         onPressed: _busy == null
             ? () async {

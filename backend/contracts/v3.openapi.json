@@ -3255,6 +3255,31 @@
         "title": "PublicBusinessRating",
         "type": "object"
       },
+      "PushOptionsResponse": {
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "webPushPublicKey": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Webpushpublickey"
+          }
+        },
+        "required": [
+          "enabled",
+          "webPushPublicKey"
+        ],
+        "title": "PushOptionsResponse",
+        "type": "object"
+      },
       "RatingInput": {
         "additionalProperties": false,
         "properties": {
@@ -10037,6 +10062,67 @@
         ]
       }
     },
+    "/api/v1/push/options": {
+      "get": {
+        "operationId": "push_options_api_v1_push_options_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PushOptionsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                }
+              }
+            },
+            "description": "JWT ausente, vencido o sesión revocada."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                }
+              }
+            },
+            "description": "El rol o el ámbito del recurso no está autorizado."
+          },
+          "500": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Error interno no controlado."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                }
+              }
+            },
+            "description": "Error controlado de la API; code identifica la causa."
+          }
+        },
+        "summary": "Push Options",
+        "tags": [
+          "V3 · Dispositivos"
+        ]
+      }
+    },
     "/api/v1/users/me": {
       "get": {
         "operationId": "profile_api_v1_users_me_get",
@@ -10740,6 +10826,81 @@
           }
         ],
         "summary": "Register Device",
+        "tags": [
+          "V3 · Dispositivos"
+        ]
+      }
+    },
+    "/api/v1/users/me/devices/current": {
+      "get": {
+        "description": "Read only the device bound to this session family, without its token.",
+        "operationId": "current_device_api_v1_users_me_devices_current_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/DeviceResponse"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Current Device Api V1 Users Me Devices Current Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                }
+              }
+            },
+            "description": "JWT ausente, vencido o sesión revocada."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                }
+              }
+            },
+            "description": "El rol o el ámbito del recurso no está autorizado."
+          },
+          "500": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Error interno no controlado."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorEnvelope"
+                }
+              }
+            },
+            "description": "Error controlado de la API; code identifica la causa."
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Current Device",
         "tags": [
           "V3 · Dispositivos"
         ]
