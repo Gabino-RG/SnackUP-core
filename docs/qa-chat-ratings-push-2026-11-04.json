@@ -1,6 +1,7 @@
 {
-  "status": "push_provider_accepted_awaiting_user_display_confirmation",
+  "status": "three_requested_flows_verified_locally",
   "scope": "Operaciones UI contra backend y PostgreSQL local. No fixtures, seeds ni escrituras directas API/SQL.",
+  "limits": "El resultado corresponde al chat bidireccional, calificaciones detalladas y aviso de nuevo pedido en Edge/Windows descritos aquí. No certifica todos los controles del inventario, un teléfono físico, 1000 usuarios simultáneos ni el despliegue productivo.",
   "observations": [
     {
       "id": "UI-CHAT-01",
@@ -31,12 +32,20 @@
     },
     {
       "id": "UI-PUSH-DELIVERY-01",
-      "result": "provider_accepted_display_confirmation_pending",
+      "result": "provider_accepted_display_not_confirmed_for_this_attempt",
       "order": 8,
       "observed": "El agente creó desde la UI de Alumnos un pedido de Agua de jamaica por 18.00 MXN, con nota de comprobación funcional sin entrega física, a las 22:53 del 4 de noviembre, hora de la universidad. El servidor creó una entrega push; la primera consulta mostró retry, attempts=1, WEBPUSH_TRANSPORT_FAILED, sin aceptación del proveedor.",
       "diagnosis": "Preparar localmente el cifrado y la firma del registro real con curl=True, sin enviar ni imprimir credenciales, reprodujo VapidException en la validación del contacto. La expresión regular de py-vapid 1.9.6 rechaza el path de la URI HTTPS de contacto configurada; RFC 8292 permite una URI HTTPS. La repetición con la corrección preparó correctamente el mensaje. El archivo de cuerpo cifrado encrypted.data que creó la biblioteca durante esta comprobación se eliminó y no forma parte de Git.",
       "correction": "Se validan las URI de contacto en el backend, se carga la clave PEM P-256 existente y se sustituye únicamente el validador defectuoso de sub de py-vapid. Se conservan contacto, clave, audiencia, expiración, firma, TLS y destinos permitidos. Además WNS 406 conserva reintentos con Retry-After y los errores internos guardan códigos HTTP o clase de excepción sin mensajes privados.",
-      "validation": "Comprobación local de cifrado/firma del registro real correcta; revisión independiente del cambio sin bloqueadores. Servidor reiniciado conservando PostgreSQL y la entrega pendiente. Sin alterar fechas ni estados mediante SQL, el reintento automático pasó a sent en el intento 5, last_error=null y sent_at presente. Esta aceptación del proveedor todavía requiere confirmar el aviso visible en Windows con el usuario."
+      "validation": "Comprobación local de cifrado/firma del registro real correcta; revisión independiente del cambio sin bloqueadores. Servidor reiniciado conservando PostgreSQL y la entrega pendiente. Sin alterar fechas ni estados mediante SQL, el reintento automático pasó a sent en el intento 5, last_error=null y sent_at presente. No se confirmó la visualización de este primer aviso; el usuario pidió repetirlo y confirmó la recepción del pedido #9 en la evidencia siguiente."
+    },
+    {
+      "id": "UI-PUSH-DELIVERY-02",
+      "result": "passed_user_observed",
+      "order": 9,
+      "observed": "A petición del usuario se generó otro aviso creando desde la UI de Alumnos el pedido #9 a las 23:34 del 4 de noviembre, hora de la universidad: una Agua de jamaica por 18.00 MXN, con nota de prueba sin entrega física. La pantalla confirmó el pedido. Una consulta SQL de solo lectura verificó sent, attempts=1, last_error=null y sent_at presente.",
+      "displayConfirmation": "Ante la pregunta «¿Te apareció ahora la notificación de SnackUP en Windows?», el usuario respondió «sip».",
+      "provenance": "Creación observada por el agente en la UI; aceptación del proveedor corroborada por lectura; visualización de la notificación confirmada por el usuario en Edge/Windows. No se afirma haber controlado ni capturado directamente el aviso del sistema."
     }
   ]
 }
