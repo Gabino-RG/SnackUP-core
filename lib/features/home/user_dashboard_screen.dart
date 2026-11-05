@@ -162,12 +162,7 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
             tooltip: 'Mi carrito',
             onPressed: () => Navigator.push(
               context,
-              MaterialPageRoute<void>(
-                builder: (_) => Scaffold(
-                  appBar: AppBar(title: const Text('Mi pedido')),
-                  body: const CartScreen(),
-                ),
-              ),
+              MaterialPageRoute<void>(builder: (_) => const CartScreen()),
             ),
             icon: const Icon(Icons.shopping_bag_outlined),
           ),

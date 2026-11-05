@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "date": "2026-11-04",
   "timezone": "America/Mexico_City",
-  "acceptanceStatus": "partial_with_confirmed_defect",
+  "acceptanceStatus": "partial",
   "applicationOrigin": "http://localhost:18080",
   "method": {
     "execution": "El agente principal operó las pantallas reales de Alumnos, Cocina y Administración con las cuentas locales existentes.",
@@ -12,19 +12,34 @@
     "evidenceType": "live_ui_observation_relayed_by_primary_agent",
     "screenshots": [],
     "screenshotNote": "No se comunicaron rutas de capturas para asociarlas a este registro; no se inventan archivos de evidencia.",
-    "viewportCoverage": "Administración:1366×900 en claro/oscuro y menú→Opiniones a390px de ancho. Cocina:PC y chat390×844 legible. No hay matriz visual completa de todos los controles.",
+    "viewportCoverage": "Retests autorizados de Alumnos: carrito y selector24h a390×844 y1366×900; Administración1366×900 y menú→Opiniones390px; Cocina chat390×844 y PC. No hay matriz completa de todos los controles.",
     "inventoryPolicy": "El mapeo documenta únicamente subconjuntos observados. No marca completa una acción del inventario cuando quedan variantes, estados o formatos sin recorrer. docs/qa-alumnos-inventory.json se conserva sin modificar.",
     "laterReadOnlyCorroboration": "Para explicar que15:54 no produjo un segundo cierre automático se consultó last_auto_close_date en lectura: hoy ya estaba procesado por la prueba anterior14:55. No se alteró ni reinició este marcador.",
     "serviceFailureTesting": "El agente principal detuvo y reinició los servicios reales mediante scripts operativos sin semillas. Los errores, recuperación y persistencia aquí registrados se observaron después desde las pantallas; no se insertaron pedidos por esos scripts.",
     "buildObservation": {
       "staffReleaseBuild": "tercera compilación release de paneles, comunicada correcta en38 segundos",
-      "studentUiEdited": false,
-      "studentUiModificationAuthorization": "Pendiente para cambios de código de Alumnos; este registro no los realiza.",
+      "studentUiEdited": true,
+      "studentUiModificationAuthorization": "Autorizada y verificada para DEFECT-01/05 exclusivamente en codex/integracion-local-completa; no extiende alcance a otras ramas.",
       "newStaffBuildChatSendAndPostSendDraftCleanupVerified": true,
-      "studentRootCodeUnchangedReported": true,
       "backendUnchangedReported": true,
       "backupBranchUnchangedReported": true,
-      "unchangedScopeProvenance": "Declaración del agente principal; este agente documental no efectuó una nueva auditoría Git."
+      "unchangedScopeProvenance": "Declaración del agente principal; este agente documental no efectuó una nueva auditoría Git.",
+      "studentRootCodeUnchangedBeforeAuthorizationReported": true,
+      "studentRootCodeChangesReportedAfterAuthorization": [
+        "Navegación del carrito",
+        "Locale es_MX y dependencias SDK de localización"
+      ],
+      "studentUiImplementationVerifiedByThisDocumentationAgent": false,
+      "studentBuildCurrentStatus": "Segunda compilación autorizada con formato24h explícito pasó25.1s; retests UI comunicados concluidos.",
+      "studentUiRetestVerifiedForReportedCases": true,
+      "studentUiRetestEvidenceIds": [
+        "UI-59",
+        "UI-63",
+        "UI-64",
+        "UI-65",
+        "UI-66",
+        "UI-67"
+      ]
     }
   },
   "actors": {
@@ -1546,13 +1561,238 @@
         "Nuevas puntuaciones separadas de Servicio y Alimentos",
         "Matriz visual adicional después de restablecer viewport"
       ]
+    },
+    {
+      "id": "UI-59",
+      "role": "student",
+      "screen": "Nueva compilación autorizada: carrito vacío en móvil",
+      "actions": [
+        "Iniciar sesión local y recargar",
+        "A390×844 abrir Mi carrito desde Home y regresar",
+        "Abrir Torta, usar Ver carrito y regresar"
+      ],
+      "observed": [
+        "La recarga restauró la sesión.",
+        "Desde Home, el carrito vacío mostró un único encabezado Mi carrito y Atrás devolvió a Home.",
+        "Desde Producto, el carrito vacío mostró Atrás y devolvió al detalle de Torta."
+      ],
+      "result": "fix_partially_verified",
+      "findingIds": [
+        "DEFECT-01"
+      ],
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "notEstablished": [
+        "Regreso con carrito no vacío",
+        "Entrada Volver a pedir en PC"
+      ]
+    },
+    {
+      "id": "UI-60",
+      "role": "student",
+      "screen": "Carrito con producto en la compilación autorizada",
+      "actions": [
+        "Añadir1 Torta desde la interfaz",
+        "Abrir carrito"
+      ],
+      "observed": [
+        "El carrito mostró1 Torta, sus notas y precio35.50 MXN.",
+        "El control Atrás estuvo visible."
+      ],
+      "result": "partially_observed",
+      "findingIds": [
+        "DEFECT-01"
+      ],
+      "newOrderConfirmed": false,
+      "notEstablished": [
+        "La navegación de regreso con producto todavía no se había completado al comunicar esta observación"
+      ]
+    },
+    {
+      "id": "UI-61",
+      "role": "student",
+      "screen": "Selector de recogida en español: cancelar y entrada inválida",
+      "actions": [
+        "Abrir selector y cancelar",
+        "Reabrir Elegir hora",
+        "Cambiar a entrada de teclado",
+        "Introducir99 en Hora y pulsar ACEPTAR"
+      ],
+      "observed": [
+        "Cancelar permitió reabrir Elegir hora sin asignar una hora.",
+        "El reloj mostró Selecciona una hora / Cancelar / ACEPTAR.",
+        "El modo teclado mostró Ingresa una hora / Hora / Minuto / Cambiar al modo de selección de hora.",
+        "Hora99 mostró Ingresa una hora válida."
+      ],
+      "result": "fix_partially_verified",
+      "findingIds": [
+        "DEFECT-05"
+      ],
+      "newOrderConfirmed": false,
+      "notEstablished": [
+        "Aceptación coherente de una hora válida en formato24h"
+      ]
+    },
+    {
+      "id": "UI-62",
+      "role": "student",
+      "screen": "Selector de recogida: discrepancia entre reloj y validación de entrada",
+      "actions": [
+        "Observar valor inicial21:15 sin AM/PM",
+        "Después de99 corregir Hora a21 y Minuto a30",
+        "Intentar ACEPTAR",
+        "Cambiar Hora a09 y aceptar"
+      ],
+      "observed": [
+        "21:30 siguió mostrando Ingresa una hora válida; Hora21 quedó marcada en rojo.",
+        "09 fue aceptado y el selector devolvió21:30 con el PM previo implícito."
+      ],
+      "result": "defect_observed",
+      "findingIds": [
+        "DEFECT-05"
+      ],
+      "screenshotObserved": true,
+      "screenshotPathCommunicated": false,
+      "newOrderConfirmed": false,
+      "notEstablished": [
+        "Corrección posterior del formato24h: pendiente de nueva compilación y retest"
+      ]
+    },
+    {
+      "id": "UI-63",
+      "role": "student",
+      "screen": "Carrito con producto: regreso en móvil",
+      "actions": [
+        "A390×844 abrir carrito con1 Torta",
+        "Pulsar Atrás"
+      ],
+      "observed": [
+        "Atrás volvió al encabezado Torta del detalle del producto, sin recargar."
+      ],
+      "result": "fix_verified_for_reported_ui_cases",
+      "findingIds": [
+        "DEFECT-01"
+      ],
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "newOrderConfirmed": false
+    },
+    {
+      "id": "UI-64",
+      "role": "student",
+      "screen": "Volver a pedir y entrada del encabezado en PC",
+      "actions": [
+        "A1366×900 abrir Historial y pedido #4",
+        "Elegir Volver a pedir y Añadir al carrito",
+        "Pulsar Atrás desde carrito",
+        "Abrir Mi carrito desde encabezado Home"
+      ],
+      "observed": [
+        "El carrito abrió con Atrás,1 Torta35.50 MXN y las notas originales del pedido #4.",
+        "Atrás regresó a Historial.",
+        "La entrada del encabezado Home también mostró un único encabezado del carrito."
+      ],
+      "result": "fix_verified_for_reported_ui_cases",
+      "findingIds": [
+        "DEFECT-01"
+      ],
+      "viewport": {
+        "width": 1366,
+        "height": 900
+      },
+      "notesShown": "Sin cebolla; salsa aparte.",
+      "newOrderConfirmed": false
+    },
+    {
+      "id": "UI-65",
+      "role": "student",
+      "screen": "Formato24h corregido: selección y cancelación en PC",
+      "actions": [
+        "Introducir Hora21 y Minuto30 y aceptar",
+        "Reabrir, cambiar09:45 y cancelar",
+        "Reabrir, introducir09:30 y aceptar",
+        "Introducir Hora99",
+        "Corregir a23:59 y aceptar"
+      ],
+      "observed": [
+        "21:30 fue aceptado y apareció exactamente21:30 en la revisión de compra.",
+        "Cancelar09:45 conservó la selección21:30 anterior.",
+        "09:30 fue aceptado como9:30, sin heredar PM.",
+        "99 mostró validación en español.",
+        "23:59 fue aceptado y apareció en la revisión de compra."
+      ],
+      "result": "fix_verified_for_reported_ui_cases",
+      "findingIds": [
+        "DEFECT-05"
+      ],
+      "newOrderConfirmed": false,
+      "notEstablished": [
+        "Pruebas de cada combinación posible de hora/minuto",
+        "Recogida efectiva de un pedido a esas horas: no se confirmó compra"
+      ]
+    },
+    {
+      "id": "UI-66",
+      "role": "student",
+      "screen": "Formato24h y cancelación del checkout en móvil",
+      "actions": [
+        "A390×844 introducir21:30 en selector manual",
+        "Aceptar la hora",
+        "Pulsar Volver en revisión del pedido"
+      ],
+      "observed": [
+        "El selector devolvió exactamente21:30.",
+        "Los controles se vieron legibles en captura móvil.",
+        "Volver canceló el checkout sin crear pedido."
+      ],
+      "result": "fix_verified_for_reported_ui_cases",
+      "findingIds": [
+        "DEFECT-05"
+      ],
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "screenshotObserved": true,
+      "screenshotPathCommunicated": false,
+      "newOrderConfirmed": false
+    },
+    {
+      "id": "UI-67",
+      "role": "student",
+      "screen": "Volver a pedir, vaciar carrito y regresar en móvil",
+      "actions": [
+        "En móvil abrir Historial #4 y Volver a pedir",
+        "Añadir al carrito",
+        "Eliminar únicamente el artículo añadido durante esta tanda",
+        "Pulsar Atrás desde carrito vacío",
+        "Dejar Inicio abierto y restablecer viewport"
+      ],
+      "observed": [
+        "Se abrió1 Torta35.50 MXN con notas originales y Atrás.",
+        "Eliminar dejó el carrito vacío y Atrás permaneció disponible.",
+        "Atrás volvió a Historial sin recargar.",
+        "La aplicación terminó en Inicio, con carrito vacío como al principio de esta tanda y viewport restablecido.",
+        "No se confirmó ningún pedido nuevo en esta tanda."
+      ],
+      "result": "fix_verified_for_reported_ui_cases",
+      "findingIds": [
+        "DEFECT-01"
+      ],
+      "notesShown": "Sin cebolla; salsa aparte.",
+      "newOrderConfirmed": false,
+      "finalViewportDimensionsReported": false
     }
   ],
   "findings": [
     {
       "id": "DEFECT-01",
       "severity": "P2",
-      "status": "confirmed_not_fixed",
+      "status": "fixed_verified_for_reported_ui_cases",
       "title": "Carrito abierto desde Producto no ofrece regreso dentro de la interfaz",
       "observedViaUi": "Desde Producto > Ver carrito se vieron Mi carrito, artículos y revisión de pedido, sin botón Atrás ni navegación inferior. Posteriormente, Historial > Volver a pedir reprodujo el acceso sin regreso; al eliminar Torta se observó realmente el estado vacío sin navegación. Después de crear #6, Atrás desde su detalle volvió nuevamente al carrito vacío sin salida visible; recargar recuperó sesión.",
       "sourceCorroboration": [
@@ -1589,11 +1829,33 @@
         "ORDER-05",
         "CART-05"
       ],
-      "fixOrRetest": "Pendiente. Esta tarea solo documentó evidencia y no modificó fuentes.",
+      "fixOrRetest": "Corrección autorizada en codex/integracion-local-completa: AppBar propio y entrada Home unificada. Regreso verificado desde Home, Producto y Volver a pedir; carrito vacío y con producto; móvil390×844 y PC1366×900. Eliminar el artículo conservó Atrás y permitió volver a Historial sin recargar.",
       "evidenceIds": [
         "UI-03",
         "UI-31",
-        "UI-53"
+        "UI-53",
+        "UI-59",
+        "UI-60",
+        "UI-63",
+        "UI-64",
+        "UI-67"
+      ],
+      "authorization": {
+        "status": "authorized_for_two_defects_in_integration_branch_only",
+        "branch": "codex/integracion-local-completa",
+        "findingIds": [
+          "DEFECT-01",
+          "DEFECT-05"
+        ],
+        "scope": "El usuario autorizó corregir navegación del carrito y localización del selector de hora únicamente en la rama de integración. No autoriza modificar rama original ni respaldo.",
+        "implementationReported": "El agente principal informó AppBar propio del carrito y entrada Home unificada; locale es_MX y flutter_localizations SDK en main/pubspec.",
+        "realUiRetest": "verified_for_reported_cases",
+        "source": "Nueva instrucción del usuario comunicada por el agente principal.",
+        "uiEvidenceAddedByThisUpdate": false
+      },
+      "sourceCorroborationContext": "Las referencias de código describen la reproducción original anterior a la corrección autorizada; el resultado final se acredita con los nuevos registros UI.",
+      "verificationLimits": [
+        "Se verificaron las rutas y estados registrados; no se convierte en aprobación de toda la app."
       ]
     },
     {
@@ -1649,17 +1911,75 @@
     {
       "id": "DEFECT-05",
       "severity": "P3",
-      "status": "confirmed_not_fixed",
+      "status": "fixed_verified_for_reported_ui_cases",
       "title": "Selector de recogida programada conserva textos en inglés",
       "observedViaUi": "Al programar pedido #5 apareció Select time / Cancel / OK dentro de la aplicación en español.",
       "evidenceIds": [
-        "UI-35"
+        "UI-35",
+        "UI-61",
+        "UI-62",
+        "UI-65",
+        "UI-66"
       ],
       "impact": "Localización incompleta de un control usado para comprar; se pudo seleccionar16:17 y crear el pedido.",
       "inventoryIds": [
         "CHECKOUT-04"
       ],
-      "fixOrRetest": "Pendiente localización y comprobación de selección/cancelación en español."
+      "fixOrRetest": "Corrección autorizada en codex/integracion-local-completa: localización es_MX y formato24h explícito. Textos españoles, cancelar sin asignar, cancelar conservando hora previa,21:30,09:30 y23:59, rechazo99 y uso móvil/PC quedaron comprobados desde UI. No se confirmó pedido para estos retests.",
+      "authorization": {
+        "status": "authorized_for_two_defects_in_integration_branch_only",
+        "branch": "codex/integracion-local-completa",
+        "findingIds": [
+          "DEFECT-01",
+          "DEFECT-05"
+        ],
+        "scope": "El usuario autorizó corregir navegación del carrito y localización del selector de hora únicamente en la rama de integración. No autoriza modificar rama original ni respaldo.",
+        "implementationReported": "El agente principal informó AppBar propio del carrito y entrada Home unificada; locale es_MX y flutter_localizations SDK en main/pubspec.",
+        "realUiRetest": "verified_for_reported_cases",
+        "source": "Nueva instrucción del usuario comunicada por el agente principal.",
+        "uiEvidenceAddedByThisUpdate": false
+      },
+      "additionalObservedIssue": {
+        "name": "hour_format_mismatch",
+        "evidenceId": "UI-62",
+        "status": "fixed_verified_for_reported_ui_cases",
+        "description": "Visualización24h con validación efectiva de entrada12h y PM implícito.",
+        "verificationEvidenceIds": [
+          "UI-65",
+          "UI-66"
+        ]
+      },
+      "staticDiagnosis": {
+        "classification": "read_only_local_sdk_source_diagnosis_not_additional_ui_execution",
+        "reportedBy": "student_time_locale via primary_agent; corroborated by documentation agent reading local SDK",
+        "sourceReferences": [
+          {
+            "file": "C:/Users/video/Documents/Codex/2026-10-14/h/work/flutter-sdk/packages/flutter/lib/src/material/time_picker.dart",
+            "line": 1725,
+            "detail": "_parseHour usa0–23 si alwaysUse24HourFormat es true; si es false acepta1–12 y aplica el periodo previo."
+          },
+          {
+            "file": "C:/Users/video/Documents/Codex/2026-10-14/h/work/flutter-sdk/packages/flutter/lib/src/material/time_picker.dart",
+            "line": 1798,
+            "detail": "_validateHour delega a _parseHour."
+          },
+          {
+            "file": "C:/Users/video/Documents/Codex/2026-10-14/h/work/flutter-sdk/packages/flutter/lib/src/material/time_picker.dart",
+            "line": 3141,
+            "detail": "Ejemplo del SDK para forzar24h con builder y MediaQuery.copyWith(alwaysUse24HourFormat:true)."
+          }
+        ],
+        "correctionReported": "MediaQuery24h explícito en showTimePicker, junto a localización española.",
+        "uiVerificationEvidenceIds": [
+          "UI-65",
+          "UI-66"
+        ],
+        "applicationActionsByDocumentationAgent": false
+      },
+      "verificationLimits": [
+        "La observación inconclusa anterior del selector de Horarios de Cocina(UI-26) es otra pantalla y no queda resuelta por estos retests del selector de Alumnos.",
+        "No se validó cada hora posible ni un pedido confirmado con estas horas de retest."
+      ]
     },
     {
       "id": "DEFECT-06",
@@ -1780,14 +2100,17 @@
     },
     {
       "id": "PRODUCT-10",
-      "coverage": "defect_confirmed",
+      "coverage": "partial",
       "evidenceIds": [
-        "UI-03"
+        "UI-03",
+        "UI-59",
+        "UI-63"
       ],
       "findingIds": [
         "DEFECT-01"
       ],
-      "observedSubset": "Abre el carrito, pero falta regreso visible en esa ruta."
+      "observedSubset": "Abre el carrito, pero falta regreso visible en esa ruta. Retest autorizado: Atrás volvió a Producto con carrito vacío y con1 Torta en móvil, sin recargar.",
+      "relatedFindingsCurrentStatus": "fixed_verified_for_reported_ui_cases"
     },
     {
       "id": "PUBLIC-01",
@@ -1799,19 +2122,25 @@
     },
     {
       "id": "CART-01",
-      "coverage": "partial_with_defect",
+      "coverage": "partial",
       "evidenceIds": [
         "UI-03",
         "UI-04",
         "UI-31",
         "UI-34",
         "UI-35",
-        "UI-53"
+        "UI-53",
+        "UI-59",
+        "UI-60",
+        "UI-63",
+        "UI-64",
+        "UI-67"
       ],
       "findingIds": [
         "DEFECT-01"
       ],
-      "observedSubset": "Artículo, notas y precio visibles; falta navegación de regreso. Observación posterior: Carrito vacío tras eliminar desde Volver a pedir; vuelve a faltar navegación de regreso. Observación adicional: Carrito desde encabezado permitió regreso y compra programada; otras entradas siguen defectuosas. Observación posterior: Desde el detalle del pedido nuevo, Atrás volvió al carrito vacío sin salida; defecto reafirmado."
+      "observedSubset": "Artículo, notas y precio visibles; falta navegación de regreso. Observación posterior: Carrito vacío tras eliminar desde Volver a pedir; vuelve a faltar navegación de regreso. Observación adicional: Carrito desde encabezado permitió regreso y compra programada; otras entradas siguen defectuosas. Observación posterior: Desde el detalle del pedido nuevo, Atrás volvió al carrito vacío sin salida; defecto reafirmado. Retest autorizado: Encabezado y regreso corregidos en las entradas conocidas, vacío/con producto, móvil/PC.",
+      "relatedFindingsCurrentStatus": "fixed_verified_for_reported_ui_cases"
     },
     {
       "id": "CART-02",
@@ -1842,9 +2171,10 @@
       "id": "CHECKOUT-01",
       "coverage": "partial",
       "evidenceIds": [
-        "UI-04"
+        "UI-04",
+        "UI-66"
       ],
-      "observedSubset": "Revisión de un negocio con un producto; cancelación y varios negocios no recorridos."
+      "observedSubset": "Revisión de un negocio con un producto; cancelación y varios negocios no recorridos. Retest autorizado: Volver canceló la revisión sin crear pedido."
     },
     {
       "id": "CHECKOUT-02",
@@ -2006,20 +2336,24 @@
       "id": "CART-05",
       "coverage": "partial",
       "evidenceIds": [
-        "UI-31"
+        "UI-31",
+        "UI-67"
       ],
-      "observedSubset": "Eliminar Torta dejó carrito vacío sin crear pedido."
+      "observedSubset": "Eliminar Torta dejó carrito vacío sin crear pedido. Retest autorizado: Eliminar el artículo añadido dejó vacío conservando Atrás, que regresó a Historial."
     },
     {
       "id": "ORDER-05",
-      "coverage": "partial_with_defect",
+      "coverage": "partial",
       "evidenceIds": [
-        "UI-31"
+        "UI-31",
+        "UI-64",
+        "UI-67"
       ],
-      "observedSubset": "Volver a pedir conservó Torta y notas aun cerrado; solo agregó al carrito y mantuvo compra deshabilitada.",
+      "observedSubset": "Volver a pedir conservó Torta y notas aun cerrado; solo agregó al carrito y mantuvo compra deshabilitada. Retest autorizado: Repedido #4 abre carrito y vuelve a Historial; móvil yPC; no se compra automáticamente.",
       "findingIds": [
         "DEFECT-01"
-      ]
+      ],
+      "relatedFindingsCurrentStatus": "fixed_verified_for_reported_ui_cases"
     },
     {
       "id": "FAV-01",
@@ -2083,9 +2417,11 @@
       "id": "NAV-03",
       "coverage": "partial",
       "evidenceIds": [
-        "UI-34"
+        "UI-34",
+        "UI-59",
+        "UI-64"
       ],
-      "observedSubset": "Carrito desde el encabezado tiene Atrás; no corrige las rutas directas defectuosas."
+      "observedSubset": "Carrito desde el encabezado tiene Atrás; no corrige las rutas directas defectuosas. Retest autorizado: Home abre un único encabezado; Atrás desde carrito vacío funciona."
     },
     {
       "id": "CHECKOUT-03",
@@ -2097,22 +2433,29 @@
     },
     {
       "id": "CHECKOUT-04",
-      "coverage": "partial_with_localization_defect",
+      "coverage": "partial",
       "evidenceIds": [
-        "UI-35"
+        "UI-35",
+        "UI-61",
+        "UI-62",
+        "UI-65",
+        "UI-66"
       ],
-      "observedSubset": "Se aceptó hora por defecto16:17; Cancelar y entrada manual no verificados. Selector en inglés.",
+      "observedSubset": "Se aceptó hora por defecto16:17; Cancelar y entrada manual no verificados. Selector en inglés. Retest autorizado: Textos españoles y formato24h coherente después de corrección adicional; cancelar no asigna hora o conserva la previa según el caso.",
       "findingIds": [
         "DEFECT-05"
-      ]
+      ],
+      "relatedFindingsCurrentStatus": "fixed_verified_for_reported_ui_cases"
     },
     {
       "id": "CHECKOUT-05",
       "coverage": "partial",
       "evidenceIds": [
-        "UI-35"
+        "UI-35",
+        "UI-61",
+        "UI-65"
       ],
-      "observedSubset": "Sin hora mostró Elige una hora; no se ejecutaron límites de menos de5 minutos o husos horarios."
+      "observedSubset": "Sin hora mostró Elige una hora; no se ejecutaron límites de menos de5 minutos o husos horarios. Retest autorizado: Se rechazó hora99 y después se aceptaron horas válidas; límites de5min siguen sin prueba adicional."
     },
     {
       "id": "ORDER-07",
@@ -2170,13 +2513,11 @@
     "mappedActionsWithSomeObservation": 54,
     "unmappedActions": 46,
     "fullyCompletedInventoryActions": 0,
-    "confirmedDefects": 2,
+    "confirmedDefects": 0,
     "inconclusiveActions": [
       "PICKUP-03"
     ],
     "examplesPending": [
-      "Corregir y repetir navegación del carrito en las dos rutas directas",
-      "Localizar selector de hora al español y comprobar cancelar/aceptar",
       "Copiar y pegar código con comprobación visible",
       "Matriz móvil/PC completa",
       "Búsqueda con respuestas fuera de orden y límites de longitud",
@@ -2196,26 +2537,28 @@
       {
         "id": "TIME-PICKER-01",
         "evidenceId": "UI-26",
-        "reason": "Entrada manual mostró error aunque aceptó15:57; interacción de herramienta no aislada."
+        "reason": "Entrada manual15/57 del selector de Horarios de Cocina(UI-26) mostró error aunque aceptó15:57; interacción de herramienta no aislada.",
+        "notResolvedBy": "Los retests24h de Alumnos son otra pantalla; no se modifica esta observación inconclusa anterior."
       }
     ],
     "confirmedDefectsTotal": 6,
     "verifiedFixedDefects": [
+      "DEFECT-01",
       "DEFECT-02",
       "DEFECT-03",
       "DEFECT-04",
+      "DEFECT-05",
       "DEFECT-06"
     ],
     "partiallyVerifiedFixes": [],
-    "unfixedDefects": [
+    "unfixedDefects": [],
+    "authorizationPendingFindings": [],
+    "environmentLimitsDocument": "docs/qa-environment-limits.json",
+    "authorizedIntegrationBranchFindings": [
       "DEFECT-01",
       "DEFECT-05"
     ],
-    "authorizationPendingFindings": [
-      "DEFECT-01",
-      "DEFECT-05"
-    ],
-    "environmentLimitsDocument": "docs/qa-environment-limits.json"
+    "implementedAwaitingUiRetest": []
   },
   "priorAutomation": {
     "studentPassed": 58,
@@ -2230,13 +2573,13 @@
     "No acredita pago, preparación o entrega física de comida ni calidad del producto.",
     "El aviso de Copiar código no basta para certificar contenido del portapapeles.",
     "La observación visual de reseñas sin identidad no sustituye una auditoría completa de privacidad del API.",
-    "El defecto del carrito sigue abierto; no se modificó código ni se hicieron commits en esta tarea.",
     "Guardar una hora de cierre cuando la fecha ya estaba procesada no prueba una nueva ejecución automática. La reprogramación no se forzó alterando el historial.",
     "En la caída de Alumnos hubo recuperación automática; no se ejecutó el clic Reintentar. En Administración sí se pulsó Reintentar y desapareció el error.",
     "Las paradas reales demuestran la recuperación observada, no capacidad de producción ni seguridad de una transacción interrumpida.",
     "El alcance móvil cubre chat390×844 y navegación administrativa Menú→Opiniones a390px; no todas las pantallas.",
     "El registro contiene tres pedidos nuevos creados por pantallas: #4 entregado/calificado, #5 programado y cancelado desde Cocina, #6 inmediato y cancelado desde Alumnos. Cocina confirmó #6 y su motivo; no demuestra exhaustividad.",
-    "La etiqueta de cancelación #6 quedó corregida y verificada; los dos defectos de Alumnos continúan abiertos y sujetos a autorización de cambios. Los límites de alcance/configuración están separados de los resultados UI."
+    "La segunda compilación autorizada corrigió también la discrepancia12h/24h detectada durante el primer retest. Los seis defectos documentados quedan verificados para sus casos; la aplicación completa no se certifica al100%.",
+    "Los retests de estos dos cambios no confirmaron pedidos nuevos: solo actualizaron el carrito existente y cancelaron la revisión. Al terminar, el carrito quedó vacío. No se reinterpretan como aprobadas las observaciones inconclusas de otras pantallas."
   ],
   "viewportObservations": [
     {
@@ -2279,6 +2622,28 @@
       "heightReported": false,
       "scope": "Abrir menú → Opiniones; cajón cerrado y métricas4/3.3",
       "evidenceId": "UI-48"
+    },
+    {
+      "role": "student",
+      "width": 390,
+      "height": 844,
+      "scope": "Carrito vacío/con producto, rutas Home/Producto/Volver a pedir y selector manual21:30 en español",
+      "evidenceIds": [
+        "UI-59",
+        "UI-63",
+        "UI-66",
+        "UI-67"
+      ]
+    },
+    {
+      "role": "student",
+      "width": 1366,
+      "height": 900,
+      "scope": "Volver a pedir, regreso y selector24h aceptar/cancelar/validación",
+      "evidenceIds": [
+        "UI-64",
+        "UI-65"
+      ]
     }
   ],
   "endingStateObserved": {
@@ -2349,7 +2714,17 @@
     "chatLatestMessageTimeShownLocal": "16:22",
     "chatLatestMessageEvidence": "UI-56",
     "order6CancellationLabel": "Otro motivo indicado por el alumno",
-    "order6CancellationLabelEvidence": "UI-57"
+    "order6CancellationLabelEvidence": "UI-57",
+    "studentFinalView": "Inicio",
+    "studentCartLastObserved": "vacío, igual al inicio de la tanda autorizada",
+    "studentFinalEvidence": "UI-67",
+    "studentFinalViewportResetReported": true,
+    "studentFinalViewportDimensionsReported": false,
+    "newUiOrdersDuringAuthorizedDefectRetest": 0,
+    "authorizedStudentDefectsVerified": [
+      "DEFECT-01",
+      "DEFECT-05"
+    ]
   },
   "additionalScenarios": [
     {
@@ -2509,14 +2884,78 @@
       },
       {
         "id": "AUTHORIZATION-STUDENT-FIXES",
-        "status": "awaiting_user_authorization",
-        "description": "El código raíz de Alumnos se conservó. Las correcciones del regreso del carrito y del selector en inglés están identificadas pero requieren autorización para modificar esa parte.",
+        "status": "authorized_fixes_verified_in_integration_branch_only",
+        "description": "El usuario autorizó DEFECT-01/05 solo en codex/integracion-local-completa. Las rutas del carrito y selector español24h se corrigieron y repitieron desde UI en móvil/PC para los casos registrados. Los demás límites se conservan.",
         "findingIds": [
           "DEFECT-01",
           "DEFECT-05"
         ],
-        "sourceBasis": "Alcance indicado por el agente principal; no es un resultado de configuración ni una función UI ejecutada."
+        "sourceBasis": "Alcance indicado por el agente principal; no es un resultado de configuración ni una función UI ejecutada.",
+        "branch": "codex/integracion-local-completa",
+        "evidenceIds": [
+          "UI-59",
+          "UI-63",
+          "UI-64",
+          "UI-65",
+          "UI-66",
+          "UI-67"
+        ]
       }
     ]
-  }
+  },
+  "authorizationUpdate": {
+    "status": "authorized_for_two_defects_in_integration_branch_only",
+    "branch": "codex/integracion-local-completa",
+    "findingIds": [
+      "DEFECT-01",
+      "DEFECT-05"
+    ],
+    "scope": "El usuario autorizó corregir navegación del carrito y localización del selector de hora únicamente en la rama de integración. No autoriza modificar rama original ni respaldo.",
+    "implementationReported": "El agente principal informó AppBar propio del carrito y entrada Home unificada; locale es_MX y flutter_localizations SDK en main/pubspec.",
+    "realUiRetest": "verified_for_reported_cases",
+    "source": "Nueva instrucción del usuario comunicada por el agente principal.",
+    "uiEvidenceAddedByThisUpdate": false,
+    "closureEvidenceIds": [
+      "UI-59",
+      "UI-63",
+      "UI-64",
+      "UI-65",
+      "UI-66",
+      "UI-67"
+    ]
+  },
+  "technicalValidationAfterStudentAuthorization": {
+    "classification": "reported_technical_validation_not_ui_evidence",
+    "reportedBy": "primary_agent",
+    "rootReleaseBuild": {
+      "result": "success",
+      "durationSeconds": 23.9,
+      "baseHrefFlagUsed": false
+    },
+    "analyze": {
+      "filesAnalyzed": 3,
+      "errors": 0,
+      "warnings": 0,
+      "infos": 1,
+      "infoDescription": "Aviso de estilo preexistente según el agente principal."
+    },
+    "unitOrFixtureSuitesRunByDocumentationAgent": false,
+    "subsequentBuildForExplicit24HourFormat": {
+      "result": "success",
+      "durationSeconds": 25.1,
+      "reportedBy": "primary_agent"
+    },
+    "refsUnchangedReported": {
+      "branches": [
+        "main",
+        "base de paneles",
+        "origen de Alumnos",
+        "respaldo"
+      ],
+      "result": "El agente principal comprobó que conservan los mismos SHA.",
+      "rawShaValuesCommunicated": false,
+      "independentlyCheckedByDocumentationAgent": false
+    }
+  },
+  "acceptanceConclusion": "Los seis defectos registrados tienen corrección repetida desde UI para los casos descritos. La cobertura global permanece parcial: siguen variantes, límites de entorno y observaciones inconclusas fuera de estos dos cambios autorizados. No se declara100% de la aplicación."
 }

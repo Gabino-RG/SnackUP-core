@@ -43,7 +43,7 @@ No compartir ni subir a Git `config.json`, `postgres-data/`, `media/` o logs. El
 Ejecutar en PowerShell desde esta copia del repositorio. Si los builds ya están actualizados, comenzar directamente con el script de inicio. Usar la misma versión de Flutter compatible con cada proyecto y revisar sus `pubspec.yaml`.
 
 ```powershell
-flutter build web --release --base-href / --no-web-resources-cdn --pwa-strategy=none
+flutter build web --release --no-web-resources-cdn --pwa-strategy=none
 Push-Location app
 try {
     flutter build web --release --target lib/main_portal_api.dart --base-href /paneles/ --dart-define=API_BASE_URL=/api/legacy/v1/ --no-web-resources-cdn --pwa-strategy=none
@@ -53,6 +53,8 @@ try {
 
 & ./tools/start_integrated_local.ps1
 ```
+
+La plantilla web de Alumnos ya fija `<base href="/">`. Su compilación usa ese valor; no se añade `--base-href /`. Los paneles sí se compilan con `--base-href /paneles/`.
 
 El inicio comprueba los builds y el puerto 18080, inicia o reutiliza el cluster PostgreSQL propio, aplica las migraciones pendientes con `alembic upgrade head` y abre el servidor en segundo plano con ventana oculta. **No crea cuentas ni productos de demostración, no restablece existencias y no genera pedidos.** Para retomar la base ya existente basta con `./tools/start_integrated_local.ps1`, sin opciones de semillas. Espera que API y scheduler estén listos antes de anunciar éxito. Repetirlo con un servidor propio saludable no crea otro proceso. Un puerto ocupado por un servidor iniciado manualmente se respeta: hay que detener ese servidor de forma identificada antes de usar estos scripts.
 

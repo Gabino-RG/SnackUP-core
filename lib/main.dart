@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'features/auth/auth_gate.dart';
 import 'student/student_api.dart';
@@ -19,6 +20,9 @@ class SnackUpApp extends StatelessWidget {
     create: (_) => (api ?? StudentApi())..restore(),
     child: MaterialApp(
       title: 'SnackUP · Alumnos',
+      locale: const Locale('es', 'MX'),
+      supportedLocales: const [Locale('es', 'MX')],
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,

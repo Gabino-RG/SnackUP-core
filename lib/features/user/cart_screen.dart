@@ -77,7 +77,9 @@ class _CartScreenState extends State<CartScreen> {
 
   Future<void> _reload() async {
     final next = _load();
-    setState(() { _future = next; });
+    setState(() {
+      _future = next;
+    });
     await next;
   }
 
@@ -184,10 +186,7 @@ class _CartScreenState extends State<CartScreen> {
     });
     try {
       _requireOwner();
-      await _api!.request(
-        'DELETE',
-        '/users/me/cart/items/${row['id']}',
-      );
+      await _api!.request('DELETE', '/users/me/cart/items/${row['id']}');
     } catch (error) {
       if (mounted) setState(() => _operationError = error);
     } finally {
@@ -199,7 +198,10 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   void _refreshQuietly() {
-    if (mounted) setState(() { _future = _load(); });
+    if (mounted)
+      setState(() {
+        _future = _load();
+      });
   }
 
   Future<Map<String, dynamic>?> _reviewPurchase(
@@ -229,10 +231,7 @@ class _CartScreenState extends State<CartScreen> {
                     (row) => Padding(
                       padding: const EdgeInsets.only(bottom: 8),
                       child: Text(
-                        '${_quantity(row)} × ${_product(row)?['name']?.toString() ?? 'Producto'} · ${money(
-                              ((_product(row)?['price'] as num?) ?? 0) *
-                                  _quantity(row),
-                            )}',
+                        '${_quantity(row)} × ${_product(row)?['name']?.toString() ?? 'Producto'} · ${money(((_product(row)?['price'] as num?) ?? 0) * _quantity(row))}',
                       ),
                     ),
                   ),
@@ -294,6 +293,14 @@ class _CartScreenState extends State<CartScreen> {
                       onPressed: () async {
                         final picked = await showTimePicker(
                           context: dialogContext,
+                          builder: (context, child) => MediaQuery(
+                            // Keep the text validator aligned with the 24-hour
+                            // clock used by the Spanish (Mexico) locale.
+                            data: MediaQuery.of(
+                              context,
+                            ).copyWith(alwaysUse24HourFormat: true),
+                            child: child!,
+                          ),
                           initialTime:
                               time ??
                               TimeOfDay.fromDateTime(
@@ -309,9 +316,7 @@ class _CartScreenState extends State<CartScreen> {
                       },
                     ),
                     Text(
-                      'Hora de este dispositivo (${DateTime.now().timeZoneName}). El negocio validará su horario${business?['timezone'] == null
-                              ? '.'
-                              : ': ${business!['timezone']}.'}',
+                      'Hora de este dispositivo (${DateTime.now().timeZoneName}). El negocio validará su horario${business?['timezone'] == null ? '.' : ': ${business!['timezone']}.'}',
                       style: AppText.notes,
                     ),
                   ],
@@ -443,11 +448,7 @@ class _CartScreenState extends State<CartScreen> {
               builder: (dialogContext) => AlertDialog(
                 title: const Text('Comprobar compra pendiente'),
                 content: Text(
-                  'Se consultará el mismo pedido de ${money(intent.payload['expectedTotal'])}, con pago ${intent.payload['paymentMethod']}${intent.payload['scheduledPickupTime'] == null
-                          ? '.'
-                          : ' y recogida ${dateText(
-                                  intent.payload['scheduledPickupTime'],
-                                )}.'} No cambies sus productos mientras se confirma.',
+                  'Se consultará el mismo pedido de ${money(intent.payload['expectedTotal'])}, con pago ${intent.payload['paymentMethod']}${intent.payload['scheduledPickupTime'] == null ? '.' : ' y recogida ${dateText(intent.payload['scheduledPickupTime'])}.'} No cambies sus productos mientras se confirma.',
                 ),
                 actions: [
                   TextButton(
@@ -726,6 +727,7 @@ class _CartScreenState extends State<CartScreen> {
   @override
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: AppColors.componentBase,
+    appBar: AppBar(title: const Text('Mi carrito')),
     body: RefreshIndicator(
       onRefresh: () async {
         try {
@@ -762,8 +764,6 @@ class _CartScreenState extends State<CartScreen> {
               if (snapshot.connectionState == ConnectionState.waiting ||
                   _busyBusiness != null)
                 const LinearProgressIndicator(),
-              Text('Mi carrito', style: AppText.h1),
-              const SizedBox(height: 6),
               const Text(
                 'Tus productos y notas se guardan en tu cuenta. Confirma un negocio a la vez.',
                 style: AppText.notes,
