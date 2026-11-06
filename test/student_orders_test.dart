@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -135,8 +136,18 @@ class _OrdersApi extends StudentApi {
 }
 
 class _CartApi extends _OrdersApi {
-  _CartApi({this.busyFailures = 0}) : super(_order());
+  _CartApi({this.busyFailures = 0, this.receipt}) : super(_order());
   final int busyFailures;
+  final Future<void>? receipt;
+  Future<void>? cartRead;
+  int cartReads = 0;
+  int cartDeletes = 0;
+  int generation = 0;
+  String role = 'ALUMNO';
+  @override
+  int get sessionGeneration => generation;
+  @override
+  Map<String, dynamic> get user => {'id': accountId, 'role': role};
   final List<Map<String, dynamic>> posts = [];
   final List<String> keys = [];
   List<Map<String, dynamic>> cart = [
@@ -176,6 +187,8 @@ class _CartApi extends _OrdersApi {
     Map<String, String>? query,
   }) async {
     if (path == '/users/me/cart/items') {
+      cartReads++;
+      await cartRead;
       return (jsonDecode(jsonEncode(cart)) as List)
           .map((row) => Map<String, dynamic>.from(row as Map))
           .toList();
@@ -206,6 +219,10 @@ class _CartApi extends _OrdersApi {
     Map<String, String>? headers,
     bool authenticated = true,
   }) async {
+    if (method == 'DELETE' && path.startsWith('/users/me/cart/items/')) {
+      cartDeletes++;
+      return null;
+    }
     if (method == 'POST' && path == '/orders') {
       posts.add(Map<String, dynamic>.from(body!));
       keys.add(headers!['Idempotency-Key']!);
@@ -230,6 +247,7 @@ class _CartApi extends _OrdersApi {
           'No se recibió respuesta',
         );
       }
+      await receipt;
       return order;
     }
     throw StateError('Unexpected request: $method $path');
@@ -307,6 +325,16 @@ Widget _host(StudentApi api, Widget child) =>
       value: api,
       child: MaterialApp(home: child),
     );
+
+Future<void> _confirmFirstCartOrder(WidgetTester tester) async {
+  final review = find.text('Revisar pedido de este negocio').first;
+  await tester.ensureVisible(review);
+  await tester.tap(review);
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 300));
+  await tester.tap(find.text('Confirmar pedido'));
+  await tester.pump();
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -673,13 +701,7 @@ void main() {
       final api = _CartApi(busyFailures: scenario == 'rejected twice' ? 2 : 1);
       await tester.pumpWidget(_host(api, const CartScreen()));
       await tester.pumpAndSettle();
-      final review = find.text('Revisar pedido de este negocio').first;
-      await tester.ensureVisible(review);
-      await tester.tap(review);
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 300));
-      await tester.tap(find.text('Confirmar pedido'));
-      await tester.pump();
+      await _confirmFirstCartOrder(tester);
       await tester.pump(const Duration(milliseconds: 500));
       expect(api.posts, hasLength(1));
       if (scenario == 'cart closed') {
@@ -702,6 +724,90 @@ void main() {
       api.dispose();
     });
   }
+
+  for (final change in ['route', 'session', 'role']) {
+    testWidgets('a late checkout receipt respects a changed $change', (
+      tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({});
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      final receipt = Completer<void>();
+      final api = _CartApi(busyFailures: 1, receipt: receipt.future);
+      await tester.pumpWidget(_host(api, const CartScreen()));
+      await tester.pumpAndSettle();
+      await _confirmFirstCartOrder(tester);
+      await tester.pump(const Duration(seconds: 3));
+      expect(api.posts, hasLength(2));
+      expect(api.keys.first, api.keys.last);
+      switch (change) {
+        case 'route':
+          final navigator = Navigator.of(
+            tester.element(find.byType(CartScreen)),
+          );
+          unawaited(
+            navigator.push(
+              MaterialPageRoute<void>(
+                builder: (_) => const Scaffold(body: Text('Otra pantalla')),
+              ),
+            ),
+          );
+          await tester.pump();
+        case 'session':
+          api.generation++;
+        case 'role':
+          api.role = 'COCINA';
+      }
+      receipt.complete();
+      await tester.pumpAndSettle();
+      expect(find.byType(ShowQrScreen), findsNothing);
+      if (change == 'route') expect(find.text('Otra pantalla'), findsOneWidget);
+      expect(api.posts, hasLength(2));
+      final ledger = CheckoutLedger(
+        storage: PreferencesCheckoutStorage(),
+        namespace: '${api.baseUrl}|student-1',
+      );
+      expect(await ledger.intents(), isEmpty);
+      await tester.pumpWidget(const SizedBox());
+      api.dispose();
+    });
+  }
+
+  testWidgets(
+    'legacy receipt retains cleanup when the session changes during the cart read',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final api = _CartApi();
+      final ledger = CheckoutLedger(
+        storage: PreferencesCheckoutStorage(),
+        namespace: '${api.baseUrl}|student-1',
+      );
+      final intent = await ledger.prepare(
+        businessId: 'business-1',
+        payload: _payload(),
+        rows: _rows(),
+      );
+      await ledger.send(intent, (_, _) async => _order());
+      await tester.pumpWidget(_host(api, const CartScreen()));
+      await tester.pumpAndSettle();
+      final pending = Completer<void>();
+      final priorReads = api.cartReads;
+      api.cartRead = pending.future;
+      final next = find.text('Continuar');
+      await tester.ensureVisible(next);
+      await tester.tap(next);
+      await tester.pump();
+      expect(api.cartReads, greaterThan(priorReads));
+      api.generation++;
+      pending.complete();
+      await tester.pumpAndSettle();
+      expect(api.cartDeletes, 0);
+      expect(api.posts, isEmpty);
+      expect((await ledger.intents())['business-1']!.confirmed, isTrue);
+      expect(find.byType(ShowQrScreen), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+      api.dispose();
+    },
+  );
 
   testWidgets(
     'student cancellation sends the required reason notes and expectedVersion',

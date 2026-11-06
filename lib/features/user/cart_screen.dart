@@ -28,6 +28,11 @@ class _ConfirmedCartError implements Exception {
 }
 
 class _CartScreenState extends State<CartScreen> {
+  static const _changedSession = ApiException(
+    401,
+    'SESSION_CHANGED',
+    'Tu sesión cambió. Vuelve a abrir el carrito desde tu cuenta.',
+  );
   StudentApi? _api;
   String? _ownerId;
   int _revision = -1;
@@ -43,11 +48,7 @@ class _CartScreenState extends State<CartScreen> {
 
   void _requireOwner() {
     if (_ownerId == null || _api!.user?['id'] != _ownerId) {
-      throw const ApiException(
-        401,
-        'SESSION_CHANGED',
-        'Tu sesión cambió. Vuelve a abrir el carrito desde tu cuenta.',
-      );
+      throw _changedSession;
     }
   }
 
@@ -537,9 +538,15 @@ class _CartScreenState extends State<CartScreen> {
     _requireOwner();
     final api = _api!;
     final account = api.user?['id'];
+    final role = api.user?['role'];
     final generation = api.sessionGeneration;
+    bool sameSession() =>
+        identical(api, _api) &&
+        api.sessionGeneration == generation &&
+        api.user?['id'] == account &&
+        api.user?['role'] == role;
     final confirmed = await ledger.send(intent, (payload, key) async {
-      _requireOwner();
+      if (!mounted || !sameSession()) throw _changedSession;
       Future<dynamic> submit() => api.request(
         'POST',
         '/orders',
@@ -571,21 +578,19 @@ class _CartScreenState extends State<CartScreen> {
             ModalRoute.of(context)?.isCurrent != true ||
             WidgetsBinding.instance.lifecycleState !=
                 AppLifecycleState.resumed ||
-            !identical(api, _api) ||
-            api.sessionGeneration != generation ||
-            api.user?['id'] != account) {
+            !sameSession()) {
           rethrow;
         }
         result = await submit();
       }
       return Map<String, dynamic>.from(result as Map);
     });
-    if (api.user?['id'] != account || !mounted) return;
     try {
       var changed = false;
       if (!confirmed.payload.containsKey('cartRows')) {
         // Only previously saved purchases need a separate cart cleanup. The
         // server checks the saved timestamp while it holds the cart write lock.
+        if (!mounted || !sameSession()) return;
         final current = await api.getAll('/users/me/cart/items');
         final removable = unchangedPurchasedRows(confirmed, current).toSet();
         final currentIds = current.map((row) => row['id']).toSet();
@@ -594,7 +599,7 @@ class _CartScreenState extends State<CartScreen> {
             changed = changed || currentIds.contains(row['id']);
             continue;
           }
-          _requireOwner();
+          if (!mounted || !sameSession()) return;
           final timestamp = row['updatedAt'];
           if (timestamp is! String || timestamp.isEmpty) {
             changed = true;
@@ -615,8 +620,14 @@ class _CartScreenState extends State<CartScreen> {
           }
         }
       }
+      // A current-format order consumed its rows in the server transaction.
+      // Forget this receipt in its original account's ledger even if the user left.
       await ledger.forget(confirmed);
-      if (!mounted || api.user?['id'] != account) return;
+      if (!mounted ||
+          !sameSession() ||
+          ModalRoute.of(context)?.isCurrent != true) {
+        return;
+      }
       _message(
         changed
             ? 'Pedido confirmado. Conservamos los productos que cambiaste para que los revises.'
