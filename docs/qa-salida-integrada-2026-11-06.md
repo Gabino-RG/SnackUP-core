@@ -35,6 +35,8 @@ El [ensayo de 30 minutos con cuatro procesos](qa-carga-1000-soak-four-2026-11-06
 
 La ráfaga de 1,000 alumnos que pulsaban comprar a la vez se midió por separado. Con [dos procesos](qa-carga-1000-2026-11-06.json), 584 recibieron el pedido al primer intento. Con [cuatro procesos](qa-carga-1000-four-workers-2026-11-06.json), fueron 743. En esos dos ensayos, el generador espació la recuperación posterior a 15 intentos por segundo hasta confirmar las 1,000 compras.
 
+Al ampliar únicamente la espera de admisión a diez segundos, las 1,000 compras de la ráfaga devolvieron 201 al primer intento. El percentil 95 subió a 7.89 s. [Ejecución interrumpida para apagar la laptop](qa-carga-1000-four-queue10-2026-11-06.json). Se eliminó la base temporal antes de completar las repeticiones y cancelaciones de esa ejecución. Quedan pendientes el ensayo colectivo del reintento automático y el de 1,000 conexiones WebSocket permanentes. El recorrido individual 503 → 201 sí se completó en Chromium.
+
 ## Correo y padrón
 
 Las pantallas de Alumnos y Cocina recibieron sus respectivos enlaces de recuperación en un buzón SMTP de la laptop que acepta únicamente correo de prueba. El envío usó STARTTLS con validación de certificado. Ambos usuarios cambiaron su contraseña y entraron desde el acceso correspondiente. Se rechazó el segundo uso de cada enlace. También se completó el alta de un alumno en una base temporal y la matrícula, carrera y grupo coincidieron con la fila del padrón de QA. Los detalles están en el [registro de correo](qa-correo-2026-11-06.json).
