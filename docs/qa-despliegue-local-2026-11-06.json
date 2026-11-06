@@ -1,0 +1,240 @@
+{
+  "fecha": "2026-11-06",
+  "alcance": "Validaciones locales de configuración y rutas antes del despliegue institucional. El smoke HTTP usa el backend existente, sin crear cuentas ni pedidos. La VM ejecuta las pruebas de regresión del supervisor y del proxy. La compilación completa de la imagen se verifica por separado en GitHub Actions.",
+  "version_compose_oficial": "2.39.4",
+  "checksum_sha256_binario_compose_windows": "6b3bccfabcdd172e1d9e15d011b54c9b5b13b93b1153148108f55e4349055955",
+  "configuraciones": [
+    {
+      "variant": "production",
+      "ok": true,
+      "publishedPorts": [
+        "80/tcp",
+        "443/tcp",
+        "443/udp"
+      ],
+      "postgresqlPublished": false,
+      "allCapabilitiesDropped": true,
+      "readOnlyRoot": true
+    },
+    {
+      "variant": "ci",
+      "ok": true,
+      "publishedPorts": [
+        "18080/tcp"
+      ],
+      "postgresqlPublished": false,
+      "allCapabilitiesDropped": true,
+      "readOnlyRoot": true
+    },
+    {
+      "variant": "webpush",
+      "ok": true,
+      "publishedPorts": [
+        "80/tcp",
+        "443/tcp",
+        "443/udp"
+      ],
+      "postgresqlPublished": false,
+      "allCapabilitiesDropped": true,
+      "readOnlyRoot": true
+    }
+  ],
+  "proxy_real": {
+    "version": "v2.11.8",
+    "backend": "API integrada local con PostgreSQL",
+    "rutas_correctas": 28,
+    "resultados": [
+      {
+        "method": "GET",
+        "path": "/health/live",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "method": "GET",
+        "path": "/health/ready",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "method": "GET",
+        "path": "/",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "method": "GET",
+        "path": "/__ci_deep_link__",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "method": "GET",
+        "path": "/__ci_missing_asset__.js",
+        "status": 404,
+        "ok": true
+      },
+      {
+        "method": "GET",
+        "path": "/flutter_bootstrap.js",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "method": "GET",
+        "path": "/main.dart.js",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "method": "GET",
+        "path": "/manifest.json",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "method": "GET",
+        "path": "/icons/Icon-192.png",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "method": "GET",
+        "path": "/snackup-push.js",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "method": "GET",
+        "path": "/snackup-push-sw.js",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "method": "GET",
+        "path": "/paneles",
+        "status": 308,
+        "ok": true
+      },
+      {
+        "method": "GET",
+        "path": "/paneles/",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "method": "GET",
+        "path": "/paneles/__ci_deep_link__",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "method": "GET",
+        "path": "/paneles/__ci_missing_asset__.js",
+        "status": 404,
+        "ok": true
+      },
+      {
+        "method": "GET",
+        "path": "/paneles/flutter_bootstrap.js",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "method": "GET",
+        "path": "/paneles/main.dart.js",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "method": "GET",
+        "path": "/paneles/manifest.json",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "method": "GET",
+        "path": "/paneles/icons/Icon-192.png",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "method": "GET",
+        "path": "/paneles/snackup-push.js",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "method": "GET",
+        "path": "/paneles/snackup-push-sw.js",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/auth/options",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/legacy/v1/auth/options",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/__ci_missing__",
+        "status": 404,
+        "ok": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/legacy/v1/__ci_missing__",
+        "status": 404,
+        "ok": true
+      },
+      {
+        "method": "GET",
+        "path": "/media/__ci_missing__.webp",
+        "status": 404,
+        "ok": true
+      },
+      {
+        "method": "GET",
+        "path": "/socket.io/?EIO=4&transport=websocket",
+        "status": 400,
+        "ok": true
+      },
+      {
+        "method": "WEBSOCKET",
+        "path": "/socket.io/?EIO=4&transport=websocket",
+        "ok": true,
+        "status": 101,
+        "engineIO": "open",
+        "socketIO": "UNAUTHENTICATED"
+      }
+    ]
+  },
+  "linux_aislado": {
+    "distribucion": "Alpine 3.22.8",
+    "kernel": "6.12.115-0-virt (x86_64)",
+    "python": "3.12.16",
+    "caddy": "2.10.0",
+    "cpu": 1,
+    "ram_mib": 320,
+    "red_externa": false,
+    "prueba": "python3 -m pytest -q -p no:cacheprovider tests/test_unified_deploy.py",
+    "aprobadas": 8,
+    "omitidas": 0
+  },
+  "archivos_probados_git_blob": {
+    "backend/deploy/unified/routes.caddy": "1747b0923c05d7b4bc8391aaaa4ec2da1a2235ec",
+    "backend/deploy/unified/run.py": "a30ef7362e0ec2d8e436390c4e83f7a828050c3d",
+    "backend/tests/test_unified_deploy.py": "43450b2c258a6150ba294fefad5c40e472b58ca4",
+    "backend/deploy/smoke_apps.py": "93f9898a365ef5e5d9fd1db026a0a7d4595a413d",
+    "backend/compose.unified.yaml": "8bec01df72eefe509cd4d081930bd19050ee3026",
+    "backend/deploy/unified/compose.ci.yaml": "ded7a7f2467a8369f7bec33a6e67ac5e79d80423",
+    "backend/deploy/unified/compose.webpush.yaml": "945a5734ea2a96be6a311d3fa78bc45c8c7be575"
+  }
+}

@@ -20,6 +20,7 @@ runner = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(runner)
 
 
+@pytest.mark.skipif(not hasattr(os, 'killpg'), reason='The Linux container supervisor stops POSIX process groups')
 def test_failed_child_is_detected_and_remaining_processes_are_stopped():
     processes = runner.Processes()
     alive = processes.start('alive', [sys.executable, '-c', 'import time; time.sleep(60)'])
