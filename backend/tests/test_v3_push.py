@@ -5,6 +5,7 @@ service, and passing tests do not certify deployment credentials or a handset.
 """
 from datetime import timedelta
 from decimal import Decimal
+import base64
 import json
 from types import SimpleNamespace
 
@@ -240,14 +241,19 @@ def test_apns_adapter_signs_es256_and_uses_fixed_http2_endpoint(app, monkeypatch
     assert headers["apns-push-type"] == "alert"
 
 
-def test_webpush_adapter_encrypts_payload_and_disables_redirects(app, monkeypatch, tmp_path):
+def test_webpush_adapter_encrypts_payload_and_disables_redirects(app, client, monkeypatch, tmp_path):
     import requests
     private = ec.generate_private_key(ec.SECP256R1())
     key_file = tmp_path / "vapid-test.pem"
     key_file.write_bytes(private.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
                                               serialization.NoEncryption()))
     app.state.settings.push_webpush_private_key_file = key_file
-    app.state.settings.push_webpush_subject = "mailto:operations@example.invalid"
+    app.state.settings.push_webpush_subject = "mailto:operations@example.org"
+    app.state.settings.push_enabled = True
+    options = client.get("/api/v1/push/options")
+    public = private.public_key().public_bytes(serialization.Encoding.X962, serialization.PublicFormat.UncompressedPoint)
+    assert options.status_code == 200 and options.headers["Cache-Control"] == "no-store"
+    assert options.json() == {"enabled": True, "webPushPublicKey": base64.urlsafe_b64encode(public).decode().rstrip("=")}
     captured = []
     def request(session, method, url, **kwargs):
         captured.append((method, url, kwargs))

@@ -86,7 +86,7 @@ def enrich_openapi(document):
             responses["default"] = _error_response("Error controlado de la API; code identifica la causa.")
             responses.setdefault("500", {"description": "Error interno no controlado.",
                 "content": {"text/plain": {"schema": {"type": "string"}}}})
-            if path.startswith("/api/v1") and not path.startswith("/api/v1/auth/"):
+            if path.startswith("/api/v1/") and not path.startswith("/api/v1/auth/") and operation.get("security"):
                 responses.setdefault("401", _error_response("JWT ausente, vencido o sesión revocada."))
                 responses.setdefault("403", _error_response("El rol o el ámbito del recurso no está autorizado."))
             if path in {"/health/live", "/health/ready"}:

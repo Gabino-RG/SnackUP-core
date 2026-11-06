@@ -63,7 +63,10 @@ def test_v3_snapshot_is_valid_standalone_current_and_environment_independent(app
             for status, response in operation["responses"].items():
                 if status.startswith("2") and status != "204":
                     assert response["content"]["application/json"]["schema"], (path, method, "missing response DTO")
-            if path.startswith("/api/v1/") and not path.startswith("/api/v1/auth/"):
+            if (path, method) == ("/api/v1/push/options", "get"):
+                assert operation["security"] == []
+                assert "401" not in operation["responses"] and "403" not in operation["responses"]
+            elif path.startswith("/api/v1/") and not path.startswith("/api/v1/auth/"):
                 assert {"BearerAuth": []} in operation.get("security", []), path
 
 

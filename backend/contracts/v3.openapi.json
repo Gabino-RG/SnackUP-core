@@ -10119,6 +10119,7 @@
     },
     "/api/v1/push/options": {
       "get": {
+        "description": "Configuración pública de Web Push. Devuelve la disponibilidad y la clave pública VAPID.",
         "operationId": "push_options_api_v1_push_options_get",
         "responses": {
           "200": {
@@ -10130,26 +10131,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorEnvelope"
-                }
-              }
-            },
-            "description": "JWT ausente, vencido o sesión revocada."
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorEnvelope"
-                }
-              }
-            },
-            "description": "El rol o el ámbito del recurso no está autorizado."
           },
           "500": {
             "content": {
@@ -10172,6 +10153,7 @@
             "description": "Error controlado de la API; code identifica la causa."
           }
         },
+        "security": [],
         "summary": "Push Options",
         "tags": [
           "V3 · Dispositivos"

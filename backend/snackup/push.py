@@ -134,7 +134,9 @@ def webpush_public_key(settings) -> str | None:
         return None
 
 
-@router.get('/push/options', response_model=PushOptionsResponse, tags=['V3 · Dispositivos'])
+@router.get('/push/options', response_model=PushOptionsResponse, tags=['V3 · Dispositivos'],
+            description='Configuración pública de Web Push. Devuelve la disponibilidad y la clave pública VAPID.',
+            openapi_extra={'security': []})
 def push_options(request: Request, response: Response):
     key = webpush_public_key(request.app.state.settings)
     response.headers['Cache-Control'] = 'no-store'
