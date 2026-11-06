@@ -60,7 +60,7 @@ jobs:
           retention-days: 14
   unified:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 45
     defaults:
       run:
         working-directory: backend
@@ -140,6 +140,23 @@ jobs:
           PY
           python -m pip install -r reports/unified/smoke-requirements.txt
           python deploy/smoke_apps.py --integrated --report reports/unified/smoke.json
+      - name: Check both sign-in screens in Chromium and WebKit
+        run: |
+          npm install --prefix "$RUNNER_TEMP/snackup-browsers" --no-audit --no-fund --ignore-scripts playwright@1.62.1
+          "$RUNNER_TEMP/snackup-browsers/node_modules/.bin/playwright" install --with-deps chromium webkit
+          export SNACKUP_PLAYWRIGHT="$RUNNER_TEMP/snackup-browsers/node_modules/playwright"
+          # Use the real configured HTTPS origin so cookies and API-origin checks behave as deployed.
+          echo '127.0.0.1 snackup.example.test' | sudo tee -a /etc/hosts >/dev/null
+          gateway="${COMPOSE_PROJECT_NAME}-browser-tls"
+          docker run --detach --name "$gateway" --network "${COMPOSE_PROJECT_NAME}_edge" \
+            --publish 127.0.0.1:443:8443 --read-only --tmpfs /tmp --cap-drop ALL \
+            --security-opt no-new-privileges:true --env XDG_DATA_HOME=/tmp/caddy-data \
+            --entrypoint caddy snackup-unified:local reverse-proxy --from https://snackup.example.test:8443 \
+            --to http://app:8080 --internal-certs --disable-redirects
+          trap 'docker rm -f "$gateway" >/dev/null' EXIT
+          curl --noproxy '*' --fail --silent --show-error --insecure --retry 15 --retry-all-errors \
+            --retry-delay 1 https://snackup.example.test/health/ready >/dev/null
+          node deploy/smoke_browsers.cjs reports/unified/browsers.json
       - name: Verify a child failure restarts the complete application
         run: |
           docker compose --env-file /dev/null exec -T app redis-cli -s /tmp/snackup-redis.sock SHUTDOWN
