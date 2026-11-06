@@ -1,6 +1,25 @@
-# Prueba de carga pendiente: objetivo de 1,000 alumnos
+# Pruebas de carga para 1,000 alumnos
 
-Este directorio contiene una prueba **optativa**, no un resultado de capacidad. Utiliza el contrato V3 de FastAPI en `/api/v1`, con `expectedTotal`, claves UUID de idempotencia, método `Efectivo` y cancelación `user_other` con notas. No se ejecuta al iniciar la aplicación ni en CI. Las pruebas unitarias, PostgreSQL de CI y este escenario no sustituyen una medición en el servidor asignado.
+El escenario de k6 se ejecuta manualmente y utiliza el contrato V3 de FastAPI en `/api/v1`, con `expectedTotal`, claves UUID de idempotencia, método `Efectivo` y cancelación `user_other` con notas.
+
+## Mediciones en la laptop de integración
+
+El 6 de noviembre de 2026 se usaron bases PostgreSQL y servicios Redis temporales. Cada ensayo creó 1,000 alumnos distintos, cuatro locales y un producto por local. Las cuentas y los pedidos fueron sintéticos. FastAPI procesó cada solicitud y se comprobó el resultado en PostgreSQL. Las bases de carga se eliminaron al terminar.
+
+| Ensayo | Resultado |
+|---|---|
+| [Ráfaga con dos procesos de API y una escritura simultánea por proceso](../../docs/qa-carga-1000-2026-11-06.json) | De 1,000 compras enviadas a la vez, 584 entraron al primer intento y 416 recibieron 503. El p95 fue de 5.28 s. Los reintentos con la clave original recuperaron las 1,000 compras. |
+| [Ráfaga con cuatro procesos y dos escrituras simultáneas por proceso](../../docs/qa-carga-1000-four-workers-2026-11-06.json) | Entraron 743 compras al primer intento y 257 recibieron 503 con `Retry-After: 1`. El p95 fue de 5.52 s. Se confirmaron y cancelaron las 1,000 compras sin duplicar folios y se recuperó todo el stock. |
+| [Uso sostenido de 1,000 sesiones durante 30 minutos](../../docs/qa-carga-1000-soak-four-2026-11-06.json) | Con cuatro procesos y dos escrituras por proceso, se completaron 7,200 compras a cuatro por segundo, se confirmó cada una con la misma clave y se cancelaron las 7,200. El p95 de creación fue de 211 ms y el de lectura, de 120 ms. En 733,252 solicitudes hubo once respuestas 503 y un corte de conexión. |
+| [Ráfaga con espera de admisión de diez segundos, ensayo interrumpido](../../docs/qa-carga-1000-four-queue10-2026-11-06.json) | Con cuatro procesos y dos escrituras por proceso, las 1,000 compras entraron al primer intento. El p95 aumentó a 7.89 s. Al solicitarse el apagado, PostgreSQL contenía exactamente 1,000 pedidos pendientes. Se eliminó la base temporal con sus reservas. |
+
+En el escenario sostenido se cumplieron los objetivos de menos de 1% de solicitudes fallidas, p95 de lectura inferior a 750 ms y p95 de creación inferior a 1.5 s. Los dos primeros perfiles superaron el objetivo de 1.5 s al concentrar las 1,000 compras en un solo instante.
+
+Cada alumno del ensayo sostenido consultó los locales, el menú y sus pedidos, y esperó entre 5 y 10 segundos antes de la siguiente visita. Hubo 2,000 renovaciones de sesión por cookie. Los cortes de inventario durante la prueba coincidieron con las reservas activas. Al cierre se verificaron los cuatro stocks iniciales, la numeración de los 7,200 pedidos sin duplicados dentro de cada local y la cola de eventos vacía.
+
+Para las mediciones HTTP, el generador compartió laptop con la API y PostgreSQL y distribuyó las peticiones directamente entre puertos locales. El ensayo sostenido repartió alumnos de cada local entre todos los procesos. Los tiempos y la tasa de rechazo de estas pruebas describen esa configuración. En el servidor de TI se deben repetir las mediciones con el dominio, el catálogo, la red y el número de procesos que se van a utilizar. Los escenarios equivalentes de lectura, compra, idempotencia y tiempo real se describen en la [guía de fase C](phase_c/README.md).
+
+Por el apagado quedaron pendientes el ensayo de cinco minutos con 1,000 conexiones WebSocket permanentes, la ráfaga adicional de reintentos automáticos ante 503 y las comprobaciones finales de cancelación, stock e idempotencia del perfil con diez segundos de espera. El escenario WebSocket está preparado para comparar qué cuentas reciben cada versión del producto y contar tanto los destinatarios inesperados como las entregas duplicadas.
 
 ## Entorno aislado
 

@@ -1,0 +1,287 @@
+{
+  "finishedUtc": "2026-11-06T20:06:39.817951+00:00",
+  "scope": "1,000 cuentas sintéticas distintas y cuatro locales de prueba, exclusivamente en una base temporal creada vacía. Ningún pedido en la aplicación de demostración.",
+  "environment": {
+    "postgres": "17.11",
+    "redis": "7.4.11",
+    "cpu": "AMD Ryzen AI 9 HX 370",
+    "cores": 12,
+    "logicalProcessors": 24,
+    "ramGiB": 15.62,
+    "workers": 4,
+    "writeConcurrencyPerWorker": 2,
+    "topology": "Procesos FastAPI con Redis compartido, asignación alterna desde el generador por puertos loopback. PostgreSQL en la misma laptop. HTTP/1.1, sin proxy ni TLS en esta medición.",
+    "generator": "Node.js 24.22.1, HTTP keep-alive en la misma laptop",
+    "admissionWaitSeconds": 5,
+    "workerDistributionWhenComparing": "Los índices de cuenta alternaban por puerto. Una cuenta mantuvo su worker; cada local estuvo asignado al mismo worker durante las ráfagas. Esto influye en la contención. El ensayo sostenido reparte cada local entre todos los workers."
+  },
+  "workload": "Tras 1,000 inicios de sesión reales en la API, consultas concurrentes de locales, productos y pedidos propios. Un intento de compra simultáneo por usuario. Se conservó la clave de idempotencia para los reintentos, se comprobó cada compra y se solicitó la cancelación por HTTP. Los montos y existencias son de prueba.",
+  "stages": [
+    {
+      "stage": "auth-1000-preparation",
+      "clients": 1000,
+      "requests": 1000,
+      "peakClientRequestsInFlight": 8,
+      "seconds": 7.87,
+      "rps": 126.99,
+      "p50Ms": 60.75,
+      "p95Ms": 74.11,
+      "p99Ms": 106.7,
+      "statuses": {
+        "200": 1000
+      },
+      "retryAfter503": {},
+      "healthAfter": [
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "stage": "authenticated",
+      "uniqueAccounts": 1000
+    },
+    {
+      "stage": "catalogue-and-own-orders-paced",
+      "clients": 10,
+      "requests": 60,
+      "peakClientRequestsInFlight": 1,
+      "seconds": 14.29,
+      "rps": 4.2,
+      "p50Ms": 11.72,
+      "p95Ms": 26.66,
+      "p99Ms": 39.81,
+      "statuses": {
+        "200": 60
+      },
+      "retryAfter503": {},
+      "healthAfter": [
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "stage": "catalogue-and-own-orders-paced",
+      "clients": 100,
+      "requests": 600,
+      "peakClientRequestsInFlight": 1,
+      "seconds": 14.95,
+      "rps": 40.12,
+      "p50Ms": 6.77,
+      "p95Ms": 10.96,
+      "p99Ms": 12.94,
+      "statuses": {
+        "200": 600
+      },
+      "retryAfter503": {},
+      "healthAfter": [
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "stage": "catalogue-and-own-orders-paced",
+      "clients": 300,
+      "requests": 1800,
+      "peakClientRequestsInFlight": 2,
+      "seconds": 15,
+      "rps": 119.98,
+      "p50Ms": 8.61,
+      "p95Ms": 12.95,
+      "p99Ms": 14.53,
+      "statuses": {
+        "200": 1800
+      },
+      "retryAfter503": {},
+      "healthAfter": [
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "stage": "catalogue-and-own-orders-paced",
+      "clients": 1000,
+      "requests": 6000,
+      "peakClientRequestsInFlight": 9,
+      "seconds": 15.02,
+      "rps": 399.43,
+      "p50Ms": 9.26,
+      "p95Ms": 15.24,
+      "p99Ms": 19.63,
+      "statuses": {
+        "200": 6000
+      },
+      "retryAfter503": {},
+      "healthAfter": [
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "stage": "order-simultaneous-first-attempt",
+      "clients": 1000,
+      "requests": 1000,
+      "peakClientRequestsInFlight": 1000,
+      "seconds": 5.61,
+      "rps": 178.34,
+      "p50Ms": 3974.25,
+      "p95Ms": 5522.4,
+      "p99Ms": 5534.51,
+      "statuses": {
+        "201": 743,
+        "503/SERVICE_BUSY": 257
+      },
+      "retryAfter503": {
+        "1": 257
+      },
+      "healthAfter": [
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "stage": "create-retry-same-key-15-per-second",
+      "clients": 257,
+      "requests": 257,
+      "peakClientRequestsInFlight": 2,
+      "seconds": 17.08,
+      "rps": 15.04,
+      "p50Ms": 20.06,
+      "p95Ms": 32.38,
+      "p99Ms": 39.34,
+      "statuses": {
+        "201": 257
+      },
+      "retryAfter503": {},
+      "healthAfter": [
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "stage": "verify-orders-idempotent-replay",
+      "clients": 1000,
+      "requests": 1000,
+      "peakClientRequestsInFlight": 3,
+      "seconds": 49.97,
+      "rps": 20.01,
+      "p50Ms": 10.04,
+      "p95Ms": 18.48,
+      "p99Ms": 41.52,
+      "statuses": {
+        "201": 1000
+      },
+      "retryAfter503": {},
+      "healthAfter": [
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "stage": "cancel-and-restore-stock",
+      "clients": 1000,
+      "requests": 1000,
+      "peakClientRequestsInFlight": 2,
+      "seconds": 66.63,
+      "rps": 15.01,
+      "p50Ms": 14.41,
+      "p95Ms": 23.14,
+      "p99Ms": 32.12,
+      "statuses": {
+        "200": 1000
+      },
+      "retryAfter503": {},
+      "healthAfter": [
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "stage": "application-integrity",
+      "acceptedOrders": 1000,
+      "uniqueOrderIds": 1000,
+      "exactOrderIdReplays": 1000,
+      "confirmedCancellations": 1000
+    }
+  ],
+  "database": {
+    "students": 1000,
+    "businesses": 4,
+    "products": 4,
+    "orders": 1000,
+    "uniqueBuyers": 1000,
+    "pending": 0,
+    "idempotencyRecords": 1000,
+    "duplicateNumbers": 0,
+    "duplicateBuyerOrders": 0,
+    "duplicateIdempotencyKeys": 0,
+    "ordersWithoutOneIdempotencyRecord": 0,
+    "negativeStock": 0,
+    "productsNotRestoredToStartingStock": 0,
+    "deadlocks": 0,
+    "byStatus": {
+      "cancelled": 1000
+    },
+    "outboxUnpublished": 6,
+    "outboxObservation": "Se consultó justo después de la última cancelación. Quedaron 6 eventos pendientes en ese instante. Este perfil corto se cerró sin observar el drenaje."
+  },
+  "temporaryDatabaseDeleted": true,
+  "privateFixtureCredentialsRemoved": true,
+  "protocol": {
+    "catalogue": "Una visita = lista de locales + menú + pedidos propios. Dos visitas por alumno, escalonadas cada 7,5 s. Se verifica el contenido además del HTTP 200.",
+    "orderBurst": "Los 1,000 clientes envían un solo POST cada uno en la misma ráfaga. Los 503 se vuelven a intentar posteriormente a 15 por segundo con la clave original; se verifican respuesta, folio y stock.",
+    "criteria": {
+      "failureRateLessThan": 0.01,
+      "readP95MsLessThan": 750,
+      "readP99MsLessThan": 2000,
+      "createP95MsLessThan": 1500
+    },
+    "outcome": {
+      "shortReadSampleMetThresholds": true,
+      "simultaneousCreateFirstAttemptMetThresholds": false,
+      "recoveredAndVerifiedBySql": true
+    }
+  },
+  "resources": {
+    "sampleSeconds": 295,
+    "fromUtc": "2026-11-06T20:01:45.255179+00:00",
+    "throughUtc": "2026-11-06T20:06:39.652689+00:00",
+    "meanTotalLaptopCpuPct": 18.6,
+    "maxTotalLaptopCpuPct": 68.95,
+    "minFreePhysicalMiB": 1428,
+    "postgresDatabaseMaxSessions": 17,
+    "postgresDatabaseMaxActive": 2,
+    "postgresDatabaseMaxLockWaiters": 1,
+    "samplingNote": "Muestreo del host completo cada segundo. Incluye el tiempo de espera previo a la medición, la API, PostgreSQL y el generador."
+  },
+  "referenceScenario": "backend/load/phase_c/README.md (P2 y P4), backend/load/README.md. Esta medición usa el mismo tipo de peticiones; los ciclos cortos y la ráfaga son escenarios adicionales.",
+  "commitAtReportWrite": "b4ae51eac486baa75fc492db6a9fd775aa0532e4",
+  "commit": "c2dbad5d1f08076a6c604a15cd4ddfc7e84c16c0",
+  "benchmarkStartUtc": "2026-11-06T20:03:13Z",
+  "codeProvenance": "Referencia Git vigente durante la preparación del API. Rama de integración con trabajo paralelo. Las huellas corresponden a los módulos de lectura, compra y admisión que permanecieron sin editar durante esta medición.",
+  "backendSha256": {
+    "admission.py": "d87ac378c69789820c40880cd7843273763c24d0434bd34cbf80453178ba4db4",
+    "db.py": "9ff20f11802426c27e7ef702bbd1df63fd35b0100fde63daba491d4cde1df65b",
+    "operations.py": "076f8ca5c92de485cca55e923ba402623d218ff36f1aab04311fd8e3d2424481",
+    "v3_operations.py": "5701825ed859b3a2f5733b3bdb077f0370b4d95ebbed0c6c6a7546965dea8f63",
+    "auth.py": "6e8b820d80916b5c4f15ed4d69013e5c6832431bd3067b3847755665168751ba",
+    "realtime.py": "3c686cd007de7fa478e8ccc2dd324c6c33dede57c98c8c1736ef1b3dd53bb499"
+  }
+}

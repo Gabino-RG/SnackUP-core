@@ -1,0 +1,255 @@
+{
+  "finishedUtc": "2026-11-06T19:57:24.345295+00:00",
+  "scope": "1,000 cuentas sintéticas distintas y cuatro locales de prueba, exclusivamente en una base temporal creada vacía. Ningún pedido en la aplicación de demostración.",
+  "environment": {
+    "postgres": "17.11",
+    "redis": "7.4.11",
+    "cpu": "AMD Ryzen AI 9 HX 370",
+    "cores": 12,
+    "logicalProcessors": 24,
+    "ramGiB": 15.62,
+    "workers": 2,
+    "topology": "Dos procesos FastAPI con Redis compartido, asignación alterna desde el generador por puertos loopback. PostgreSQL en la misma laptop. HTTP/1.1, sin proxy ni TLS en esta medición.",
+    "writeConcurrencyPerWorker": 1,
+    "generator": "Node.js 24.22.1, HTTP keep-alive en la misma laptop",
+    "admissionWaitSeconds": 5,
+    "workerDistributionWhenComparing": "Los índices de cuenta alternaban por puerto. Una cuenta mantuvo su worker; cada local estuvo asignado al mismo worker durante las ráfagas. Esto influye en la contención. El ensayo sostenido reparte cada local entre todos los workers."
+  },
+  "workload": "Tras 1,000 inicios de sesión reales en la API, consultas concurrentes de locales, productos y pedidos propios. Un intento de compra simultáneo por usuario. Se conservó la clave de idempotencia para los reintentos, se comprobó cada compra y se solicitó la cancelación por HTTP. Los montos y existencias son de prueba.",
+  "stages": [
+    {
+      "stage": "auth-1000-preparation",
+      "clients": 1000,
+      "requests": 1000,
+      "peakClientRequestsInFlight": 8,
+      "seconds": 6.02,
+      "rps": 166.2,
+      "p50Ms": 45.62,
+      "p95Ms": 61.78,
+      "p99Ms": 108.43,
+      "statuses": {
+        "200": 1000
+      },
+      "healthAfter": [
+        true,
+        true
+      ]
+    },
+    {
+      "stage": "authenticated",
+      "uniqueAccounts": 1000
+    },
+    {
+      "stage": "catalogue-and-own-orders-paced",
+      "clients": 10,
+      "requests": 60,
+      "peakClientRequestsInFlight": 1,
+      "seconds": 14.28,
+      "rps": 4.2,
+      "p50Ms": 8.27,
+      "p95Ms": 17.4,
+      "p99Ms": 35.38,
+      "statuses": {
+        "200": 60
+      },
+      "healthAfter": [
+        true,
+        true
+      ]
+    },
+    {
+      "stage": "catalogue-and-own-orders-paced",
+      "clients": 100,
+      "requests": 600,
+      "peakClientRequestsInFlight": 1,
+      "seconds": 14.95,
+      "rps": 40.13,
+      "p50Ms": 5.26,
+      "p95Ms": 8.85,
+      "p99Ms": 10.93,
+      "statuses": {
+        "200": 600
+      },
+      "healthAfter": [
+        true,
+        true
+      ]
+    },
+    {
+      "stage": "catalogue-and-own-orders-paced",
+      "clients": 300,
+      "requests": 1800,
+      "peakClientRequestsInFlight": 2,
+      "seconds": 15,
+      "rps": 120.04,
+      "p50Ms": 5,
+      "p95Ms": 8.97,
+      "p99Ms": 11.11,
+      "statuses": {
+        "200": 1800
+      },
+      "healthAfter": [
+        true,
+        true
+      ]
+    },
+    {
+      "stage": "catalogue-and-own-orders-paced",
+      "clients": 1000,
+      "requests": 6000,
+      "peakClientRequestsInFlight": 70,
+      "seconds": 15.3,
+      "rps": 392.28,
+      "p50Ms": 5.98,
+      "p95Ms": 128.76,
+      "p99Ms": 191.72,
+      "statuses": {
+        "200": 6000
+      },
+      "healthAfter": [
+        true,
+        true
+      ]
+    },
+    {
+      "stage": "order-simultaneous-first-attempt",
+      "clients": 1000,
+      "requests": 1000,
+      "peakClientRequestsInFlight": 1000,
+      "seconds": 5.31,
+      "rps": 188.25,
+      "p50Ms": 4418.47,
+      "p95Ms": 5281.99,
+      "p99Ms": 5284.89,
+      "statuses": {
+        "201": 584,
+        "503/SERVICE_BUSY": 416
+      },
+      "healthAfter": [
+        true,
+        true
+      ]
+    },
+    {
+      "stage": "create-retry-same-key-15-per-second",
+      "clients": 416,
+      "requests": 416,
+      "peakClientRequestsInFlight": 1,
+      "seconds": 27.7,
+      "rps": 15.02,
+      "p50Ms": 15.42,
+      "p95Ms": 22.96,
+      "p99Ms": 28.02,
+      "statuses": {
+        "201": 416
+      },
+      "healthAfter": [
+        true,
+        true
+      ]
+    },
+    {
+      "stage": "verify-orders-idempotent-replay",
+      "clients": 1000,
+      "requests": 1000,
+      "peakClientRequestsInFlight": 2,
+      "seconds": 49.96,
+      "rps": 20.01,
+      "p50Ms": 8.57,
+      "p95Ms": 13.55,
+      "p99Ms": 17.93,
+      "statuses": {
+        "201": 1000
+      },
+      "healthAfter": [
+        true,
+        true
+      ]
+    },
+    {
+      "stage": "cancel-and-restore-stock",
+      "clients": 1000,
+      "requests": 1000,
+      "peakClientRequestsInFlight": 3,
+      "seconds": 66.62,
+      "rps": 15.01,
+      "p50Ms": 18.87,
+      "p95Ms": 34.51,
+      "p99Ms": 66.3,
+      "statuses": {
+        "200": 1000
+      },
+      "healthAfter": [
+        true,
+        true
+      ]
+    },
+    {
+      "stage": "application-integrity",
+      "acceptedOrders": 1000,
+      "uniqueOrderIds": 1000,
+      "exactOrderIdReplays": 1000,
+      "confirmedCancellations": 1000
+    }
+  ],
+  "database": {
+    "students": 1000,
+    "businesses": 4,
+    "products": 4,
+    "orders": 1000,
+    "uniqueBuyers": 1000,
+    "pending": 0,
+    "idempotencyRecords": 1000,
+    "duplicateNumbers": 0,
+    "duplicateBuyerOrders": 0,
+    "negativeStock": 0,
+    "productsNotRestoredToStartingStock": 0,
+    "deadlocks": 0,
+    "byStatus": {
+      "cancelled": 1000
+    },
+    "outboxUnpublished": 0
+  },
+  "temporaryDatabaseDeleted": true,
+  "privateFixtureCredentialsRemoved": true,
+  "resources": {
+    "sampleSeconds": 171,
+    "fromUtc": "2026-11-06T19:54:33.959879+00:00",
+    "throughUtc": "2026-11-06T19:57:24.168695+00:00",
+    "meanTotalLaptopCpuPct": 15.36,
+    "maxTotalLaptopCpuPct": 36.94,
+    "minFreePhysicalMiB": 1330,
+    "postgresDatabaseMaxSessions": 22,
+    "postgresDatabaseMaxActive": 2,
+    "postgresDatabaseMaxLockWaiters": 0,
+    "samplingNote": "Muestreo del host completo cada segundo. Incluye el generador. Se inició durante las lecturas y terminó al eliminar la base."
+  },
+  "protocol": {
+    "catalogue": "Una visita = lista de locales + menú + pedidos propios. Dos visitas por alumno, escalonadas cada 7,5 s. Se verifica el contenido además del HTTP 200.",
+    "orderBurst": "Los 1,000 clientes envían un solo POST cada uno en la misma ráfaga. Los 503 se vuelven a intentar posteriormente a 15 por segundo con la clave original; se verifican respuesta, folio y stock.",
+    "criteria": {
+      "failureRateLessThan": 0.01,
+      "readP95MsLessThan": 750,
+      "readP99MsLessThan": 2000,
+      "createP95MsLessThan": 1500
+    },
+    "outcome": {
+      "shortReadSampleMetThresholds": true,
+      "simultaneousCreateFirstAttemptMetThresholds": false,
+      "recoveredAndVerifiedBySql": true
+    }
+  },
+  "referenceScenario": "backend/load/phase_c/README.md (P2 y P4), backend/load/README.md. Esta medición usa el mismo tipo de peticiones; los ciclos cortos y la ráfaga son escenarios adicionales.",
+  "commitAtReportWrite": "1ff7f680a939c6b82c1bcde0ed91df2b770a68e5",
+  "commit": "1ff7f680a939c6b82c1bcde0ed91df2b770a68e5",
+  "benchmarkStartUtc": "2026-11-06T19:53:47Z",
+  "codeProvenance": "Referencia Git vigente durante la preparación del API. Rama de integración con trabajo paralelo. Las huellas corresponden a los módulos de lectura, compra y admisión que permanecieron sin editar durante esta medición.",
+  "backendSha256": {
+    "admission.py": "d87ac378c69789820c40880cd7843273763c24d0434bd34cbf80453178ba4db4",
+    "db.py": "9ff20f11802426c27e7ef702bbd1df63fd35b0100fde63daba491d4cde1df65b",
+    "operations.py": "076f8ca5c92de485cca55e923ba402623d218ff36f1aab04311fd8e3d2424481",
+    "v3_operations.py": "5701825ed859b3a2f5733b3bdb077f0370b4d95ebbed0c6c6a7546965dea8f63",
+    "auth.py": "6e8b820d80916b5c4f15ed4d69013e5c6832431bd3067b3847755665168751ba",
+    "realtime.py": "3c686cd007de7fa478e8ccc2dd324c6c33dede57c98c8c1736ef1b3dd53bb499"
+  }
+}

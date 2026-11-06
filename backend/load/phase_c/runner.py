@@ -319,8 +319,9 @@ class Run:
             await asyncio.sleep(2)
             self.check(not disconnected, 'P8 unexpected disconnect')
             unique = {(i, business, version, eid) for i, business, version, _, eid in received if (business, version) in changes}
-            expected = sum(sum(who['businessId'] == business for who in self.students[:count]) for business, _ in changes)
-            self.details.update(expectedEvents=expected, receivedEvents=len(unique), changes=len(changes), unexpectedDisconnects=len(disconnected))
+            expected = {(i, business, version) for business, version in changes
+                        for i, who in enumerate(self.students[:count]) if who['businessId'] == business}
+            self.details.update(expectedEvents=len(expected), receivedEvents=len(unique), changes=len(changes), unexpectedDisconnects=len(disconnected))
             if kitchen:
                 self.details.update(expectedOrderEvents=len(self.expected_order_events), receivedOrderEvents=len(self.received_order_events))
                 self.check(self.expected_order_events == self.received_order_events, 'P8b order event loss')
@@ -334,7 +335,14 @@ class Run:
                 self.samples['product_event'] = [latency for _, _, _, latency, _ in received]
                 self.check((quantile(self.samples['product_event'], .95) or math.inf) < 1000, 'P8b stock event p95')
             if toggle:
-                self.check(expected > 0 and len(unique) == expected, 'P8 event loss')
+                deliveries = Counter((i, business, version) for i, business, version, _, _ in received
+                                     if (business, version) in changes)
+                observed = set(deliveries)
+                duplicates = sum(n - 1 for n in deliveries.values())
+                self.details.update(missingDeliveries=len(expected - observed), unexpectedDeliveries=len(observed - expected),
+                                    duplicateDeliveries=duplicates)
+                self.check(bool(expected) and observed == expected, 'P8 delivery to expected subscribers')
+                self.check(duplicates == 0, 'P8 duplicate product delivery')
                 self.samples['product_event'] = [latency for _, business, version, latency, _ in received if (business, version) in changes]
                 self.check((quantile(self.samples['product_event'], .95) or math.inf) < (1000 if count == 300 else 2000), 'P8 event p95')
         finally:

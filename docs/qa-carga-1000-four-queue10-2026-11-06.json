@@ -1,0 +1,258 @@
+{
+  "commit": "3a3cfcf3baf54edd1a23b64ba5361614437988d2",
+  "sourceDigestBackendPython": "5b014adbda1acb61b61171e775a7d7e79f94dfe002a81a4a09cbaba9c29fabfc",
+  "beganUtc": "2026-11-06T20:45:25.966089+00:00",
+  "finishedUtc": "2026-11-06T20:47:09.471214+00:00",
+  "generatorExitCode": 4294967295,
+  "scope": "1,000 cuentas sintéticas distintas y cuatro locales de prueba, exclusivamente en una base temporal creada vacía. Ningún pedido en la aplicación de demostración.",
+  "environment": {
+    "postgres": "17.11",
+    "redis": "7.4.11",
+    "cpu": "AMD Ryzen AI 9 HX 370",
+    "cores": 12,
+    "logicalProcessors": 24,
+    "ramGiB": 15.62,
+    "workers": 4,
+    "writeConcurrencyPerWorker": 2,
+    "admissionWaitSeconds": 10,
+    "topology": "Procesos FastAPI con Redis compartido, asignación alterna desde el generador por puertos loopback. PostgreSQL en la misma laptop. HTTP/1.1, sin proxy ni TLS en esta medición."
+  },
+  "workload": "Se autenticaron 1,000 cuentas distintas y concluyeron los escalones de lectura y la ráfaga de 1,000 compras con admisión de 10 s. Las 1,000 devolvieron 201 al primer intento. Ninguna llamó a la ruta de reintento por 503.",
+  "stages": [
+    {
+      "stage": "auth-1000-preparation",
+      "utcStart": "2026-11-06T20:45:26.030Z",
+      "utcEnd": "2026-11-06T20:45:33.343Z",
+      "clients": 1000,
+      "requests": 1000,
+      "peakClientRequestsInFlight": 8,
+      "seconds": 7.31,
+      "rps": 136.83,
+      "p50Ms": 56.69,
+      "p95Ms": 72.4,
+      "p99Ms": 83.82,
+      "statuses": {
+        "200": 1000
+      },
+      "retryAfter503": {},
+      "healthAfter": [
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "stage": "authenticated",
+      "uniqueAccounts": 1000
+    },
+    {
+      "stage": "catalogue-and-own-orders-paced",
+      "utcStart": "2026-11-06T20:45:33.345Z",
+      "utcEnd": "2026-11-06T20:45:47.633Z",
+      "clients": 10,
+      "requests": 60,
+      "peakClientRequestsInFlight": 1,
+      "seconds": 14.28,
+      "rps": 4.2,
+      "p50Ms": 9.48,
+      "p95Ms": 22.41,
+      "p99Ms": 26.63,
+      "statuses": {
+        "200": 60
+      },
+      "retryAfter503": {},
+      "healthAfter": [
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "stage": "catalogue-and-own-orders-paced",
+      "utcStart": "2026-11-06T20:45:49.142Z",
+      "utcEnd": "2026-11-06T20:46:04.093Z",
+      "clients": 100,
+      "requests": 600,
+      "peakClientRequestsInFlight": 1,
+      "seconds": 14.95,
+      "rps": 40.14,
+      "p50Ms": 5.44,
+      "p95Ms": 8.86,
+      "p99Ms": 10.55,
+      "statuses": {
+        "200": 600
+      },
+      "retryAfter503": {},
+      "healthAfter": [
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "stage": "catalogue-and-own-orders-paced",
+      "utcStart": "2026-11-06T20:46:05.598Z",
+      "utcEnd": "2026-11-06T20:46:20.591Z",
+      "clients": 300,
+      "requests": 1800,
+      "peakClientRequestsInFlight": 2,
+      "seconds": 14.99,
+      "rps": 120.07,
+      "p50Ms": 5.43,
+      "p95Ms": 8.35,
+      "p99Ms": 10.47,
+      "statuses": {
+        "200": 1800
+      },
+      "retryAfter503": {},
+      "healthAfter": [
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "stage": "catalogue-and-own-orders-paced",
+      "utcStart": "2026-11-06T20:46:22.096Z",
+      "utcEnd": "2026-11-06T20:46:37.108Z",
+      "clients": 1000,
+      "requests": 6000,
+      "peakClientRequestsInFlight": 9,
+      "seconds": 15.01,
+      "rps": 399.8,
+      "p50Ms": 6.25,
+      "p95Ms": 10.51,
+      "p99Ms": 18.46,
+      "statuses": {
+        "200": 6000
+      },
+      "retryAfter503": {},
+      "healthAfter": [
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "stage": "order-simultaneous-first-attempt",
+      "utcStart": "2026-11-06T20:46:38.611Z",
+      "utcEnd": "2026-11-06T20:46:47.059Z",
+      "clients": 1000,
+      "requests": 1000,
+      "peakClientRequestsInFlight": 1000,
+      "seconds": 8.44,
+      "rps": 118.53,
+      "p50Ms": 4829.19,
+      "p95Ms": 7887.51,
+      "p99Ms": 8205.31,
+      "statuses": {
+        "201": 1000
+      },
+      "retryAfter503": {},
+      "healthAfter": [
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "stage": "one-automatic-retry-of-service-busy",
+      "utcStart": "2026-11-06T20:46:38.611Z",
+      "utcEnd": "2026-11-06T20:46:47.071Z",
+      "clients": 1000,
+      "requests": 0,
+      "peakClientRequestsInFlight": 0,
+      "seconds": 8.45,
+      "rps": 0,
+      "p50Ms": null,
+      "p95Ms": null,
+      "p99Ms": null,
+      "statuses": {},
+      "retryAfter503": {},
+      "healthAfter": [
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "stage": "outcome-per-original-intent-after-at-most-one-automatic-retry",
+      "originalIntents": 1000,
+      "firstAttemptAccepted": 1000,
+      "eligibleBusy": 0,
+      "automaticRetryAccepted": 0,
+      "initialOutcomesRecorded": 1000,
+      "acceptedByThen": 1000,
+      "stillUnconfirmed": 0,
+      "jitterMinMs": null,
+      "jitterMaxMs": null,
+      "timeToLastAutomaticOutcomeP95Ms": 7887.56,
+      "timeToLastAutomaticOutcomeP99Ms": 8205.33,
+      "timeToConfirmedPurchaseP95Ms": 7887.56,
+      "timeToConfirmedPurchaseP99Ms": 8205.33
+    }
+  ],
+  "database": {
+    "students": 1000,
+    "businesses": 4,
+    "products": 4,
+    "orders": 1000,
+    "uniqueBuyers": 1000,
+    "pending": 1000,
+    "idempotencyRecords": 1000,
+    "duplicateNumbers": 0,
+    "duplicateIdempotencyKeys": 0,
+    "ordersWithoutOneIdempotencyRecord": 0,
+    "negativeStock": 0,
+    "productsNotRestoredToStartingStock": 4,
+    "deadlocks": 0,
+    "byStatus": {
+      "pending": 1000
+    },
+    "outboxUnpublished": 0,
+    "duplicatePickupCodes": 0,
+    "waitedForOutboxDrainSeconds": 0.0,
+    "outboxPublishedLagP95Ms": 2053.704,
+    "outboxPublishedLagP99Ms": 2185.764,
+    "buyersWithMultipleOrdersAtStop": 0
+  },
+  "temporaryDatabaseDeleted": true,
+  "privateFixtureCredentialsRemoved": true,
+  "status": "interrumpida por solicitud de apagado tras la ráfaga",
+  "interruption": {
+    "completed": [
+      "Lectura, primer intento de las 1,000 compras, recuentos SQL y drenaje del outbox.",
+      "Se eliminaron la base temporal y sus credenciales."
+    ],
+    "pending": [
+      "Terminación de las comprobaciones idempotentes y cancelación de los 1,000 pedidos de este último perfil.",
+      "Competencia de 200 compradores por 50 unidades y diez envíos por clave en el perfil de 10 s.",
+      "Ráfaga masiva de reintento automático sobre 503 y P8 de 1,000 conexiones WSS distintas."
+    ],
+    "orderState": "1,000 pedidos pendientes con reserva activa en la base temporal al detener el ensayo. Se eliminó esa base completa."
+  },
+  "resources": {
+    "sampleSeconds": 115,
+    "fromUtc": "2026-11-06T20:45:14.535018+00:00",
+    "throughUtc": "2026-11-06T20:47:08.694208+00:00",
+    "meanTotalLaptopCpuPct": 21.15,
+    "maxTotalLaptopCpuPct": 80.27,
+    "minFreePhysicalMiB": 2151,
+    "postgresDatabaseMaxSessions": 16,
+    "postgresDatabaseMaxActive": 2,
+    "postgresDatabaseMaxLockWaiters": 0,
+    "samplingNote": "Muestreo del host completo, incluido el generador, hasta el cierre de la base temporal."
+  },
+  "acceptance": {
+    "firstAttemptAcceptedAll1000": true,
+    "firstAttemptP95Under1500Ms": false,
+    "fullProfileCompleted": false
+  }
+}
