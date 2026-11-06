@@ -441,6 +441,37 @@ void main() {
   });
 
   test(
+    'server admission preserves its retry delay without repeating the order',
+    () async {
+      var posts = 0;
+      final api = apiFor((request) async {
+        if (request.url.path.endsWith('/auth/login')) {
+          return reply({'user': profile(), 'tokens': tokens()});
+        }
+        posts++;
+        return http.Response(
+          '{"error":{"code":"SERVICE_BUSY","message":"Servicio ocupado."}}',
+          503,
+          headers: {'retry-after': '1', 'content-type': 'application/json'},
+        );
+      });
+      addTearDown(api.dispose);
+      await api.login('a@example.edu', 'long-password');
+      await expectLater(
+        api.request('POST', '/orders', body: {}),
+        throwsA(
+          isA<ApiException>().having(
+            (e) => e.retryAfterSeconds,
+            'retry delay',
+            1,
+          ),
+        ),
+      );
+      expect(posts, 1);
+    },
+  );
+
+  test(
     'success invalidates; server errors preserve details and safe proxy message',
     () async {
       final api = apiFor((request) async {

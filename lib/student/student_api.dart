@@ -10,12 +10,19 @@ import 'api_platform.dart' as platform;
 import '../notifications/browser_push.dart';
 
 class ApiException implements Exception {
-  const ApiException(this.status, this.code, this.message, {this.details});
+  const ApiException(
+    this.status,
+    this.code,
+    this.message, {
+    this.details,
+    this.retryAfterSeconds,
+  });
 
   final int status;
   final String code;
   final String message;
   final Object? details;
+  final int? retryAfterSeconds;
 
   @override
   String toString() => message;
@@ -618,6 +625,7 @@ class StudentApi extends ChangeNotifier {
         code,
         message,
         details: error is Map ? error['details'] : null,
+        retryAfterSeconds: int.tryParse(response.headers['retry-after'] ?? ''),
       );
     }
     return decoded;

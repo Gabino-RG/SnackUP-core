@@ -135,7 +135,8 @@ class _OrdersApi extends StudentApi {
 }
 
 class _CartApi extends _OrdersApi {
-  _CartApi() : super(_order());
+  _CartApi({this.busyFailures = 0}) : super(_order());
+  final int busyFailures;
   final List<Map<String, dynamic>> posts = [];
   final List<String> keys = [];
   List<Map<String, dynamic>> cart = [
@@ -208,7 +209,15 @@ class _CartApi extends _OrdersApi {
     if (method == 'POST' && path == '/orders') {
       posts.add(Map<String, dynamic>.from(body!));
       keys.add(headers!['Idempotency-Key']!);
-      if (posts.length == 1) {
+      if (posts.length <= busyFailures) {
+        throw const ApiException(
+          503,
+          'SERVICE_BUSY',
+          'Servicio ocupado.',
+          retryAfterSeconds: 1,
+        );
+      }
+      if (posts.length == 1 && busyFailures == 0) {
         // The backend committed the order and its cart rows before the reply
         // disappeared. Replaying this key must recover the purchase.
         final reviewed = (body['cartRows'] as List)
@@ -656,6 +665,43 @@ void main() {
       api.dispose();
     },
   );
+
+  for (final scenario in ['recovers', 'rejected twice', 'cart closed']) {
+    testWidgets('busy checkout: $scenario', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      final api = _CartApi(busyFailures: scenario == 'rejected twice' ? 2 : 1);
+      await tester.pumpWidget(_host(api, const CartScreen()));
+      await tester.pumpAndSettle();
+      final review = find.text('Revisar pedido de este negocio').first;
+      await tester.ensureVisible(review);
+      await tester.tap(review);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.text('Confirmar pedido'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(api.posts, hasLength(1));
+      if (scenario == 'cart closed') {
+        await tester.pumpWidget(const SizedBox());
+      }
+      await tester.pump(const Duration(seconds: 3));
+      await tester.pumpAndSettle();
+      if (scenario == 'cart closed') {
+        expect(api.posts, hasLength(1));
+      } else {
+        expect(api.posts, hasLength(2));
+        expect(api.keys.last, api.keys.first);
+        expect(api.posts.last, api.posts.first);
+        expect(
+          find.text(scenario == 'recovers' ? 'Pedido #17' : 'Comprobar compra'),
+          findsOneWidget,
+        );
+      }
+      await tester.pumpWidget(const SizedBox());
+      api.dispose();
+    });
+  }
 
   testWidgets(
     'student cancellation sends the required reason notes and expectedVersion',

@@ -537,14 +537,47 @@ class _CartScreenState extends State<CartScreen> {
     _requireOwner();
     final api = _api!;
     final account = api.user?['id'];
+    final generation = api.sessionGeneration;
     final confirmed = await ledger.send(intent, (payload, key) async {
       _requireOwner();
-      final result = await api.request(
+      Future<dynamic> submit() => api.request(
         'POST',
         '/orders',
         body: payload,
         headers: {'Idempotency-Key': key},
       );
+      dynamic result;
+      try {
+        result = await submit();
+      } on ApiException catch (error) {
+        final seconds = error.retryAfterSeconds;
+        if (error.status != 503 ||
+            error.code != 'SERVICE_BUSY' ||
+            seconds == null ||
+            seconds < 0 ||
+            seconds > 5) {
+          rethrow;
+        }
+        // Admission rejected this request before checkout. Spread retries across
+        // purchases, keeping the original payload and idempotency key.
+        if (!mounted || ModalRoute.of(context)?.isCurrent != true) rethrow;
+        _message(
+          'Hay muchas compras al mismo tiempo. Reintentaremos tu pedido en un momento.',
+        );
+        await Future<void>.delayed(
+          Duration(seconds: seconds, milliseconds: key.hashCode % 1500),
+        );
+        if (!mounted ||
+            ModalRoute.of(context)?.isCurrent != true ||
+            WidgetsBinding.instance.lifecycleState !=
+                AppLifecycleState.resumed ||
+            !identical(api, _api) ||
+            api.sessionGeneration != generation ||
+            api.user?['id'] != account) {
+          rethrow;
+        }
+        result = await submit();
+      }
       return Map<String, dynamic>.from(result as Map);
     });
     if (api.user?['id'] != account || !mounted) return;
