@@ -2,6 +2,8 @@
 
 Esta copia reúne alumnos, Cocina, Administración y la API en un único origen local. Los datos de prueba están en PostgreSQL, fuera del repositorio. El propósito es comprobar recorridos completos y persistencia en la laptop; no certifica capacidad de producción.
 
+El [informe de salida de la rama integrada](docs/qa-salida-integrada-2026-11-06.md) reúne las pruebas de correo, HTTPS, sesiones y disponibilidad, y distingue las que deben repetirse con el servicio de TI.
+
 ## Política activa de pruebas
 
 Las acciones funcionales se realizan desde la interfaz de Alumnos, Cocina y Administración, con las cuentas locales existentes. Las pantallas se conectan a la API y a PostgreSQL reales de esta laptop; las identidades y el padrón son ficticios y no están conectados a los sistemas de la universidad.
@@ -9,6 +11,8 @@ Las acciones funcionales se realizan desde la interfaz de Alumnos, Cocina y Admi
 Durante esta auditoría no se crean nuevas semillas ni fixtures y no se ejecutan escrituras directas por API o base de datos para preparar o completar recorridos. Los pedidos, mensajes, productos y valoraciones nuevos se originan desde la UI. Si falta un servicio, una cuenta o un estado que no se puede alcanzar así, se registra como pendiente o bloqueado, sin fabricar resultados. El inventario y los límites están en [docs/qa-paneles-inventory.json](docs/qa-paneles-inventory.json) y [docs/qa-environment-limits.json](docs/qa-environment-limits.json).
 
 El inicio habitual conserva la base existente y **no ejecuta semillas**. El ensayo automatizado descrito al final es un antecedente anterior a esta política, no una instrucción para repetir escrituras durante la auditoría actual.
+
+Para medir la carga se autorizaron 1,000 cuentas y pedidos de ensayo exclusivamente en bases temporales separadas. El generador usa la API de esas instalaciones. Los pedidos de carga no aparecen en el historial, los reportes ni las gráficas de la demostración.
 
 ## Fuentes de esta integración
 
