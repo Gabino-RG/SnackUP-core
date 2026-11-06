@@ -23,6 +23,13 @@
   "regresionRepetible": "app/test_live/staff_account_isolation_test.dart. En app, ejecutar flutter test --no-pub test_live/staff_account_isolation_test.dart con el servidor local en el puerto 18080 y las variables privadas SNACKUP_QA_OPERATOR, SNACKUP_QA_OPERATOR_PASSWORD, SNACKUP_QA_OTHER_OPERATOR y SNACKUP_QA_OTHER_OPERATOR_PASSWORD.",
   "reutilizacionDeCookie": "Con dos sesiones de la segunda cocina en la API de paneles, la renovación válida respondió 200. Repetir la cookie ya rotada devolvió 401 SESSION_REPLAY. El token de esa familia devolvió 401, la familia independiente siguió devolviendo 200 y ambos cierres finalizaron con 204.",
   "dispositivo": "El backend de paneles conserva la suscripción de la familia al renovar, y elimina su registro y cancela sus entregas pendientes al cerrar sesión o detectar reutilización. En un perfil aislado de Edge para la segunda cocina se concedió el permiso de notificaciones. El proveedor agotó el tiempo de suscripción antes del registro. La limpieza de una suscripción nueva no pudo observarse en esa prueba. La entrega de Windows confirmada para el pedido 9 corresponde al ensayo del 4 de noviembre.",
+  "seguimientoAndroid": {
+    "fecha": "2026-11-06",
+    "pedido": 13,
+    "entrega": "El proveedor de cada dispositivo aceptó el envío al primer intento. Android mostró el aviso con la pantalla de inicio al frente y al tocarlo abrió Cocina, donde estaba el pedido.",
+    "renovacion": "Al recargar el panel del Samsung se rotó la sesión y su sucesora conservó el vínculo con el mismo dispositivo. Mi local mantuvo los avisos activos.",
+    "cierre": "Tras cerrar sesión en el Samsung, su familia quedó sin sesiones vigentes y se retiró su registro de dispositivo. La familia y el registro de Edge se mantuvieron vigentes. Esta observación cierra la limitación de la prueba anterior con Edge aislado."
+  },
   "alcance": "Las comprobaciones de API son lecturas y suscripciones. La prueba de Flutter usa su controlador real y HTTP en la máquina virtual. Las observaciones de pantalla son independientes, con navegadores contra el mismo backend.",
   "comprobacionesAPI": 77,
   "detalle": [
