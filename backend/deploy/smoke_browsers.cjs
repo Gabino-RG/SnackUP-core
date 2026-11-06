@@ -21,7 +21,10 @@ async function checkScreen(browser, screen, result) {
     page.on('pageerror', error => pageErrors.push(error.name));
     result.phase = 'options';
     const [response] = await Promise.all([
-      page.waitForResponse(r => r.url() === origin + screen.options && r.request().method() === 'GET', { timeout: 60000 }),
+      page.waitForResponse(r => {
+        const url = new URL(r.url());
+        return url.origin === origin && url.pathname === screen.options && r.request().method() === 'GET';
+      }, { timeout: 60000 }),
       page.goto(origin + screen.path, { waitUntil: 'domcontentloaded' }),
     ]);
     result.optionsStatus = response.status();
