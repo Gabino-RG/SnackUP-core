@@ -2463,6 +2463,134 @@
           ]
         }
       },
+      "OwnProfileResponse": {
+        "properties": {
+          "academic": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProfileAcademicResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "avatarUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatarurl"
+          },
+          "businessId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Businessid"
+          },
+          "createdAt": {
+            "title": "Createdat",
+            "type": "string"
+          },
+          "displayName": {
+            "title": "Displayname",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "emailVerified": {
+            "title": "Emailverified",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "institutionalVerifiedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institutionalverifiedat"
+          },
+          "isActive": {
+            "title": "Isactive",
+            "type": "boolean"
+          },
+          "lastLoginAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lastloginat"
+          },
+          "numeroDeControl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Numerodecontrol"
+          },
+          "role": {
+            "enum": [
+              "ALUMNO",
+              "COCINA",
+              "ADMIN"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "updatedAt": {
+            "title": "Updatedat",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "displayName",
+          "role",
+          "businessId",
+          "numeroDeControl",
+          "avatarUrl",
+          "createdAt",
+          "lastLoginAt",
+          "updatedAt",
+          "version",
+          "isActive",
+          "emailVerified",
+          "institutionalVerifiedAt"
+        ],
+        "title": "OwnProfileResponse",
+        "type": "object"
+      },
       "Pagination": {
         "properties": {
           "limit": {
@@ -3199,6 +3327,38 @@
           "data"
         ],
         "title": "ProductReviewsResponse",
+        "type": "object"
+      },
+      "ProfileAcademicResponse": {
+        "properties": {
+          "careerName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Careername"
+          },
+          "groupName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Groupname"
+          }
+        },
+        "required": [
+          "careerName",
+          "groupName"
+        ],
+        "title": "ProfileAcademicResponse",
         "type": "object"
       },
       "ProfilePatch": {
@@ -10168,7 +10328,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AppUserResponse"
+                  "$ref": "#/components/schemas/OwnProfileResponse"
                 }
               }
             },
@@ -10243,7 +10403,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AppUserResponse"
+                  "$ref": "#/components/schemas/OwnProfileResponse"
                 }
               }
             },

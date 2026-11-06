@@ -43,6 +43,13 @@
     "loginFromStudentPortalStatus": 200,
     "profileApiMatchedRosterFields": ["institutionalId", "careerId", "groupId"]
   },
+  "ownStudentProfile": {
+    "sharedInstance": "Chromium 390 × 844, desde el inicio de sesión hasta Mi perfil con una cuenta local existente.",
+    "visibleValuesMatchedOwnCanonicalResponse": ["careerName", "groupName"],
+    "absentFromLoginStaffProfilesAndAdminList": true,
+    "schoolGroupMayBeUnassigned": true,
+    "checks": "16 pruebas de identidad y contrato sobre PostgreSQL y 2 de navegación Flutter aprobadas."
+  },
   "sharedLaptopAfterRestart": {
     "apiReady": true,
     "schedulerReady": true,

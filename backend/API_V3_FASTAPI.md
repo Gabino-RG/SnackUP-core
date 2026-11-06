@@ -84,6 +84,8 @@ En una app nativa, omitir `Origin`: login devuelve el refresh en JSON y las sigu
 
 Los JWT V3 incluyen `sub`, `role`, `sid`, `ver`, `exp`, `iss`, `aud` y `bid` para Cocina. Los permisos se verifican también contra el estado vigente de la cuenta, sesión, padrón y negocio; no basta con confiar en un rol antiguo del token. Las escrituras revalidan el acceso después de los bloqueos relevantes.
 
+En `GET /api/v1/users/me`, el perfil del propio alumno incluye `academic.careerName` y `academic.groupName` cuando hay un registro activo que coincide con su correo y matrícula. Un grupo pendiente de asignación se representa con `null`. La respuesta al actualizar el avatar conserva los mismos datos del perfil. El servidor omite `academic` en perfiles de personal y en los listados administrativos.
+
 ### Administración
 
 ```http

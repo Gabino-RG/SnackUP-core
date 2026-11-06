@@ -145,6 +145,25 @@ def test_v3_logout_revokes_only_the_selected_session(client):
     assert client.get("/api/v1/users/me", headers={"Authorization": "Bearer " + second["accessToken"]}).status_code == 200
 
 
+def test_only_own_student_profile_exposes_current_roster_names(app, client, tokens):
+    with app.state.db.sessions.begin() as db:
+        other = db.scalar(select(AcademicRecord).where(AcademicRecord.institutional_id == "ID-other-student"))
+        other.group_id = None
+    path = "/api/v1/users/me"
+    own = client.get(path, headers=tokens["student"]).json()
+    assert own["academic"] == {"careerName": "Desarrollo de Software", "groupName": "DSM-1"}
+    assert client.patch(path, headers=tokens["student"], json={
+        "expectedVersion": own["version"], "avatarUrl": None
+    }).json()["academic"] == own["academic"]
+    other = client.get(path, headers=tokens["other-student"]).json()
+    assert other["academic"] == {"careerName": "Desarrollo de Software", "groupName": None}
+    for role in ("operator", "master"):
+        assert "academic" not in client.get(path, headers=tokens[role]).json()
+    listing = client.get("/api/v1/admin/users", headers=tokens["master"])
+    assert listing.status_code == 200 and listing.json()["data"]
+    assert all("academic" not in item for item in listing.json()["data"])
+
+
 @pytest.mark.postgres
 def test_v3_logout_winning_user_lock_prevents_a_waiting_profile_write(app, client):
     if app.state.db.engine.dialect.name != "postgresql":

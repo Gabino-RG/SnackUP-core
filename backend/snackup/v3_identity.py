@@ -25,7 +25,7 @@ from .db import get_db, new_id, utcnow
 from .errors import ApiError
 from .identity import (_clear_cookie, _consume_token, _cookie, _mail_token,
                        normalize_email, verification_page)
-from .identity_models import (AcademicRecord, AccessRequest, RefreshSession, User,
+from .identity_models import (AcademicGroup, AcademicRecord, AccessRequest, Career, RefreshSession, User,
                               VerificationToken, audit_event)
 from .mailer import mail_available
 
@@ -86,6 +86,15 @@ class AppUserResponse(BaseModel):
     isActive: bool
     emailVerified: bool
     institutionalVerifiedAt: str | None
+
+
+class ProfileAcademicResponse(BaseModel):
+    careerName: str | None
+    groupName: str | None
+
+
+class OwnProfileResponse(AppUserResponse):
+    academic: ProfileAcademicResponse | None = None
 
 
 class TokensResponse(BaseModel):
@@ -308,12 +317,27 @@ def logout(request: Request, data: RefreshInput | None = Body(default=None),
     return response
 
 
-@router.get("/users/me", response_model=AppUserResponse)
+def _own_profile(user: User, db: Session) -> dict:
+    result = serialize_v3_user(user, db)
+    if user.role == "user":
+        row = db.execute(select(Career.name, AcademicGroup.name).select_from(AcademicRecord)
+                         .join(Career, Career.id == AcademicRecord.career_id)
+                         .outerjoin(AcademicGroup, (AcademicGroup.id == AcademicRecord.group_id) &
+                                    (AcademicGroup.career_id == AcademicRecord.career_id))
+                         .where(AcademicRecord.email == user.email, AcademicRecord.kind == "student",
+                                AcademicRecord.is_active.is_(True),
+                                AcademicRecord.institutional_id == result["numeroDeControl"])).one_or_none()
+        if row is not None:
+            result["academic"] = {"careerName": row[0], "groupName": row[1]}
+    return result
+
+
+@router.get("/users/me", response_model=OwnProfileResponse, response_model_exclude_unset=True)
 def profile(user: User = Depends(request_user), db: Session = Depends(get_db, scope="function")):
-    return serialize_v3_user(user, db)
+    return _own_profile(user, db)
 
 
-@router.patch("/users/me", response_model=AppUserResponse,
+@router.patch("/users/me", response_model=OwnProfileResponse, response_model_exclude_unset=True,
               description="Vincula o retira un avatar propio; no cambia rol, correo ni datos del padrón.")
 def update_profile(request: Request, data: ProfilePatch, user: User = Depends(request_user),
                    db: Session = Depends(get_db, scope="function")):
@@ -327,7 +351,7 @@ def update_profile(request: Request, data: ProfilePatch, user: User = Depends(re
     user.version += 1
     user.updated_at = utcnow()
     db.flush()
-    return serialize_v3_user(user, db)
+    return _own_profile(user, db)
 
 
 @router.post("/auth/forgot-password", status_code=204)

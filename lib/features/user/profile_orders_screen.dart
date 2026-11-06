@@ -888,6 +888,9 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
 
   Widget _profile(_ProfileData data) {
     final user = data.user;
+    final academic = user['academic'] as Map<String, dynamic>?;
+    final career = academic?['careerName'] as String?;
+    final group = academic?['groupName'] as String?;
     return _list([
       Card(
         child: Padding(
@@ -914,6 +917,10 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
               Text(
                 'Número de control: ${user['numeroDeControl']?.toString() ?? 'No disponible'}',
               ),
+              if (career != null && career.isNotEmpty)
+                Text('Carrera: $career'),
+              if (group != null && group.isNotEmpty)
+                Text('Grupo: $group'),
               const SizedBox(height: 12),
               Wrap(
                 spacing: 8,

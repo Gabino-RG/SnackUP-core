@@ -20,6 +20,7 @@ class _DesignApi extends StudentApi {
     'email': 'design@example.edu',
     'role': 'ALUMNO',
     'numeroDeControl': 'DEMO-001',
+    'academic': {'careerName': 'Desarrollo de Software', 'groupName': 'DSM-1'},
     'emailVerified': true,
   };
   @override
@@ -119,6 +120,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Mi perfil'), findsOneWidget);
       expect(find.textContaining('DEMO-001'), findsOneWidget);
+      expect(find.text('Carrera: Desarrollo de Software'), findsOneWidget);
+      expect(find.text('Grupo: DSM-1'), findsOneWidget);
       await tester.tap(find.text('Pedidos'));
       await tester.pumpAndSettle();
       expect(find.text('Activos'), findsOneWidget);
