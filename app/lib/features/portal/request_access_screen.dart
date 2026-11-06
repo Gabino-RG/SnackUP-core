@@ -70,7 +70,7 @@ class _RequestAccessScreenState extends State<RequestAccessScreen> {
                       ),
                       const SizedBox(height: 12),
                       const Text(
-                        'La cuenta maestra debe revisar tus datos y autorizar tu acceso. Todavía no puedes entrar a los paneles. Si ya tenías una cuenta, conserva tu contraseña anterior.',
+                        'Si recibes el correo de SnackUP, ábrelo y pulsa «Confirmar correo». Podrás entrar cuando la cuenta maestra autorice tu acceso. Si ya tenías una cuenta, conserva tu contraseña anterior.',
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 24),

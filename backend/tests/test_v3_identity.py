@@ -43,7 +43,11 @@ def test_v3_registration_requires_roster_and_email_before_any_session(app, clien
     pending = client.post("/api/v1/auth/login", json={"email": body["email"], "password": PASSWORD})
     assert pending.status_code == 403 and pending.json()["error"]["code"] == "EMAIL_NOT_VERIFIED"
     raw = mail_token(app)
-    assert client.post("/api/v1/auth/verify-email", json={"token": raw}, headers=ORIGIN).status_code == 204
+    app.state.settings.password_reset_frontend_path = "/paneles/"
+    app.state.settings.student_password_reset_frontend_path = "/"
+    confirmation = client.post("/api/v1/auth/verify-email", json={"token": raw}, headers=ORIGIN)
+    assert confirmation.status_code == 204
+    assert confirmation.headers["X-SnackUP-Login-Path"] == "/"
     result = client.post("/api/v1/auth/login", json={"email": body["email"], "password": PASSWORD}).json()
     assert result["user"]["role"] == "ALUMNO"
     assert result["user"]["displayName"] == "Nombre del padrón"
@@ -64,7 +68,8 @@ def test_v3_registration_rejects_role_and_mismatched_control_without_account(app
         assert db.scalar(select(User).where(User.email == body["email"])) is None
 
 
-def test_v3_pending_staff_collision_recovers_only_after_email_proof(app, client, password_hash):
+@pytest.mark.parametrize("verify_prefix", ["/api/v1", "/api/legacy/v1"])
+def test_pending_staff_collision_recovers_only_after_email_proof(app, client, password_hash, verify_prefix):
     body = new_student(app)
     body["password"] = "Owner recovered password 123!"
     with app.state.db.sessions.begin() as db:
@@ -81,7 +86,7 @@ def test_v3_pending_staff_collision_recovers_only_after_email_proof(app, client,
         assert user.role == "pending" and user.password_hash == password_hash and not user.email_verified
         token = db.scalar(select(VerificationToken).where(VerificationToken.user_id == user.id))
         assert body["password"] not in str(token.registration_data)
-    assert client.post("/api/v1/auth/verify-email", json={"token": mail_token(app)}, headers=ORIGIN).status_code == 204
+    assert client.post(verify_prefix + "/auth/verify-email", json={"token": mail_token(app)}, headers=ORIGIN).status_code == 204
     with app.state.db.sessions() as db:
         user = db.get(User, "collision")
         assert user.role == "user" and user.is_active and user.email_verified and not user.is_master
@@ -93,6 +98,31 @@ def test_v3_pending_staff_collision_recovers_only_after_email_proof(app, client,
     assert login.status_code == 200 and login.json()["user"]["role"] == "ALUMNO"
     assert client.post("/api/v1/auth/register", json={**body, "password": "Another fake password123!"}).status_code == 202
     assert client.post("/api/v1/auth/login", json={"email": body["email"], "password": body["password"]}).status_code == 200
+
+
+@pytest.mark.parametrize(("resend_prefix", "verify_prefix"), [
+    ("/api/v1", "/api/legacy/v1"),
+    ("/api/legacy/v1", "/api/v1"),
+])
+def test_student_proof_survives_cross_api_resend_and_rechecks_current_roster(app, client, resend_prefix, verify_prefix):
+    body = new_student(app)
+    assert client.post("/api/v1/auth/register", json=body).status_code == 202
+    original = mail_token(app)
+    assert client.post(resend_prefix + "/auth/resend-verification", json={"email": body["email"]},
+                       headers=ORIGIN).status_code == 202
+    current = mail_token(app)
+    verify = verify_prefix + "/auth/verify-email"
+    assert client.post(verify, headers=ORIGIN, json={"token": original}).status_code == 422
+    with app.state.db.sessions.begin() as db:
+        assert db.scalar(select(VerificationToken).where(VerificationToken.used_at.is_not(None))).registration_data is None
+        db.execute(update(AcademicRecord).where(AcademicRecord.email == body["email"]).values(is_active=False))
+    denied = client.post(verify, headers=ORIGIN, json={"token": current})
+    assert denied.status_code == 403 and denied.json()["error"]["code"] == "ACCESS_REVOKED"
+    with app.state.db.sessions.begin() as db:
+        assert not db.scalar(select(User.email_verified).where(User.email == body["email"]))
+        db.execute(update(AcademicRecord).where(AcademicRecord.email == body["email"]).values(is_active=True))
+    assert client.post(verify, headers=ORIGIN, json={"token": current}).status_code == 204
+    assert client.post(verify, headers=ORIGIN, json={"token": current}).status_code == 422
 
 
 def test_v3_browser_cookie_and_native_token_have_distinct_contracts(app, client):

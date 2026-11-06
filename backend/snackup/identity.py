@@ -18,11 +18,11 @@ from sqlalchemy.orm import Session
 from .auth import (JWT_AUDIENCE, JWT_ISSUER, PASSWORDS, REFRESH_COOKIE, as_utc,
                    current_user, ensure_account, hash_password, password_matches,
                    require_origin, revoke_user_sessions, token_hash)
-from .common import iso, validate_body
+from .common import iso, require, validate_body
 from .db import get_db, new_id, utcnow
 from .errors import ApiError
 from .identity_models import (AcademicGroup, AcademicRecord, AccessRequest, Career,
-                              RefreshSession, User, VerificationToken)
+                              RefreshSession, User, VerificationToken, audit_event)
 from .mailer import mail_available, send_mail
 from .push_models import Device
 
@@ -116,7 +116,7 @@ def _mail_token(db: Session, user: User, settings, purpose: str, mailer=None, re
     # Issuing a new email also invalidates all previous tokens for this purpose.
     db.execute(update(VerificationToken).where(VerificationToken.user_id == user.id,
                                                VerificationToken.purpose == purpose,
-                                               VerificationToken.used_at.is_(None)).values(used_at=now))
+                                               VerificationToken.used_at.is_(None)).values(used_at=now, registration_data=None))
     db.add(VerificationToken(user_id=user.id, email=user.email, purpose=purpose,
                              token_hash=token_hash(raw), expires_at=now + timedelta(minutes=30),
                              registration_data=registration_data))
@@ -140,6 +140,66 @@ def _mail_token(db: Session, user: User, settings, purpose: str, mailer=None, re
 def queue_verification(db: Session, user: User, settings, mailer=None) -> None:
     """Create a one-use token and deliver it. Caller owns commit/rollback."""
     _mail_token(db, user, settings, "verify", mailer)
+
+
+def resend_email_verification(db: Session, user: User, settings, mailer=None) -> None:
+    previous = db.scalar(select(VerificationToken)
+                         .where(VerificationToken.user_id == user.id, VerificationToken.purpose == "verify",
+                                VerificationToken.used_at.is_(None))
+                         .order_by(VerificationToken.created_at.desc()).limit(1))
+    pending_data = previous.registration_data if previous else None
+    _mail_token(db, user, settings, "verify", mailer, registration_data=pending_data)
+
+
+def student_roster_record(db, settings, email, control):
+    domains = {x.strip().lower() for x in settings.student_email_domains.split(",") if x.strip()}
+    require(bool(domains), 503, "INSTITUTION_NOT_CONFIGURED", "Falta configurar los dominios institucionales.")
+    record = db.scalar(select(AcademicRecord).where(AcademicRecord.email == email)
+                       .execution_options(populate_existing=True))
+    if (email.rsplit("@", 1)[1] not in domains or record is None or record.kind != "student"
+            or not record.is_active or record.institutional_id != control):
+        return None
+    return record
+
+
+def confirm_verification_token(db: Session, settings, raw: str) -> Response:
+    token, user = _consume_token(db, raw, "verify")
+    metadata = token.registration_data
+    if metadata and metadata.get("kind") == "student_registration":
+        record = student_roster_record(db, settings, user.email, metadata["numeroDeControl"])
+        require(record is not None and record.id == metadata.get("recordId"), 403, "ACCESS_REVOKED",
+                "El padrón institucional no autoriza el acceso.")
+        if user.role == "pending":
+            require(not user.email_verified and not user.is_active and "passwordHash" in metadata,
+                    409, "ACCOUNT_STATE_CHANGED", "La cuenta cambió. Inicia el registro nuevamente.")
+            user.password_hash = metadata["passwordHash"]
+            user.role, user.business_id, user.is_master = "user", None, False
+            user.is_active, user.approval_status = True, "approved"
+            access = db.scalar(select(AccessRequest).where(AccessRequest.user_id == user.id).with_for_update()
+                               .execution_options(populate_existing=True))
+            if access is not None and access.approval_status == "pending":
+                access.approval_status = "rejected"
+                access.note = "Sustituida por alta de alumno tras verificar propiedad del correo."
+                access.decided_at = utcnow()
+                access.version += 1
+            revoke_user_sessions(db, user)
+            audit_event(db, user.id, "student.pending_registration_recovered", "user", user.id)
+        require(user.role == "user", 409, "ACCOUNT_STATE_CHANGED", "La cuenta cambió.")
+        user.numero_de_control = record.institutional_id
+        user.display_name = record.display_name
+        user.institutional_verified_at = utcnow()
+    user.email_verified = True
+    user.version += 1
+    access = db.scalar(select(AccessRequest).where(AccessRequest.user_id == user.id).with_for_update()
+                       .execution_options(populate_existing=True))
+    if access is not None:
+        access.email_verified = True
+        access.version += 1
+    token.registration_data = None  # Remove the transient credential hash after use.
+    return Response(status_code=204, headers={
+        "X-SnackUP-Login-Path": settings.password_reset_path_for(user.role),
+        "Cache-Control": "no-store",
+    })
 
 
 @router.get("/auth/options")
@@ -307,7 +367,7 @@ def resend_verification(request: Request, data: dict = Body(...), db: Session = 
         raise ApiError(503, "EMAIL_UNAVAILABLE", "El envío de correo aún no está configurado.")
     user = db.scalar(select(User).where(User.email == email).with_for_update())
     if user is not None and not user.email_verified and user.approval_status != "rejected":
-        queue_verification(db, user, settings, getattr(request.app.state, "mailer", None))
+        resend_email_verification(db, user, settings, getattr(request.app.state, "mailer", None))
     return {"status": "received"}
 
 
@@ -346,16 +406,7 @@ def verify_email(request: Request, data: dict = Body(...), db: Session = Depends
     require_origin(request)
     if set(data) != {"token"}:
         raise ApiError(422, "INVALID_INPUT", "Se requiere un token de verificación.")
-    _, user = _consume_token(db, data["token"], "verify")
-    user.email_verified = True
-    user.version += 1
-    # The shared identity lock order is User -> token/request/roster children.
-    access_request = db.scalar(select(AccessRequest).where(AccessRequest.user_id == user.id).with_for_update()
-                               .execution_options(populate_existing=True))
-    if access_request is not None:
-        access_request.email_verified = True
-        access_request.version += 1
-    return Response(status_code=204)
+    return confirm_verification_token(db, request.app.state.settings, data["token"])
 
 
 @router.get("/auth/google/start")
@@ -369,13 +420,16 @@ def verification_page():
     document = """<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Confirmar correo · SnackUP</title><body><main><h1>Confirma tu correo de SnackUP</h1>
 <p>Al confirmar, acreditas que este correo te pertenece. Los accesos administrativos requieren autorización adicional.</p>
-<button id="confirm" type="button">Confirmar correo</button><p id="message" role="status"></p><a href="/">Volver a SnackUP</a></main>
+<button id="confirm" type="button">Confirmar correo</button><p id="message" role="status"></p><a id="return" href="/">Volver a SnackUP</a></main>
 <script nonce="__NONCE__">const token=new URLSearchParams(location.hash.slice(1)).get('token');history.replaceState(null,'',location.pathname);
 const button=document.getElementById('confirm'),message=document.getElementById('message');
 if(!token){button.disabled=true;message.textContent='Abre el enlace que recibiste por correo.';}
 button.addEventListener('click',async()=>{button.disabled=true;message.textContent='Confirmando…';try{
 const response=await fetch(location.pathname,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token})});
-if(response.ok){message.textContent='Correo confirmado. Ya puedes volver a SnackUP. Si solicitaste acceso al personal, espera la autorización.';}
+if(response.ok){
+const destination=new URL(response.headers.get('X-SnackUP-Login-Path')||'/',location.origin);
+if(destination.origin===location.origin){document.getElementById('return').href=destination.href;}
+message.textContent='Correo confirmado. Ya puedes volver a SnackUP. Si solicitaste acceso al personal, espera la autorización.';}
 else{const data=await response.json();message.textContent=data.error?.message||'No se pudo confirmar el correo.';button.disabled=false;}
 }catch{message.textContent='No se pudo contactar al servidor. Intenta nuevamente.';button.disabled=false;}});</script></body></html>""".replace("__NONCE__", nonce)
     return HTMLResponse(document, headers={"Cache-Control": "no-store", "Referrer-Policy": "no-referrer",

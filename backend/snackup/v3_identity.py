@@ -24,9 +24,9 @@ from .common import iso, require, version_check
 from .db import get_db, new_id, utcnow
 from .errors import ApiError
 from .identity import (_clear_cookie, _consume_token, _cookie, _mail_token,
-                       normalize_email, verification_page)
-from .identity_models import (AcademicGroup, AcademicRecord, AccessRequest, Career, RefreshSession, User,
-                              VerificationToken, audit_event)
+                       confirm_verification_token, normalize_email, resend_email_verification,
+                       student_roster_record, verification_page)
+from .identity_models import AcademicGroup, AcademicRecord, Career, RefreshSession, User, audit_event
 from .mailer import mail_available
 
 router = APIRouter(tags=["V3 · Identidad"])
@@ -194,17 +194,6 @@ def _issue_v3_session(db: Session, user: User, request: Request, response: Respo
     return tokens
 
 
-def _student_record(db, settings, email, control):
-    domains = {x.strip().lower() for x in settings.student_email_domains.split(",") if x.strip()}
-    require(bool(domains), 503, "INSTITUTION_NOT_CONFIGURED", "Falta configurar los dominios institucionales.")
-    record = db.scalar(select(AcademicRecord).where(AcademicRecord.email == email)
-                       .execution_options(populate_existing=True))
-    if (email.rsplit("@", 1)[1] not in domains or record is None or record.kind != "student"
-            or not record.is_active or record.institutional_id != control):
-        return None
-    return record
-
-
 @router.get("/auth/options", response_model=OptionsResponse)
 def options(request: Request):
     return {"passwordLogin": True, "selfRegistration": mail_available(request.app.state.settings), "googleEnabled": False}
@@ -222,7 +211,7 @@ def register(request: Request, data: RegisterInput, db: Session = Depends(get_db
     # Serialize with account changes/verification before reading the roster.
     user = db.scalar(select(User).where(User.email == email).with_for_update()
                      .execution_options(populate_existing=True))
-    record = _student_record(db, settings, email, data.numeroDeControl.strip())
+    record = student_roster_record(db, settings, email, data.numeroDeControl.strip())
     if record is None:
         return {"status": "received"}
     recoverable = user is not None and user.role == "pending" and not user.email_verified and not user.is_active
@@ -389,52 +378,19 @@ def resend(request: Request, data: EmailInput, db: Session = Depends(get_db, sco
     require(mail_available(settings), 503, "EMAIL_UNAVAILABLE", "El envío de correo aún no está configurado.")
     user = db.scalar(select(User).where(User.email == normalize_email(data.email)).with_for_update())
     if user is not None and not user.email_verified and user.approval_status != "rejected":
-        previous = db.scalar(select(VerificationToken).where(VerificationToken.user_id == user.id,
-                              VerificationToken.purpose == "verify", VerificationToken.used_at.is_(None))
-                              .order_by(VerificationToken.created_at.desc()).limit(1))
-        pending_data = previous.registration_data if previous else None
-        _mail_token(db, user, settings, "verify", getattr(request.app.state, "mailer", None),
-                    registration_data=pending_data)
+        resend_email_verification(db, user, settings, getattr(request.app.state, "mailer", None))
     return {"status": "received"}
 
 
-@router.post("/auth/verify-email", status_code=204)
+@router.post("/auth/verify-email", status_code=204, responses={
+    204: {"headers": {"X-SnackUP-Login-Path": {
+        "description": "Ruta local del portal correspondiente a la cuenta confirmada.",
+        "schema": {"type": "string"},
+    }}}
+})
 def verify_email(request: Request, data: VerifyInput, db: Session = Depends(get_db, scope="function")):
     _is_web(request)
-    token, user = _consume_token(db, data.token, "verify")
-    metadata = token.registration_data
-    if metadata and metadata.get("kind") == "student_registration":
-        record = _student_record(db, request.app.state.settings, user.email, metadata["numeroDeControl"])
-        require(record is not None and record.id == metadata.get("recordId"), 403, "ACCESS_REVOKED",
-                "El padrón institucional no autoriza el acceso.")
-        if user.role == "pending":
-            require(not user.email_verified and not user.is_active and "passwordHash" in metadata,
-                    409, "ACCOUNT_STATE_CHANGED", "La cuenta cambió. Inicia el registro nuevamente.")
-            user.password_hash = metadata["passwordHash"]
-            user.role, user.business_id, user.is_master = "user", None, False
-            user.is_active, user.approval_status = True, "approved"
-            access = db.scalar(select(AccessRequest).where(AccessRequest.user_id == user.id).with_for_update()
-                               .execution_options(populate_existing=True))
-            if access is not None and access.approval_status == "pending":
-                access.approval_status = "rejected"
-                access.note = "Sustituida por alta de alumno tras verificar propiedad del correo."
-                access.decided_at = utcnow()
-                access.version += 1
-            revoke_user_sessions(db, user)
-            audit_event(db, user.id, "student.pending_registration_recovered", "user", user.id)
-        require(user.role == "user", 409, "ACCOUNT_STATE_CHANGED", "La cuenta cambió.")
-        user.numero_de_control = record.institutional_id
-        user.display_name = record.display_name
-        user.institutional_verified_at = utcnow()
-    user.email_verified = True
-    user.version += 1
-    access = db.scalar(select(AccessRequest).where(AccessRequest.user_id == user.id).with_for_update()
-                       .execution_options(populate_existing=True))
-    if access is not None:
-        access.email_verified = True
-        access.version += 1
-    token.registration_data = None  # Remove the transient credential hash after use.
-    return Response(status_code=204)
+    return confirm_verification_token(db, request.app.state.settings, data.token)
 
 
 @router.get("/auth/verify-email", response_class=HTMLResponse, include_in_schema=False)

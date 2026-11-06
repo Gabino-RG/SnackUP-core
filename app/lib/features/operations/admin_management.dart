@@ -193,7 +193,7 @@ class _AdminManagementState extends State<AdminManagement> {
           title: user == null ? 'Crear cuenta' : 'Editar cuenta',
           notice: self
               ? 'Tu rol y estado se conservan al editar tu propia cuenta.'
-              : 'Crea un acceso para un local o para administración. Los administradores deben usar ${_configuration!.adminEmailDomains.map((d) => '@$d').join(', ')}. Cada local conserva su propia cuenta.',
+              : 'La persona debe confirmar su correo al crear la cuenta o cambiar de dirección. Cada local conserva su propia cuenta. Para Administración, utiliza un correo de ${_configuration!.adminEmailDomains.map((d) => '@$d').join(', ')}.',
           fields: [
             const RecordField('displayName', 'Nombre', maxLength: 100),
             const RecordField('email', 'Correo electrónico', maxLength: 160),

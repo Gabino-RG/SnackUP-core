@@ -50,6 +50,42 @@
     "schoolGroupMayBeUnassigned": true,
     "checks": "16 pruebas de identidad y contrato sobre PostgreSQL y 2 de navegación Flutter aprobadas."
   },
+  "staffAccountsFromBrowser": {
+    "environment": "Segunda restauración desechable en PostgreSQL. Se liberaron dos locales de la copia. Chromium utilizó las pantallas compiladas y los tres correos llegaron al receptor SMTP local mediante STARTTLS y TLS 1.3.",
+    "createdFromAdministration": {
+      "createdWithKitchenRoleAndAssignedVenue": 201,
+      "loginBeforeConfirmingMail": "403 EMAIL_NOT_VERIFIED",
+      "confirmFromInbox": 204,
+      "confirmationLinkReplay": 422,
+      "returnLinkOpened": "/paneles/",
+      "loginAndAssignedKitchenVisible": 200,
+      "ownOrders": 200,
+      "otherVenueOrders": 403,
+      "adminUsers": 403
+    },
+    "selfRegistrationApproved": {
+      "submitted": 202,
+      "loginBeforeConfirmation": "403 ACCESS_PENDING",
+      "confirmFromInbox": 204,
+      "loginAfterConfirmationBeforeApproval": "403 ACCESS_PENDING",
+      "decisionFromMasterAccount": 200,
+      "loginAndAssignedKitchenVisible": 200,
+      "ownOrders": 200,
+      "otherVenueOrders": 403,
+      "adminUsers": 403
+    },
+    "selfRegistrationRejected": {
+      "submitted": 202,
+      "confirmFromInbox": 204,
+      "rejectionFromMasterAccount": 200,
+      "loginAfterRejection": "403 ACCESS_REJECTED"
+    },
+    "crossVersionRegression": {
+      "before": "En PostgreSQL, 3 de 4 casos cruzados fallaron. La confirmación o el reenvío históricos permitían confirmar una baja académica. La confirmación histórica dejaba pendiente una cuenta de personal que debía convertirse en alumno.",
+      "after": "Las dos API comparten el consumo del enlace y conservan los datos de la verificación al reenviar. Se comprobó que las bajas se rechazan, que los enlaces son de un solo uso y que una cuenta recuperada de alumno no obtiene permisos del personal. Pasaron los cuatro casos y las 61 pruebas de identidad y contrato."
+    },
+    "cleanup": "Base temporal eliminada y receptor SMTP detenido. La base compartida mantuvo sus 14 pedidos y el último siguió pendiente con el número 13."
+  },
   "sharedLaptopAfterRestart": {
     "apiReady": true,
     "schedulerReady": true,

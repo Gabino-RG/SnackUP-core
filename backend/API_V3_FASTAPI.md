@@ -86,6 +86,8 @@ Los JWT V3 incluyen `sub`, `role`, `sid`, `ver`, `exp`, `iss`, `aud` y `bid` par
 
 En `GET /api/v1/users/me`, el perfil del propio alumno incluye `academic.careerName` y `academic.groupName` cuando hay un registro activo que coincide con su correo y matrícula. Un grupo pendiente de asignación se representa con `null`. La respuesta al actualizar el avatar conserva los mismos datos del perfil. El servidor omite `academic` en perfiles de personal y en los listados administrativos.
 
+Al confirmar un correo, `POST /api/v1/auth/verify-email` devuelve 204 y el encabezado `X-SnackUP-Login-Path`. La página de confirmación lo utiliza para volver al acceso correspondiente. El reenvío conserva la comprobación pendiente incluso si se solicita desde la API histórica. El autorregistro del personal requiere que la cuenta maestra revise la solicitud después de confirmar el correo. [Pruebas de confirmación y autorización](../docs/qa-correo-2026-11-06.json)
+
 ### Administración
 
 ```http

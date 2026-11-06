@@ -129,7 +129,10 @@ def test_staff_registration_never_grants_role_and_duplicate_preserves_password(i
     body = staff_body()
     assert env.client.post("/api/legacy/v1/auth/register", json=body).status_code == 202
     verify = last_token(env)
-    assert env.client.post("/api/legacy/v1/auth/verify-email", json={"token": verify}).status_code == 204
+    env.settings.password_reset_frontend_path = "/paneles/"
+    confirmation = env.client.post("/api/legacy/v1/auth/verify-email", json={"token": verify})
+    assert confirmation.status_code == 204
+    assert confirmation.headers["X-SnackUP-Login-Path"] == "/paneles/"
     response = env.client.post("/api/legacy/v1/auth/login", json={"email": body["email"], "password": PASSWORD})
     assert response.status_code == 403 and response.json()["error"]["code"] == "ACCESS_PENDING"
     assert REFRESH_COOKIE not in env.client.cookies

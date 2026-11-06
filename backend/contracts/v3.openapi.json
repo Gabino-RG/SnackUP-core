@@ -6572,7 +6572,15 @@
         },
         "responses": {
           "204": {
-            "description": "Successful Response"
+            "description": "Successful Response",
+            "headers": {
+              "X-SnackUP-Login-Path": {
+                "description": "Ruta local del portal correspondiente a la cuenta confirmada.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "422": {
             "content": {
