@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 from concurrent.futures import ThreadPoolExecutor
 import json
 import logging
+import mimetypes
 from pathlib import Path
 import time
 from urllib.parse import urlsplit
@@ -23,6 +24,9 @@ from .limits import RateLimiter
 from .realtime import EventBridge
 
 log = logging.getLogger('snackup.http')
+
+# Both upload APIs store WebP. Some Windows MIME registries omit this extension.
+mimetypes.add_type('image/webp', '.webp')
 
 
 def create_app(settings: Settings | None = None):
