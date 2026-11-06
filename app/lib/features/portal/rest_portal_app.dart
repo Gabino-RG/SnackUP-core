@@ -49,6 +49,7 @@ class _RestPortalAppState extends State<RestPortalApp> {
   void initState() {
     super.initState();
     _appearance.restore();
+    if (widget.resetToken != null) clearResetLocation();
     if (widget.restoreOnStart && widget.resetToken == null)
       widget.session.restore();
   }
@@ -112,7 +113,6 @@ class _RestPortalAppState extends State<RestPortalApp> {
           api: session.api,
           token: widget.resetToken!,
           onDone: () {
-            clearResetLocation();
             setState(() => _resetFinished = true);
             session.restore();
           },
@@ -542,7 +542,9 @@ class _PortalLoginState extends State<_PortalLogin> {
                           child: const Text('Reintentar cierre de sesión'),
                         ),
                       TextButton(
-                        onPressed: _busy ? null : _recover,
+                        onPressed: _busy || _accessOptions?.selfRegistration != true
+                            ? null
+                            : _recover,
                         child: Text(
                           _recovering
                               ? 'Enviando solicitud…'
@@ -566,6 +568,11 @@ class _PortalLoginState extends State<_PortalLogin> {
                               },
                         child: const Text('Crea tu cuenta'),
                       ),
+                      if (_accessOptions?.selfRegistration == false)
+                        const Text(
+                          'El registro y la recuperación por correo aún no están habilitados en este servidor.',
+                          textAlign: TextAlign.center,
+                        ),
                       const SizedBox(height: 8),
                       OutlinedButton(
                         onPressed:

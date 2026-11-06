@@ -219,6 +219,19 @@ def test_password_reset_frontend_path_settings(frontend_path, expected):
     assert settings.password_reset_frontend_path == expected
 
 
+def test_student_reset_links_use_the_student_portal_only_when_configured():
+    options = dict(_env_file=None, secret_key='test-only-' + 's' * 48,
+                   password_reset_frontend_path='/paneles/')
+    shared = Settings(**options)
+    integrated = Settings(**options, student_password_reset_frontend_path='/')
+    assert shared.password_reset_path_for('user') == '/paneles/'
+    assert integrated.password_reset_path_for('user') == '/'
+    for role in ('business', 'admin', 'pending'):
+        assert integrated.password_reset_path_for(role) == '/paneles/'
+    with pytest.raises(ValidationError, match='SNACKUP_STUDENT_PASSWORD_RESET_FRONTEND_PATH'):
+        Settings(**options, student_password_reset_frontend_path='//unexpected.test/')
+
+
 @pytest.mark.parametrize('frontend_path', [
     '', 'paneles/', '//evil.test/', '/paneles//other/', 'https://evil.test/',
     '/https://evil.test/', '/paneles?next=evil', '/paneles#fragment',

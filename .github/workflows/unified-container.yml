@@ -66,6 +66,7 @@ jobs:
           env = config['services']['app']['environment']
           assert env['SNACKUP_REDIS_URL'].startswith('unix:///')
           assert env['SNACKUP_PASSWORD_RESET_FRONTEND_PATH'] == '/paneles/'
+          assert env['SNACKUP_STUDENT_PASSWORD_RESET_FRONTEND_PATH'] == '/'
           assert env['SNACKUP_PUBLIC_ORIGIN'] == 'https://snackup.example.test'
           PY
       - name: Build the server and both REST clients from this checkout

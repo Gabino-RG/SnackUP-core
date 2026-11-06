@@ -62,6 +62,7 @@ def local_settings(config):
         return Settings(_env_file=None, environment='development',
             database_url=config['database_url'], secret_key=config['secret_key'],
             public_origin=ORIGIN, password_reset_frontend_path='/paneles/',
+            student_password_reset_frontend_path='/',
             media_dir=Path(config['media_dir']), web_dir=None, redis_url='',
             institution_id='integration-institution', institution_name='SnackUP · prueba integrada',
             cafeteria_id='integration-cafeteria', cafeteria_name='Cafetería de prueba',

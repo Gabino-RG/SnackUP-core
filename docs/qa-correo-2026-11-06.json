@@ -1,0 +1,61 @@
+{
+  "date": "2026-11-06",
+  "environment": {
+    "scope": "Dos compilaciones Flutter reales, FastAPI y copia desechable de PostgreSQL de la laptop.",
+    "smtp": "Receptor de correo en loopback sin retransmisión. STARTTLS obligatorio, certificado verificado por el cliente con una CA exclusiva del proceso de prueba.",
+    "inboxes": "Buzones de QA en la laptop. No se envió correo a un proveedor externo.",
+    "roster": "Registros de QA ya existentes en la copia restaurada. Para probar el alta se liberó una identidad únicamente en la copia."
+  },
+  "smtpChecks": {
+    "negotiated": "TLSv1.3",
+    "defaultTrustRejectedTestCertificate": true,
+    "envelopeWithoutTlsStatus": 530,
+    "outsideRecipientRejectedBeforeMessageData": 550
+  },
+  "passwordRecoveryFromBrowser": [
+    {
+      "role": "ALUMNO",
+      "requestStatus": 204,
+      "mailReceivedLocally": true,
+      "linkOpenedPortal": "/",
+      "tokenRemovedFromAddress": true,
+      "changeStatus": 204,
+      "reusedLinkStatus": 422,
+      "loginWithNewPasswordStatus": 200
+    },
+    {
+      "role": "COCINA",
+      "requestStatus": 204,
+      "mailReceivedLocally": true,
+      "linkOpenedPortal": "/paneles/",
+      "tokenRemovedFromAddress": true,
+      "changeStatus": 204,
+      "reusedLinkStatus": 422,
+      "loginWithNewPasswordStatus": 200
+    }
+  ],
+  "studentRegistration": {
+    "submittedFromBrowserStatus": 202,
+    "mailReceivedLocally": true,
+    "loginBeforeEmailConfirmationStatus": 403,
+    "confirmedFromBrowserStatus": 204,
+    "confirmationReplayStatus": 422,
+    "loginFromStudentPortalStatus": 200,
+    "profileApiMatchedRosterFields": ["institutionalId", "careerId", "groupId"]
+  },
+  "sharedLaptopAfterRestart": {
+    "apiReady": true,
+    "schedulerReady": true,
+    "studentAndStaffFrontends": [200, 200],
+    "orderCountBeforeAndAfter": [14, 14],
+    "latestOrderBeforeAndAfter": {"number": 13, "status": "pending", "version": 1},
+    "postgresqlStartTimeUnchanged": true,
+    "demoSeedRun": false,
+    "smtpConfigured": false,
+    "selfRegistration": false,
+    "panelRegistrationAndRecoveryDisabledInBrowser": true,
+    "resetMarkerSentByBrowserAtPageOpen": false
+  },
+  "cleanup": "Se cerraron el receptor SMTP y el servidor temporal. Se eliminó la base restaurada.",
+  "pending": "Un buzón universitario autorizado, los datos del SMTP institucional y un padrón oficial son necesarios para verificar el envío y el alta institucionales."
+}

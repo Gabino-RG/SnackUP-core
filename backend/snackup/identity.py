@@ -128,7 +128,7 @@ def _mail_token(db: Session, user: User, settings, purpose: str, mailer=None, re
                    + link + "\n\nEl enlace vence en 30 minutos y se usa una sola vez. "
                    "Verificar el correo no otorga permisos administrativos. Si no solicitaste el registro, ignora este mensaje.")
     else:
-        link = (settings.public_origin.rstrip("/") + settings.password_reset_frontend_path
+        link = (settings.public_origin.rstrip("/") + settings.password_reset_path_for(user.role)
                 + "#/reset-password?token=" + quote(raw))
         subject = "Restablece tu contraseña de SnackUP"
         content = ("Solicitaste restablecer la contraseña de SnackUP:\n\n" + link +

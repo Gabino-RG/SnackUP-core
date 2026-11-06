@@ -41,6 +41,8 @@ docker compose -f compose.unified.yaml ps
 `SNACKUP_DOMAIN` es solo el dominio, sin esquema ni ruta. Las contraseñas generadas
 en hexadecimal evitan caracteres reservados dentro de `DATABASE_URL`. Configurar
 dominios institucionales reales y SMTP; el ejemplo no acredita acceso al padrón.
+En esta entrega, el enlace de recuperación de contraseña abre Alumnos en `/`
+para una cuenta de alumno y abre `/paneles/` para Cocina y Administración.
 Los campos de secretos vacíos bloquean Compose, no generan credenciales por defecto.
 
 El arranque espera PostgreSQL, abre Redis por un socket Unix privado, aplica

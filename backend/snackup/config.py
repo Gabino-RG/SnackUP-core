@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Literal
 from urllib.parse import urlsplit
 
-from pydantic import field_validator, model_validator
+from pydantic import ValidationInfo, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     secret_key: str
     public_origin: str = 'http://localhost:8000'
     password_reset_frontend_path: str = '/'
+    student_password_reset_frontend_path: str | None = None
     admin_email_domains: str = ''
     student_email_domains: str = ''
     institution_id: str = 'institution'
@@ -72,16 +73,23 @@ class Settings(BaseSettings):
         # Compose supplies empty variables for providers that are not enabled.
         return None if value == '' else value
 
-    @field_validator('password_reset_frontend_path')
+    @field_validator('password_reset_frontend_path', 'student_password_reset_frontend_path')
     @classmethod
-    def local_password_reset_frontend_path(cls, value: str) -> str:
+    def local_password_reset_frontend_path(cls, value: str | None, info: ValidationInfo) -> str | None:
         # Restrict to unencoded local segments so browsers cannot reinterpret
         # a scheme, authority, separator or dot segment in the emailed link.
+        if value is None:
+            return None
         if (not re.fullmatch(r'/[A-Za-z0-9._~/-]*', value) or '//' in value
                 or any(segment in {'.', '..'} for segment in value.split('/'))):
-            raise ValueError('SNACKUP_PASSWORD_RESET_FRONTEND_PATH must be a local root-relative path without '
+            raise ValueError(f'SNACKUP_{info.field_name.upper()} must be a local root-relative path without '
                              'schemes, queries, fragments, backslashes, encoding or dot segments.')
         return value.rstrip('/') + '/'
+
+    def password_reset_path_for(self, role: str) -> str:
+        if role == 'user' and self.student_password_reset_frontend_path:
+            return self.student_password_reset_frontend_path
+        return self.password_reset_frontend_path
 
     @model_validator(mode='after')
     def validate_configuration(self):
