@@ -685,7 +685,7 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
             ),
             const Divider(),
             Text(
-              '${money(order['total'])} · ${order['paymentMethod']}',
+              '${money(order['total'])} · ${paymentLabel(order['paymentMethod'])}',
               style: AppText.body.copyWith(fontWeight: FontWeight.w700),
             ),
             if (order['cancelNotes'] != null &&

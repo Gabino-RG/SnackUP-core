@@ -1,0 +1,14 @@
+# Use together with ../../compose.unified.yaml after provisioning the deployment key.
+services:
+  app:
+    environment:
+      SNACKUP_PUSH_ENABLED: 'true'
+      SNACKUP_PUSH_WEBPUSH_PRIVATE_KEY_FILE: /run/secrets/snackup-vapid.pem
+      SNACKUP_PUSH_WEBPUSH_SUBJECT: ${SNACKUP_PUSH_WEBPUSH_SUBJECT:?Configure an HTTPS or mailto contact}
+    volumes:
+      - type: bind
+        source: ${SNACKUP_WEBPUSH_KEY_ON_HOST:?Set an absolute private PEM path outside the checkout}
+        target: /run/secrets/snackup-vapid.pem
+        read_only: true
+        bind:
+          create_host_path: false

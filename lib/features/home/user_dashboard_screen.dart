@@ -83,25 +83,23 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
         scrolledUnderElevation: 0,
         title: Row(
           children: [
-            Tooltip(
-              message: 'Inicio',
-              child: InkWell(
-                onTap: () => setState(() => _selectedIndex = 0),
-                borderRadius: BorderRadius.circular(15),
-                child: Container(
-                  width: orders ? 44 : 38,
-                  height: orders ? 44 : 38,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    borderRadius: BorderRadius.circular(orders ? 15 : 12),
-                  ),
-                  child: Icon(
-                    orders
-                        ? Icons.restaurant_menu_rounded
-                        : Icons.lunch_dining_rounded,
-                    color: AppColors.accent,
-                    size: orders ? 28 : 25,
-                  ),
+            IconButton(
+              tooltip: 'Volver al inicio',
+              onPressed: () => setState(() => _selectedIndex = 0),
+              padding: EdgeInsets.zero,
+              icon: Container(
+                width: orders ? 44 : 38,
+                height: orders ? 44 : 38,
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(orders ? 15 : 12),
+                ),
+                child: Icon(
+                  orders
+                      ? Icons.restaurant_menu_rounded
+                      : Icons.lunch_dining_rounded,
+                  color: AppColors.accent,
+                  size: orders ? 28 : 25,
                 ),
               ),
             ),

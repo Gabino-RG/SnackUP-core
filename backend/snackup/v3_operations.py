@@ -29,6 +29,7 @@ from .operations import (
 )
 from .review_models import ProductReview
 from .v3_media import owned_media
+from .v32_models import MealVoucherUse
 
 router = APIRouter()
 DB = Annotated[Session, Depends(get_db, scope="function")]
@@ -70,6 +71,11 @@ class OrderItemInput(StrictInput):
     notes: str = Field(default="", max_length=500)
 
 
+class ReviewedCartRow(StrictInput):
+    id: OpaqueId
+    updatedAt: AwareDatetime = Field(strict=False)
+
+
 class CreateOrderInput(StrictInput):
     businessId: OpaqueId
     items: list[OrderItemInput] = Field(min_length=1, max_length=50)
@@ -77,6 +83,8 @@ class CreateOrderInput(StrictInput):
     expectedTotal: Money = Field(ge=0, le=50_000_000,
                                 json_schema_extra={"minimum": 0, "maximum": 50_000_000, "multipleOf": 0.01})
     scheduledPickupTime: AwareDatetime | None = Field(default=None, strict=False)
+    cartRows: list[ReviewedCartRow] | None = Field(default=None, min_length=1, max_length=50,
+        description="Filas revisadas del carrito. Se comprueban y retiran en la misma transacción que el pedido.")
 
     @model_validator(mode="before")
     @classmethod
@@ -263,6 +271,7 @@ class OrderResponse(ResponseModel):
     total: float
     paymentMethod: Literal["Efectivo", "Transferencia", "Tarjeta", "ValeComida"]
     paymentStatus: str
+    voucherState: Literal["reserved", "consumed", "released"] | None = None
     status: Literal["pending", "accepted", "preparing", "ready", "completed", "cancelled"]
     createdAt: datetime
     updatedAt: datetime
@@ -379,7 +388,7 @@ def product_dto(p: Product, db: Session, *, aggregates=None) -> dict:
             "version": p.version, "createdAt": iso(p.created_at), "updatedAt": iso(p.updated_at), **aggregate}
 
 
-def order_dto(o: Order, db: Session, actor: User, *, rated_ids=None) -> dict:
+def order_dto(o: Order, db: Session, actor: User, *, rated_ids=None, voucher_states=None) -> dict:
     owner = actor.role == "user" and o.student_id == actor.id
     if rated_ids is None:
         is_rated = db.scalar(select(Review.id).where(Review.order_id == o.id)) is not None
@@ -405,6 +414,9 @@ def order_dto(o: Order, db: Session, actor: User, *, rated_ids=None) -> dict:
         result[key] = iso(getattr(o, attr))
     if owner:
         result.update(userId=o.student_id, customerNumeroDeControl=o.customer_institutional_id, pickupCode=o.pickup_code)
+    if o.payment_method == "ValeComida":
+        result["voucherState"] = (voucher_states.get(o.id) if voucher_states is not None else
+                                 db.scalar(select(MealVoucherUse.state).where(MealVoucherUse.order_id == o.id)))
     return result
 
 
@@ -417,7 +429,11 @@ def _page_rows(db, statement, page, limit):
 def _orders_page(db, statement, actor, page, limit):
     rows, pagination = _page_rows(db, statement, page, limit)
     rated = set(db.scalars(select(Review.order_id).where(Review.order_id.in_([row.id for row in rows])))) if rows else set()
-    return {"data": [order_dto(row, db, actor, rated_ids=rated) for row in rows], "pagination": pagination}
+    voucher_ids = [row.id for row in rows if row.payment_method == "ValeComida"]
+    vouchers = dict(db.execute(select(MealVoucherUse.order_id, MealVoucherUse.state)
+                               .where(MealVoucherUse.order_id.in_(voucher_ids))).all()) if voucher_ids else {}
+    return {"data": [order_dto(row, db, actor, rated_ids=rated, voucher_states=vouchers)
+                     for row in rows], "pagination": pagination}
 
 
 def _catalog_business(db: Session, actor: User, id: str) -> Business:

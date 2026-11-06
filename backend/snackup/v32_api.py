@@ -219,10 +219,12 @@ def patch_cart(id: str, body: CartPatch, request: Request, db: DB, actor: Studen
 
 
 @router.delete('/users/me/cart/items/{id}', status_code=204, operation_id='v32DeleteCartItem')
-def delete_cart(id: str, request: Request, db: DB, actor: Student):
+def delete_cart(id: str, request: Request, db: DB, actor: Student, expectedUpdatedAt: AwareDatetime | None = None):
     actor = lock_student(db, request, actor)
     row = db.scalar(select(CartItem).where(CartItem.id == id, CartItem.user_id == actor.id))
     require(row is not None, 404, 'CART_ITEM_NOT_FOUND')
+    require(expectedUpdatedAt is None or as_utc(row.updated_at) == as_utc(expectedUpdatedAt),
+            409, 'CART_CHANGED', 'El producto del carrito cambió en otra pantalla.')
     db.delete(row)
     return Response(status_code=204)
 

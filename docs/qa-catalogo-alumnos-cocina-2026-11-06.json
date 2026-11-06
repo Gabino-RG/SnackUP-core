@@ -1,0 +1,47 @@
+{
+  "fechaCampus": "2026-11-06",
+  "origen": "http://localhost:18080",
+  "metodo": "Chromium con sesiones aisladas de Alumnos y Cocina. Las acciones se ejecutaron en las dos interfaces Flutter contra el backend local y PostgreSQL. Para el cruce de búsquedas se retuvo una petición del navegador y se dejó continuar intacta después de la más reciente. Las consultas SQL de corroboración fueron de solo lectura.",
+  "pantallas": ["1366 × 900", "390 × 844"],
+  "comprobaciones": [
+    {
+      "caso": "Búsqueda de productos en Alumnos",
+      "observado": "En 390 × 844, la búsqueda de torta respondió antes que la búsqueda anterior de agua. Ambas respuestas fueron HTTP 200. Tras recibir la de agua continuaron visibles los resultados de torta. Limpiar volvió a la indicación inicial. La interfaz limitó una entrada de 165 caracteres a 160 enviados al servidor y mostró que no había coincidencias."
+    },
+    {
+      "caso": "Detalle de producto",
+      "observado": "Desde la búsqueda se abrió QA · Torta. La ficha mostró las existencias, el precio, la cantidad y el botón del carrito. Abrir sus reseñas mostró el estado sin opiniones para ese producto. En la compilación final, Torta de pollo mostró 1 reseña y 1 opinión, y Agua de jamaica mostró 2 reseñas y 2 opiniones en ambos tamaños."
+    },
+    {
+      "caso": "Navegación accesible de Alumnos",
+      "observado": "En la versión final se abrieron pedidos activos, historial, favoritos y perfil en ambos tamaños. El nuevo botón Volver al inicio se identificó por nombre y rol desde Mis pedidos y regresó a la pantalla principal. Desde Perfil se entró al historial de consumo y se regresó con Atrás."
+    },
+    {
+      "caso": "Navegación de Cocina",
+      "observado": "Se abrieron Cocina, Productos, Historial, Resumen, Mi local y Operación en ambos tamaños. En Operación se recorrieron Chat, Horarios, Pedidos y vales y Estadísticas. El móvil presentó los controles de la cola en pestañas y mostró los estados de pedido por separado."
+    },
+    {
+      "caso": "Segunda página del catálogo",
+      "observado": "En QA · Local de pruebas se añadieron 18 productos no disponibles desde el editor. Con 21 productos en total, la segunda página de PC incluyó el producto del lote de prueba. En móvil se volvió a la página 1 y después a la 2. Se retiraron desde el editor solo los 18 productos de este ensayo. El panel volvió a mostrar 3 productos y PostgreSQL confirmó que los 18 quedaron archivados."
+    },
+    {
+      "caso": "Validación del editor móvil y selector de archivos",
+      "observado": "Guardar un formulario vacío marcó los campos obligatorios. Un precio de 10000.01 y existencias de 1000001 produjeron los dos errores de límites esperados. El selector rechazó un archivo de texto existente y explicó los formatos permitidos. Aceptó un PNG del proyecto, mostró su vista previa y permitió quitarlo. Volver desde la confirmación conservó el editor abierto. Descartar regresó al catálogo."
+    },
+    {
+      "caso": "Cerrar una conversación entre sus participantes",
+      "observado": "Se creó el pedido 1 del local QA desde Alumnos. Solo para ese pedido y local se abrió una conversación nueva. Un mensaje escrito por el alumno fue visible en Cocina. Después de abrir la confirmación de borrado y pulsar Volver, el árbol accesible de Alumnos continuó leyendo el contenido. Confirmar el cierre mostró el aviso de eliminación. Cocina quedó sin conversaciones activas y una lectura de PostgreSQL confirmó cero conversaciones en ese local. El alumno canceló el pedido de este ensayo desde sus pedidos y PostgreSQL confirmó cancelled."
+    },
+    {
+      "caso": "Paginación dentro de una conversación",
+      "observado": "Desde el historial del pedido cancelado se abrió una conversación nueva y vacía en el local QA. Alumnos envió 51 mensajes y Cocina envió 50, todos identificados como ensayo de paginación. Se comprobó para cada envío que el backend devolviera HTTP 201 con el texto escrito desde su pantalla. Con los 101 mensajes, Alumnos mostró la página 2, retrocedió a la 1 y avanzó de nuevo a la 2, donde se leyó el último mensaje. Al actualizar Cocina, el navegador también recibió la segunda página del servidor con HTTP 200. Se cerró solo esta conversación desde Alumnos y Cocina volvió a mostrar su lista vacía.",
+      "limite": "La lista del local pagina por conversaciones independientes. Superar sus 20 conversaciones requiere más parejas distintas de alumno y local. Este recorrido prueba las páginas de mensajes dentro de una pareja."
+    },
+    {
+      "caso": "Caducidad real después de 24 horas",
+      "observado": "Al arrancar el entorno, la conversación anterior del 4 de noviembre tenía un comprobante de cierre a las 12:28 del 6 de noviembre, 38.3 horas después del último evento de mensaje del mismo chat. PostgreSQL confirmó la ausencia de ese chat y sus mensajes. Se conservó el reloj y se contrastaron los registros existentes.",
+      "limite": "Este arranque acredita la limpieza de un chat que ya había vencido. La laptop estaba apagada durante parte del intervalo y la prueba no cronometró una ejecución en el segundo exacto del vencimiento."
+    }
+  ],
+  "alcance": "Este registro cubre las acciones indicadas. Una prueba con 21 productos no demuestra la paginación de todas las demás listas. Los tamaños móviles corresponden al navegador de escritorio y las identidades son cuentas QA locales."
+}

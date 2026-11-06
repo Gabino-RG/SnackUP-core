@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
-"""Validate a reviewed Flutter web build for same-origin canonical REST.
+"""Validate a reviewed Flutter web build for same-origin REST.
 
-The unified container still passes --mode firebase for the historical students
-build stage. That value is accepted only as a compatibility spelling; it does
-not enable Firebase and both spellings validate the current REST application.
+Historical callers may pass --mode firebase. Both spellings validate REST.
 """
 from __future__ import annotations
 
@@ -33,6 +31,7 @@ def validate(directory: Path, base: str) -> None:
     if not base.startswith("/") or not base.endswith("/") or "//" in base or ".." in base.split("/"):
         raise ValueError("--base must be a local absolute directory path ending in '/'.")
     required = ["index.html", "flutter_bootstrap.js", "flutter.js", "main.dart.js", "assets/FontManifest.json", "assets/AssetManifest.bin"]
+    required.extend(["snackup-push.js", "snackup-push-sw.js"])
     for name in required:
         path = directory / name
         if not path.is_file() or path.stat().st_size == 0:
@@ -43,6 +42,8 @@ def validate(directory: Path, base: str) -> None:
         raise ValueError(f"Expected one base href={base!r}; found {index.bases!r}.")
     if not any(source.split("?")[0] in {"flutter_bootstrap.js", base + "flutter_bootstrap.js"} for source in index.scripts):
         raise ValueError("index.html does not load the local Flutter bootstrap.")
+    if "snackup-push.js" not in index.scripts:
+        raise ValueError("index.html does not load the local browser push bridge.")
     if any(re.match(r"(?:https?:)?//", source) for source in index.scripts):
         raise ValueError("index.html contains a remote bootstrap script.")
     bootstrap = (directory / "flutter_bootstrap.js").read_text(encoding="utf-8")
@@ -58,8 +59,9 @@ def validate(directory: Path, base: str) -> None:
     if re.search(r'["\']?serviceWorkerVersion["\']?\s*:\s*["\'][^"\']+["\']', bootstrap):
         raise ValueError("A generated service worker is enabled; rebuild with --pwa-strategy=none.")
     program = (directory / "main.dart.js").read_text(encoding="utf-8")
-    if "/api/v1" not in program:
-        raise ValueError("The compiled client does not contain the canonical REST API root.")
+    api_root = "/api/legacy/v1/" if base == "/paneles/" else "/api/v1"
+    if api_root not in program:
+        raise ValueError(f"The compiled client does not contain its expected REST API root {api_root}.")
 
 
 def main() -> int:
@@ -73,7 +75,7 @@ def main() -> int:
     except (OSError, ValueError) as error:
         print(f"Web build validation failed: {error}", file=sys.stderr)
         return 1
-    print(json.dumps({"build": str(args.directory), "base": args.base, "transport": "canonical REST", "status": "passed"}))
+    print(json.dumps({"build": str(args.directory), "base": args.base, "transport": "REST", "status": "passed"}))
     return 0
 
 

@@ -8,6 +8,14 @@ String money(Object? value) {
   return '\$${(amount ?? 0).toStringAsFixed(2)}';
 }
 
+String paymentLabel(Object? value) => switch (value) {
+  'ValeComida' => 'Vale de comida',
+  'cash' || 'Efectivo' => 'Efectivo',
+  'Tarjeta' => 'Tarjeta',
+  'Transferencia' => 'Transferencia',
+  _ => 'Sin especificar',
+};
+
 String dateText(Object? value) {
   final date = DateTime.tryParse('$value')?.toLocal();
   if (date == null) return 'Sin fecha';

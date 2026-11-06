@@ -24,6 +24,33 @@ class _SpecialOrdersScreenState extends State<SpecialOrdersScreen> {
   int _page = 1, _pages = 0, _timeout = 30;
   DateTime _day = campusNow();
   String? _error, _notice;
+  Timer? _deadlineTimer;
+
+  @override
+  void dispose() {
+    _deadlineTimer?.cancel();
+    super.dispose();
+  }
+
+  void _scheduleDeadline() {
+    _deadlineTimer?.cancel();
+    final now = DateTime.now().toUtc();
+    final upcoming =
+        _orders
+            .where((o) => o['status'] == 'ready')
+            .map(deadline)
+            .whereType<DateTime>()
+            .where((d) => d.isAfter(now))
+            .toList()
+          ..sort();
+    if (upcoming.isEmpty) return;
+    _deadlineTimer = Timer(upcoming.first.difference(now), () {
+      if (!mounted) return;
+      setState(() {});
+      _scheduleDeadline();
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -56,7 +83,10 @@ class _SpecialOrdersScreenState extends State<SpecialOrdersScreen> {
           _orders = [];
         });
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() => _busy = false);
+        _scheduleDeadline();
+      }
     }
   }
 
@@ -162,7 +192,10 @@ class _SpecialOrdersScreenState extends State<SpecialOrdersScreen> {
       ),
       if (_busy) const LinearProgressIndicator(),
       if (_error != null)
-        Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+        Text(
+          _error!,
+          style: TextStyle(color: Theme.of(context).colorScheme.error),
+        ),
       if (_notice != null) Text(_notice!),
       if (!_busy && _orders.isEmpty)
         const Text('No hay pedidos en esta página.'),
@@ -196,13 +229,18 @@ class _SpecialOrdersScreenState extends State<SpecialOrdersScreen> {
                   ),
                 ],
                 if (order['status'] == 'cancelled' &&
-                    order['paymentMethod'] == 'ValeComida')
+                    order['paymentMethod'] == 'ValeComida' &&
+                    order['voucherState'] == 'reserved')
                   TextButton(
                     onPressed: _busy ? null : () => _act(order, true),
                     child: const Text(
                       'Confirmar que el vale no se canjeó y liberarlo',
                     ),
                   ),
+                if (order['voucherState'] == 'released')
+                  const Text('Vale liberado.'),
+                if (order['voucherState'] == 'consumed')
+                  const Text('Vale canjeado.'),
               ],
             ),
           ),
@@ -323,7 +361,10 @@ class _DetailedStatsScreenState extends State<DetailedStatsScreen> {
       ),
       if (_busy) const LinearProgressIndicator(),
       if (_error != null)
-        Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+        Text(
+          _error!,
+          style: TextStyle(color: Theme.of(context).colorScheme.error),
+        ),
       if (_data != null) ...[
         Text(
           'Entregados: ${_data!['completed']} · Cancelados: ${_data!['cancelled']} · Ventas: ${money(cents(_data!['totalSold']))}',
@@ -1002,7 +1043,10 @@ class _KitchenChatScreenState extends State<KitchenChatScreen>
               'Los mensajes se actualizan cada 10 segundos mientras esta pantalla está abierta. Las conversaciones vencen tras 24 horas de inactividad. Para iniciar una, usa “Chat con el alumno” en Cocina. Esta conversación puede incluir mensajes de pedidos anteriores del mismo alumno.',
             ),
             if (_error != null)
-              Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+              Text(
+                _error!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
             Wrap(
               spacing: 8,
               children: [

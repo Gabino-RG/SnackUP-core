@@ -198,10 +198,11 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   void _refreshQuietly() {
-    if (mounted)
+    if (mounted) {
       setState(() {
         _future = _load();
       });
+    }
   }
 
   Future<Map<String, dynamic>?> _reviewPurchase(
@@ -212,6 +213,7 @@ class _CartScreenState extends State<CartScreen> {
   ) {
     var payment = 'Efectivo';
     var scheduled = false;
+    var submitted = false;
     TimeOfDay? time;
     String? error;
     final total = _cents(rows) / 100;
@@ -344,6 +346,7 @@ class _CartScreenState extends State<CartScreen> {
             ),
             FilledButton(
               onPressed: () {
+                if (submitted) return;
                 DateTime? pickup;
                 if (scheduled) {
                   if (time == null) {
@@ -381,9 +384,14 @@ class _CartScreenState extends State<CartScreen> {
                           b['productId'] as String,
                         ),
                       );
+                submitted = true;
                 Navigator.pop(dialogContext, <String, dynamic>{
                   'businessId': businessId,
                   'items': items,
+                  'cartRows': [
+                    for (final row in checkoutSnapshot(rows))
+                      {'id': row['id'], 'updatedAt': row['updatedAt']},
+                  ],
                   'paymentMethod': payment,
                   'expectedTotal': total,
                   if (pickup != null)
@@ -441,29 +449,6 @@ class _CartScreenState extends State<CartScreen> {
 
   Future<void> _retry(CheckoutIntent intent) async {
     if (_busyBusiness != null) return;
-    final proceed =
-        intent.confirmed ||
-        await showDialog<bool>(
-              context: context,
-              builder: (dialogContext) => AlertDialog(
-                title: const Text('Comprobar compra pendiente'),
-                content: Text(
-                  'Se consultará el mismo pedido de ${money(intent.payload['expectedTotal'])}, con pago ${intent.payload['paymentMethod']}${intent.payload['scheduledPickupTime'] == null ? '.' : ' y recogida ${dateText(intent.payload['scheduledPickupTime'])}.'} No cambies sus productos mientras se confirma.',
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(dialogContext, false),
-                    child: const Text('Volver'),
-                  ),
-                  FilledButton(
-                    onPressed: () => Navigator.pop(dialogContext, true),
-                    child: const Text('Comprobar'),
-                  ),
-                ],
-              ),
-            ) ==
-            true;
-    if (!proceed || !mounted) return;
     setState(() {
       _busyBusiness = intent.businessId;
       _operationError = null;
@@ -471,6 +456,28 @@ class _CartScreenState extends State<CartScreen> {
     });
     final ledger = _ledger;
     try {
+      if (!intent.confirmed) {
+        final proceed = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Comprobar compra pendiente'),
+            content: Text(
+              'Se volverá a confirmar tu compra de ${money(intent.payload['expectedTotal'])}, con pago ${paymentLabel(intent.payload['paymentMethod'])}${intent.payload['scheduledPickupTime'] == null ? '.' : ' y recogida ${dateText(intent.payload['scheduledPickupTime'])}.'} Si ya se registró, verás el mismo pedido.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('Volver'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: const Text('Comprobar'),
+              ),
+            ],
+          ),
+        );
+        if (proceed != true || !mounted) return;
+      }
       _requireOwner();
       await _sendIntent(ledger, intent);
     } catch (error) {
@@ -498,12 +505,23 @@ class _CartScreenState extends State<CartScreen> {
       }
       return;
     }
+    if (error is CheckoutPendingException) {
+      if (mounted) {
+        setState(() {
+          _operationError = null;
+          _notice =
+              'Ya hay una compra pendiente para este local. Comprueba el intento guardado antes de hacer otro pedido.';
+        });
+      }
+      return;
+    }
     if (intent != null && !intent.confirmed && _definitiveRejection(error)) {
       await ledger.forget(intent);
       if (mounted) {
         setState(
-          () => _notice =
-              'El pedido no se creó. Revisa los precios, existencias y horario actualizados antes de confirmar otra vez.',
+          () => _notice = error is ApiException && error.code == 'CART_CHANGED'
+              ? 'El carrito cambió en otra pantalla. Revisa tus pedidos antes de confirmar otra compra.'
+              : 'El pedido no se creó. Revisa los precios, existencias y horario actualizados antes de confirmar otra vez.',
         );
       }
     } else if (intent != null && mounted) {
@@ -531,33 +549,43 @@ class _CartScreenState extends State<CartScreen> {
     });
     if (api.user?['id'] != account || !mounted) return;
     try {
-      // Cart mutations are separate from the order transaction. Never replay POST
-      // on cleanup failure, and preserve any row edited after the reviewed snapshot.
-      final current = await api.getAll('/users/me/cart/items');
-      final removable = unchangedPurchasedRows(confirmed, current);
-      final changed = confirmed.cartSnapshot
-          .where(
-            (old) =>
-                current.any((row) => row['id'] == old['id']) &&
-                !removable.contains(old['id']),
-          )
-          .length;
-      for (final id in removable) {
-        _requireOwner();
-        // Recheck immediately before each delete, including changes from other tabs.
-        final fresh = await api.getAll('/users/me/cart/items');
-        if (!unchangedPurchasedRows(confirmed, fresh).contains(id)) continue;
-        _requireOwner();
-        try {
-          await api.request('DELETE', '/users/me/cart/items/$id');
-        } on ApiException catch (error) {
-          if (error.status != 404) rethrow;
+      var changed = false;
+      if (!confirmed.payload.containsKey('cartRows')) {
+        // Only previously saved purchases need a separate cart cleanup. The
+        // server checks the saved timestamp while it holds the cart write lock.
+        final current = await api.getAll('/users/me/cart/items');
+        final removable = unchangedPurchasedRows(confirmed, current).toSet();
+        final currentIds = current.map((row) => row['id']).toSet();
+        for (final row in confirmed.cartSnapshot) {
+          if (!removable.contains(row['id'])) {
+            changed = changed || currentIds.contains(row['id']);
+            continue;
+          }
+          _requireOwner();
+          final timestamp = row['updatedAt'];
+          if (timestamp is! String || timestamp.isEmpty) {
+            changed = true;
+            continue;
+          }
+          try {
+            await api.request(
+              'DELETE',
+              '/users/me/cart/items/${row['id']}',
+              query: {'expectedUpdatedAt': timestamp},
+            );
+          } on ApiException catch (error) {
+            if (error.code == 'CART_CHANGED') {
+              changed = true;
+            } else if (error.status != 404) {
+              rethrow;
+            }
+          }
         }
       }
       await ledger.forget(confirmed);
       if (!mounted || api.user?['id'] != account) return;
       _message(
-        changed > 0
+        changed
             ? 'Pedido confirmado. Conservamos los productos que cambiaste para que los revises.'
             : 'Pedido confirmado. Puedes consultar su estado y código de recogida.',
       );
@@ -598,7 +626,7 @@ class _CartScreenState extends State<CartScreen> {
           const SizedBox(height: 8),
           Text(
             intent.confirmed
-                ? 'La compra ya se registró. Revisa los productos del carrito antes de retirarlos.'
+                ? 'La compra ya se registró. Continúa para consultar el pedido.'
                 : 'La respuesta de esta compra no está confirmada. Comprueba el mismo intento antes de hacer otro pedido en este negocio.',
           ),
           const SizedBox(height: 12),
@@ -610,9 +638,7 @@ class _CartScreenState extends State<CartScreen> {
                 onPressed: _busyBusiness == null ? () => _retry(intent) : null,
                 icon: const Icon(Icons.sync),
                 label: Text(
-                  intent.confirmed
-                      ? 'Retirar productos comprados'
-                      : 'Comprobar compra',
+                  intent.confirmed ? 'Continuar' : 'Comprobar compra',
                 ),
               ),
               if (intent.orderId != null)

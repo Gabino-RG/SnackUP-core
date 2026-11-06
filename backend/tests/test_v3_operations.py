@@ -15,6 +15,28 @@ pytestmark = pytest.mark.v3
 PASSWORD = 'Test-Only-Password-392!'
 
 
+def test_reviewed_cart_hash_preserves_existing_idempotency_and_normalizes_row_dates():
+    from snackup.operations import _order_request_hash
+    from snackup.v3_operations import CreateOrderInput
+
+    def digest(**fields):
+        body = CreateOrderInput.model_validate({
+            'businessId': 'cafeteria', 'expectedTotal': 35.50,
+            'items': [{'productId': 'torta', 'quantity': 1, 'notes': ' sin salsa '}], **fields,
+        })
+        return _order_request_hash(body, canonical=True)
+
+    # The persisted hash for this request before cartRows existed.
+    historic_hash = '4ad09e082ed67d7c7c282e113eaf3eb3d2c668b5aae8bb70bc0b8fc2d2658055'
+    assert digest() == digest(cartRows=None) == historic_hash
+    earlier = {'id': 'cart-1', 'updatedAt': '2026-11-06T12:00:00Z'}
+    later = {'id': 'cart-2', 'updatedAt': '2026-11-06T12:10:00Z'}
+    reviewed = digest(cartRows=[earlier, later])
+    assert reviewed != historic_hash
+    assert digest(cartRows=[later, {**earlier, 'updatedAt': '2026-11-06T06:00:00-06:00'}]) == reviewed
+    assert digest(cartRows=[{**earlier, 'updatedAt': '2026-11-06T12:00:01Z'}, later]) != reviewed
+
+
 @pytest.fixture
 def headers(client):
     result = {}

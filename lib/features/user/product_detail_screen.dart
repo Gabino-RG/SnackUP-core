@@ -290,6 +290,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   Widget _details() {
     final product = _product!;
     final stock = product['stock'];
+    final reviewCount = product['totalReviews'] as num? ?? 0;
     final description = product['description']?.toString() ?? '';
     return RefreshIndicator(
       onRefresh: _load,
@@ -359,7 +360,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         tilePadding: EdgeInsets.zero,
                         title: const Text('Reseñas del platillo'),
                         subtitle: Text(
-                          '${product['averageRating'] ?? 0}/5 · ${product['totalReviews'] ?? 0} reseñas',
+                          '${product['averageRating'] ?? 0}/5 · $reviewCount ${reviewCount == 1 ? 'reseña' : 'reseñas'}',
                         ),
                         children: [
                           PublicProductReviews(productId: widget.productId),
@@ -385,9 +386,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                               '${product['calories']} kcal',
                               style: AppText.notes,
                             ),
-                          if ((product['totalReviews'] as num? ?? 0) > 0)
+                          if (reviewCount > 0)
                             Text(
-                              '★ ${(product['averageRating'] as num).toStringAsFixed(1)} · ${product['totalReviews']} opiniones',
+                              '★ ${(product['averageRating'] as num).toStringAsFixed(1)} · $reviewCount ${reviewCount == 1 ? 'opinión' : 'opiniones'}',
                               style: AppText.notes,
                             ),
                         ],

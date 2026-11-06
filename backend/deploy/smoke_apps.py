@@ -92,7 +92,7 @@ class Smoke:
         require("no-cache" in headers.get("Cache-Control", ""), f"{path}: expected revalidation")
         return body
 
-    def frontend(self, base, pwa=False):
+    def frontend(self, base, pwa=False, integrated=False):
         headers, body = self.get(base)
         require(headers.get_content_type() == "text/html", f"{base}: expected HTML")
         metadata = IndexMetadata()
@@ -115,7 +115,11 @@ class Smoke:
                 and ".." not in icon and "?" not in icon and "#" not in icon,
                 f"{base}: unexpected icon path")
         self.asset(base + icon, {"image/png", "image/webp", "image/svg+xml"})
-        if pwa:
+        if integrated:
+            require("snackup-push.js" in metadata.scripts, f"{base}: missing browser push bridge")
+            self.asset(base + "snackup-push.js", js_types)
+            self.asset(base + "snackup-push-sw.js", js_types)
+        elif pwa:
             require(manifest.get("scope") == "." and manifest.get("id") == ".",
                     "Student manifest has incorrect scope/id")
             self.asset(base + "pwa.js", js_types)
@@ -157,13 +161,13 @@ class Smoke:
                     "Unexpected Socket.IO authentication rejection")
             item.update(ok=True, engineIO="open", socketIO="UNAUTHENTICATED")
 
-    def run(self):
+    def run(self, integrated=False):
         require(self.json("/health/live") == {"status": "ok"}, "Liveness failed")
         require(self.json("/health/ready") == {"status": "ready"}, "Database/Redis readiness failed")
-        self.frontend("/", pwa=True)
+        self.frontend("/", pwa=True, integrated=integrated)
         headers, _ = self.get("/paneles", 308)
         require(headers.get("Location") == "/paneles/", "Panel prefix redirect is incorrect")
-        self.frontend("/paneles/")
+        self.frontend("/paneles/", integrated=integrated)
         canonical = self.json("/api/v1/auth/options")
         legacy = self.json("/api/legacy/v1/auth/options")
         expected_options = {"passwordLogin": True, "selfRegistration": False, "googleEnabled": False}
@@ -182,6 +186,7 @@ def main():
     parser.add_argument("--host", default="snackup.example.test")
     parser.add_argument("--origin", default="https://snackup.example.test")
     parser.add_argument("--report", required=True, type=Path)
+    parser.add_argument("--integrated", action="store_true", help="Check the current two REST builds and their push assets.")
     args = parser.parse_args()
     endpoint = urlsplit(args.url)
     if (endpoint.scheme != "http" or endpoint.hostname not in {"127.0.0.1", "localhost", "::1"}
@@ -195,7 +200,7 @@ def main():
               "destination": args.url, "host": args.host, "origin": args.origin,
               "success": False, "checks": smoke.results}
     try:
-        smoke.run()
+        smoke.run(integrated=args.integrated)
         report["success"] = True
     except Exception as error:  # noqa: BLE001 - every failed check must leave its CI report.
         # No response body, cookie, socket SID, authentication packet or env dump.

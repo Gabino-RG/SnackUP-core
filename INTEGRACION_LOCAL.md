@@ -148,6 +148,36 @@ El diagnóstico muestra únicamente indicadores de configuración y disponibilid
 
 ## Alcance y pendientes de servidor
 
+La [revisión funcional del 6 de noviembre](docs/qa-integracion-2026-11-06.md) documenta los pedidos simultáneos, la recuperación tras perder una respuesta, los vales y la entrega con QR leído por la cámara de la laptop.
+
+**Android por cable, sin exponer el servidor a la red.** Con el servidor listo, conecta un solo teléfono desbloqueado por USB y aprueba la depuración en ese dispositivo. Con Android SDK Platform Tools instalado, ejecuta `./tools/open_android_local.ps1 -AdbPath RUTA_A_ADB.EXE`. Añade `-Paneles` para abrir Cocina o Administración. El túnel conserva `http://localhost:18080` como origen en Chrome; no configura HTTPS para la red ni modifica el firewall. Al terminar, desconecta el cable o ejecuta `adb -d reverse --remove tcp:18080` para retirar ese túnel. Puedes desactivar la depuración USB en el teléfono.
+
+El 6 de noviembre de 2026 se restauró una copia de PostgreSQL 17.11 en una base
+vacía de la laptop. La revisión Alembic fue `0003_v32`. Coincidieron los contenidos
+de las 30 tablas y las 347 filas de la misma instantánea. También se recuperó de
+su archivo comprimido la imagen que se había subido desde el formulario de
+producto y se verificó su SHA-256. El ensayo retiró su base temporal y dejó el
+dump, las sumas y los medios en una carpeta privada fuera del repositorio.
+Para repetirlo con PostgreSQL activo, usar el Python 3.12 del backend:
+
+```powershell
+& 'C:/Users/video/Documents/Codex/2026-10-14/h/work/SnackUP-core/backend/.venv/Scripts/python.exe' -B tools/verify_local_restore.py
+```
+
+El comando imprime la carpeta de respaldo creada para esa ejecución. La base de
+origen se lee con una instantánea de PostgreSQL y los medios se copian después.
+Durante un respaldo de operación, suspender las escrituras y cargas de archivos
+para que ambas copias correspondan al mismo corte. Acordar con TI la retención,
+el resguardo cifrado fuera del servidor y la custodia separada de los secretos.
+
+| Entrega necesaria | Cómo comprobarla en el entorno de la universidad |
+|---|---|
+| Servidor y dominio HTTPS | Construir los tres componentes desde el mismo commit siguiendo la [guía de despliegue](backend/DESPLIEGUE_CONTENEDOR_UNICO.md). Verificar `/health/ready`, el estado de los contenedores y una alerta de monitorización al detener un servicio durante mantenimiento. |
+| Teléfono físico | Abrir el dominio HTTPS en el teléfono. Desde Alumnos, hacer un pedido. En Cocina, leer su QR con la cámara. En el navegador compatible con push, activar el permiso y confirmar que se ve el aviso con la aplicación en segundo plano. |
+| SMTP y padrón oficial | Con un registro autorizado que incluya carrera y grupo, recibir el enlace de verificación, completar el alta, confirmar el perfil y recuperar la contraseña. Repetir con matrícula discrepante y comprobar el rechazo. |
+| Capacidad de 1,000 alumnos | Usar una instalación y datos autorizados para carga, registrar vCPU, RAM y configuración, y medir consultas, conexiones activas y pedidos mientras los operadores usan Cocina. Comparar los percentiles, errores, duplicados y existencias con los criterios del [protocolo de carga](backend/load/phase_c/README.md). El generador de ese protocolo reinicializa su propia base de medición y requiere una autorización separada para usar sus fixtures. |
+| Recuperación en el servidor definitivo | Restaurar base y medios en volúmenes independientes. Verificar integridad, acceso y tiempo real de recuperación, y compararlo con los objetivos acordados con TI. |
+
 La configuración para conectar SMTP está preparada, pero falta un proveedor y sus credenciales autorizadas; SMTP y el buzón de pruebas permanecen deshabilitados. El registro y la recuperación por correo no están habilitados: sus endpoints pueden responder 503 `EMAIL_UNAVAILABLE`. Para estas pruebas se usan cuentas locales existentes. El aviso de nuevo pedido de Web Push quedó comprobado con suscripción real en Edge, aceptación del pedido #9 al primer intento y confirmación del usuario de su visualización en Windows. No se ha validado entrega de correo ni de notificaciones a un teléfono físico.
 
 Esta configuración utiliza **HTTP en localhost, un solo worker y ningún Redis**. Es adecuada para comprobar integración funcional local con datos ficticios; no demuestra soporte de 1000 usuarios simultáneos, alta disponibilidad, despliegue real ni acceso seguro desde móviles por LAN. La emulación de pantalla móvil en la laptop sí permite revisar el diseño; probar un teléfono real por red requiere preparar HTTPS y el origen correspondiente, no abrir simplemente un puerto.

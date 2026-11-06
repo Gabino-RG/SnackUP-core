@@ -33,11 +33,8 @@ services:
       start_period: 30s
   app:
     build:
-      context: .
-      dockerfile: deploy/unified/Dockerfile
-      additional_contexts:
-        usuarios_source: ${SNACKUP_USERS_CONTEXT:-https://github.com/Gabino-RG/SnackUP-core.git#a00d0bf4ecdae74a89f3afbe8ec3d0758efb8884}
-        paneles_source: ${SNACKUP_PANELS_CONTEXT:-https://github.com/Gabino-RG/SnackUP-core.git#19c81fdee29600d66d9dcb1a4f109a78aeba51f6}
+      context: ..
+      dockerfile: backend/deploy/unified/Dockerfile
     image: snackup-unified:local
     restart: unless-stopped
     init: true

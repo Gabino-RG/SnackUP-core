@@ -30,6 +30,7 @@ from .db import emit_event, get_db, new_id, utcnow
 from .errors import ApiError
 from .identity_models import AcademicRecord, User
 from .operation_models import Business, IdempotencyRecord, MediaFile, Order, OrderItem, OrderTransition, Product
+from .v32_models import CartItem
 
 router = APIRouter()
 log = logging.getLogger("snackup.orders")
@@ -546,20 +547,43 @@ def _pickup_collision(error: IntegrityError) -> bool:
     return constraint == "uq_orders_v3_pickup_code" or "UNIQUE constraint failed: orders.pickup_code" in str(error.orig)
 
 
-def create_order_transaction(body, request: Request, db: Session, user: User,
-                             idempotency_key: str, *, canonical: bool = False, serializer=None) -> dict:
-    """One reservation/numbering/idempotency transaction for both API contracts."""
-    request.app.state.limiter.check("order-create", user.id, 30, 60)
+def _reviewed_cart_rows(db, user_id, items, reviewed):
+    """All cart writes already use the same per-student lock held by checkout."""
+    expected = {row.id: as_utc(row.updatedAt) for row in reviewed}
+    by_product = {item.productId: item for item in items}
+    rows = db.scalars(select(CartItem).where(CartItem.user_id == user_id, CartItem.id.in_(expected))).all()
+    matches = len(expected) == len(reviewed) == len(rows) == len(by_product) and all(
+        row.product_id in by_product and row.quantity == by_product[row.product_id].quantity
+        and row.notes == by_product[row.product_id].notes.strip() and as_utc(row.updated_at) == expected[row.id]
+        for row in rows
+    )
+    require(matches, 409, 'CART_CHANGED', 'El carrito cambió. Revisa tus pedidos y el carrito antes de confirmar.')
+    return rows
+
+
+def _order_request_hash(body, *, canonical: bool):
     payload = body.model_dump()
     if canonical:
+        # Omitted for existing app versions and already saved idempotency records.
+        payload.pop("cartRows", None)
+        if body.cartRows is not None:
+            payload["cartRows"] = sorted(
+                [{"id": row.id, "updatedAt": iso(row.updatedAt)} for row in body.cartRows], key=lambda row: row["id"])
         payload["expectedTotal"] = format(body.expectedTotal, ".2f")
         payload["items"] = sorted(
             [{**item, "notes": item.get("notes", "").strip()} for item in payload["items"]],
             key=lambda item: item["productId"],
         )
         payload["contract"] = "v3"
-    payload_hash = hashlib.sha256(json.dumps(payload, sort_keys=True, ensure_ascii=False,
-                                            separators=(",", ":"), default=str).encode()).hexdigest()
+    return hashlib.sha256(json.dumps(payload, sort_keys=True, ensure_ascii=False,
+                                    separators=(",", ":"), default=str).encode()).hexdigest()
+
+
+def create_order_transaction(body, request: Request, db: Session, user: User,
+                             idempotency_key: str, *, canonical: bool = False, serializer=None) -> dict:
+    """One reservation/numbering/idempotency transaction for both API contracts."""
+    request.app.state.limiter.check("order-create", user.id, 30, 60)
+    payload_hash = _order_request_hash(body, canonical=canonical)
     # Serializes retries by the same user even when the idempotency row does not yet exist.
     # PostgreSQL READ COMMITTED sees the first committed result after waiting on this lock.
     db.scalar(select(User).where(User.id == user.id).with_for_update(key_share=True).execution_options(populate_existing=True))
@@ -577,6 +601,9 @@ def create_order_transaction(body, request: Request, db: Session, user: User,
     require(len({item.productId for item in body.items}) == len(body.items), 400 if canonical else 422,
             "INVALID_ITEMS" if canonical else "DUPLICATE_PRODUCT",
             "Agrupa las cantidades de cada producto en un solo renglón.")
+    # A replay above can succeed after the original purchase consumed its rows.
+    # A different purchase from another stale tab must be rejected instead.
+    cart_rows = _reviewed_cart_rows(db, user.id, body.items, body.cartRows) if canonical and body.cartRows else []
     # Roster imports take this same User lock, so attribution is stable while
     # we hold it. Read it before locking the contended business/products.
     academic = db.scalar(select(AcademicRecord).where(AcademicRecord.email == user.email,
@@ -708,6 +735,8 @@ def create_order_transaction(body, request: Request, db: Session, user: User,
     result = serializer(order, db, user) if serializer else order_dict(order, db, include_pickup=True)
     db.add(IdempotencyRecord(user_id=user.id, key=idempotency_key, payload_hash=payload_hash,
                              order_id=order.id, response_json=result))
+    for row in cart_rows:
+        db.delete(row)
     db.add(OrderTransition(order_id=order.id, actor_id=user.id, from_status=None, to_status="pending", version=1,
                            action="created", actor_role="ALUMNO"))
     _order_event(db, order, created=True)

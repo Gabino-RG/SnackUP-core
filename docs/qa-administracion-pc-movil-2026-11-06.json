@@ -1,0 +1,208 @@
+{
+  "date": "2026-11-06",
+  "branch": "codex/integracion-local-completa",
+  "method": "Pantallas Flutter de Administración en Chromium contra el backend y PostgreSQL de la laptop. Interacciones de ratón y teclado en sesiones separadas.",
+  "viewports": {
+    "pc": "1440 × 900",
+    "movil": "390 × 844, emulación"
+  },
+  "observations": [
+    {
+      "id": "ADMIN-RESUMEN",
+      "viewport": "móvil",
+      "status": "passed",
+      "evidence": "Datos del servidor, promedio, distribución de estrellas, actualización manual y cambio de tema en ambos sentidos."
+    },
+    {
+      "id": "ADMIN-RESUMEN",
+      "viewport": "PC",
+      "status": "passed",
+      "evidence": "Datos del servidor, promedio, distribución de estrellas, actualización manual y cambio de tema en ambos sentidos."
+    },
+    {
+      "id": "ADMIN-FILTROS",
+      "viewport": "móvil",
+      "status": "passed",
+      "evidence": "Selección de local sin opiniones, cuatro períodos, cuatro franjas horarias, solo 0–2 estrellas y búsqueda del comentario P7. Ambos últimos filtros dejaron una opinión."
+    },
+    {
+      "id": "ADMIN-FILTROS",
+      "viewport": "PC",
+      "status": "passed",
+      "evidence": "Selección de local sin opiniones, cuatro períodos, cuatro franjas horarias, solo 0–2 estrellas y búsqueda del comentario P7. Ambos últimos filtros dejaron una opinión."
+    },
+    {
+      "id": "ADMIN-CARRERA-GRUPO",
+      "viewport": "móvil",
+      "status": "passed",
+      "evidence": "El grupo inició deshabilitado. Buscar Software permitió elegir la carrera y luego DEMO-1. Limpiar devolvió el grupo al estado inicial."
+    },
+    {
+      "id": "ADMIN-CARRERA-GRUPO",
+      "viewport": "PC",
+      "status": "passed",
+      "evidence": "El grupo inició deshabilitado. Buscar Software permitió elegir la carrera y luego DEMO-1. Limpiar devolvió el grupo al estado inicial."
+    },
+    {
+      "id": "ADMIN-DETALLE",
+      "viewport": "PC",
+      "status": "passed",
+      "evidence": "Locales → Ver opiniones abrió la lista. P7 muestra general 5, servicio 3 y alimentos 4. Se verificó historial vacío, validación del responsable y dos eventos reales (En revisión y Resuelto) en la opinión del pedido #4."
+    },
+    {
+      "id": "ADMIN-DETALLE",
+      "viewport": "móvil",
+      "status": "passed",
+      "evidence": "Locales → Ver opiniones abrió la lista. P7 muestra general 5, servicio 3 y alimentos 4. Se verificó historial vacío, validación del responsable y dos eventos reales (En revisión y Resuelto) en la opinión del pedido #4."
+    },
+    {
+      "id": "ADMIN-ATENCION-SOLICITUDES",
+      "viewport": "móvil",
+      "status": "passed",
+      "evidence": "Probados los filtros Pendiente, En revisión, Resuelto y Todos. Al actualizar solicitudes se mostraron 0 y la página 1 de 1 con ambas flechas deshabilitadas."
+    },
+    {
+      "id": "ADMIN-ATENCION-SOLICITUDES",
+      "viewport": "PC",
+      "status": "passed",
+      "evidence": "Probados los filtros Pendiente, En revisión, Resuelto y Todos. Al actualizar solicitudes se mostraron 0 y la página 1 de 1 con ambas flechas deshabilitadas."
+    },
+    {
+      "id": "ADMIN-ALTA-LOCAL",
+      "viewport": "PC y móvil",
+      "status": "passed",
+      "evidence": "PC guardó un local QA inactivo desde el formulario (HTTP 201). Móvil actualizó el listado y encontró el nuevo registro."
+    },
+    {
+      "id": "ADMIN-EDICION-LOCAL",
+      "viewport": "móvil y PC",
+      "status": "passed",
+      "evidence": "Móvil editó la descripción del local QA (PATCH 200). PC abrió el mismo local, leyó la nueva descripción y comprobó que seguía inactivo."
+    },
+    {
+      "id": "ADMIN-RECONEXION",
+      "viewport": "móvil",
+      "status": "passed",
+      "evidence": "Durante la búsqueda de cuentas se interrumpió la conexión real. La pantalla mostró Reintentar, que recuperó la lista y permitió abrir la cuenta QA."
+    },
+    {
+      "id": "ADMIN-RECONEXION",
+      "viewport": "PC",
+      "status": "passed",
+      "evidence": "Durante la búsqueda de cuentas se interrumpió la conexión real. La pantalla mostró Reintentar, que recuperó la lista y permitió abrir la cuenta QA."
+    },
+    {
+      "id": "ADMIN-CUENTAS",
+      "viewport": "móvil",
+      "status": "passed",
+      "evidence": "Búsqueda vacía y por nombre, edición maestra con rol y estado protegidos, opciones de rol/local/acceso en cocina, seguir editando y descartar. Crear cuenta valida campos obligatorios."
+    },
+    {
+      "id": "ADMIN-CUENTAS",
+      "viewport": "PC",
+      "status": "passed",
+      "evidence": "Búsqueda vacía y por nombre, edición maestra con rol y estado protegidos, opciones de rol/local/acceso en cocina, seguir editando y descartar. Crear cuenta valida campos obligatorios."
+    },
+    {
+      "id": "ADMIN-VALIDACIONES",
+      "viewport": "móvil",
+      "status": "passed",
+      "evidence": "Alta de cuenta: se verificaron los mensajes de correo inválido, contraseña demasiado corta, falta de local para Cocina y dominio institucional para Administración."
+    },
+    {
+      "id": "ADMIN-VALIDACIONES",
+      "viewport": "PC",
+      "status": "passed",
+      "evidence": "Alta de cuenta: se verificaron los mensajes de correo inválido, contraseña demasiado corta, falta de local para Cocina y dominio institucional para Administración."
+    },
+    {
+      "id": "ADMIN-CORREO",
+      "viewport": "PC",
+      "status": "passed",
+      "evidence": "El alta administrativa con campos válidos recibió HTTP 503 EMAIL_UNAVAILABLE del backend local."
+    },
+    {
+      "id": "ADMIN-DEFECTO-ALUMNO",
+      "viewport": "móvil",
+      "status": "reproduced_before_fix",
+      "evidence": "El formulario anterior ofrecía rol de personal y al guardar un alumno sin cambios exigía seleccionar un rol, aunque ya era alumno."
+    },
+    {
+      "id": "ADMIN-DEFECTO-ALUMNO",
+      "viewport": "PC",
+      "status": "reproduced_before_fix",
+      "evidence": "El formulario anterior ofrecía rol de personal y al guardar un alumno sin cambios exigía seleccionar un rol, aunque ya era alumno."
+    },
+    {
+      "id": "ADMIN-ALUMNO-CORREGIDO",
+      "viewport": "móvil",
+      "status": "passed",
+      "evidence": "Tras la recompilación se abrió Editar alumno, con nombre y acceso, conservando el rol. Guardar sin cambios volvió al listado sin emitir PATCH de cuentas."
+    },
+    {
+      "id": "ADMIN-ALUMNO-CORREGIDO",
+      "viewport": "PC",
+      "status": "passed",
+      "evidence": "Tras la recompilación se abrió Editar alumno, con nombre y acceso, conservando el rol. Guardar sin cambios volvió al listado sin emitir PATCH de cuentas."
+    },
+    {
+      "id": "ADMIN-CONCURRENCIA-LOCAL",
+      "viewport": "PC y móvil",
+      "status": "passed",
+      "evidence": "Mismo local QA abierto en ambas sesiones. PC confirmó su descripción (200). Móvil intentó guardar la revisión anterior y recibió 409 VERSION_CONFLICT, conservó el borrador, deshabilitó Guardar y recuperó la descripción de PC al actualizar."
+    },
+    {
+      "id": "ADMIN-NO-MAESTRO",
+      "viewport": "PC",
+      "status": "passed",
+      "evidence": "El administrador sin cuenta maestra consultó los indicadores y el horario de un local. Su gestión mostró solo locales, sin acceso a cuentas ni solicitudes. Cerrar sesión devolvió al acceso."
+    },
+    {
+      "id": "ADMIN-NO-MAESTRO",
+      "viewport": "móvil",
+      "status": "passed",
+      "evidence": "El administrador sin cuenta maestra consultó los indicadores y el horario de un local. Su gestión mostró solo locales, sin acceso a cuentas ni solicitudes. Cerrar sesión devolvió al acceso."
+    },
+    {
+      "id": "ADMIN-NAVEGACION",
+      "viewport": "PC",
+      "status": "passed",
+      "evidence": "Probados acceso rápido Crear cuenta y regreso, resumen, Locales, Opiniones y Atención. Resumen final sin desbordamiento horizontal del documento a 1440 × 900."
+    },
+    {
+      "id": "ADMIN-NAVEGACION",
+      "viewport": "móvil",
+      "status": "passed",
+      "evidence": "Probados acceso rápido Crear cuenta y regreso, resumen, Locales, Opiniones y Atención. Resumen final sin desbordamiento horizontal del documento a 390 × 844."
+    },
+    {
+      "id": "ADMIN-TITULO-MOVIL",
+      "viewport": "móvil",
+      "status": "passed",
+      "evidence": "El título del panel se cortaba en 390 px. Con el último build se muestra Administración junto a los botones de tema, actualización y salida."
+    },
+    {
+      "id": "ADMIN-SALIDA-MAESTRA",
+      "viewport": "PC",
+      "status": "passed",
+      "evidence": "Finalizada la sesión de la cuenta maestra desde el encabezado, el navegador volvió al acceso."
+    },
+    {
+      "id": "ADMIN-SALIDA-MAESTRA",
+      "viewport": "móvil",
+      "status": "passed",
+      "evidence": "Finalizada la sesión de la cuenta maestra desde el encabezado, el navegador volvió al acceso."
+    }
+  ],
+  "unverified": [
+    "No había solicitudes pendientes para ejecutar la autorización o el rechazo. El alta válida del personal devolvió el error previsto de correo sin configurar.",
+    "Las listas reales quedaron en una página. Cargar 200 opiniones más, Ver más casos, filtros entre varios días y más de 50 eventos de seguimiento requieren volumen e historial apropiados.",
+    "Se comprobó el formulario corregido de Alumno y el guardado sin cambios. No se alteró el nombre ni el acceso de los alumnos existentes porque el backend revoca sus sesiones y dispositivos al guardar cambios.",
+    "Las medidas móviles se probaron en un navegador de escritorio; queda la prueba física con el origen HTTPS."
+  ],
+  "effects": [
+    "Se creó desde PC el local QA entrega web 20261106, siempre inactivo, y se guardaron dos ediciones de su descripción.",
+    "El intento de alta de personal con SMTP deshabilitado devolvió 503."
+  ],
+  "pageErrors": []
+}

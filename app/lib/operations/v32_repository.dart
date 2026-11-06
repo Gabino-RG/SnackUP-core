@@ -22,6 +22,24 @@ class V32Repository {
   void clearChatDrafts() => _chatDrafts.clear();
 
   String id(String value) => Uri.encodeComponent(value);
+  Future<void> updateStudent(
+    PortalUser student, {
+    required String name,
+    required bool active,
+  }) async {
+    final changes = {
+      if (name != student.name) 'displayName': name,
+      if (active != student.isActive) 'isActive': active,
+    };
+    // Even a successful PATCH invalidates the student's sessions and devices.
+    if (changes.isEmpty) return;
+    await api.json(
+      'PATCH',
+      'admin/users/${id(student.id)}',
+      body: {...changes, 'expectedVersion': student.version},
+    );
+  }
+
   Future<Map<String, dynamic>> business(String businessId) async {
     final result = object(
       await api.json('GET', 'businesses/${id(businessId)}'),

@@ -209,6 +209,12 @@ class _CartApi extends _OrdersApi {
       posts.add(Map<String, dynamic>.from(body!));
       keys.add(headers!['Idempotency-Key']!);
       if (posts.length == 1) {
+        // The backend committed the order and its cart rows before the reply
+        // disappeared. Replaying this key must recover the purchase.
+        final reviewed = (body['cartRows'] as List)
+            .map((row) => row['id'])
+            .toSet();
+        cart.removeWhere((row) => reviewed.contains(row['id']));
         throw const ApiException(
           0,
           'REQUEST_TIMEOUT',
@@ -216,10 +222,6 @@ class _CartApi extends _OrdersApi {
         );
       }
       return order;
-    }
-    if (method == 'DELETE' && path.startsWith('/users/me/cart/items/')) {
-      cart.removeWhere((row) => path.endsWith('/${row['id']}'));
-      return null;
     }
     throw StateError('Unexpected request: $method $path');
   }
@@ -625,8 +627,13 @@ void main() {
       await tester.tap(find.text('Confirmar pedido'));
       await tester.pumpAndSettle();
       expect(api.posts, hasLength(1));
-      expect(api.posts.first, _payload());
-      expect(api.cart, hasLength(2));
+      expect(api.posts.first, {
+        ..._payload(),
+        'cartRows': [
+          {'id': 'cart-1', 'updatedAt': _rows().first['updatedAt']},
+        ],
+      });
+      expect(api.cart.map((row) => row['id']), ['cart-2']);
       expect(find.text('Compra pendiente de comprobar'), findsOneWidget);
 
       // A fresh widget tree models a browser reload: only persisted intent remains.
@@ -634,7 +641,10 @@ void main() {
       await tester.pumpWidget(_host(api, const CartScreen()));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Comprobar compra'));
-      await tester.pumpAndSettle();
+      // Checkout stays locked while the confirmation dialog is open.
+      // Its progress indicator continues animating beneath the dialog.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
       await tester.tap(find.text('Comprobar'));
       await tester.pumpAndSettle();
       expect(api.posts, hasLength(2));

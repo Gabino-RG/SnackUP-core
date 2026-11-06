@@ -257,7 +257,9 @@ class _ShowQrScreenState extends State<ShowQrScreen> {
                           style: AppText.h3,
                         ),
                         const SizedBox(height: 8),
-                        Text('Forma de pago: ${order['paymentMethod']}'),
+                        Text(
+                          'Forma de pago: ${paymentLabel(order['paymentMethod'])}',
+                        ),
                         Text(
                           order['paymentStatus'] == 'pay_at_pickup'
                               ? 'Pago al recoger'

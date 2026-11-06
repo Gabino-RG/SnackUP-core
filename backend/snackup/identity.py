@@ -24,6 +24,7 @@ from .errors import ApiError
 from .identity_models import (AcademicGroup, AcademicRecord, AccessRequest, Career,
                               RefreshSession, User, VerificationToken)
 from .mailer import mail_available, send_mail
+from .push_models import Device
 
 router = APIRouter()
 EMAIL_PATTERN = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
@@ -83,14 +84,22 @@ def _clear_cookie(response: Response, settings) -> None:
 
 
 def _issue_session(db: Session, user: User, response: Response, settings,
-                   family_id: str | None = None, expires_at=None) -> dict:
+                   previous: RefreshSession | None = None) -> dict:
     now = utcnow()
     raw = secrets.token_urlsafe(48)
-    session = RefreshSession(id=new_id(), user_id=user.id, family_id=family_id or new_id(),
+    # Look up the registration owned by this family. Older rotations omitted
+    # device_id even when the browser had already activated notifications.
+    device_id = db.scalar(select(Device.id).where(
+        Device.user_id == user.id, Device.session_family_id == previous.family_id
+    )) if previous is not None else None
+    session = RefreshSession(id=new_id(), user_id=user.id, family_id=previous.family_id if previous else new_id(),
                              token_hash=token_hash(raw), auth_version=user.auth_version,
-                             expires_at=expires_at or now + timedelta(days=settings.refresh_days))
+                             device_id=device_id, expires_at=previous.expires_at if previous else now + timedelta(days=settings.refresh_days))
     db.add(session)
     db.flush()
+    if previous is not None:
+        previous.rotated_at = now
+        previous.replaced_by_id = session.id
     expiry = min(now + timedelta(minutes=settings.access_token_minutes), as_utc(session.expires_at))
     access = jwt.encode({"sub": user.id, "sid": session.id, "ver": user.auth_version,
                          "iat": now, "exp": expiry, "iss": JWT_ISSUER, "aud": JWT_AUDIENCE},
@@ -164,6 +173,8 @@ def refresh(request: Request, response: Response, data: dict = Body(...), db: Se
     if session.rotated_at is not None:
         db.execute(update(RefreshSession).where(RefreshSession.family_id == session.family_id)
                    .values(revoked_at=utcnow()))
+        from .push import detach_devices_for_families
+        detach_devices_for_families(db, {session.family_id}, user_id=session.user_id)
         # Returning an error response (rather than raising) lets get_db commit
         # the revocation. An exception would roll this security action back.
         failure = JSONResponse({"error": {"code": "SESSION_REPLAY", "message": "La sesión fue revocada. Inicia sesión nuevamente."}}, status_code=401)
@@ -173,8 +184,7 @@ def refresh(request: Request, response: Response, data: dict = Body(...), db: Se
             or session.auth_version != user.auth_version):
         raise ApiError(401, "UNAUTHENTICATED", "La sesión fue revocada.")
     ensure_account(user, db)
-    session.rotated_at = utcnow()
-    return _issue_session(db, user, response, request.app.state.settings, session.family_id, session.expires_at)
+    return _issue_session(db, user, response, request.app.state.settings, previous=session)
 
 
 @router.post("/auth/logout", status_code=204)
@@ -204,6 +214,8 @@ def logout(request: Request, data: dict = Body(...), db: Session = Depends(get_d
         users = list(db.scalars(select(RefreshSession.user_id).where(RefreshSession.family_id.in_(families)).distinct()))
         list(db.scalars(select(User).where(User.id.in_(users)).order_by(User.id).with_for_update()))
         db.execute(update(RefreshSession).where(RefreshSession.family_id.in_(families)).values(revoked_at=utcnow()))
+        from .push import detach_devices_for_families
+        detach_devices_for_families(db, families)
     response = Response(status_code=204)
     _clear_cookie(response, request.app.state.settings)
     return response

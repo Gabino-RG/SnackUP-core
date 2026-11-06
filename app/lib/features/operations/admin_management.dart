@@ -131,8 +131,43 @@ class _AdminManagementState extends State<AdminManagement> {
     if (result != null && mounted) _load();
   }
 
+  Future<void> _student(PortalUser student, V32Repository repository) async {
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => RecordEditor(
+        title: 'Editar alumno',
+        notice:
+            '${student.email}\nSi cambias los datos, el alumno tendrá que iniciar sesión de nuevo.',
+        fields: const [
+          RecordField('displayName', 'Nombre', maxLength: 160),
+          RecordField(
+            'isActive',
+            'Acceso',
+            options: {'true': 'Activo', 'false': 'Suspendido'},
+          ),
+        ],
+        initial: {
+          'displayName': student.name,
+          'isActive': '${student.isActive}',
+        },
+        save: (fields) => repository.updateStudent(
+          student,
+          name: (fields['displayName'] as String).trim(),
+          active: fields['isActive'] == 'true',
+        ),
+      ),
+    );
+    if (result == true && mounted) await _load();
+  }
+
   Future<void> _user([PortalUser? user]) async {
-    if (!widget.canManageAccounts || _configuration == null) return;
+    if (!widget.canManageAccounts || _configuration == null || _busy) return;
+    if (user != null && user.role == 'user') {
+      final repository = widget.v32;
+      if (repository != null) await _student(user, repository);
+      return;
+    }
     setState(() => _busy = true);
     final options = <String, String>{'': 'Sin local'};
     try {
@@ -460,7 +495,9 @@ class _AdminManagementState extends State<AdminManagement> {
             isThreeLine: true,
             trailing: IconButton(
               tooltip: 'Editar ${u.name}',
-              onPressed: () => _user(u),
+              onPressed: u.role == 'user' && widget.v32 == null
+                  ? null
+                  : () => _user(u),
               icon: const Icon(Icons.edit_outlined),
             ),
           ),

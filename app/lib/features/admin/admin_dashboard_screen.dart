@@ -202,13 +202,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
     data: Theme.of(context).brightness == Brightness.dark ? adminDarkTheme() : adminTheme(),
     child: Builder(
       builder: (context) {
-        final wide = MediaQuery.sizeOf(context).width >= 1100;
+        final width = MediaQuery.sizeOf(context).width;
+        final wide = width >= 1100;
         return Scaffold(
           drawer: wide ? null : Drawer(child: _navigation()),
           appBar: wide
               ? null
               : AppBar(
-                  title: const Text('SnackUP · Administración'),
+                  title: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(width < 480 ? 'Administración' : 'SnackUP · Administración'),
+                  ),
                   backgroundColor: PanelPalette.of(context).surface,
                   actions: [
                     const PanelThemeButton(),

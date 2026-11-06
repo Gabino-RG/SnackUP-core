@@ -517,6 +517,7 @@ class _StudentChatScreenState extends State<StudentChatScreen>
       }
       final message = _messages[index];
       final own = message['senderRole'] == 'ALUMNO';
+      final text = message['text'] as String;
       return Align(
         alignment: own ? Alignment.centerRight : Alignment.centerLeft,
         child: Container(
@@ -536,7 +537,7 @@ class _StudentChatScreenState extends State<StudentChatScreen>
                 style: AppText.body.copyWith(fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 4),
-              SelectableText(message['text'] as String),
+              SelectableText(text, semanticsLabel: text),
               const SizedBox(height: 6),
               Text(dateText(message['createdAt']), style: AppText.notes),
             ],

@@ -8,7 +8,7 @@ su puerto. Son dos contenedores totales, uno de ellos para las tres aplicaciones
 
 | URL del mismo dominio | Componente |
 |---|---|
-| `/` | PWA de alumnos, actualmente Firebase |
+| `/` | Alumnos con API REST en PostgreSQL |
 | `/paneles/` | Cocina/Administración REST |
 | `/api/v1/` | Contrato canónico FastAPI |
 | `/api/legacy/v1/` | Compatibilidad del portal actual |
@@ -16,15 +16,14 @@ su puerto. Son dos contenedores totales, uno de ellos para las tres aplicaciones
 | `/api/legacy/v1/realtime` | WebSocket del portal actual |
 | `/media/` | Imágenes gestionadas por backend |
 
-**No representa una migración completa de datos:** la PWA de usuarios sigue
-utilizando Firebase y aún contiene la interfaz Cocina histórica. Su retirada y
-adaptación REST se describen como pendientes de frontend en [V3.2](IMPLEMENTACION_V3_2.md).
-No anunciar que todos los datos ya están en PostgreSQL.
+En esta rama las pantallas integradas de Alumnos, Cocina y Administración trabajan
+contra FastAPI. Para incorporar datos institucionales anteriores, TI debe validar
+la fuente y acordar el procedimiento de importación.
 
 ## Levantamiento en un servidor nuevo
 
-Requisitos: Docker Engine y Compose **2.24.4 o posterior** con BuildKit y contextos
-adicionales; acceso a GitHub, registros Docker, paquetes Python/Flutter; dominio
+Requisitos: Docker Engine y Compose **2.24.4 o posterior** con BuildKit,
+acceso a los registros Docker y a los paquetes Python/Flutter, un dominio
 apuntando al servidor y puertos públicos 80/443. El override de CI usa `!override`;
 no se utiliza en producción. Las imágenes Flutter fijadas requieren un servidor
 de construcción compatible con esa imagen (CI valida Linux amd64).
@@ -60,9 +59,17 @@ Para preparar padrón o cuenta inicial, usar el CLI existente desde el contenedo
 docker compose -f compose.unified.yaml exec app python -m snackup.cli --help
 ```
 
-No pasar contraseñas a argumentos de shell. Los comandos y permisos del CLI se
-describen en [README.md](README.md). Push necesita las credenciales/montajes de su
-proveedor; el ejemplo lo deja deshabilitado y no prueba envíos externos.
+Los comandos de padrón y cuenta inicial figuran en [README.md](README.md).
+Para Web Push, guardar la clave VAPID de producción fuera del checkout, con
+permiso de lectura para el UID 10001. Definir una ruta absoluta en
+`SNACKUP_WEBPUSH_KEY_ON_HOST` y el contacto `SNACKUP_PUSH_WEBPUSH_SUBJECT` en el
+archivo privado de entorno. Usar ambos archivos de Compose al crear o actualizar
+el servicio con push habilitado:
+
+```bash
+docker compose -f compose.unified.yaml -f deploy/unified/compose.webpush.yaml config --quiet
+docker compose -f compose.unified.yaml -f deploy/unified/compose.webpush.yaml up -d --build --wait
+```
 
 ## Ajustes incorporados después de la prueba de carga
 
@@ -100,18 +107,13 @@ siguen sin desplegar el servicio en producción ni migrar Firestore.
 
 ## Fuentes y construcción reproducible
 
-El Dockerfile está en `deploy/unified/Dockerfile`. El contexto principal es
-`backend/`; los contextos adicionales son revisiones concretas del mismo repo:
-
-- Alumnos: `a00d0bf4ecdae74a89f3afbe8ec3d0758efb8884`, rama `codex/usuarios-pwa`.
-- Cocina/Administración: `19c81fdee29600d66d9dcb1a4f109a78aeba51f6`, rama `codex/entrega-paneles-rest`.
-
-Las dos etapas Flutter se descartan al producir la imagen final; no hace falta
-Flutter en el servidor de ejecución. Para probar cambios frontend locales,
-definir `SNACKUP_USERS_CONTEXT` y `SNACKUP_PANELS_CONTEXT` con rutas de checkouts.
-Revisar/actualizar los SHA al integrar nuevas versiones; no se toma silenciosamente
-la punta de una rama. `WEB_BASE_HREF` queda `/` y `/paneles/` respectivamente.
-La PWA excluye API, medios, sockets y paneles de su caché de navegación.
+Registrar el resultado de `git rev-parse HEAD` de la entrega y compilar desde una
+copia limpia de esa revisión. El contexto del Dockerfile es la raíz del repositorio.
+La primera etapa Flutter toma Alumnos de la raíz, la segunda toma los paneles de
+`app/` y la imagen final incorpora la API de `backend/`. El archivo
+`deploy/unified/Dockerfile.dockerignore` limita los archivos enviados al constructor.
+Los dos frontends incorporan el script de notificaciones propio. Sus bases públicas
+son `/` y `/paneles/`.
 
 El API del portal conserva `/api/legacy/v1/`. Cambiarlo a `/api/v1/` sin adaptar
 payloads/roles/realtime rompería la integración. Enlaces de recuperación apuntan
@@ -126,6 +128,16 @@ Referencias de configuración: [contextos de Docker](https://docs.docker.com/bui
 Volúmenes: `database` (PostgreSQL), `media`, `redis` (AOF) y `tls_data`. Detener
 con `docker compose -f compose.unified.yaml down` conserva los volúmenes.
 No usar `down --volumes` en producción.
+
+Durante una ventana con las escrituras detenidas y los contenedores activos, ejecutar
+`sh deploy/backup.sh --unified /ruta/privada/respaldos` desde `backend/`. El script
+copia la base del servicio `db` y los archivos del volumen de `app`. Verificar el
+archivo de sumas SHA-256 y conservar una copia cifrada fuera del host. En un
+entorno aislado, restaurar el dump con `pg_restore --exit-on-error --single-transaction
+--no-owner` sobre una base vacía y los medios en un volumen nuevo. Comprobar tablas,
+pedidos, archivos y tiempo de recuperación. TI debe custodiar por separado las
+claves de sesión y VAPID y acordar la retención, la pérdida máxima de datos y el
+tiempo máximo de recuperación.
 
 El proyecto nuevo se llama `snackup-unified`. **No reutiliza automáticamente** los
 volúmenes del proyecto anterior `snackup`. Para una instalación existente, tomar

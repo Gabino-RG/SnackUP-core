@@ -305,6 +305,12 @@ class RestSession extends ChangeNotifier {
       if (!_current(generation)) return false;
       final profile = await _profile(token);
       if (!_current(generation)) return false;
+      // A different tab may have replaced the browser's shared refresh cookie.
+      // Require a fresh login here before displaying the other person's panel.
+      if (profile.id != account?.id) {
+        invalidate('La cuenta cambió en otra pestaña. Vuelve a iniciar sesión.');
+        return false;
+      }
       if (profile.identity != account?.identity) _generation++;
       _token = token;
       account = profile;

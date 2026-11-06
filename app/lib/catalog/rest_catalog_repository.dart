@@ -102,7 +102,10 @@ class RestCatalogRepository extends CatalogRepository {
         // Never replay POST/PATCH/DELETE after an ambiguous timeout.
         throw const CatalogException('La API tardó demasiado. Actualiza el catálogo para comprobar si se guardó antes de repetir.', code: 'TIMEOUT');
       } on http.ClientException {
-        throw const CatalogException('No se pudo conectar con el servidor local. Revisa tu conexión.', code: 'NETWORK');
+        throw CatalogException(method == 'GET'
+            ? 'No se pudo conectar con el servidor. Revisa tu conexión.'
+            : 'Se perdió la conexión. Actualiza el catálogo para comprobar si el cambio se guardó antes de repetirlo.',
+            code: 'NETWORK');
       }
     }
     throw const CatalogException('Tu sesión terminó.', code: 'UNAUTHENTICATED');
