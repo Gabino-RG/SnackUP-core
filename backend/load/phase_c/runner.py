@@ -335,14 +335,17 @@ class Run:
                 self.samples['product_event'] = [latency for _, _, _, latency, _ in received]
                 self.check((quantile(self.samples['product_event'], .95) or math.inf) < 1000, 'P8b stock event p95')
             if toggle:
+                unmapped = sum(1 for _, business, version, _, _ in received
+                               if (business, version) not in changes)
                 deliveries = Counter((i, business, version) for i, business, version, _, _ in received
                                      if (business, version) in changes)
                 observed = set(deliveries)
                 duplicates = sum(n - 1 for n in deliveries.values())
                 self.details.update(missingDeliveries=len(expected - observed), unexpectedDeliveries=len(observed - expected),
-                                    duplicateDeliveries=duplicates)
+                                    duplicateDeliveries=duplicates, unmappedProductEvents=unmapped)
                 self.check(bool(expected) and observed == expected, 'P8 delivery to expected subscribers')
                 self.check(duplicates == 0, 'P8 duplicate product delivery')
+                self.check(unmapped == 0, 'P8 event outside confirmed product changes')
                 self.samples['product_event'] = [latency for _, business, version, latency, _ in received if (business, version) in changes]
                 self.check((quantile(self.samples['product_event'], .95) or math.inf) < (1000 if count == 300 else 2000), 'P8 event p95')
         finally:
