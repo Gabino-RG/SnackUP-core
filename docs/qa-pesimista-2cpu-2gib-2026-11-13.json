@@ -1,0 +1,2736 @@
+{
+  "kind": "Extract of original CI artifacts; resource time series and route coverage omitted",
+  "runUrl": "https://github.com/Gabino-RG/SnackUP-core/actions/runs/43521552674",
+  "commit": "66ed757896274e719c72aaea62f43b107d919628",
+  "artifactId": 14085156921,
+  "artifactSha256": "7c131ef5e4eabb5588c038292b961543c94110c73e9f4767bc61ba303e964433",
+  "sourceFileSha256": {
+    "summary.json": "dcedbcd99a9169fdc79bf0d5d2281066071ef449b34b6a3adf1d6150d9489d68",
+    "smoke.json": "fad0bf9ce06ee53abd10c62a4d31cb928f3b44f98b049fca865d86f6e821bf37",
+    "finite.json": "61db6c85c2afbe2636eb093f63d7f595a6201384e1cdbf6f0112310883b6167f",
+    "idempotency.json": "8831c6a7809852021d8c450432e7bb8494db3cb2eb3e8e6ed1893b0516fe948c",
+    "logins.json": "4c407f409125f68bcf666f31c3051500f7c7b342fdf50b7184e9eb083c6ed679",
+    "reads.json": "335f711eb1134d701a985208f65c2364cadd79af0f40920c106553be1ae74886",
+    "writes.json": "dd82aa9e43767280677007756b38e6f94f516e5c943f05ac72606d34db4ec74d",
+    "burst.json": "965925230c22513958c26b4cc3f0a3a88dcb495f9f75899f2f412c50d7e26a14",
+    "realtime.json": "dd20228b6cef62a7b4f74ad6d6db13bc341a3864dfbe4a08c194204a15d614f1",
+    "mixed.json": "4e6b44a6223b1d62042875f56b5908b77b6ab53770baf96e7e855043dc019bd9",
+    "resources-before.json": "ed03467afe91d1fe24bd9c1f244515d7c51f966a72924525eb9ea515310c0276",
+    "resources-after.json": "1420f274954f0d8a20af66b8f313d09c4bb6bee4e939c7d0c30163e4ac6e5b6c",
+    "resources-validation.json": "4fe6db37ca6add69bb640b7e2b64e0ee99737c7acd07631ce731cc314991275f",
+    "services.json": "813b00d02ce3cbb94a9d2e3bcf34a33e2da532d766313ccc73f269bdfb93cee2",
+    "ci-validation.json": "a5e6924809768339db34b71d867dd2ec8851145d4540dcb59a5538e52db10508",
+    "cleanup.json": "ef321bbe482ba4e49253902fe8dd92143836cd34e474e51bec1bddb2fd0b82ce",
+    "browsers-before.json": "56abfee0e0f8a16dccbcd46af2e9c8c637c61397454a14c9ab4378b4ae30f8fb",
+    "browsers-after.json": "8d2ef7a917beff5c406d19a7d01bf859277aea732ab6b838c72ededd42824f4d",
+    "frontend-before.json": "55441ff10602f88d0e08b9f70d98e67cc8aa66d78a5eb6212710ccc73acb7f7c",
+    "frontend-after.json": "e2105024b5b22336e5c814ea8723f50d1fc74fd815830b14712caab163ccc04f",
+    "resources-samples.jsonl": "9244c1499dcfef2f70af91df7336fba9eab0eef2c64aba3f1708da4403b4fbea"
+  },
+  "reports": {
+    "summary": {
+      "profile": "2cpu-2gib-total",
+      "scenarioOrder": [
+        "smoke",
+        "finite",
+        "idempotency",
+        "logins",
+        "reads",
+        "writes",
+        "burst",
+        "realtime",
+        "mixed"
+      ],
+      "results": [
+        {
+          "scenario": "smoke",
+          "success": true,
+          "elapsedSeconds": 67.555099235,
+          "failures": {}
+        },
+        {
+          "scenario": "finite",
+          "success": true,
+          "elapsedSeconds": 6.472626308000031,
+          "failures": {}
+        },
+        {
+          "scenario": "idempotency",
+          "success": true,
+          "elapsedSeconds": 8.853779779000035,
+          "failures": {}
+        },
+        {
+          "scenario": "logins",
+          "success": false,
+          "elapsedSeconds": 74.57369664100003,
+          "failures": {
+            "P7b p95 >=3s": 1
+          }
+        },
+        {
+          "scenario": "reads",
+          "success": false,
+          "elapsedSeconds": 552.865670677,
+          "failures": {
+            "read_500 steady p95 >=750ms": 1,
+            "read_500 steady p99 >=2000ms": 1,
+            "read_1000 HTTP failure": 32519,
+            "read_1000 steady p99 >=2000ms": 1,
+            "Read 500 steady CPU >=75% or unavailable": 1,
+            "read_1000 internal/transport errors": 1
+          }
+        },
+        {
+          "scenario": "writes",
+          "success": false,
+          "elapsedSeconds": 398.25021910300006,
+          "failures": {
+            "create_1 initial creation failed": 90,
+            "create_2 initial creation failed": 180,
+            "create_4 initial creation failed": 360,
+            "create_8 initial creation failed": 720,
+            "create_1 internal/transport errors": 1,
+            "create_2 internal/transport errors": 1,
+            "create_4 internal/transport errors": 1,
+            "create_8 internal/transport errors": 1
+          }
+        },
+        {
+          "scenario": "burst",
+          "success": false,
+          "elapsedSeconds": 302.98435543799997,
+          "failures": {
+            "Burst first-attempt error rate >=1%": 1,
+            "Burst capacity: unconfirmed intents after the single automatic retry": 1,
+            "Burst unresolved intentions, duplicate returned IDs or SQL count mismatch": 1,
+            "burst_first internal/transport errors": 1,
+            "burst_manual_recovery internal/transport errors": 1
+          }
+        },
+        {
+          "scenario": "realtime",
+          "success": false,
+          "elapsedSeconds": 0.1858881520001887,
+          "failures": {
+            "Scenario execution: ConnectionError": 1,
+            "Resource monitoring unavailable": 1,
+            "API worker restarted or monitoring saw multiple workers": 1
+          }
+        },
+        {
+          "scenario": "mixed",
+          "success": false,
+          "elapsedSeconds": 605.7435414030001,
+          "failures": {
+            "Mixed connection: ConnectionError": 1000,
+            "Mixed did not connect 1000 WebSockets": 1,
+            "Mixed did not confirm 1000 subscriptions": 1,
+            "admin_businesses HTTP failure": 60,
+            "P9 kitchen read": 2400,
+            "P9 create failed": 900,
+            "admin_users HTTP failure": 60,
+            "mixed_read HTTP failure": 239904,
+            "admin_reviews HTTP failure": 60,
+            "kitchen_stats HTTP failure": 240,
+            "admin_businesses no successful activity": 1,
+            "admin_users no successful activity": 1,
+            "admin_reviews no successful activity": 1,
+            "kitchen_stats no successful activity": 1,
+            "P9 delivery ratio": 1,
+            "P9 acceptance p95": 1,
+            "Collaboration probe: sample contains real orders": 1,
+            "Mixed order event delivery mismatch": 1,
+            "mixed_order_event p95 >=2000ms": 1,
+            "mixed_product_event p95 >=2000ms": 1,
+            "Mixed kitchen had no successful transitions": 1,
+            "admin_businesses internal/transport errors": 1,
+            "kitchen_read internal/transport errors": 1,
+            "kitchen_create internal/transport errors": 1,
+            "admin_users internal/transport errors": 1,
+            "mixed_read internal/transport errors": 1,
+            "admin_reviews internal/transport errors": 1,
+            "kitchen_stats internal/transport errors": 1
+          }
+        }
+      ],
+      "resourceLimits": {
+        "success": false,
+        "checks": {
+          "samplesPresent": true,
+          "allSamplesReadable": false,
+          "exactThreeServices": true,
+          "generatorOnSeparateCpuSet": true,
+          "configuredBudgetIsExactlyTwoGiB": true,
+          "effectiveCgroupLimitsApplied": false,
+          "sharedTwoCpuSet": false,
+          "noAdditionalSwap": false,
+          "noOomOrRestart": false,
+          "allServicesRunning": false,
+          "containerIdentityStable": true,
+          "singleWorkerRuntimeSettings": true
+        },
+        "samples": 392,
+        "sampledCombinedPeakBytes": 734048256,
+        "cgroupPeakBytesByService": {
+          "app": 467005440,
+          "db": 158609408,
+          "tls": 134217728
+        },
+        "configuredBudgetBytesByService": {
+          "app": 1207959552,
+          "db": 805306368,
+          "tls": 134217728
+        },
+        "configuredTotalBytes": 2147483648,
+        "host": {
+          "platform": "Linux-7.0.0-1019-azure-x86_64-with-glibc2.43",
+          "logicalProcessors": 4,
+          "model": "AMD EPYC 7763 64-Core Processor",
+          "totalRamKiB": 16366640,
+          "totalSwapKiB": 3145724
+        },
+        "limits": [
+          "The 2 GiB budget covers app, PostgreSQL and TLS containers together; it excludes the host OS, Docker daemon, build and generator.",
+          "All service processes share logical CPUs 0-1. The generator is restricted to CPUs 2-3.",
+          "This is not proof that a complete 2 GiB virtual machine has enough RAM for its operating system and services."
+        ]
+      },
+      "success": false,
+      "scope": "Only recorded endpoints and roles; not a claim of exhaustive UI coverage",
+      "temporaryData": true,
+      "commit": "66ed757896274e719c72aaea62f43b107d919628",
+      "generatorFileLimits": {
+        "soft": 65536,
+        "hard": 65536,
+        "minimumRequired": 4096
+      }
+    },
+    "smoke": {
+      "scenario": "smoke",
+      "profile": "2cpu-2gib-total",
+      "quick": false,
+      "commit": "66ed757896274e719c72aaea62f43b107d919628",
+      "elapsedSeconds": 67.555099235,
+      "success": true,
+      "failures": {},
+      "details": {
+        "preparation": {
+          "accounts": 1005,
+          "authenticationConcurrency": 8,
+          "excludedFromMeasuredScenarios": true
+        },
+        "arrivals": [
+          {
+            "rate": 1,
+            "seconds": 45,
+            "launched": 45,
+            "elapsed": 44.05369712999999
+          }
+        ],
+        "integrity": {
+          "negativeStock": 0,
+          "duplicateNumbers": 0,
+          "duplicateCodes": 0,
+          "duplicateKeys": 0,
+          "inventoryMismatch": 0,
+          "pendingOutbox": 0,
+          "deadlocks": 0,
+          "orders": 45
+        },
+        "resources": {
+          "budgetMiB": 2048,
+          "sharedCpuCount": 2,
+          "workers": [
+            {
+              "pid": 15,
+              "peakRssMiB": 167.48046875,
+              "meanCpuPercent": 5.943812055141459
+            }
+          ],
+          "peakContainersMiB": 344.25,
+          "readingStages": [],
+          "workerBalanceCriterion": "not applicable: one worker"
+        }
+      },
+      "metrics": {
+        "create": {
+          "count": 45,
+          "p50Ms": 24.08863999994537,
+          "p95Ms": 33.135770999990655,
+          "p99Ms": 101.80701199999476,
+          "status": {
+            "201": 45
+          }
+        },
+        "idempotency": {
+          "count": 45,
+          "p50Ms": 10.19640800001298,
+          "p95Ms": 15.741996000031122,
+          "p99Ms": 20.266395000021475,
+          "status": {
+            "201": 45
+          }
+        },
+        "cancel": {
+          "count": 45,
+          "p50Ms": 19.11113200003456,
+          "p95Ms": 26.693163999993885,
+          "p99Ms": 59.618586999988565,
+          "status": {
+            "200": 45
+          }
+        }
+      },
+      "transport": {
+        "origin": "https://localhost:18443",
+        "tlsCertificateValidation": true,
+        "trust": "explicit test CA, client only"
+      }
+    },
+    "finite": {
+      "scenario": "finite",
+      "profile": "2cpu-2gib-total",
+      "quick": false,
+      "commit": "66ed757896274e719c72aaea62f43b107d919628",
+      "elapsedSeconds": 6.472626308000031,
+      "success": true,
+      "failures": {},
+      "details": {
+        "preparation": {
+          "accounts": 1005,
+          "authenticationConcurrency": 8,
+          "excludedFromMeasuredScenarios": true
+        },
+        "finite": {
+          "attempts": 200,
+          "status": {
+            "422": 150,
+            "201": 50
+          },
+          "sold": 50,
+          "capacityRejected503": 0,
+          "inventoryRejected422": 150,
+          "noOversell": true,
+          "exactSalesTarget": true,
+          "integrityBeforeCancellation": {
+            "negativeStock": 0,
+            "duplicateNumbers": 0,
+            "duplicateCodes": 0,
+            "duplicateKeys": 0,
+            "inventoryMismatch": 0,
+            "pendingOutbox": 0,
+            "deadlocks": 0,
+            "orders": 50
+          }
+        },
+        "cleanup": [
+          {
+            "intended": 50,
+            "confirmed": 50,
+            "maximumAttempts": 3,
+            "concurrency": 4
+          }
+        ],
+        "integrity": {
+          "negativeStock": 0,
+          "duplicateNumbers": 0,
+          "duplicateCodes": 0,
+          "duplicateKeys": 0,
+          "inventoryMismatch": 0,
+          "pendingOutbox": 0,
+          "deadlocks": 0,
+          "orders": 50
+        },
+        "resources": {
+          "budgetMiB": 2048,
+          "sharedCpuCount": 2,
+          "workers": [
+            {
+              "pid": 15,
+              "peakRssMiB": 173.23046875,
+              "meanCpuPercent": 66.34666768088043
+            }
+          ],
+          "peakContainersMiB": 383.38,
+          "readingStages": [],
+          "workerBalanceCriterion": "not applicable: one worker"
+        }
+      },
+      "metrics": {
+        "create": {
+          "count": 200,
+          "p50Ms": 2590.6243549999886,
+          "p95Ms": 3869.870970999955,
+          "p99Ms": 3979.9181810000164,
+          "status": {
+            "201": 50,
+            "422": 150
+          }
+        },
+        "cleanup_cancel": {
+          "count": 50,
+          "p50Ms": 87.45027800000571,
+          "p95Ms": 182.0311760000095,
+          "p99Ms": 191.75887799997327,
+          "status": {
+            "200": 50
+          }
+        }
+      },
+      "transport": {
+        "origin": "https://localhost:18443",
+        "tlsCertificateValidation": true,
+        "trust": "explicit test CA, client only"
+      }
+    },
+    "idempotency": {
+      "scenario": "idempotency",
+      "profile": "2cpu-2gib-total",
+      "quick": false,
+      "commit": "66ed757896274e719c72aaea62f43b107d919628",
+      "elapsedSeconds": 8.853779779000035,
+      "success": true,
+      "failures": {},
+      "details": {
+        "preparation": {
+          "accounts": 1005,
+          "authenticationConcurrency": 8,
+          "excludedFromMeasuredScenarios": true
+        },
+        "idempotency": {
+          "groups": [
+            {
+              "attempts": 10,
+              "status": {
+                "201": 10
+              },
+              "successfulBodies": 1,
+              "successfulOrderIds": 1
+            },
+            {
+              "attempts": 10,
+              "status": {
+                "201": 10
+              },
+              "successfulBodies": 1,
+              "successfulOrderIds": 1
+            },
+            {
+              "attempts": 10,
+              "status": {
+                "201": 10
+              },
+              "successfulBodies": 1,
+              "successfulOrderIds": 1
+            },
+            {
+              "attempts": 10,
+              "status": {
+                "201": 10
+              },
+              "successfulBodies": 1,
+              "successfulOrderIds": 1
+            },
+            {
+              "attempts": 10,
+              "status": {
+                "201": 10
+              },
+              "successfulBodies": 1,
+              "successfulOrderIds": 1
+            },
+            {
+              "attempts": 10,
+              "status": {
+                "201": 10
+              },
+              "successfulBodies": 1,
+              "successfulOrderIds": 1
+            },
+            {
+              "attempts": 10,
+              "status": {
+                "201": 10
+              },
+              "successfulBodies": 1,
+              "successfulOrderIds": 1
+            },
+            {
+              "attempts": 10,
+              "status": {
+                "201": 10
+              },
+              "successfulBodies": 1,
+              "successfulOrderIds": 1
+            },
+            {
+              "attempts": 10,
+              "status": {
+                "201": 10
+              },
+              "successfulBodies": 1,
+              "successfulOrderIds": 1
+            },
+            {
+              "attempts": 10,
+              "status": {
+                "201": 10
+              },
+              "successfulBodies": 1,
+              "successfulOrderIds": 1
+            },
+            {
+              "attempts": 10,
+              "status": {
+                "201": 10
+              },
+              "successfulBodies": 1,
+              "successfulOrderIds": 1
+            },
+            {
+              "attempts": 10,
+              "status": {
+                "201": 10
+              },
+              "successfulBodies": 1,
+              "successfulOrderIds": 1
+            },
+            {
+              "attempts": 10,
+              "status": {
+                "201": 10
+              },
+              "successfulBodies": 1,
+              "successfulOrderIds": 1
+            },
+            {
+              "attempts": 10,
+              "status": {
+                "201": 10
+              },
+              "successfulBodies": 1,
+              "successfulOrderIds": 1
+            },
+            {
+              "attempts": 10,
+              "status": {
+                "201": 10
+              },
+              "successfulBodies": 1,
+              "successfulOrderIds": 1
+            },
+            {
+              "attempts": 10,
+              "status": {
+                "201": 10
+              },
+              "successfulBodies": 1,
+              "successfulOrderIds": 1
+            },
+            {
+              "attempts": 10,
+              "status": {
+                "201": 10
+              },
+              "successfulBodies": 1,
+              "successfulOrderIds": 1
+            },
+            {
+              "attempts": 10,
+              "status": {
+                "201": 10
+              },
+              "successfulBodies": 1,
+              "successfulOrderIds": 1
+            },
+            {
+              "attempts": 10,
+              "status": {
+                "201": 10
+              },
+              "successfulBodies": 1,
+              "successfulOrderIds": 1
+            },
+            {
+              "attempts": 10,
+              "status": {
+                "201": 10
+              },
+              "successfulBodies": 1,
+              "successfulOrderIds": 1
+            },
+            {
+              "attempts": 10,
+              "status": {
+                "201": 10
+              },
+              "successfulBodies": 1,
+              "successfulOrderIds": 1
+            },
+            {
+              "attempts": 10,
+              "status": {
+                "201": 10
+              },
+              "successfulBodies": 1,
+              "successfulOrderIds": 1
+            },
+            {
+              "attempts": 10,
+              "status": {
+                "201": 10
+              },
+              "successfulBodies": 1,
+              "successfulOrderIds": 1
+            },
+            {
+              "attempts": 10,
+              "status": {
+                "201": 10
+              },
+              "successfulBodies": 1,
+              "successfulOrderIds": 1
+            },
+            {
+              "attempts": 10,
+              "status": {
+                "201": 10
+              },
+              "successfulBodies": 1,
+              "successfulOrderIds": 1
+            },
+            {
+              "attempts": 10,
+              "status": {
+                "201": 10
+              },
+              "successfulBodies": 1,
+              "successfulOrderIds": 1
+            },
+            {
+              "attempts": 10,
+              "status": {
+                "201": 10
+              },
+              "successfulBodies": 1,
+              "successfulOrderIds": 1
+            },
+            {
+              "attempts": 10,
+              "status": {
+                "201": 10
+              },
+              "successfulBodies": 1,
+              "successfulOrderIds": 1
+            },
+            {
+              "attempts": 10,
+              "status": {
+                "201": 10
+              },
+              "successfulBodies": 1,
+              "successfulOrderIds": 1
+            },
+            {
+              "attempts": 10,
+              "status": {
+                "201": 10
+              },
+              "successfulBodies": 1,
+              "successfulOrderIds": 1
+            },
+            {
+              "attempts": 10,
+              "status": {
+                "201": 10
+              },
+              "successfulBodies": 1,
+              "successfulOrderIds": 1
+            },
+            {
+              "attempts": 10,
+              "status": {
+                "201": 10
+              },
+              "successfulBodies": 1,
+              "successfulOrderIds": 1
+            },
+            {
+              "attempts": 10,
+              "status": {
+                "201": 10
+              },
+              "successfulBodies": 1,
+              "successfulOrderIds": 1
+            },
+            {
+              "attempts": 10,
+              "status": {
+                "201": 10
+              },
+              "successfulBodies": 1,
+              "successfulOrderIds": 1
+            },
+            {
+              "attempts": 10,
+              "status": {
+                "201": 10
+              },
+              "successfulBodies": 1,
+              "successfulOrderIds": 1
+            },
+            {
+              "attempts": 10,
+              "status": {
+                "201": 9,
+                "503": 1
+              },
+              "successfulBodies": 1,
+              "successfulOrderIds": 1
+            },
+            {
+              "attempts": 10,
+              "status": {
+                "201": 9,
+                "503": 1
+              },
+              "successfulBodies": 1,
+              "successfulOrderIds": 1
+            },
+            {
+              "attempts": 10,
+              "status": {
+                "201": 9,
+                "503": 1
+              },
+              "successfulBodies": 1,
+              "successfulOrderIds": 1
+            },
+            {
+              "attempts": 10,
+              "status": {
+                "201": 9,
+                "503": 1
+              },
+              "successfulBodies": 1,
+              "successfulOrderIds": 1
+            },
+            {
+              "attempts": 10,
+              "status": {
+                "201": 8,
+                "503": 2
+              },
+              "successfulBodies": 1,
+              "successfulOrderIds": 1
+            },
+            {
+              "attempts": 10,
+              "status": {
+                "201": 9,
+                "503": 1
+              },
+              "successfulBodies": 1,
+              "successfulOrderIds": 1
+            },
+            {
+              "attempts": 10,
+              "status": {
+                "201": 9,
+                "503": 1
+              },
+              "successfulBodies": 1,
+              "successfulOrderIds": 1
+            },
+            {
+              "attempts": 10,
+              "status": {
+                "503": 3,
+                "201": 7
+              },
+              "successfulBodies": 1,
+              "successfulOrderIds": 1
+            },
+            {
+              "attempts": 10,
+              "status": {
+                "201": 8,
+                "503": 2
+              },
+              "successfulBodies": 1,
+              "successfulOrderIds": 1
+            },
+            {
+              "attempts": 10,
+              "status": {
+                "201": 7,
+                "503": 3
+              },
+              "successfulBodies": 1,
+              "successfulOrderIds": 1
+            },
+            {
+              "attempts": 10,
+              "status": {
+                "201": 8,
+                "503": 2
+              },
+              "successfulBodies": 1,
+              "successfulOrderIds": 1
+            },
+            {
+              "attempts": 10,
+              "status": {
+                "201": 9,
+                "503": 1
+              },
+              "successfulBodies": 1,
+              "successfulOrderIds": 1
+            },
+            {
+              "attempts": 10,
+              "status": {
+                "201": 7,
+                "503": 3
+              },
+              "successfulBodies": 1,
+              "successfulOrderIds": 1
+            },
+            {
+              "attempts": 10,
+              "status": {
+                "201": 6,
+                "503": 4
+              },
+              "successfulBodies": 1,
+              "successfulOrderIds": 1
+            },
+            {
+              "attempts": 10,
+              "status": {
+                "201": 10
+              },
+              "successfulBodies": 1,
+              "successfulOrderIds": 1
+            }
+          ],
+          "initialSubmissions": 500,
+          "confirmedIntentsAfterVerification": 50
+        },
+        "cleanup": [
+          {
+            "intended": 50,
+            "confirmed": 50,
+            "maximumAttempts": 3,
+            "concurrency": 4
+          }
+        ],
+        "integrity": {
+          "negativeStock": 0,
+          "duplicateNumbers": 0,
+          "duplicateCodes": 0,
+          "duplicateKeys": 0,
+          "inventoryMismatch": 0,
+          "pendingOutbox": 0,
+          "deadlocks": 0,
+          "orders": 50
+        },
+        "resources": {
+          "budgetMiB": 2048,
+          "sharedCpuCount": 2,
+          "workers": [
+            {
+              "pid": 15,
+              "peakRssMiB": 182.10546875,
+              "meanCpuPercent": 71.16397736716098
+            }
+          ],
+          "peakContainersMiB": 455.5,
+          "readingStages": [],
+          "workerBalanceCriterion": "not applicable: one worker"
+        }
+      },
+      "metrics": {
+        "create": {
+          "count": 500,
+          "p50Ms": 4225.441081000043,
+          "p95Ms": 6127.773238000032,
+          "p99Ms": 6175.669013999994,
+          "status": {
+            "201": 474,
+            "503": 26
+          }
+        },
+        "idempotency_verify": {
+          "count": 50,
+          "p50Ms": 412.8436579999857,
+          "p95Ms": 1526.2131860000068,
+          "p99Ms": 4223.009027999979,
+          "status": {
+            "201": 50
+          }
+        },
+        "cleanup_cancel": {
+          "count": 50,
+          "p50Ms": 65.55906199997708,
+          "p95Ms": 184.16466100001117,
+          "p99Ms": 185.87069900002007,
+          "status": {
+            "200": 50
+          }
+        }
+      },
+      "transport": {
+        "origin": "https://localhost:18443",
+        "tlsCertificateValidation": true,
+        "trust": "explicit test CA, client only"
+      }
+    },
+    "logins": {
+      "scenario": "logins",
+      "profile": "2cpu-2gib-total",
+      "quick": false,
+      "commit": "66ed757896274e719c72aaea62f43b107d919628",
+      "elapsedSeconds": 74.57369664100003,
+      "success": false,
+      "failures": {
+        "P7b p95 >=3s": 1
+      },
+      "details": {
+        "preparation": {
+          "accounts": 1005,
+          "authenticationConcurrency": 8,
+          "excludedFromMeasuredScenarios": true
+        },
+        "integrity": {
+          "negativeStock": 0,
+          "duplicateNumbers": 0,
+          "duplicateCodes": 0,
+          "duplicateKeys": 0,
+          "inventoryMismatch": 0,
+          "pendingOutbox": 0,
+          "deadlocks": 0,
+          "orders": 0
+        },
+        "resources": {
+          "budgetMiB": 2048,
+          "sharedCpuCount": 2,
+          "workers": [
+            {
+              "pid": 15,
+              "peakRssMiB": 183.70703125,
+              "meanCpuPercent": 30.666699872573304
+            }
+          ],
+          "peakContainersMiB": 481.49,
+          "readingStages": [],
+          "workerBalanceCriterion": "not applicable: one worker"
+        }
+      },
+      "metrics": {
+        "login_wave": {
+          "count": 600,
+          "p50Ms": 2686.2109649999866,
+          "p95Ms": 4587.980329000004,
+          "p99Ms": 4857.217305999995,
+          "status": {
+            "200": 600
+          }
+        }
+      },
+      "transport": {
+        "origin": "https://localhost:18443",
+        "tlsCertificateValidation": true,
+        "trust": "explicit test CA, client only"
+      }
+    },
+    "reads": {
+      "scenario": "reads",
+      "profile": "2cpu-2gib-total",
+      "quick": false,
+      "commit": "66ed757896274e719c72aaea62f43b107d919628",
+      "elapsedSeconds": 552.865670677,
+      "success": false,
+      "failures": {
+        "read_500 steady p95 >=750ms": 1,
+        "read_500 steady p99 >=2000ms": 1,
+        "read_1000 HTTP failure": 32519,
+        "read_1000 steady p99 >=2000ms": 1,
+        "Read 500 steady CPU >=75% or unavailable": 1,
+        "read_1000 internal/transport errors": 1
+      },
+      "details": {
+        "preparation": {
+          "accounts": 1005,
+          "authenticationConcurrency": 8,
+          "excludedFromMeasuredScenarios": true
+        },
+        "readingStages": [
+          {
+            "users": 50,
+            "start": 15.091974386000004,
+            "end": 105.091974386,
+            "rampSeconds": 15,
+            "steadySeconds": 90
+          },
+          {
+            "users": 100,
+            "start": 125.09612319500002,
+            "end": 215.09612319500002,
+            "rampSeconds": 15,
+            "steadySeconds": 90
+          },
+          {
+            "users": 300,
+            "start": 235.09931932000006,
+            "end": 325.09931932000006,
+            "rampSeconds": 15,
+            "steadySeconds": 90
+          },
+          {
+            "users": 500,
+            "start": 345.21888100399997,
+            "end": 435.21888100399997,
+            "rampSeconds": 15,
+            "steadySeconds": 90
+          },
+          {
+            "users": 1000,
+            "start": 457.80758274000004,
+            "end": 547.80758274,
+            "rampSeconds": 15,
+            "steadySeconds": 90
+          }
+        ],
+        "stages": [
+          {
+            "name": "reads_50",
+            "elapsedSeconds": 105.00305383299997,
+            "success": true,
+            "cpuCriterionPassed": true
+          },
+          {
+            "name": "reads_100",
+            "elapsedSeconds": 105.00262167599999,
+            "success": true,
+            "cpuCriterionPassed": true
+          },
+          {
+            "name": "reads_300",
+            "elapsedSeconds": 105.11896273499997,
+            "success": true,
+            "cpuCriterionPassed": true
+          },
+          {
+            "name": "reads_500",
+            "elapsedSeconds": 107.587741015,
+            "success": false,
+            "cpuCriterionPassed": false
+          },
+          {
+            "name": "reads_1000",
+            "elapsedSeconds": 105.01623956399999,
+            "success": false,
+            "cpuCriterionPassed": true
+          }
+        ],
+        "integrity": {
+          "negativeStock": 0,
+          "duplicateNumbers": 0,
+          "duplicateCodes": 0,
+          "duplicateKeys": 0,
+          "inventoryMismatch": 0,
+          "pendingOutbox": 0,
+          "deadlocks": 0,
+          "orders": 0
+        },
+        "resources": {
+          "budgetMiB": 2048,
+          "sharedCpuCount": 2,
+          "workers": [
+            {
+              "pid": 15,
+              "peakRssMiB": 196.94140625,
+              "meanCpuPercent": 49.69613220947664
+            }
+          ],
+          "peakContainersMiB": 610.3,
+          "readingStages": [
+            {
+              "users": 50,
+              "start": 15.091974386000004,
+              "end": 105.091974386,
+              "rampSeconds": 15,
+              "steadySeconds": 90,
+              "meanTwoCpuUtilizationPercent": 19.497083333333332,
+              "p95TwoCpuUtilizationPercent": 33.505,
+              "cpuCriterionPassed": true
+            },
+            {
+              "users": 100,
+              "start": 125.09612319500002,
+              "end": 215.09612319500002,
+              "rampSeconds": 15,
+              "steadySeconds": 90,
+              "meanTwoCpuUtilizationPercent": 26.968181818181815,
+              "p95TwoCpuUtilizationPercent": 45.66,
+              "cpuCriterionPassed": true
+            },
+            {
+              "users": 300,
+              "start": 235.09931932000006,
+              "end": 325.09931932000006,
+              "rampSeconds": 15,
+              "steadySeconds": 90,
+              "meanTwoCpuUtilizationPercent": 71.08333333333333,
+              "p95TwoCpuUtilizationPercent": 90.255,
+              "cpuCriterionPassed": true
+            },
+            {
+              "users": 500,
+              "start": 345.21888100399997,
+              "end": 435.21888100399997,
+              "rampSeconds": 15,
+              "steadySeconds": 90,
+              "meanTwoCpuUtilizationPercent": 82.80291666666666,
+              "p95TwoCpuUtilizationPercent": 96.58,
+              "cpuCriterionPassed": false
+            },
+            {
+              "users": 1000,
+              "start": 457.80758274000004,
+              "end": 547.80758274,
+              "rampSeconds": 15,
+              "steadySeconds": 90,
+              "meanTwoCpuUtilizationPercent": 8.771363636363635,
+              "p95TwoCpuUtilizationPercent": 65.91499999999999,
+              "cpuCriterionPassed": true
+            }
+          ],
+          "workerBalanceCriterion": "not applicable: one worker"
+        }
+      },
+      "metrics": {
+        "read_50_ramp": {
+          "count": 234,
+          "p50Ms": 10.485553000023629,
+          "p95Ms": 17.519525000011527,
+          "p99Ms": 27.300439999976334,
+          "status": {
+            "200": 234
+          }
+        },
+        "read_50": {
+          "count": 1803,
+          "p50Ms": 10.545556000010947,
+          "p95Ms": 19.84428699995533,
+          "p99Ms": 30.478690999984792,
+          "status": {
+            "200": 1803
+          }
+        },
+        "read_100_ramp": {
+          "count": 474,
+          "p50Ms": 10.064651000107006,
+          "p95Ms": 24.072423000006893,
+          "p99Ms": 37.99747799996567,
+          "status": {
+            "200": 474
+          }
+        },
+        "read_100": {
+          "count": 3534,
+          "p50Ms": 9.634757000071659,
+          "p95Ms": 25.054187000023376,
+          "p99Ms": 35.84384599992063,
+          "status": {
+            "200": 3534
+          }
+        },
+        "read_300_ramp": {
+          "count": 1404,
+          "p50Ms": 25.998689999937596,
+          "p95Ms": 233.82588699996631,
+          "p99Ms": 287.0772980000993,
+          "status": {
+            "200": 1404
+          }
+        },
+        "read_300": {
+          "count": 10476,
+          "p50Ms": 51.69223099994724,
+          "p95Ms": 191.78169099996012,
+          "p99Ms": 265.81023900007494,
+          "status": {
+            "200": 10476
+          }
+        },
+        "read_500_ramp": {
+          "count": 1904,
+          "p50Ms": 501.8840430000182,
+          "p95Ms": 2087.416249000057,
+          "p99Ms": 2258.567040999992,
+          "status": {
+            "200": 1904
+          }
+        },
+        "read_500": {
+          "count": 11416,
+          "p50Ms": 1473.4109060000264,
+          "p95Ms": 1959.1496809999853,
+          "p99Ms": 2455.9931469999583,
+          "status": {
+            "200": 11416
+          }
+        },
+        "read_1000_ramp": {
+          "count": 2531,
+          "p50Ms": 2808.8554929998963,
+          "p95Ms": 5103.67436599995,
+          "p99Ms": 5139.167970000017,
+          "status": {
+            "200": 2280,
+            "503": 251
+          }
+        },
+        "read_1000": {
+          "count": 32806,
+          "p50Ms": 0.6276139999954466,
+          "p95Ms": 87.80227500005822,
+          "p99Ms": 5069.189513999959,
+          "status": {
+            "503": 143,
+            "200": 538,
+            "0": 32125
+          }
+        }
+      },
+      "transport": {
+        "origin": "https://localhost:18443",
+        "tlsCertificateValidation": true,
+        "trust": "explicit test CA, client only"
+      }
+    },
+    "writes": {
+      "scenario": "writes",
+      "profile": "2cpu-2gib-total",
+      "quick": false,
+      "commit": "66ed757896274e719c72aaea62f43b107d919628",
+      "elapsedSeconds": 398.25021910300006,
+      "success": false,
+      "failures": {
+        "create_1 initial creation failed": 90,
+        "create_2 initial creation failed": 180,
+        "create_4 initial creation failed": 360,
+        "create_8 initial creation failed": 720,
+        "create_1 internal/transport errors": 1,
+        "create_2 internal/transport errors": 1,
+        "create_4 internal/transport errors": 1,
+        "create_8 internal/transport errors": 1
+      },
+      "details": {
+        "preparation": {
+          "accounts": 1005,
+          "authenticationConcurrency": 8,
+          "excludedFromMeasuredScenarios": true
+        },
+        "arrivals": [
+          {
+            "rate": 1,
+            "seconds": 90,
+            "launched": 90,
+            "elapsed": 89.00164148699992
+          },
+          {
+            "rate": 2,
+            "seconds": 90,
+            "launched": 180,
+            "elapsed": 89.50266289899992
+          },
+          {
+            "rate": 4,
+            "seconds": 90,
+            "launched": 360,
+            "elapsed": 89.75215558599984
+          },
+          {
+            "rate": 8,
+            "seconds": 90,
+            "launched": 720,
+            "elapsed": 89.87810024500004
+          }
+        ],
+        "cleanup": [
+          {
+            "intended": 0,
+            "confirmed": 0,
+            "maximumAttempts": 3,
+            "concurrency": 4
+          },
+          {
+            "intended": 0,
+            "confirmed": 0,
+            "maximumAttempts": 3,
+            "concurrency": 4
+          },
+          {
+            "intended": 0,
+            "confirmed": 0,
+            "maximumAttempts": 3,
+            "concurrency": 4
+          },
+          {
+            "intended": 0,
+            "confirmed": 0,
+            "maximumAttempts": 3,
+            "concurrency": 4
+          }
+        ],
+        "stages": [
+          {
+            "name": "writes_1",
+            "elapsedSeconds": 89.00443229500002,
+            "success": false
+          },
+          {
+            "name": "writes_2",
+            "elapsedSeconds": 89.50444440900014,
+            "success": false
+          },
+          {
+            "name": "writes_4",
+            "elapsedSeconds": 89.754001754,
+            "success": false
+          },
+          {
+            "name": "writes_8",
+            "elapsedSeconds": 89.87998186100003,
+            "success": false
+          }
+        ],
+        "integrity": {
+          "negativeStock": 0,
+          "duplicateNumbers": 0,
+          "duplicateCodes": 0,
+          "duplicateKeys": 0,
+          "inventoryMismatch": 0,
+          "pendingOutbox": 0,
+          "deadlocks": 0,
+          "orders": 0
+        },
+        "resources": {
+          "budgetMiB": 2048,
+          "sharedCpuCount": 2,
+          "workers": [
+            {
+              "pid": 15,
+              "peakRssMiB": 196.80078125,
+              "meanCpuPercent": 0.9123551329183586
+            }
+          ],
+          "peakContainersMiB": 500.74,
+          "readingStages": [],
+          "workerBalanceCriterion": "not applicable: one worker"
+        }
+      },
+      "metrics": {
+        "create_1": {
+          "count": 90,
+          "p50Ms": 0.8070879998740565,
+          "p95Ms": 1.3734470001054433,
+          "p99Ms": 2.282054000033895,
+          "status": {
+            "0": 90
+          }
+        },
+        "create_2": {
+          "count": 180,
+          "p50Ms": 0.8516909999798372,
+          "p95Ms": 1.2498850001065875,
+          "p99Ms": 1.5780090000134805,
+          "status": {
+            "0": 180
+          }
+        },
+        "create_4": {
+          "count": 360,
+          "p50Ms": 0.7978010000897484,
+          "p95Ms": 1.2064250001913024,
+          "p99Ms": 1.4565399999355577,
+          "status": {
+            "0": 360
+          }
+        },
+        "create_8": {
+          "count": 720,
+          "p50Ms": 0.6952189999083203,
+          "p95Ms": 1.1029620000044815,
+          "p99Ms": 1.3135050000983028,
+          "status": {
+            "0": 720
+          }
+        }
+      },
+      "transport": {
+        "origin": "https://localhost:18443",
+        "tlsCertificateValidation": true,
+        "trust": "explicit test CA, client only"
+      }
+    },
+    "burst": {
+      "scenario": "burst",
+      "profile": "2cpu-2gib-total",
+      "quick": false,
+      "commit": "66ed757896274e719c72aaea62f43b107d919628",
+      "elapsedSeconds": 302.98435543799997,
+      "success": false,
+      "failures": {
+        "Burst first-attempt error rate >=1%": 1,
+        "Burst capacity: unconfirmed intents after the single automatic retry": 1,
+        "Burst unresolved intentions, duplicate returned IDs or SQL count mismatch": 1,
+        "burst_first internal/transport errors": 1,
+        "burst_manual_recovery internal/transport errors": 1
+      },
+      "details": {
+        "preparation": {
+          "accounts": 1005,
+          "authenticationConcurrency": 8,
+          "excludedFromMeasuredScenarios": true
+        },
+        "arrivals": [
+          {
+            "rate": 5,
+            "seconds": 200.0,
+            "launched": 1000,
+            "elapsed": 199.8022004280001
+          },
+          {
+            "rate": 2,
+            "seconds": 97.0,
+            "launched": 194,
+            "elapsed": 96.50324201499984
+          }
+        ],
+        "burst": {
+          "intents": 1000,
+          "firstAttempt": {
+            "attempts": 1000,
+            "status": {
+              "0": 1000
+            },
+            "successfulBodies": 0,
+            "successfulOrderIds": 0
+          },
+          "automaticRetry": {
+            "attempts": 0,
+            "status": {},
+            "successfulBodies": 0,
+            "successfulOrderIds": 0
+          },
+          "confirmedAfterAutomaticPolicy": 0,
+          "unconfirmedBeforeManualRecovery": 1000,
+          "automaticRetryLimit": 1,
+          "retryAfterMaximumSeconds": 5,
+          "jitterMaximumSeconds": 1.499,
+          "manualRecoveryRounds": [
+            {
+              "round": 1,
+              "rate": 5,
+              "attempts": 1000,
+              "remainingUnconfirmed": 1000
+            },
+            {
+              "round": 2,
+              "rate": 2,
+              "attempts": 194,
+              "remainingUnconfirmed": 1000
+            }
+          ],
+          "unresolvedAfterManualRecovery": 1000,
+          "manualRecoveryBudgetSeconds": 300,
+          "confirmedIncludingManual": 0,
+          "uniqueConfirmedOrderIds": 0,
+          "sqlOrdersBeforeCancellation": 0
+        },
+        "cleanup": [
+          {
+            "intended": 0,
+            "confirmed": 0,
+            "maximumAttempts": 3,
+            "concurrency": 4
+          }
+        ],
+        "integrity": {
+          "negativeStock": 0,
+          "duplicateNumbers": 0,
+          "duplicateCodes": 0,
+          "duplicateKeys": 0,
+          "inventoryMismatch": 0,
+          "pendingOutbox": 0,
+          "deadlocks": 0,
+          "orders": 0
+        },
+        "resources": {
+          "budgetMiB": 2048,
+          "sharedCpuCount": 2,
+          "workers": [
+            {
+              "pid": 15,
+              "peakRssMiB": 196.80078125,
+              "meanCpuPercent": 0.9795981544262967
+            }
+          ],
+          "peakContainersMiB": 419.36,
+          "readingStages": [],
+          "workerBalanceCriterion": "not applicable: one worker"
+        }
+      },
+      "metrics": {
+        "burst_first": {
+          "count": 1000,
+          "p50Ms": 437.5292110000828,
+          "p95Ms": 511.4236240001446,
+          "p99Ms": 530.2098669999395,
+          "status": {
+            "0": 1000
+          }
+        },
+        "burst_automatic_intent": {
+          "count": 1000,
+          "p50Ms": 437.5449199999366,
+          "p95Ms": 511.4417180000146,
+          "p99Ms": 530.2255560000049,
+          "status": {}
+        },
+        "burst_manual_recovery": {
+          "count": 1194,
+          "p50Ms": 0.8495179999954416,
+          "p95Ms": 1.2433939998572896,
+          "p99Ms": 1.5310809999391495,
+          "status": {
+            "0": 1194
+          }
+        }
+      },
+      "transport": {
+        "origin": "https://localhost:18443",
+        "tlsCertificateValidation": true,
+        "trust": "explicit test CA, client only"
+      }
+    },
+    "realtime": {
+      "scenario": "realtime",
+      "profile": "2cpu-2gib-total",
+      "quick": false,
+      "commit": "66ed757896274e719c72aaea62f43b107d919628",
+      "elapsedSeconds": 0.1858881520001887,
+      "success": false,
+      "failures": {
+        "Scenario execution: ConnectionError": 1,
+        "Resource monitoring unavailable": 1,
+        "API worker restarted or monitoring saw multiple workers": 1
+      },
+      "details": {
+        "preparation": {
+          "accounts": 1005,
+          "authenticationConcurrency": 8,
+          "excludedFromMeasuredScenarios": true
+        },
+        "integrity": {
+          "negativeStock": 0,
+          "duplicateNumbers": 0,
+          "duplicateCodes": 0,
+          "duplicateKeys": 0,
+          "inventoryMismatch": 0,
+          "pendingOutbox": 0,
+          "deadlocks": 0,
+          "orders": 0
+        },
+        "resetCompleted": true,
+        "resources": {
+          "budgetMiB": 2048,
+          "sharedCpuCount": 2,
+          "workers": [],
+          "peakContainersMiB": 0.0,
+          "readingStages": [],
+          "workerBalanceCriterion": "not applicable: one worker"
+        }
+      },
+      "metrics": {},
+      "transport": {
+        "origin": "https://localhost:18443",
+        "tlsCertificateValidation": true,
+        "trust": "explicit test CA, client only"
+      }
+    },
+    "mixed": {
+      "scenario": "mixed",
+      "profile": "2cpu-2gib-total",
+      "quick": false,
+      "commit": "66ed757896274e719c72aaea62f43b107d919628",
+      "elapsedSeconds": 605.7435414030001,
+      "success": false,
+      "failures": {
+        "Mixed connection: ConnectionError": 1000,
+        "Mixed did not connect 1000 WebSockets": 1,
+        "Mixed did not confirm 1000 subscriptions": 1,
+        "admin_businesses HTTP failure": 60,
+        "P9 kitchen read": 2400,
+        "P9 create failed": 900,
+        "admin_users HTTP failure": 60,
+        "mixed_read HTTP failure": 239904,
+        "admin_reviews HTTP failure": 60,
+        "kitchen_stats HTTP failure": 240,
+        "admin_businesses no successful activity": 1,
+        "admin_users no successful activity": 1,
+        "admin_reviews no successful activity": 1,
+        "kitchen_stats no successful activity": 1,
+        "P9 delivery ratio": 1,
+        "P9 acceptance p95": 1,
+        "Collaboration probe: sample contains real orders": 1,
+        "Mixed order event delivery mismatch": 1,
+        "mixed_order_event p95 >=2000ms": 1,
+        "mixed_product_event p95 >=2000ms": 1,
+        "Mixed kitchen had no successful transitions": 1,
+        "admin_businesses internal/transport errors": 1,
+        "kitchen_read internal/transport errors": 1,
+        "kitchen_create internal/transport errors": 1,
+        "admin_users internal/transport errors": 1,
+        "mixed_read internal/transport errors": 1,
+        "admin_reviews internal/transport errors": 1,
+        "kitchen_stats internal/transport errors": 1
+      },
+      "details": {
+        "preparation": {
+          "accounts": 1005,
+          "authenticationConcurrency": 8,
+          "excludedFromMeasuredScenarios": true
+        },
+        "mixedConnections": 0,
+        "mixedConfirmedSubscriptions": 0,
+        "arrivals": [
+          {
+            "rate": 1.5,
+            "seconds": 600,
+            "launched": 900,
+            "elapsed": 599.3351027429999
+          }
+        ],
+        "administration": {
+          "cycles": 60,
+          "plannedSeconds": 600,
+          "requests": {
+            "admin_businesses": 60,
+            "admin_users": 60,
+            "admin_reviews": 60,
+            "kitchen_stats": 240
+          }
+        },
+        "created": 0,
+        "delivered": 0,
+        "collaboration": {
+          "sampleEveryOrders": 31,
+          "sampleMaximum": 20,
+          "chatTransport": "real authenticated HTTP",
+          "ratingTransport": "real authenticated HTTP plus order.updated websocket",
+          "productRatingsIncluded": false
+        },
+        "mixed": {
+          "steadySeconds": 600,
+          "elapsedIncludingDrainSeconds": 604.0842382420001,
+          "expectedOrderDeliveries": 0,
+          "receivedOrderDeliveries": 0,
+          "missingOrderDeliveries": 0,
+          "unexpectedOrderDeliveries": 0,
+          "duplicateOrderDeliveries": 0,
+          "productPublications": 0,
+          "expectedProductDeliveries": 0,
+          "receivedProductDeliveries": 0,
+          "missingProductDeliveries": 0,
+          "unexpectedProductDeliveries": 0,
+          "duplicateProductDeliveries": 0,
+          "wrongBusinessDeliveries": 0,
+          "unexpectedDisconnects": 0
+        },
+        "integrity": {
+          "negativeStock": 0,
+          "duplicateNumbers": 0,
+          "duplicateCodes": 0,
+          "duplicateKeys": 0,
+          "inventoryMismatch": 0,
+          "pendingOutbox": 0,
+          "deadlocks": 0,
+          "orders": 0
+        },
+        "resources": {
+          "budgetMiB": 2048,
+          "sharedCpuCount": 2,
+          "workers": [
+            {
+              "pid": 15,
+              "peakRssMiB": 196.80078125,
+              "meanCpuPercent": 0.9453907673023744
+            }
+          ],
+          "peakContainersMiB": 440.58,
+          "readingStages": [],
+          "workerBalanceCriterion": "not applicable: one worker"
+        }
+      },
+      "metrics": {
+        "admin_businesses": {
+          "count": 60,
+          "p50Ms": 0.5476230003296223,
+          "p95Ms": 1.3589710001724598,
+          "p99Ms": 22.393274999785717,
+          "status": {
+            "0": 60
+          }
+        },
+        "kitchen_read": {
+          "count": 2400,
+          "p50Ms": 2.2004539998761175,
+          "p95Ms": 3.497707999940758,
+          "p99Ms": 4.370579000351427,
+          "status": {
+            "0": 2400
+          }
+        },
+        "kitchen_create": {
+          "count": 900,
+          "p50Ms": 0.6493440000667761,
+          "p95Ms": 1.5367819996754406,
+          "p99Ms": 2.938292000180809,
+          "status": {
+            "0": 900
+          }
+        },
+        "admin_users": {
+          "count": 60,
+          "p50Ms": 0.5092820001664222,
+          "p95Ms": 1.2469010000586422,
+          "p99Ms": 15.815782999879957,
+          "status": {
+            "0": 60
+          }
+        },
+        "mixed_read": {
+          "count": 239904,
+          "p50Ms": 0.5519719998119399,
+          "p95Ms": 1.4382979998117662,
+          "p99Ms": 2.7152759998898546,
+          "status": {
+            "0": 239904
+          }
+        },
+        "admin_reviews": {
+          "count": 60,
+          "p50Ms": 0.6489830000191432,
+          "p95Ms": 1.0654719999365625,
+          "p99Ms": 15.482055999882505,
+          "status": {
+            "0": 60
+          }
+        },
+        "kitchen_stats": {
+          "count": 240,
+          "p50Ms": 0.44267799989938794,
+          "p95Ms": 1.2503970001489506,
+          "p99Ms": 15.484521000189488,
+          "status": {
+            "0": 240
+          }
+        },
+        "acceptance": {
+          "count": 0,
+          "p50Ms": null,
+          "p95Ms": null,
+          "p99Ms": null,
+          "status": {}
+        },
+        "mixed_order_event": {
+          "count": 0,
+          "p50Ms": null,
+          "p95Ms": null,
+          "p99Ms": null,
+          "status": {}
+        },
+        "mixed_product_event": {
+          "count": 0,
+          "p50Ms": null,
+          "p95Ms": null,
+          "p99Ms": null,
+          "status": {}
+        }
+      },
+      "transport": {
+        "origin": "https://localhost:18443",
+        "tlsCertificateValidation": true,
+        "trust": "explicit test CA, client only"
+      }
+    },
+    "resources-before": {
+      "validation": {
+        "success": true,
+        "checks": {
+          "samplesPresent": true,
+          "allSamplesReadable": true,
+          "exactThreeServices": true,
+          "generatorOnSeparateCpuSet": true,
+          "configuredBudgetIsExactlyTwoGiB": true,
+          "effectiveCgroupLimitsApplied": true,
+          "sharedTwoCpuSet": true,
+          "noAdditionalSwap": true,
+          "noOomOrRestart": true,
+          "allServicesRunning": true,
+          "containerIdentityStable": true,
+          "singleWorkerRuntimeSettings": true
+        },
+        "samples": 1,
+        "sampledCombinedPeakBytes": 320561152,
+        "cgroupPeakBytesByService": {
+          "app": 234098688,
+          "db": 90869760,
+          "tls": 28688384
+        },
+        "configuredBudgetBytesByService": {
+          "app": 1207959552,
+          "db": 805306368,
+          "tls": 134217728
+        },
+        "configuredTotalBytes": 2147483648,
+        "host": {
+          "platform": "Linux-7.0.0-1019-azure-x86_64-with-glibc2.43",
+          "logicalProcessors": 4,
+          "model": "AMD EPYC 7763 64-Core Processor",
+          "totalRamKiB": 16366640,
+          "totalSwapKiB": 3145724
+        },
+        "limits": [
+          "The 2 GiB budget covers app, PostgreSQL and TLS containers together; it excludes the host OS, Docker daemon, build and generator.",
+          "All service processes share logical CPUs 0-1. The generator is restricted to CPUs 2-3.",
+          "This is not proof that a complete 2 GiB virtual machine has enough RAM for its operating system and services."
+        ]
+      },
+      "samples": [
+        {
+          "utc": "2026-11-13T22:47:14.603808+00:00",
+          "monotonicSeconds": 262.440099763,
+          "generatorAffinity": [
+            2,
+            3
+          ],
+          "services": {
+            "app": {
+              "id": "a6da5b08df53f27afab93e473bc81f4bde67bbd1b1e3335bd23976b55359183d",
+              "imageId": "sha256:8c90fa389ddec95d7912e27ca9b61791ff9654a450ad5c28ff1acc5786c15bbb",
+              "pid": 7751,
+              "state": "running",
+              "health": "healthy",
+              "oomKilled": false,
+              "restarts": 0,
+              "configuredMemoryBytes": 1207959552,
+              "configuredMemorySwapBytes": 1207959552,
+              "configuredCpuSet": "0-1",
+              "configuredCpuQuota": 0,
+              "configuredCpuPeriod": 0,
+              "runtimeSettings": {
+                "SNACKUP_POOL_SIZE": "10",
+                "SNACKUP_PASSWORD_CONCURRENCY": "2",
+                "SNACKUP_MAX_OVERFLOW": "5",
+                "SNACKUP_WORKERS": "1",
+                "SNACKUP_WRITE_CONCURRENCY": "1"
+              },
+              "cgroup": {
+                "memoryMax": "1207959552",
+                "memorySwapMax": "0",
+                "memoryCurrentBytes": 219426816,
+                "memoryPeakBytes": 234098688,
+                "memoryEvents": {
+                  "low": 0,
+                  "high": 0,
+                  "max": 0,
+                  "oom": 0,
+                  "oom_kill": 0,
+                  "oom_group_kill": 0,
+                  "sock_throttled": 0
+                },
+                "cpuSetEffective": "0-1",
+                "cpuMax": "max 100000",
+                "cpuStat": {
+                  "usage_usec": 8643963,
+                  "user_usec": 7964945,
+                  "system_usec": 679018,
+                  "nice_usec": 0,
+                  "core_sched.force_idle_usec": 0,
+                  "nr_periods": 0,
+                  "nr_throttled": 0,
+                  "throttled_usec": 0,
+                  "nr_bursts": 0,
+                  "burst_usec": 0
+                }
+              }
+            },
+            "db": {
+              "id": "2e92be73ad9464f78f9ec0e7cfeec64bd3ecdcda99bbda88fbb7a8372a737f32",
+              "imageId": "sha256:d3244e8ce3f165ee3c93d9c4a4b1d0fe48b3a89e2287b717fdcbbde92d405065",
+              "pid": 7586,
+              "state": "running",
+              "health": "healthy",
+              "oomKilled": false,
+              "restarts": 0,
+              "configuredMemoryBytes": 805306368,
+              "configuredMemorySwapBytes": 805306368,
+              "configuredCpuSet": "0-1",
+              "configuredCpuQuota": 0,
+              "configuredCpuPeriod": 0,
+              "cgroup": {
+                "memoryMax": "805306368",
+                "memorySwapMax": "0",
+                "memoryCurrentBytes": 86507520,
+                "memoryPeakBytes": 90869760,
+                "memoryEvents": {
+                  "low": 0,
+                  "high": 0,
+                  "max": 0,
+                  "oom": 0,
+                  "oom_kill": 0,
+                  "oom_group_kill": 0,
+                  "sock_throttled": 0
+                },
+                "cpuSetEffective": "0-1",
+                "cpuMax": "max 100000",
+                "cpuStat": {
+                  "usage_usec": 2053665,
+                  "user_usec": 940086,
+                  "system_usec": 1113578,
+                  "nice_usec": 0,
+                  "core_sched.force_idle_usec": 0,
+                  "nr_periods": 0,
+                  "nr_throttled": 0,
+                  "throttled_usec": 0,
+                  "nr_bursts": 0,
+                  "burst_usec": 0
+                }
+              }
+            },
+            "tls": {
+              "id": "07ccd6d5614a25d4957bed50bd36aa27e5836090d75324093e6ef0b692ac59ee",
+              "imageId": "sha256:8c90fa389ddec95d7912e27ca9b61791ff9654a450ad5c28ff1acc5786c15bbb",
+              "pid": 7964,
+              "state": "running",
+              "health": "healthy",
+              "oomKilled": false,
+              "restarts": 0,
+              "configuredMemoryBytes": 134217728,
+              "configuredMemorySwapBytes": 134217728,
+              "configuredCpuSet": "0-1",
+              "configuredCpuQuota": 0,
+              "configuredCpuPeriod": 0,
+              "cgroup": {
+                "memoryMax": "134217728",
+                "memorySwapMax": "0",
+                "memoryCurrentBytes": 14626816,
+                "memoryPeakBytes": 28688384,
+                "memoryEvents": {
+                  "low": 0,
+                  "high": 0,
+                  "max": 0,
+                  "oom": 0,
+                  "oom_kill": 0,
+                  "oom_group_kill": 0,
+                  "sock_throttled": 0
+                },
+                "cpuSetEffective": "0-1",
+                "cpuMax": "max 100000",
+                "cpuStat": {
+                  "usage_usec": 428808,
+                  "user_usec": 356334,
+                  "system_usec": 72474,
+                  "nice_usec": 0,
+                  "core_sched.force_idle_usec": 0,
+                  "nr_periods": 0,
+                  "nr_throttled": 0,
+                  "throttled_usec": 0,
+                  "nr_bursts": 0,
+                  "burst_usec": 0
+                }
+              }
+            }
+          },
+          "errors": []
+        }
+      ]
+    },
+    "resources-after": {
+      "validation": {
+        "success": false,
+        "checks": {
+          "samplesPresent": true,
+          "allSamplesReadable": false,
+          "exactThreeServices": true,
+          "generatorOnSeparateCpuSet": true,
+          "configuredBudgetIsExactlyTwoGiB": true,
+          "effectiveCgroupLimitsApplied": false,
+          "sharedTwoCpuSet": false,
+          "noAdditionalSwap": false,
+          "noOomOrRestart": false,
+          "allServicesRunning": false,
+          "containerIdentityStable": true,
+          "singleWorkerRuntimeSettings": true
+        },
+        "samples": 1,
+        "sampledCombinedPeakBytes": 517431296,
+        "cgroupPeakBytesByService": {
+          "app": 467005440,
+          "db": 158609408,
+          "tls": 0
+        },
+        "configuredBudgetBytesByService": {
+          "app": 1207959552,
+          "db": 805306368,
+          "tls": 134217728
+        },
+        "configuredTotalBytes": 2147483648,
+        "host": {
+          "platform": "Linux-7.0.0-1019-azure-x86_64-with-glibc2.43",
+          "logicalProcessors": 4,
+          "model": "AMD EPYC 7763 64-Core Processor",
+          "totalRamKiB": 16366640,
+          "totalSwapKiB": 3145724
+        },
+        "limits": [
+          "The 2 GiB budget covers app, PostgreSQL and TLS containers together; it excludes the host OS, Docker daemon, build and generator.",
+          "All service processes share logical CPUs 0-1. The generator is restricted to CPUs 2-3.",
+          "This is not proof that a complete 2 GiB virtual machine has enough RAM for its operating system and services."
+        ]
+      },
+      "samples": [
+        {
+          "utc": "2026-11-13T23:21:35.325930+00:00",
+          "monotonicSeconds": 2323.162214543,
+          "generatorAffinity": [
+            2,
+            3
+          ],
+          "services": {
+            "app": {
+              "id": "a6da5b08df53f27afab93e473bc81f4bde67bbd1b1e3335bd23976b55359183d",
+              "imageId": "sha256:8c90fa389ddec95d7912e27ca9b61791ff9654a450ad5c28ff1acc5786c15bbb",
+              "pid": 7751,
+              "state": "running",
+              "health": "healthy",
+              "oomKilled": false,
+              "restarts": 0,
+              "configuredMemoryBytes": 1207959552,
+              "configuredMemorySwapBytes": 1207959552,
+              "configuredCpuSet": "0-1",
+              "configuredCpuQuota": 0,
+              "configuredCpuPeriod": 0,
+              "runtimeSettings": {
+                "SNACKUP_POOL_SIZE": "10",
+                "SNACKUP_PASSWORD_CONCURRENCY": "2",
+                "SNACKUP_MAX_OVERFLOW": "5",
+                "SNACKUP_WORKERS": "1",
+                "SNACKUP_WRITE_CONCURRENCY": "1"
+              },
+              "cgroup": {
+                "memoryMax": "1207959552",
+                "memorySwapMax": "0",
+                "memoryCurrentBytes": 377065472,
+                "memoryPeakBytes": 467005440,
+                "memoryEvents": {
+                  "low": 0,
+                  "high": 0,
+                  "max": 0,
+                  "oom": 0,
+                  "oom_kill": 0,
+                  "oom_group_kill": 0,
+                  "sock_throttled": 0
+                },
+                "cpuSetEffective": "0-1",
+                "cpuMax": "max 100000",
+                "cpuStat": {
+                  "usage_usec": 456744992,
+                  "user_usec": 368242559,
+                  "system_usec": 88502433,
+                  "nice_usec": 0,
+                  "core_sched.force_idle_usec": 0,
+                  "nr_periods": 0,
+                  "nr_throttled": 0,
+                  "throttled_usec": 0,
+                  "nr_bursts": 0,
+                  "burst_usec": 0
+                }
+              }
+            },
+            "db": {
+              "id": "2e92be73ad9464f78f9ec0e7cfeec64bd3ecdcda99bbda88fbb7a8372a737f32",
+              "imageId": "sha256:d3244e8ce3f165ee3c93d9c4a4b1d0fe48b3a89e2287b717fdcbbde92d405065",
+              "pid": 7586,
+              "state": "running",
+              "health": "healthy",
+              "oomKilled": false,
+              "restarts": 0,
+              "configuredMemoryBytes": 805306368,
+              "configuredMemorySwapBytes": 805306368,
+              "configuredCpuSet": "0-1",
+              "configuredCpuQuota": 0,
+              "configuredCpuPeriod": 0,
+              "cgroup": {
+                "memoryMax": "805306368",
+                "memorySwapMax": "0",
+                "memoryCurrentBytes": 140365824,
+                "memoryPeakBytes": 158609408,
+                "memoryEvents": {
+                  "low": 0,
+                  "high": 0,
+                  "max": 0,
+                  "oom": 0,
+                  "oom_kill": 0,
+                  "oom_group_kill": 0,
+                  "sock_throttled": 0
+                },
+                "cpuSetEffective": "0-1",
+                "cpuMax": "max 100000",
+                "cpuStat": {
+                  "usage_usec": 97710635,
+                  "user_usec": 52384004,
+                  "system_usec": 45326631,
+                  "nice_usec": 0,
+                  "core_sched.force_idle_usec": 0,
+                  "nr_periods": 0,
+                  "nr_throttled": 0,
+                  "throttled_usec": 0,
+                  "nr_bursts": 0,
+                  "burst_usec": 0
+                }
+              }
+            },
+            "tls": {
+              "id": "07ccd6d5614a25d4957bed50bd36aa27e5836090d75324093e6ef0b692ac59ee",
+              "imageId": "sha256:8c90fa389ddec95d7912e27ca9b61791ff9654a450ad5c28ff1acc5786c15bbb",
+              "pid": 0,
+              "state": "exited",
+              "health": "unhealthy",
+              "oomKilled": true,
+              "restarts": 0,
+              "configuredMemoryBytes": 134217728,
+              "configuredMemorySwapBytes": 134217728,
+              "configuredCpuSet": "0-1",
+              "configuredCpuQuota": 0,
+              "configuredCpuPeriod": 0
+            }
+          },
+          "errors": [
+            "FileNotFoundError"
+          ]
+        }
+      ]
+    },
+    "resources-validation": {
+      "success": false,
+      "checks": {
+        "samplesPresent": true,
+        "allSamplesReadable": false,
+        "exactThreeServices": true,
+        "generatorOnSeparateCpuSet": true,
+        "configuredBudgetIsExactlyTwoGiB": true,
+        "effectiveCgroupLimitsApplied": false,
+        "sharedTwoCpuSet": false,
+        "noAdditionalSwap": false,
+        "noOomOrRestart": false,
+        "allServicesRunning": false,
+        "containerIdentityStable": true,
+        "singleWorkerRuntimeSettings": true
+      },
+      "samples": 392,
+      "sampledCombinedPeakBytes": 734048256,
+      "cgroupPeakBytesByService": {
+        "app": 467005440,
+        "db": 158609408,
+        "tls": 134217728
+      },
+      "configuredBudgetBytesByService": {
+        "app": 1207959552,
+        "db": 805306368,
+        "tls": 134217728
+      },
+      "configuredTotalBytes": 2147483648,
+      "host": {
+        "platform": "Linux-7.0.0-1019-azure-x86_64-with-glibc2.43",
+        "logicalProcessors": 4,
+        "model": "AMD EPYC 7763 64-Core Processor",
+        "totalRamKiB": 16366640,
+        "totalSwapKiB": 3145724
+      },
+      "limits": [
+        "The 2 GiB budget covers app, PostgreSQL and TLS containers together; it excludes the host OS, Docker daemon, build and generator.",
+        "All service processes share logical CPUs 0-1. The generator is restricted to CPUs 2-3.",
+        "This is not proof that a complete 2 GiB virtual machine has enough RAM for its operating system and services."
+      ]
+    },
+    "services": {
+      "commit": "66ed757896274e719c72aaea62f43b107d919628",
+      "diagnosticExitCode": 0,
+      "services": [
+        {
+          "Name": "snackup-pessimistic-43521552674-1-app-1",
+          "Service": "app",
+          "State": "running",
+          "Health": "healthy",
+          "ExitCode": 0
+        },
+        {
+          "Name": "snackup-pessimistic-43521552674-1-db-1",
+          "Service": "db",
+          "State": "running",
+          "Health": "healthy",
+          "ExitCode": 0
+        },
+        {
+          "Name": "snackup-pessimistic-43521552674-1-tls-1",
+          "Service": "tls",
+          "State": "exited",
+          "Health": "",
+          "ExitCode": 137
+        }
+      ],
+      "health": {
+        "app": {
+          "oomKilled": false,
+          "checks": [
+            {
+              "exitCode": 0,
+              "output": ""
+            },
+            {
+              "exitCode": 0,
+              "output": ""
+            },
+            {
+              "exitCode": 0,
+              "output": ""
+            }
+          ]
+        },
+        "db": {
+          "oomKilled": false,
+          "checks": [
+            {
+              "exitCode": 0,
+              "output": "/var/run/postgresql:5432 - accepting connections\n"
+            },
+            {
+              "exitCode": 0,
+              "output": "/var/run/postgresql:5432 - accepting connections\n"
+            },
+            {
+              "exitCode": 0,
+              "output": "/var/run/postgresql:5432 - accepting connections\n"
+            }
+          ]
+        },
+        "tls": {
+          "oomKilled": true,
+          "checks": [
+            {
+              "exitCode": 0,
+              "output": ""
+            },
+            {
+              "exitCode": 0,
+              "output": ""
+            },
+            {
+              "exitCode": 0,
+              "output": ""
+            }
+          ]
+        }
+      },
+      "versions": {
+        "caddy": {
+          "exitCode": 0,
+          "version": "v2.11.7 h1:yj0Y4fYZGPkSvibBJ1sTWE33xC0fxztVyXEW5iIdUT4="
+        },
+        "redis": {
+          "exitCode": 0,
+          "version": "Redis server v=7.0.15 sha=00000000:0 malloc=jemalloc-5.3.0 bits=64 build=ae4d7c971a948f0"
+        },
+        "postgres": {
+          "exitCode": 0,
+          "version": "postgres (PostgreSQL) 17.12"
+        }
+      }
+    },
+    "ci-validation": {
+      "success": false,
+      "checks": {
+        "summary": false,
+        "allScenariosExecuted": true,
+        "frontend-before": true,
+        "frontend-after": false,
+        "resources-before": true,
+        "resources-after": false,
+        "resources-validation": false,
+        "browsers-before": true,
+        "browsers-after": false,
+        "beforeAndAfterSameConstrainedContainers": false
+      },
+      "errors": {},
+      "browserTlsLimitation": "Playwright accepts the ephemeral self-signed certificate; HTTP smoke and load generators validate this CA and hostname."
+    },
+    "cleanup": {
+      "success": true,
+      "cleanupExitCode": 0,
+      "containersRemaining": false,
+      "volumesRemaining": false,
+      "privateDirectoryRemoved": true
+    },
+    "browsers-before": [
+      {
+        "browser": "chromium",
+        "version": "151.0.7922.34",
+        "path": "/",
+        "ok": true,
+        "ignoreHTTPSErrors": true,
+        "phase": "complete",
+        "optionsStatus": 200
+      },
+      {
+        "browser": "chromium",
+        "version": "151.0.7922.34",
+        "path": "/paneles/",
+        "ok": true,
+        "ignoreHTTPSErrors": true,
+        "phase": "complete",
+        "optionsStatus": 200
+      },
+      {
+        "browser": "webkit",
+        "version": "26.5",
+        "path": "/",
+        "ok": true,
+        "ignoreHTTPSErrors": true,
+        "phase": "complete",
+        "optionsStatus": 200
+      },
+      {
+        "browser": "webkit",
+        "version": "26.5",
+        "path": "/paneles/",
+        "ok": true,
+        "ignoreHTTPSErrors": true,
+        "phase": "complete",
+        "optionsStatus": 200
+      }
+    ],
+    "browsers-after": [
+      {
+        "browser": "chromium",
+        "version": "151.0.7922.34",
+        "path": "/",
+        "ok": false,
+        "ignoreHTTPSErrors": true,
+        "phase": "options",
+        "errorType": "Error"
+      },
+      {
+        "browser": "chromium",
+        "version": "151.0.7922.34",
+        "path": "/paneles/",
+        "ok": false,
+        "ignoreHTTPSErrors": true,
+        "phase": "options",
+        "errorType": "Error"
+      },
+      {
+        "browser": "webkit",
+        "version": "26.5",
+        "path": "/",
+        "ok": false,
+        "ignoreHTTPSErrors": true,
+        "phase": "options",
+        "errorType": "Error"
+      },
+      {
+        "browser": "webkit",
+        "version": "26.5",
+        "path": "/paneles/",
+        "ok": false,
+        "ignoreHTTPSErrors": true,
+        "phase": "options",
+        "errorType": "Error"
+      }
+    ],
+    "frontend-before": {
+      "success": true,
+      "transport": {
+        "origin": "https://localhost:18443",
+        "tlsCertificateValidation": true,
+        "trust": "explicit test CA, client only"
+      },
+      "errors": [],
+      "results": [
+        {
+          "method": "GET",
+          "path": "/health/ready",
+          "status": 200,
+          "contentType": "application/json",
+          "bytes": 18,
+          "sha256": "31bf75f4c0a97cc1f7b60df824fa390b3be9ba014f29b63c87c698ba63d9a9fd",
+          "ok": true
+        },
+        {
+          "method": "GET",
+          "path": "/",
+          "status": 200,
+          "contentType": "text/html; charset=utf-8",
+          "bytes": 3600,
+          "sha256": "050b0a69d337dea6d8da0b42c5a39b945ef439e3a36be46b1e4c57d037933f9c",
+          "ok": true
+        },
+        {
+          "method": "GET",
+          "path": "/__ci_deep_link__",
+          "status": 200,
+          "contentType": "text/html; charset=utf-8",
+          "bytes": 3600,
+          "sha256": "050b0a69d337dea6d8da0b42c5a39b945ef439e3a36be46b1e4c57d037933f9c",
+          "ok": true
+        },
+        {
+          "method": "GET",
+          "path": "/__ci_missing_asset__.js",
+          "status": 404,
+          "contentType": "",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "ok": true
+        },
+        {
+          "method": "GET",
+          "path": "/flutter_bootstrap.js",
+          "status": 200,
+          "contentType": "text/javascript; charset=utf-8",
+          "bytes": 8966,
+          "sha256": "36019b82b976aec6765f511d39cc9af4619d770c8cacb226a1a380cebd728484",
+          "ok": true
+        },
+        {
+          "method": "GET",
+          "path": "/main.dart.js",
+          "status": 200,
+          "contentType": "text/javascript; charset=utf-8",
+          "bytes": 3721917,
+          "sha256": "7478088fbede32f14deb6104ccf4f76a939bb82b581e8ab9ea33e095f095388a",
+          "ok": true
+        },
+        {
+          "method": "GET",
+          "path": "/manifest.json",
+          "status": 200,
+          "contentType": "application/json",
+          "bytes": 916,
+          "sha256": "54c6fc340cef485a82382878182304d6a113cb35637e3162dafd08f1cd4b3bdd",
+          "ok": true
+        },
+        {
+          "method": "GET",
+          "path": "/icons/Icon-192.png",
+          "status": 200,
+          "contentType": "image/png",
+          "bytes": 71073,
+          "sha256": "efc04e811abbb1a2dc32cf8c12c41fd7e292713a1d9fe129fafd36d20043d80a",
+          "ok": true
+        },
+        {
+          "method": "GET",
+          "path": "/snackup-push.js",
+          "status": 200,
+          "contentType": "text/javascript; charset=utf-8",
+          "bytes": 7846,
+          "sha256": "6830739d9d9dcea2cea9a39448d81c557ffd586d7110dcd004723dcaac3c375a",
+          "ok": true
+        },
+        {
+          "method": "GET",
+          "path": "/snackup-push-sw.js",
+          "status": 200,
+          "contentType": "text/javascript; charset=utf-8",
+          "bytes": 1455,
+          "sha256": "8a1e24fc448d0d90392e85c800eac68d333fb1c61b8ed570b86a6f4382db231b",
+          "ok": true
+        },
+        {
+          "method": "GET",
+          "path": "/paneles/",
+          "status": 200,
+          "contentType": "text/html; charset=utf-8",
+          "bytes": 3824,
+          "sha256": "b96b65f0d960778a81bed1204e155d37425b21b61ff93c3bbba0606968b056dc",
+          "ok": true
+        },
+        {
+          "method": "GET",
+          "path": "/paneles/__ci_deep_link__",
+          "status": 200,
+          "contentType": "text/html; charset=utf-8",
+          "bytes": 3824,
+          "sha256": "b96b65f0d960778a81bed1204e155d37425b21b61ff93c3bbba0606968b056dc",
+          "ok": true
+        },
+        {
+          "method": "GET",
+          "path": "/paneles/__ci_missing_asset__.js",
+          "status": 404,
+          "contentType": "",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "ok": true
+        },
+        {
+          "method": "GET",
+          "path": "/paneles/flutter_bootstrap.js",
+          "status": 200,
+          "contentType": "text/javascript; charset=utf-8",
+          "bytes": 9008,
+          "sha256": "ece2442e365db45cb020a7d504de5c3a65b1bbe997ec80a07e15c18549977bd8",
+          "ok": true
+        },
+        {
+          "method": "GET",
+          "path": "/paneles/main.dart.js",
+          "status": 200,
+          "contentType": "text/javascript; charset=utf-8",
+          "bytes": 3952427,
+          "sha256": "964920d6216227b5dd94d2bf9ea28b41754bfaa1e2a2966b5d22a874bf407886",
+          "ok": true
+        },
+        {
+          "method": "GET",
+          "path": "/paneles/manifest.json",
+          "status": 200,
+          "contentType": "application/json",
+          "bytes": 916,
+          "sha256": "54c6fc340cef485a82382878182304d6a113cb35637e3162dafd08f1cd4b3bdd",
+          "ok": true
+        },
+        {
+          "method": "GET",
+          "path": "/paneles/icons/Icon-192.png",
+          "status": 200,
+          "contentType": "image/png",
+          "bytes": 71073,
+          "sha256": "efc04e811abbb1a2dc32cf8c12c41fd7e292713a1d9fe129fafd36d20043d80a",
+          "ok": true
+        },
+        {
+          "method": "GET",
+          "path": "/paneles/snackup-push.js",
+          "status": 200,
+          "contentType": "text/javascript; charset=utf-8",
+          "bytes": 7846,
+          "sha256": "6830739d9d9dcea2cea9a39448d81c557ffd586d7110dcd004723dcaac3c375a",
+          "ok": true
+        },
+        {
+          "method": "GET",
+          "path": "/paneles/snackup-push-sw.js",
+          "status": 200,
+          "contentType": "text/javascript; charset=utf-8",
+          "bytes": 1455,
+          "sha256": "8a1e24fc448d0d90392e85c800eac68d333fb1c61b8ed570b86a6f4382db231b",
+          "ok": true
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/auth/options",
+          "status": 200,
+          "contentType": "application/json",
+          "bytes": 69,
+          "sha256": "2595ac3400b105febfe42b203a82d806aed950cefe788b49381c037cba972662",
+          "ok": true
+        },
+        {
+          "method": "GET",
+          "path": "/api/legacy/v1/auth/options",
+          "status": 200,
+          "contentType": "application/json",
+          "bytes": 69,
+          "sha256": "2595ac3400b105febfe42b203a82d806aed950cefe788b49381c037cba972662",
+          "ok": true
+        }
+      ],
+      "generatorAffinity": [
+        2,
+        3
+      ]
+    },
+    "frontend-after": {
+      "success": false,
+      "transport": {
+        "origin": "https://localhost:18443",
+        "tlsCertificateValidation": true,
+        "trust": "explicit test CA, client only"
+      },
+      "errors": [
+        "URLError"
+      ],
+      "results": [],
+      "generatorAffinity": [
+        2,
+        3
+      ]
+    }
+  },
+  "firstObservedOomSample": {
+    "utc": "2026-11-13T22:58:20.145752+00:00",
+    "monotonicSeconds": 927.982038464,
+    "generatorAffinity": [
+      2,
+      3
+    ],
+    "services": {
+      "app": {
+        "id": "a6da5b08df53f27afab93e473bc81f4bde67bbd1b1e3335bd23976b55359183d",
+        "imageId": "sha256:8c90fa389ddec95d7912e27ca9b61791ff9654a450ad5c28ff1acc5786c15bbb",
+        "pid": 7751,
+        "state": "running",
+        "health": "healthy",
+        "oomKilled": false,
+        "restarts": 0,
+        "configuredMemoryBytes": 1207959552,
+        "configuredMemorySwapBytes": 1207959552,
+        "configuredCpuSet": "0-1",
+        "configuredCpuQuota": 0,
+        "configuredCpuPeriod": 0,
+        "runtimeSettings": {
+          "SNACKUP_POOL_SIZE": "10",
+          "SNACKUP_PASSWORD_CONCURRENCY": "2",
+          "SNACKUP_MAX_OVERFLOW": "5",
+          "SNACKUP_WORKERS": "1",
+          "SNACKUP_WRITE_CONCURRENCY": "1"
+        },
+        "cgroup": {
+          "memoryMax": "1207959552",
+          "memorySwapMax": "0",
+          "memoryCurrentBytes": 451563520,
+          "memoryPeakBytes": 452091904,
+          "memoryEvents": {
+            "low": 0,
+            "high": 0,
+            "max": 0,
+            "oom": 0,
+            "oom_kill": 0,
+            "oom_group_kill": 0,
+            "sock_throttled": 0
+          },
+          "cpuSetEffective": "0-1",
+          "cpuMax": "max 100000",
+          "cpuStat": {
+            "usage_usec": 394539576,
+            "user_usec": 318234944,
+            "system_usec": 76304631,
+            "nice_usec": 0,
+            "core_sched.force_idle_usec": 0,
+            "nr_periods": 0,
+            "nr_throttled": 0,
+            "throttled_usec": 0,
+            "nr_bursts": 0,
+            "burst_usec": 0
+          }
+        }
+      },
+      "db": {
+        "id": "2e92be73ad9464f78f9ec0e7cfeec64bd3ecdcda99bbda88fbb7a8372a737f32",
+        "imageId": "sha256:d3244e8ce3f165ee3c93d9c4a4b1d0fe48b3a89e2287b717fdcbbde92d405065",
+        "pid": 7586,
+        "state": "running",
+        "health": "healthy",
+        "oomKilled": false,
+        "restarts": 0,
+        "configuredMemoryBytes": 805306368,
+        "configuredMemorySwapBytes": 805306368,
+        "configuredCpuSet": "0-1",
+        "configuredCpuQuota": 0,
+        "configuredCpuPeriod": 0,
+        "cgroup": {
+          "memoryMax": "805306368",
+          "memorySwapMax": "0",
+          "memoryCurrentBytes": 148533248,
+          "memoryPeakBytes": 158609408,
+          "memoryEvents": {
+            "low": 0,
+            "high": 0,
+            "max": 0,
+            "oom": 0,
+            "oom_kill": 0,
+            "oom_group_kill": 0,
+            "sock_throttled": 0
+          },
+          "cpuSetEffective": "0-1",
+          "cpuMax": "max 100000",
+          "cpuStat": {
+            "usage_usec": 75938797,
+            "user_usec": 39532951,
+            "system_usec": 36405845,
+            "nice_usec": 0,
+            "core_sched.force_idle_usec": 0,
+            "nr_periods": 0,
+            "nr_throttled": 0,
+            "throttled_usec": 0,
+            "nr_bursts": 0,
+            "burst_usec": 0
+          }
+        }
+      },
+      "tls": {
+        "id": "07ccd6d5614a25d4957bed50bd36aa27e5836090d75324093e6ef0b692ac59ee",
+        "imageId": "sha256:8c90fa389ddec95d7912e27ca9b61791ff9654a450ad5c28ff1acc5786c15bbb",
+        "pid": 7964,
+        "state": "running",
+        "health": "healthy",
+        "oomKilled": false,
+        "restarts": 0,
+        "configuredMemoryBytes": 134217728,
+        "configuredMemorySwapBytes": 134217728,
+        "configuredCpuSet": "0-1",
+        "configuredCpuQuota": 0,
+        "configuredCpuPeriod": 0,
+        "cgroup": {
+          "memoryMax": "134217728",
+          "memorySwapMax": "0",
+          "memoryCurrentBytes": 133951488,
+          "memoryPeakBytes": 134217728,
+          "memoryEvents": {
+            "low": 0,
+            "high": 0,
+            "max": 35,
+            "oom": 1,
+            "oom_kill": 1,
+            "oom_group_kill": 0,
+            "sock_throttled": 0
+          },
+          "cpuSetEffective": "0-1",
+          "cpuMax": "max 100000",
+          "cpuStat": {
+            "usage_usec": 90455145,
+            "user_usec": 75721906,
+            "system_usec": 14733239,
+            "nice_usec": 0,
+            "core_sched.force_idle_usec": 0,
+            "nr_periods": 0,
+            "nr_throttled": 0,
+            "throttled_usec": 0,
+            "nr_bursts": 0,
+            "burst_usec": 0
+          }
+        }
+      }
+    },
+    "errors": []
+  }
+}
