@@ -67,15 +67,21 @@ jobs:
           docker compose --env-file /dev/null up -d --no-build --wait --wait-timeout 180
       - name: Trust only this test CA and verify HTTPS readiness
         run: |
-          for attempt in $(seq 1 30); do
-            if docker compose --env-file /dev/null cp tls:/tmp/caddy-data/caddy/pki/authorities/local/root.crt "$SNACKUP_LOAD_CA_FILE" 2>/dev/null; then
-              break
-            fi
-            sleep 1
-          done
+          # Read only the public certificate from the running service's tmpfs.
+          umask 077
           python - <<'PY'
-          import json, os, ssl, time
+          import json, os, ssl, subprocess, time
+          from pathlib import Path
           from urllib.request import urlopen
+          result = subprocess.run(['docker', 'compose', '--env-file', '/dev/null', 'exec', '-T', 'tls',
+                                   'cat', '/tmp/caddy-data/caddy/pki/authorities/local/root.crt'], capture_output=True)
+          if result.returncode:
+              raise SystemExit('Cannot read the public test CA: ' + result.stderr.decode(errors='replace')[-1000:])
+          pem = result.stdout.decode('ascii')
+          ssl.PEM_cert_to_DER_cert(pem)
+          ssl.create_default_context(cadata=pem)
+          with Path(os.environ['SNACKUP_LOAD_CA_FILE']).open('xb') as target:
+              target.write(result.stdout)
           context = ssl.create_default_context(cafile=os.environ['SNACKUP_LOAD_CA_FILE'])
           assert context.check_hostname and context.verify_mode == ssl.CERT_REQUIRED
           for attempt in range(30):
