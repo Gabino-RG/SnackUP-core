@@ -18,11 +18,11 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
   int _selectedIndex = 0;
   final PageController _pageController = PageController();
 
-  static const List<Widget> _widgetOptions = <Widget>[
-    UserHomeScreen(),       // 0: Inicio
-    SearchScreen(),         // 1: Buscar
-    CartScreen(),           // 2: Carrito
-    ProfileOrdersScreen(),  // 3: Pedidos
+  late final List<Widget> _widgetOptions = <Widget>[
+    const UserHomeScreen(),       // 0: Inicio
+    const SearchScreen(),         // 1: Buscar
+    CartScreen(onContinueShopping: () => _onItemTapped(0)),
+    const ProfileOrdersScreen(),  // 3: Pedidos
   ];
 
   final List<String> _appBarTitles = [

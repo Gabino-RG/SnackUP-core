@@ -93,8 +93,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       final cartRef = FirebaseFirestore.instance
           .collection('users')
           .doc(userId)
-          .collection('cart')
-          .doc(widget.productId);
+          .collection('cart');
       
       final cartItem = {
         'productId': widget.productId,
@@ -107,7 +106,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         'addedAt': FieldValue.serverTimestamp(),
       };
       
-      await cartRef.set(cartItem);
+      await cartRef.add(cartItem);
       if (mounted) {
         _showSuccess('¡Añadido al carrito!');
         Navigator.of(context).pop();

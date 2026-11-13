@@ -5,16 +5,24 @@ import 'package:snackup/theme/app_colors.dart';
 import 'package:snackup/theme/app_text.dart';
 
 class CartScreen extends StatefulWidget {
-  const CartScreen({super.key});
+  const CartScreen({super.key, required this.onContinueShopping});
+
+  final VoidCallback onContinueShopping;
 
   @override
   State<CartScreen> createState() => _CartScreenState();
 }
 
-class _CartScreenState extends State<CartScreen> {
+class _CartScreenState extends State<CartScreen>
+    with AutomaticKeepAliveClientMixin<CartScreen> {
+  @override
+  bool get wantKeepAlive => true;
+
   String _selectedPaymentMethod = 'Efectivo';
   TimeOfDay? _selectedTime;
   bool _isLoading = false;
+  String? _cartUserId;
+  Stream<QuerySnapshot>? _cartStream;
 
   final List<String> _paymentMethods = ['Efectivo', 'Tarjeta', 'Vale'];
 
@@ -36,7 +44,7 @@ class _CartScreenState extends State<CartScreen> {
         );
       },
     );
-    if (picked != null) {
+    if (picked != null && mounted) {
       setState(() {
         _selectedTime = picked;
       });
@@ -84,6 +92,7 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   Future<void> _placeOrder(List<QueryDocumentSnapshot> cartDocs, double totalPrice) async {
+    if (_isLoading) return;
     final userId = FirebaseAuth.instance.currentUser?.uid;
     if (userId == null) return;
 
@@ -192,21 +201,26 @@ class _CartScreenState extends State<CartScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final userId = FirebaseAuth.instance.currentUser?.uid;
 
     if (userId == null) {
       return _buildErrorState('Debes iniciar sesión para ver tu carrito');
     }
 
-    final Stream<QuerySnapshot> cartStream = FirebaseFirestore.instance
-        .collection('users')
-        .doc(userId)
-        .collection('cart')
-        .snapshots();
+    if (_cartUserId != userId) {
+      _cartUserId = userId;
+      _cartStream = FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('cart')
+          .snapshots();
+    }
 
     return Scaffold(
       body: StreamBuilder<QuerySnapshot>(
-        stream: cartStream,
+        key: ValueKey(userId),
+        stream: _cartStream,
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return _buildErrorState('Error al cargar el carrito');
@@ -222,24 +236,27 @@ class _CartScreenState extends State<CartScreen> {
 
           final cartDocs = snapshot.data!.docs;
           double totalPrice = 0;
-          for (var doc in cartDocs) {
+          int itemCount = 0;
+          for (final doc in cartDocs) {
             final item = doc.data()! as Map<String, dynamic>;
-            totalPrice += (item['price'] ?? 0.0) * (item['quantity'] ?? 1);
+            final quantity = item['quantity'] as int? ?? 1;
+            final price = item['price'] as num? ?? 0;
+            itemCount += quantity;
+            totalPrice += price * quantity;
           }
 
-          return Column(
-            children: [
-              // HEADER INFORMATIVO
-              _buildCartHeader(cartDocs.length),
-              
-              // LISTA DE ITEMS
-              Expanded(
-                child: _buildCartItems(cartDocs),
-              ),
-              
-              // SECCIÓN DE CHECKOUT
-              _buildCheckoutArea(totalPrice, cartDocs),
-            ],
+          return ListView.builder(
+            itemCount: cartDocs.length + 2,
+            itemBuilder: (context, index) {
+              if (index == 0) return _buildCartHeader(itemCount);
+              if (index == cartDocs.length + 1) {
+                return _buildCheckoutArea(totalPrice, cartDocs);
+              }
+              return Padding(
+                padding: EdgeInsets.fromLTRB(16, index == 1 ? 16 : 0, 16, 12),
+                child: _buildCartItem(cartDocs[index - 1]),
+              );
+            },
           );
         },
       ),
@@ -293,17 +310,6 @@ class _CartScreenState extends State<CartScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildCartItems(List<QueryDocumentSnapshot> cartDocs) {
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: cartDocs.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 12),
-      itemBuilder: (context, index) {
-        return _buildCartItem(cartDocs[index]);
-      },
     );
   }
 
@@ -366,7 +372,9 @@ class _CartScreenState extends State<CartScreen> {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
-                  Row(
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 8,
                     children: [
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -382,7 +390,6 @@ class _CartScreenState extends State<CartScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
                       Text(
                         '\$${price.toStringAsFixed(2)} c/u',
                         style: AppText.notes.copyWith(
@@ -424,13 +431,16 @@ class _CartScreenState extends State<CartScreen> {
                 color: AppColors.error,
                 size: 20,
               ),
-              onPressed: () async {
+              onPressed: _isLoading ? null : () async {
                 final confirmed = await _showConfirmDialog(
                   'Eliminar Producto', 
                   '¿Quieres eliminar "${item['name']}" del carrito?'
                 );
-                if (confirmed) {
-                  doc.reference.delete();
+                if (!confirmed || !mounted || _isLoading) return;
+                try {
+                  await doc.reference.delete();
+                } catch (e) {
+                  _showError('No se pudo eliminar el producto: $e');
                 }
               },
             ),
@@ -608,6 +618,8 @@ class _CartScreenState extends State<CartScreen> {
           
           const SizedBox(height: 16),
 
+          _buildContinueShoppingButton(),
+          const SizedBox(height: 8),
           ElevatedButton(
             onPressed: _isLoading ? null : () => _placeOrder(cartDocs, totalPrice),
             style: ElevatedButton.styleFrom(
@@ -647,6 +659,14 @@ class _CartScreenState extends State<CartScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildContinueShoppingButton() {
+    return OutlinedButton.icon(
+      onPressed: _isLoading ? null : widget.onContinueShopping,
+      icon: const Icon(Icons.add_shopping_cart_rounded),
+      label: const Text('Seguir comprando'),
     );
   }
 
@@ -696,10 +716,10 @@ class _CartScreenState extends State<CartScreen> {
 
   Widget _buildEmptyState() {
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(32.0),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Container(
               width: 120,
@@ -730,6 +750,8 @@ class _CartScreenState extends State<CartScreen> {
               ),
               textAlign: TextAlign.center,
             ),
+            const SizedBox(height: 16),
+            _buildContinueShoppingButton(),
           ],
         ),
       ),

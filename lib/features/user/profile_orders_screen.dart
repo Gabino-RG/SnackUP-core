@@ -713,7 +713,7 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
 
           if (productDoc.exists && (productDoc.data()?['isAvailable'] ?? false)) {
             final productData = productDoc.data()!;
-            final docRef = cartRef.doc(item['productId']);
+            final docRef = cartRef.doc();
             batch.set(docRef, {
               'productId': item['productId'],
               'businessId': productData['businessId'],
@@ -773,8 +773,7 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
       final cartRef = FirebaseFirestore.instance
           .collection('users')
           .doc(userId)
-          .collection('cart')
-          .doc(productId);
+          .collection('cart');
 
       final productDoc = await FirebaseFirestore.instance
           .collection('products')
@@ -805,7 +804,7 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
         'addedAt': FieldValue.serverTimestamp(),
       };
 
-      await cartRef.set(cartItem);
+      await cartRef.add(cartItem);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
