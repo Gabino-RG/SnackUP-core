@@ -1,0 +1,1922 @@
+{
+  "scenario": "P8-1000",
+  "profile": "base",
+  "quick": false,
+  "commit": "879412334a8b5a803713e7c3a272e7ae7033828b",
+  "elapsedSeconds": 326.638224228,
+  "success": true,
+  "failures": {},
+  "details": {
+    "connections": 1000,
+    "expectedEvents": 59000,
+    "receivedEvents": 59000,
+    "changes": 236,
+    "unexpectedDisconnects": 0,
+    "missingDeliveries": 0,
+    "unexpectedDeliveries": 0,
+    "duplicateDeliveries": 0,
+    "unmappedProductEvents": 0,
+    "integrity": {
+      "negativeStock": 0,
+      "duplicateNumbers": 0,
+      "duplicateCodes": 0,
+      "duplicateKeys": 0,
+      "inventoryMismatch": 0,
+      "pendingOutbox": 0,
+      "deadlocks": 0,
+      "orders": 0
+    },
+    "resources": {
+      "workers": [
+        {
+          "pid": 14,
+          "peakRssMiB": 207.1484375,
+          "meanCpuPercent": 5.828425719344735
+        },
+        {
+          "pid": 15,
+          "peakRssMiB": 226.77734375,
+          "meanCpuPercent": 6.328460057015296
+        },
+        {
+          "pid": 16,
+          "peakRssMiB": 207.515625,
+          "meanCpuPercent": 6.35075458162481
+        },
+        {
+          "pid": 17,
+          "peakRssMiB": 226.7109375,
+          "meanCpuPercent": 5.834795583518883
+        }
+      ],
+      "workerCpuRatio": 1.0896174863387977,
+      "peakContainersMiB": 1237.3,
+      "readingStages": []
+    }
+  },
+  "metrics": {
+    "toggle": {
+      "count": 236,
+      "p50Ms": 17.87365900003124,
+      "p95Ms": 63.68604499999719,
+      "p99Ms": 94.93969199996855,
+      "status": {
+        "200": 236
+      }
+    },
+    "product_event": {
+      "count": 59000,
+      "p50Ms": 140.2413845062256,
+      "p95Ms": 270.9052562713623,
+      "p99Ms": 347.0954895019531,
+      "status": {}
+    }
+  },
+  "resources": [
+    {
+      "elapsed": 14.634995457999992,
+      "containers": [
+        {
+          "BlockIO": "0B / 0B",
+          "CPUPerc": "30.80%",
+          "Container": "98db4f447264",
+          "ID": "98db4f447264",
+          "MemPerc": "34.36%",
+          "MemUsage": "43.98MiB / 128MiB",
+          "Name": "snackup-realtime-43517178732-1-tls-1",
+          "NetIO": "2.77MB / 3.28MB",
+          "PIDs": "11"
+        },
+        {
+          "BlockIO": "0B / 479kB",
+          "CPUPerc": "220.74%",
+          "Container": "a14f67a11ef5",
+          "ID": "a14f67a11ef5",
+          "MemPerc": "15.83%",
+          "MemUsage": "810.3MiB / 5GiB",
+          "Name": "snackup-realtime-43517178732-1-app-1",
+          "NetIO": "6.98MB / 6MB",
+          "PIDs": "91"
+        },
+        {
+          "BlockIO": "0B / 69.3MB",
+          "CPUPerc": "87.16%",
+          "Container": "2fa987310112",
+          "ID": "2fa987310112",
+          "MemPerc": "4.87%",
+          "MemUsage": "99.84MiB / 2GiB",
+          "Name": "snackup-realtime-43517178732-1-db-1",
+          "NetIO": "4.97MB / 5.06MB",
+          "PIDs": "36"
+        }
+      ],
+      "sql": {
+        "active": 1,
+        "idleTransaction": 6,
+        "waits": [],
+        "outboxLag": 0.0
+      }
+    },
+    {
+      "elapsed": 22.393471070000004,
+      "containers": [
+        {
+          "BlockIO": "13.9MB / 33.9MB",
+          "CPUPerc": "44.40%",
+          "Container": "98db4f447264",
+          "ID": "98db4f447264",
+          "MemPerc": "92.99%",
+          "MemUsage": "119MiB / 128MiB",
+          "Name": "snackup-realtime-43517178732-1-tls-1",
+          "NetIO": "7.08MB / 8.57MB",
+          "PIDs": "11"
+        },
+        {
+          "BlockIO": "0B / 479kB",
+          "CPUPerc": "164.22%",
+          "Container": "a14f67a11ef5",
+          "ID": "a14f67a11ef5",
+          "MemPerc": "18.61%",
+          "MemUsage": "953MiB / 5GiB",
+          "Name": "snackup-realtime-43517178732-1-app-1",
+          "NetIO": "15.4MB / 13.3MB",
+          "PIDs": "99"
+        },
+        {
+          "BlockIO": "0B / 69.3MB",
+          "CPUPerc": "61.66%",
+          "Container": "2fa987310112",
+          "ID": "2fa987310112",
+          "MemPerc": "5.84%",
+          "MemUsage": "119.7MiB / 2GiB",
+          "Name": "snackup-realtime-43517178732-1-db-1",
+          "NetIO": "11.1MB / 11.9MB",
+          "PIDs": "50"
+        }
+      ],
+      "sql": {
+        "active": 1,
+        "idleTransaction": 0,
+        "waits": [],
+        "outboxLag": 0.0
+      }
+    },
+    {
+      "elapsed": 29.99839609,
+      "containers": [
+        {
+          "BlockIO": "17.9MB / 37.5MB",
+          "CPUPerc": "0.00%",
+          "Container": "98db4f447264",
+          "ID": "98db4f447264",
+          "MemPerc": "92.80%",
+          "MemUsage": "118.8MiB / 128MiB",
+          "Name": "snackup-realtime-43517178732-1-tls-1",
+          "NetIO": "7.62MB / 9.13MB",
+          "PIDs": "13"
+        },
+        {
+          "BlockIO": "0B / 479kB",
+          "CPUPerc": "3.74%",
+          "Container": "a14f67a11ef5",
+          "ID": "a14f67a11ef5",
+          "MemPerc": "18.86%",
+          "MemUsage": "965.8MiB / 5GiB",
+          "Name": "snackup-realtime-43517178732-1-app-1",
+          "NetIO": "17.5MB / 14.2MB",
+          "PIDs": "97"
+        },
+        {
+          "BlockIO": "0B / 69.4MB",
+          "CPUPerc": "2.70%",
+          "Container": "2fa987310112",
+          "ID": "2fa987310112",
+          "MemPerc": "5.82%",
+          "MemUsage": "119.2MiB / 2GiB",
+          "Name": "snackup-realtime-43517178732-1-db-1",
+          "NetIO": "12MB / 14.6MB",
+          "PIDs": "43"
+        }
+      ],
+      "sql": {
+        "active": 1,
+        "idleTransaction": 0,
+        "waits": [],
+        "outboxLag": 0.0
+      }
+    },
+    {
+      "elapsed": 37.61135141,
+      "containers": [
+        {
+          "BlockIO": "21.9MB / 40.3MB",
+          "CPUPerc": "7.75%",
+          "Container": "98db4f447264",
+          "ID": "98db4f447264",
+          "MemPerc": "96.78%",
+          "MemUsage": "123.9MiB / 128MiB",
+          "Name": "snackup-realtime-43517178732-1-tls-1",
+          "NetIO": "8.77MB / 10.3MB",
+          "PIDs": "18"
+        },
+        {
+          "BlockIO": "0B / 479kB",
+          "CPUPerc": "75.12%",
+          "Container": "a14f67a11ef5",
+          "ID": "a14f67a11ef5",
+          "MemPerc": "18.88%",
+          "MemUsage": "966.8MiB / 5GiB",
+          "Name": "snackup-realtime-43517178732-1-app-1",
+          "NetIO": "19.7MB / 15.5MB",
+          "PIDs": "77"
+        },
+        {
+          "BlockIO": "0B / 71.1MB",
+          "CPUPerc": "1.41%",
+          "Container": "2fa987310112",
+          "ID": "2fa987310112",
+          "MemPerc": "5.87%",
+          "MemUsage": "120.2MiB / 2GiB",
+          "Name": "snackup-realtime-43517178732-1-db-1",
+          "NetIO": "12.3MB / 15.7MB",
+          "PIDs": "43"
+        }
+      ],
+      "sql": {
+        "active": 1,
+        "idleTransaction": 0,
+        "waits": [],
+        "outboxLag": 0.0
+      }
+    },
+    {
+      "elapsed": 45.21791417199998,
+      "containers": [
+        {
+          "BlockIO": "23.5MB / 44.2MB",
+          "CPUPerc": "1.84%",
+          "Container": "98db4f447264",
+          "ID": "98db4f447264",
+          "MemPerc": "92.76%",
+          "MemUsage": "118.7MiB / 128MiB",
+          "Name": "snackup-realtime-43517178732-1-tls-1",
+          "NetIO": "9.79MB / 11.4MB",
+          "PIDs": "13"
+        },
+        {
+          "BlockIO": "0B / 479kB",
+          "CPUPerc": "10.49%",
+          "Container": "a14f67a11ef5",
+          "ID": "a14f67a11ef5",
+          "MemPerc": "18.95%",
+          "MemUsage": "970MiB / 5GiB",
+          "Name": "snackup-realtime-43517178732-1-app-1",
+          "NetIO": "22.1MB / 16.6MB",
+          "PIDs": "77"
+        },
+        {
+          "BlockIO": "0B / 71.8MB",
+          "CPUPerc": "0.81%",
+          "Container": "2fa987310112",
+          "ID": "2fa987310112",
+          "MemPerc": "5.94%",
+          "MemUsage": "121.7MiB / 2GiB",
+          "Name": "snackup-realtime-43517178732-1-db-1",
+          "NetIO": "12.8MB / 18.8MB",
+          "PIDs": "43"
+        }
+      ],
+      "sql": {
+        "active": 1,
+        "idleTransaction": 0,
+        "waits": [],
+        "outboxLag": 0.0
+      }
+    },
+    {
+      "elapsed": 52.821018689,
+      "containers": [
+        {
+          "BlockIO": "23.6MB / 44.2MB",
+          "CPUPerc": "0.00%",
+          "Container": "98db4f447264",
+          "ID": "98db4f447264",
+          "MemPerc": "92.37%",
+          "MemUsage": "118.2MiB / 128MiB",
+          "Name": "snackup-realtime-43517178732-1-tls-1",
+          "NetIO": "10.4MB / 12MB",
+          "PIDs": "13"
+        },
+        {
+          "BlockIO": "0B / 479kB",
+          "CPUPerc": "68.91%",
+          "Container": "a14f67a11ef5",
+          "ID": "a14f67a11ef5",
+          "MemPerc": "18.96%",
+          "MemUsage": "970.6MiB / 5GiB",
+          "Name": "snackup-realtime-43517178732-1-app-1",
+          "NetIO": "24.4MB / 18MB",
+          "PIDs": "79"
+        },
+        {
+          "BlockIO": "0B / 72.1MB",
+          "CPUPerc": "24.37%",
+          "Container": "2fa987310112",
+          "ID": "2fa987310112",
+          "MemPerc": "6.08%",
+          "MemUsage": "124.6MiB / 2GiB",
+          "Name": "snackup-realtime-43517178732-1-db-1",
+          "NetIO": "13.2MB / 20.9MB",
+          "PIDs": "43"
+        }
+      ],
+      "sql": {
+        "active": 1,
+        "idleTransaction": 1,
+        "waits": [],
+        "outboxLag": 0.0
+      }
+    },
+    {
+      "elapsed": 60.424287194000016,
+      "containers": [
+        {
+          "BlockIO": "23.8MB / 44.2MB",
+          "CPUPerc": "3.82%",
+          "Container": "98db4f447264",
+          "ID": "98db4f447264",
+          "MemPerc": "95.68%",
+          "MemUsage": "122.5MiB / 128MiB",
+          "Name": "snackup-realtime-43517178732-1-tls-1",
+          "NetIO": "11.7MB / 13.3MB",
+          "PIDs": "19"
+        },
+        {
+          "BlockIO": "0B / 479kB",
+          "CPUPerc": "8.97%",
+          "Container": "a14f67a11ef5",
+          "ID": "a14f67a11ef5",
+          "MemPerc": "19.00%",
+          "MemUsage": "972.6MiB / 5GiB",
+          "Name": "snackup-realtime-43517178732-1-app-1",
+          "NetIO": "26.6MB / 18.9MB",
+          "PIDs": "79"
+        },
+        {
+          "BlockIO": "0B / 72.3MB",
+          "CPUPerc": "1.09%",
+          "Container": "2fa987310112",
+          "ID": "2fa987310112",
+          "MemPerc": "6.13%",
+          "MemUsage": "125.5MiB / 2GiB",
+          "Name": "snackup-realtime-43517178732-1-db-1",
+          "NetIO": "13.6MB / 23MB",
+          "PIDs": "43"
+        }
+      ],
+      "sql": {
+        "active": 1,
+        "idleTransaction": 0,
+        "waits": [],
+        "outboxLag": 0.0
+      }
+    },
+    {
+      "elapsed": 68.03068105999998,
+      "containers": [
+        {
+          "BlockIO": "24.1MB / 47.9MB",
+          "CPUPerc": "7.34%",
+          "Container": "98db4f447264",
+          "ID": "98db4f447264",
+          "MemPerc": "91.87%",
+          "MemUsage": "117.6MiB / 128MiB",
+          "Name": "snackup-realtime-43517178732-1-tls-1",
+          "NetIO": "13MB / 14.7MB",
+          "PIDs": "13"
+        },
+        {
+          "BlockIO": "0B / 578kB",
+          "CPUPerc": "72.04%",
+          "Container": "a14f67a11ef5",
+          "ID": "a14f67a11ef5",
+          "MemPerc": "19.00%",
+          "MemUsage": "972.6MiB / 5GiB",
+          "Name": "snackup-realtime-43517178732-1-app-1",
+          "NetIO": "29MB / 20.3MB",
+          "PIDs": "78"
+        },
+        {
+          "BlockIO": "0B / 72.4MB",
+          "CPUPerc": "1.18%",
+          "Container": "2fa987310112",
+          "ID": "2fa987310112",
+          "MemPerc": "6.13%",
+          "MemUsage": "125.5MiB / 2GiB",
+          "Name": "snackup-realtime-43517178732-1-db-1",
+          "NetIO": "13.8MB / 24.1MB",
+          "PIDs": "43"
+        }
+      ],
+      "sql": {
+        "active": 1,
+        "idleTransaction": 0,
+        "waits": [],
+        "outboxLag": 0.0
+      }
+    },
+    {
+      "elapsed": 75.63497179599997,
+      "containers": [
+        {
+          "BlockIO": "24.2MB / 47.9MB",
+          "CPUPerc": "11.09%",
+          "Container": "98db4f447264",
+          "ID": "98db4f447264",
+          "MemPerc": "91.87%",
+          "MemUsage": "117.6MiB / 128MiB",
+          "Name": "snackup-realtime-43517178732-1-tls-1",
+          "NetIO": "13.8MB / 15.5MB",
+          "PIDs": "13"
+        },
+        {
+          "BlockIO": "0B / 651kB",
+          "CPUPerc": "8.43%",
+          "Container": "a14f67a11ef5",
+          "ID": "a14f67a11ef5",
+          "MemPerc": "19.03%",
+          "MemUsage": "974.4MiB / 5GiB",
+          "Name": "snackup-realtime-43517178732-1-app-1",
+          "NetIO": "31.2MB / 21.3MB",
+          "PIDs": "77"
+        },
+        {
+          "BlockIO": "0B / 72.7MB",
+          "CPUPerc": "1.00%",
+          "Container": "2fa987310112",
+          "ID": "2fa987310112",
+          "MemPerc": "6.18%",
+          "MemUsage": "126.5MiB / 2GiB",
+          "Name": "snackup-realtime-43517178732-1-db-1",
+          "NetIO": "14.3MB / 27.2MB",
+          "PIDs": "43"
+        }
+      ],
+      "sql": {
+        "active": 1,
+        "idleTransaction": 0,
+        "waits": [],
+        "outboxLag": 0.0
+      }
+    },
+    {
+      "elapsed": 83.23744939899998,
+      "containers": [
+        {
+          "BlockIO": "24.4MB / 47.9MB",
+          "CPUPerc": "5.01%",
+          "Container": "98db4f447264",
+          "ID": "98db4f447264",
+          "MemPerc": "91.87%",
+          "MemUsage": "117.6MiB / 128MiB",
+          "Name": "snackup-realtime-43517178732-1-tls-1",
+          "NetIO": "15.1MB / 16.9MB",
+          "PIDs": "13"
+        },
+        {
+          "BlockIO": "0B / 651kB",
+          "CPUPerc": "64.48%",
+          "Container": "a14f67a11ef5",
+          "ID": "a14f67a11ef5",
+          "MemPerc": "19.03%",
+          "MemUsage": "974.3MiB / 5GiB",
+          "Name": "snackup-realtime-43517178732-1-app-1",
+          "NetIO": "33.6MB / 22.7MB",
+          "PIDs": "77"
+        },
+        {
+          "BlockIO": "0B / 72.9MB",
+          "CPUPerc": "1.08%",
+          "Container": "2fa987310112",
+          "ID": "2fa987310112",
+          "MemPerc": "6.17%",
+          "MemUsage": "126.4MiB / 2GiB",
+          "Name": "snackup-realtime-43517178732-1-db-1",
+          "NetIO": "14.6MB / 28.3MB",
+          "PIDs": "43"
+        }
+      ],
+      "sql": {
+        "active": 1,
+        "idleTransaction": 0,
+        "waits": [],
+        "outboxLag": 0.0
+      }
+    },
+    {
+      "elapsed": 90.83966878699997,
+      "containers": [
+        {
+          "BlockIO": "24.5MB / 47.9MB",
+          "CPUPerc": "11.04%",
+          "Container": "98db4f447264",
+          "ID": "98db4f447264",
+          "MemPerc": "92.11%",
+          "MemUsage": "117.9MiB / 128MiB",
+          "Name": "snackup-realtime-43517178732-1-tls-1",
+          "NetIO": "15.7MB / 17.5MB",
+          "PIDs": "13"
+        },
+        {
+          "BlockIO": "0B / 651kB",
+          "CPUPerc": "10.98%",
+          "Container": "a14f67a11ef5",
+          "ID": "a14f67a11ef5",
+          "MemPerc": "19.06%",
+          "MemUsage": "975.7MiB / 5GiB",
+          "Name": "snackup-realtime-43517178732-1-app-1",
+          "NetIO": "35.8MB / 23.6MB",
+          "PIDs": "77"
+        },
+        {
+          "BlockIO": "0B / 73.1MB",
+          "CPUPerc": "0.92%",
+          "Container": "2fa987310112",
+          "ID": "2fa987310112",
+          "MemPerc": "6.20%",
+          "MemUsage": "127MiB / 2GiB",
+          "Name": "snackup-realtime-43517178732-1-db-1",
+          "NetIO": "15.1MB / 31.3MB",
+          "PIDs": "43"
+        }
+      ],
+      "sql": {
+        "active": 1,
+        "idleTransaction": 0,
+        "waits": [],
+        "outboxLag": 0.0
+      }
+    },
+    {
+      "elapsed": 98.43987687699999,
+      "containers": [
+        {
+          "BlockIO": "24.6MB / 47.9MB",
+          "CPUPerc": "7.64%",
+          "Container": "98db4f447264",
+          "ID": "98db4f447264",
+          "MemPerc": "92.29%",
+          "MemUsage": "118.1MiB / 128MiB",
+          "Name": "snackup-realtime-43517178732-1-tls-1",
+          "NetIO": "17.2MB / 19MB",
+          "PIDs": "13"
+        },
+        {
+          "BlockIO": "0B / 651kB",
+          "CPUPerc": "81.04%",
+          "Container": "a14f67a11ef5",
+          "ID": "a14f67a11ef5",
+          "MemPerc": "19.05%",
+          "MemUsage": "975.3MiB / 5GiB",
+          "Name": "snackup-realtime-43517178732-1-app-1",
+          "NetIO": "38.2MB / 25.1MB",
+          "PIDs": "77"
+        },
+        {
+          "BlockIO": "0B / 73.1MB",
+          "CPUPerc": "1.08%",
+          "Container": "2fa987310112",
+          "ID": "2fa987310112",
+          "MemPerc": "6.21%",
+          "MemUsage": "127.1MiB / 2GiB",
+          "Name": "snackup-realtime-43517178732-1-db-1",
+          "NetIO": "15.3MB / 32.5MB",
+          "PIDs": "43"
+        }
+      ],
+      "sql": {
+        "active": 1,
+        "idleTransaction": 0,
+        "waits": [],
+        "outboxLag": 0.0
+      }
+    },
+    {
+      "elapsed": 106.04030153,
+      "containers": [
+        {
+          "BlockIO": "24.7MB / 47.9MB",
+          "CPUPerc": "0.00%",
+          "Container": "98db4f447264",
+          "ID": "98db4f447264",
+          "MemPerc": "91.79%",
+          "MemUsage": "117.5MiB / 128MiB",
+          "Name": "snackup-realtime-43517178732-1-tls-1",
+          "NetIO": "17.9MB / 19.7MB",
+          "PIDs": "13"
+        },
+        {
+          "BlockIO": "0B / 651kB",
+          "CPUPerc": "4.31%",
+          "Container": "a14f67a11ef5",
+          "ID": "a14f67a11ef5",
+          "MemPerc": "19.09%",
+          "MemUsage": "977.5MiB / 5GiB",
+          "Name": "snackup-realtime-43517178732-1-app-1",
+          "NetIO": "40.4MB / 26MB",
+          "PIDs": "77"
+        },
+        {
+          "BlockIO": "0B / 73.4MB",
+          "CPUPerc": "1.24%",
+          "Container": "2fa987310112",
+          "ID": "2fa987310112",
+          "MemPerc": "6.22%",
+          "MemUsage": "127.5MiB / 2GiB",
+          "Name": "snackup-realtime-43517178732-1-db-1",
+          "NetIO": "15.8MB / 35.5MB",
+          "PIDs": "43"
+        }
+      ],
+      "sql": {
+        "active": 1,
+        "idleTransaction": 0,
+        "waits": [],
+        "outboxLag": 0.0
+      }
+    },
+    {
+      "elapsed": 113.64224047299999,
+      "containers": [
+        {
+          "BlockIO": "24.9MB / 47.9MB",
+          "CPUPerc": "8.86%",
+          "Container": "98db4f447264",
+          "ID": "98db4f447264",
+          "MemPerc": "92.45%",
+          "MemUsage": "118.3MiB / 128MiB",
+          "Name": "snackup-realtime-43517178732-1-tls-1",
+          "NetIO": "19MB / 20.9MB",
+          "PIDs": "13"
+        },
+        {
+          "BlockIO": "0B / 651kB",
+          "CPUPerc": "87.95%",
+          "Container": "a14f67a11ef5",
+          "ID": "a14f67a11ef5",
+          "MemPerc": "19.08%",
+          "MemUsage": "977.1MiB / 5GiB",
+          "Name": "snackup-realtime-43517178732-1-app-1",
+          "NetIO": "42.7MB / 27.4MB",
+          "PIDs": "77"
+        },
+        {
+          "BlockIO": "0B / 73.5MB",
+          "CPUPerc": "1.74%",
+          "Container": "2fa987310112",
+          "ID": "2fa987310112",
+          "MemPerc": "6.22%",
+          "MemUsage": "127.3MiB / 2GiB",
+          "Name": "snackup-realtime-43517178732-1-db-1",
+          "NetIO": "16.1MB / 36.6MB",
+          "PIDs": "43"
+        }
+      ],
+      "sql": {
+        "active": 1,
+        "idleTransaction": 0,
+        "waits": [],
+        "outboxLag": 0.0
+      }
+    },
+    {
+      "elapsed": 121.25044350099998,
+      "containers": [
+        {
+          "BlockIO": "25MB / 47.9MB",
+          "CPUPerc": "3.27%",
+          "Container": "98db4f447264",
+          "ID": "98db4f447264",
+          "MemPerc": "92.47%",
+          "MemUsage": "118.4MiB / 128MiB",
+          "Name": "snackup-realtime-43517178732-1-tls-1",
+          "NetIO": "19.9MB / 21.9MB",
+          "PIDs": "13"
+        },
+        {
+          "BlockIO": "0B / 651kB",
+          "CPUPerc": "13.76%",
+          "Container": "a14f67a11ef5",
+          "ID": "a14f67a11ef5",
+          "MemPerc": "19.11%",
+          "MemUsage": "978.3MiB / 5GiB",
+          "Name": "snackup-realtime-43517178732-1-app-1",
+          "NetIO": "45MB / 28.4MB",
+          "PIDs": "78"
+        },
+        {
+          "BlockIO": "0B / 73.7MB",
+          "CPUPerc": "1.18%",
+          "Container": "2fa987310112",
+          "ID": "2fa987310112",
+          "MemPerc": "6.24%",
+          "MemUsage": "127.7MiB / 2GiB",
+          "Name": "snackup-realtime-43517178732-1-db-1",
+          "NetIO": "16.6MB / 39.7MB",
+          "PIDs": "43"
+        }
+      ],
+      "sql": {
+        "active": 1,
+        "idleTransaction": 0,
+        "waits": [],
+        "outboxLag": 0.0
+      }
+    },
+    {
+      "elapsed": 128.852379586,
+      "containers": [
+        {
+          "BlockIO": "25.1MB / 47.9MB",
+          "CPUPerc": "15.96%",
+          "Container": "98db4f447264",
+          "ID": "98db4f447264",
+          "MemPerc": "92.78%",
+          "MemUsage": "118.8MiB / 128MiB",
+          "Name": "snackup-realtime-43517178732-1-tls-1",
+          "NetIO": "21.1MB / 23.1MB",
+          "PIDs": "13"
+        },
+        {
+          "BlockIO": "0B / 651kB",
+          "CPUPerc": "64.62%",
+          "Container": "a14f67a11ef5",
+          "ID": "a14f67a11ef5",
+          "MemPerc": "19.11%",
+          "MemUsage": "978.2MiB / 5GiB",
+          "Name": "snackup-realtime-43517178732-1-app-1",
+          "NetIO": "47.3MB / 29.8MB",
+          "PIDs": "77"
+        },
+        {
+          "BlockIO": "0B / 73.7MB",
+          "CPUPerc": "2.84%",
+          "Container": "2fa987310112",
+          "ID": "2fa987310112",
+          "MemPerc": "6.25%",
+          "MemUsage": "128MiB / 2GiB",
+          "Name": "snackup-realtime-43517178732-1-db-1",
+          "NetIO": "16.9MB / 41MB",
+          "PIDs": "43"
+        }
+      ],
+      "sql": {
+        "active": 1,
+        "idleTransaction": 0,
+        "waits": [],
+        "outboxLag": 0.0
+      }
+    },
+    {
+      "elapsed": 136.45423624599997,
+      "containers": [
+        {
+          "BlockIO": "25.2MB / 47.9MB",
+          "CPUPerc": "1.93%",
+          "Container": "98db4f447264",
+          "ID": "98db4f447264",
+          "MemPerc": "92.58%",
+          "MemUsage": "118.5MiB / 128MiB",
+          "Name": "snackup-realtime-43517178732-1-tls-1",
+          "NetIO": "21.8MB / 23.8MB",
+          "PIDs": "13"
+        },
+        {
+          "BlockIO": "0B / 651kB",
+          "CPUPerc": "8.40%",
+          "Container": "a14f67a11ef5",
+          "ID": "a14f67a11ef5",
+          "MemPerc": "19.12%",
+          "MemUsage": "978.9MiB / 5GiB",
+          "Name": "snackup-realtime-43517178732-1-app-1",
+          "NetIO": "49.4MB / 30.6MB",
+          "PIDs": "77"
+        },
+        {
+          "BlockIO": "0B / 73.9MB",
+          "CPUPerc": "0.92%",
+          "Container": "2fa987310112",
+          "ID": "2fa987310112",
+          "MemPerc": "6.26%",
+          "MemUsage": "128.2MiB / 2GiB",
+          "Name": "snackup-realtime-43517178732-1-db-1",
+          "NetIO": "17.3MB / 43.9MB",
+          "PIDs": "43"
+        }
+      ],
+      "sql": {
+        "active": 1,
+        "idleTransaction": 0,
+        "waits": [],
+        "outboxLag": 0.0
+      }
+    },
+    {
+      "elapsed": 144.06112309,
+      "containers": [
+        {
+          "BlockIO": "26MB / 47.9MB",
+          "CPUPerc": "14.97%",
+          "Container": "98db4f447264",
+          "ID": "98db4f447264",
+          "MemPerc": "92.89%",
+          "MemUsage": "118.9MiB / 128MiB",
+          "Name": "snackup-realtime-43517178732-1-tls-1",
+          "NetIO": "23.3MB / 25.3MB",
+          "PIDs": "13"
+        },
+        {
+          "BlockIO": "0B / 651kB",
+          "CPUPerc": "57.77%",
+          "Container": "a14f67a11ef5",
+          "ID": "a14f67a11ef5",
+          "MemPerc": "19.10%",
+          "MemUsage": "977.8MiB / 5GiB",
+          "Name": "snackup-realtime-43517178732-1-app-1",
+          "NetIO": "51.9MB / 32.2MB",
+          "PIDs": "77"
+        },
+        {
+          "BlockIO": "0B / 74.1MB",
+          "CPUPerc": "5.34%",
+          "Container": "2fa987310112",
+          "ID": "2fa987310112",
+          "MemPerc": "6.26%",
+          "MemUsage": "128.1MiB / 2GiB",
+          "Name": "snackup-realtime-43517178732-1-db-1",
+          "NetIO": "17.6MB / 45.5MB",
+          "PIDs": "43"
+        }
+      ],
+      "sql": {
+        "active": 1,
+        "idleTransaction": 0,
+        "waits": [],
+        "outboxLag": 0.0
+      }
+    },
+    {
+      "elapsed": 151.65995085900002,
+      "containers": [
+        {
+          "BlockIO": "26MB / 47.9MB",
+          "CPUPerc": "0.00%",
+          "Container": "98db4f447264",
+          "ID": "98db4f447264",
+          "MemPerc": "92.56%",
+          "MemUsage": "118.5MiB / 128MiB",
+          "Name": "snackup-realtime-43517178732-1-tls-1",
+          "NetIO": "23.9MB / 26MB",
+          "PIDs": "13"
+        },
+        {
+          "BlockIO": "0B / 651kB",
+          "CPUPerc": "4.28%",
+          "Container": "a14f67a11ef5",
+          "ID": "a14f67a11ef5",
+          "MemPerc": "19.10%",
+          "MemUsage": "977.7MiB / 5GiB",
+          "Name": "snackup-realtime-43517178732-1-app-1",
+          "NetIO": "54.1MB / 33MB",
+          "PIDs": "77"
+        },
+        {
+          "BlockIO": "0B / 74.2MB",
+          "CPUPerc": "0.99%",
+          "Container": "2fa987310112",
+          "ID": "2fa987310112",
+          "MemPerc": "6.27%",
+          "MemUsage": "128.3MiB / 2GiB",
+          "Name": "snackup-realtime-43517178732-1-db-1",
+          "NetIO": "18.1MB / 48MB",
+          "PIDs": "43"
+        }
+      ],
+      "sql": {
+        "active": 1,
+        "idleTransaction": 0,
+        "waits": [],
+        "outboxLag": 0.0
+      }
+    },
+    {
+      "elapsed": 159.259825522,
+      "containers": [
+        {
+          "BlockIO": "26MB / 47.9MB",
+          "CPUPerc": "15.68%",
+          "Container": "98db4f447264",
+          "ID": "98db4f447264",
+          "MemPerc": "99.56%",
+          "MemUsage": "127.4MiB / 128MiB",
+          "Name": "snackup-realtime-43517178732-1-tls-1",
+          "NetIO": "25.2MB / 27.3MB",
+          "PIDs": "14"
+        },
+        {
+          "BlockIO": "0B / 651kB",
+          "CPUPerc": "65.07%",
+          "Container": "a14f67a11ef5",
+          "ID": "a14f67a11ef5",
+          "MemPerc": "19.09%",
+          "MemUsage": "977.6MiB / 5GiB",
+          "Name": "snackup-realtime-43517178732-1-app-1",
+          "NetIO": "56.4MB / 34.5MB",
+          "PIDs": "77"
+        },
+        {
+          "BlockIO": "0B / 74.3MB",
+          "CPUPerc": "4.06%",
+          "Container": "2fa987310112",
+          "ID": "2fa987310112",
+          "MemPerc": "6.27%",
+          "MemUsage": "128.4MiB / 2GiB",
+          "Name": "snackup-realtime-43517178732-1-db-1",
+          "NetIO": "18.4MB / 49.4MB",
+          "PIDs": "43"
+        }
+      ],
+      "sql": {
+        "active": 1,
+        "idleTransaction": 0,
+        "waits": [],
+        "outboxLag": 0.0
+      }
+    },
+    {
+      "elapsed": 166.86077821799998,
+      "containers": [
+        {
+          "BlockIO": "26MB / 47.9MB",
+          "CPUPerc": "1.90%",
+          "Container": "98db4f447264",
+          "ID": "98db4f447264",
+          "MemPerc": "92.44%",
+          "MemUsage": "118.3MiB / 128MiB",
+          "Name": "snackup-realtime-43517178732-1-tls-1",
+          "NetIO": "26MB / 28.1MB",
+          "PIDs": "13"
+        },
+        {
+          "BlockIO": "0B / 651kB",
+          "CPUPerc": "10.89%",
+          "Container": "a14f67a11ef5",
+          "ID": "a14f67a11ef5",
+          "MemPerc": "19.12%",
+          "MemUsage": "978.8MiB / 5GiB",
+          "Name": "snackup-realtime-43517178732-1-app-1",
+          "NetIO": "58.6MB / 35.4MB",
+          "PIDs": "77"
+        },
+        {
+          "BlockIO": "0B / 74.6MB",
+          "CPUPerc": "0.95%",
+          "Container": "2fa987310112",
+          "ID": "2fa987310112",
+          "MemPerc": "6.28%",
+          "MemUsage": "128.6MiB / 2GiB",
+          "Name": "snackup-realtime-43517178732-1-db-1",
+          "NetIO": "18.8MB / 52.2MB",
+          "PIDs": "43"
+        }
+      ],
+      "sql": {
+        "active": 1,
+        "idleTransaction": 0,
+        "waits": [],
+        "outboxLag": 0.0
+      }
+    },
+    {
+      "elapsed": 174.460353148,
+      "containers": [
+        {
+          "BlockIO": "26MB / 47.9MB",
+          "CPUPerc": "2.91%",
+          "Container": "98db4f447264",
+          "ID": "98db4f447264",
+          "MemPerc": "92.61%",
+          "MemUsage": "118.5MiB / 128MiB",
+          "Name": "snackup-realtime-43517178732-1-tls-1",
+          "NetIO": "27.3MB / 29.4MB",
+          "PIDs": "13"
+        },
+        {
+          "BlockIO": "0B / 651kB",
+          "CPUPerc": "52.55%",
+          "Container": "a14f67a11ef5",
+          "ID": "a14f67a11ef5",
+          "MemPerc": "19.11%",
+          "MemUsage": "978.3MiB / 5GiB",
+          "Name": "snackup-realtime-43517178732-1-app-1",
+          "NetIO": "60.7MB / 36.7MB",
+          "PIDs": "77"
+        },
+        {
+          "BlockIO": "0B / 74.8MB",
+          "CPUPerc": "6.45%",
+          "Container": "2fa987310112",
+          "ID": "2fa987310112",
+          "MemPerc": "6.27%",
+          "MemUsage": "128.3MiB / 2GiB",
+          "Name": "snackup-realtime-43517178732-1-db-1",
+          "NetIO": "19.2MB / 54.3MB",
+          "PIDs": "43"
+        }
+      ],
+      "sql": {
+        "active": 1,
+        "idleTransaction": 0,
+        "waits": [],
+        "outboxLag": 0.0
+      }
+    },
+    {
+      "elapsed": 182.07406727499998,
+      "containers": [
+        {
+          "BlockIO": "26MB / 47.9MB",
+          "CPUPerc": "3.88%",
+          "Container": "98db4f447264",
+          "ID": "98db4f447264",
+          "MemPerc": "92.59%",
+          "MemUsage": "118.5MiB / 128MiB",
+          "Name": "snackup-realtime-43517178732-1-tls-1",
+          "NetIO": "28.1MB / 30.3MB",
+          "PIDs": "13"
+        },
+        {
+          "BlockIO": "0B / 651kB",
+          "CPUPerc": "7.96%",
+          "Container": "a14f67a11ef5",
+          "ID": "a14f67a11ef5",
+          "MemPerc": "19.12%",
+          "MemUsage": "979.1MiB / 5GiB",
+          "Name": "snackup-realtime-43517178732-1-app-1",
+          "NetIO": "63.2MB / 37.8MB",
+          "PIDs": "77"
+        },
+        {
+          "BlockIO": "0B / 74.9MB",
+          "CPUPerc": "1.10%",
+          "Container": "2fa987310112",
+          "ID": "2fa987310112",
+          "MemPerc": "6.28%",
+          "MemUsage": "128.6MiB / 2GiB",
+          "Name": "snackup-realtime-43517178732-1-db-1",
+          "NetIO": "19.6MB / 56.4MB",
+          "PIDs": "43"
+        }
+      ],
+      "sql": {
+        "active": 1,
+        "idleTransaction": 0,
+        "waits": [],
+        "outboxLag": 0.0
+      }
+    },
+    {
+      "elapsed": 189.686581696,
+      "containers": [
+        {
+          "BlockIO": "26MB / 47.9MB",
+          "CPUPerc": "3.22%",
+          "Container": "98db4f447264",
+          "ID": "98db4f447264",
+          "MemPerc": "92.36%",
+          "MemUsage": "118.2MiB / 128MiB",
+          "Name": "snackup-realtime-43517178732-1-tls-1",
+          "NetIO": "29.2MB / 31.5MB",
+          "PIDs": "13"
+        },
+        {
+          "BlockIO": "0B / 651kB",
+          "CPUPerc": "18.66%",
+          "Container": "a14f67a11ef5",
+          "ID": "a14f67a11ef5",
+          "MemPerc": "19.12%",
+          "MemUsage": "979.1MiB / 5GiB",
+          "Name": "snackup-realtime-43517178732-1-app-1",
+          "NetIO": "65.5MB / 39.2MB",
+          "PIDs": "77"
+        },
+        {
+          "BlockIO": "0B / 75MB",
+          "CPUPerc": "9.20%",
+          "Container": "2fa987310112",
+          "ID": "2fa987310112",
+          "MemPerc": "6.31%",
+          "MemUsage": "129.2MiB / 2GiB",
+          "Name": "snackup-realtime-43517178732-1-db-1",
+          "NetIO": "19.9MB / 58.4MB",
+          "PIDs": "43"
+        }
+      ],
+      "sql": {
+        "active": 1,
+        "idleTransaction": 0,
+        "waits": [],
+        "outboxLag": 0.0
+      }
+    },
+    {
+      "elapsed": 197.28778952899998,
+      "containers": [
+        {
+          "BlockIO": "26MB / 47.9MB",
+          "CPUPerc": "12.67%",
+          "Container": "98db4f447264",
+          "ID": "98db4f447264",
+          "MemPerc": "92.41%",
+          "MemUsage": "118.3MiB / 128MiB",
+          "Name": "snackup-realtime-43517178732-1-tls-1",
+          "NetIO": "30.1MB / 32.4MB",
+          "PIDs": "13"
+        },
+        {
+          "BlockIO": "0B / 651kB",
+          "CPUPerc": "14.14%",
+          "Container": "a14f67a11ef5",
+          "ID": "a14f67a11ef5",
+          "MemPerc": "19.13%",
+          "MemUsage": "979.5MiB / 5GiB",
+          "Name": "snackup-realtime-43517178732-1-app-1",
+          "NetIO": "67.8MB / 40.2MB",
+          "PIDs": "77"
+        },
+        {
+          "BlockIO": "0B / 75.1MB",
+          "CPUPerc": "0.98%",
+          "Container": "2fa987310112",
+          "ID": "2fa987310112",
+          "MemPerc": "6.29%",
+          "MemUsage": "128.7MiB / 2GiB",
+          "Name": "snackup-realtime-43517178732-1-db-1",
+          "NetIO": "20.3MB / 60.6MB",
+          "PIDs": "43"
+        }
+      ],
+      "sql": {
+        "active": 1,
+        "idleTransaction": 0,
+        "waits": [],
+        "outboxLag": 0.0
+      }
+    },
+    {
+      "elapsed": 204.90091379099997,
+      "containers": [
+        {
+          "BlockIO": "26MB / 47.9MB",
+          "CPUPerc": "0.00%",
+          "Container": "98db4f447264",
+          "ID": "98db4f447264",
+          "MemPerc": "92.43%",
+          "MemUsage": "118.3MiB / 128MiB",
+          "Name": "snackup-realtime-43517178732-1-tls-1",
+          "NetIO": "31.4MB / 33.7MB",
+          "PIDs": "13"
+        },
+        {
+          "BlockIO": "0B / 651kB",
+          "CPUPerc": "62.94%",
+          "Container": "a14f67a11ef5",
+          "ID": "a14f67a11ef5",
+          "MemPerc": "19.12%",
+          "MemUsage": "979MiB / 5GiB",
+          "Name": "snackup-realtime-43517178732-1-app-1",
+          "NetIO": "70.2MB / 41.6MB",
+          "PIDs": "77"
+        },
+        {
+          "BlockIO": "0B / 75.3MB",
+          "CPUPerc": "4.72%",
+          "Container": "2fa987310112",
+          "ID": "2fa987310112",
+          "MemPerc": "6.27%",
+          "MemUsage": "128.4MiB / 2GiB",
+          "Name": "snackup-realtime-43517178732-1-db-1",
+          "NetIO": "20.7MB / 62.7MB",
+          "PIDs": "43"
+        }
+      ],
+      "sql": {
+        "active": 1,
+        "idleTransaction": 0,
+        "waits": [],
+        "outboxLag": 0.0
+      }
+    },
+    {
+      "elapsed": 212.49911821700002,
+      "containers": [
+        {
+          "BlockIO": "26MB / 47.9MB",
+          "CPUPerc": "9.49%",
+          "Container": "98db4f447264",
+          "ID": "98db4f447264",
+          "MemPerc": "92.39%",
+          "MemUsage": "118.3MiB / 128MiB",
+          "Name": "snackup-realtime-43517178732-1-tls-1",
+          "NetIO": "31.9MB / 34.3MB",
+          "PIDs": "13"
+        },
+        {
+          "BlockIO": "0B / 651kB",
+          "CPUPerc": "5.68%",
+          "Container": "a14f67a11ef5",
+          "ID": "a14f67a11ef5",
+          "MemPerc": "19.12%",
+          "MemUsage": "979.1MiB / 5GiB",
+          "Name": "snackup-realtime-43517178732-1-app-1",
+          "NetIO": "72.3MB / 42.4MB",
+          "PIDs": "77"
+        },
+        {
+          "BlockIO": "0B / 75.3MB",
+          "CPUPerc": "1.15%",
+          "Container": "2fa987310112",
+          "ID": "2fa987310112",
+          "MemPerc": "6.29%",
+          "MemUsage": "128.8MiB / 2GiB",
+          "Name": "snackup-realtime-43517178732-1-db-1",
+          "NetIO": "21.1MB / 64.7MB",
+          "PIDs": "43"
+        }
+      ],
+      "sql": {
+        "active": 1,
+        "idleTransaction": 0,
+        "waits": [],
+        "outboxLag": 0.016629
+      }
+    },
+    {
+      "elapsed": 220.103484588,
+      "containers": [
+        {
+          "BlockIO": "26.1MB / 47.9MB",
+          "CPUPerc": "3.23%",
+          "Container": "98db4f447264",
+          "ID": "98db4f447264",
+          "MemPerc": "92.43%",
+          "MemUsage": "118.3MiB / 128MiB",
+          "Name": "snackup-realtime-43517178732-1-tls-1",
+          "NetIO": "33.4MB / 35.8MB",
+          "PIDs": "13"
+        },
+        {
+          "BlockIO": "0B / 651kB",
+          "CPUPerc": "12.75%",
+          "Container": "a14f67a11ef5",
+          "ID": "a14f67a11ef5",
+          "MemPerc": "19.13%",
+          "MemUsage": "979.5MiB / 5GiB",
+          "Name": "snackup-realtime-43517178732-1-app-1",
+          "NetIO": "74.7MB / 44MB",
+          "PIDs": "77"
+        },
+        {
+          "BlockIO": "0B / 75.5MB",
+          "CPUPerc": "8.87%",
+          "Container": "2fa987310112",
+          "ID": "2fa987310112",
+          "MemPerc": "6.30%",
+          "MemUsage": "129MiB / 2GiB",
+          "Name": "snackup-realtime-43517178732-1-db-1",
+          "NetIO": "21.5MB / 66.9MB",
+          "PIDs": "43"
+        }
+      ],
+      "sql": {
+        "active": 1,
+        "idleTransaction": 0,
+        "waits": [],
+        "outboxLag": 0.0
+      }
+    },
+    {
+      "elapsed": 227.70338629199998,
+      "containers": [
+        {
+          "BlockIO": "26.1MB / 47.9MB",
+          "CPUPerc": "1.36%",
+          "Container": "98db4f447264",
+          "ID": "98db4f447264",
+          "MemPerc": "95.22%",
+          "MemUsage": "121.9MiB / 128MiB",
+          "Name": "snackup-realtime-43517178732-1-tls-1",
+          "NetIO": "34.1MB / 36.5MB",
+          "PIDs": "19"
+        },
+        {
+          "BlockIO": "0B / 651kB",
+          "CPUPerc": "4.25%",
+          "Container": "a14f67a11ef5",
+          "ID": "a14f67a11ef5",
+          "MemPerc": "19.13%",
+          "MemUsage": "979.4MiB / 5GiB",
+          "Name": "snackup-realtime-43517178732-1-app-1",
+          "NetIO": "76.9MB / 44.8MB",
+          "PIDs": "77"
+        },
+        {
+          "BlockIO": "0B / 75.6MB",
+          "CPUPerc": "1.12%",
+          "Container": "2fa987310112",
+          "ID": "2fa987310112",
+          "MemPerc": "6.29%",
+          "MemUsage": "128.8MiB / 2GiB",
+          "Name": "snackup-realtime-43517178732-1-db-1",
+          "NetIO": "21.8MB / 68.9MB",
+          "PIDs": "43"
+        }
+      ],
+      "sql": {
+        "active": 1,
+        "idleTransaction": 0,
+        "waits": [],
+        "outboxLag": 0.0
+      }
+    },
+    {
+      "elapsed": 235.30705527399996,
+      "containers": [
+        {
+          "BlockIO": "26.1MB / 47.9MB",
+          "CPUPerc": "1.83%",
+          "Container": "98db4f447264",
+          "ID": "98db4f447264",
+          "MemPerc": "92.48%",
+          "MemUsage": "118.4MiB / 128MiB",
+          "Name": "snackup-realtime-43517178732-1-tls-1",
+          "NetIO": "35.3MB / 37.7MB",
+          "PIDs": "13"
+        },
+        {
+          "BlockIO": "0B / 651kB",
+          "CPUPerc": "8.90%",
+          "Container": "a14f67a11ef5",
+          "ID": "a14f67a11ef5",
+          "MemPerc": "19.14%",
+          "MemUsage": "979.9MiB / 5GiB",
+          "Name": "snackup-realtime-43517178732-1-app-1",
+          "NetIO": "79.2MB / 46.2MB",
+          "PIDs": "79"
+        },
+        {
+          "BlockIO": "0B / 75.8MB",
+          "CPUPerc": "7.32%",
+          "Container": "2fa987310112",
+          "ID": "2fa987310112",
+          "MemPerc": "6.30%",
+          "MemUsage": "129MiB / 2GiB",
+          "Name": "snackup-realtime-43517178732-1-db-1",
+          "NetIO": "22.2MB / 71MB",
+          "PIDs": "43"
+        }
+      ],
+      "sql": {
+        "active": 1,
+        "idleTransaction": 0,
+        "waits": [],
+        "outboxLag": 0.0
+      }
+    },
+    {
+      "elapsed": 242.90830947999999,
+      "containers": [
+        {
+          "BlockIO": "26.1MB / 47.9MB",
+          "CPUPerc": "3.47%",
+          "Container": "98db4f447264",
+          "ID": "98db4f447264",
+          "MemPerc": "92.64%",
+          "MemUsage": "118.6MiB / 128MiB",
+          "Name": "snackup-realtime-43517178732-1-tls-1",
+          "NetIO": "36.1MB / 38.6MB",
+          "PIDs": "13"
+        },
+        {
+          "BlockIO": "0B / 651kB",
+          "CPUPerc": "10.92%",
+          "Container": "a14f67a11ef5",
+          "ID": "a14f67a11ef5",
+          "MemPerc": "19.14%",
+          "MemUsage": "980.1MiB / 5GiB",
+          "Name": "snackup-realtime-43517178732-1-app-1",
+          "NetIO": "81.5MB / 47.2MB",
+          "PIDs": "79"
+        },
+        {
+          "BlockIO": "0B / 75.9MB",
+          "CPUPerc": "1.04%",
+          "Container": "2fa987310112",
+          "ID": "2fa987310112",
+          "MemPerc": "6.29%",
+          "MemUsage": "128.8MiB / 2GiB",
+          "Name": "snackup-realtime-43517178732-1-db-1",
+          "NetIO": "22.6MB / 73.1MB",
+          "PIDs": "43"
+        }
+      ],
+      "sql": {
+        "active": 1,
+        "idleTransaction": 0,
+        "waits": [],
+        "outboxLag": 0.021067
+      }
+    },
+    {
+      "elapsed": 250.552093008,
+      "containers": [
+        {
+          "BlockIO": "26.1MB / 47.9MB",
+          "CPUPerc": "3.59%",
+          "Container": "98db4f447264",
+          "ID": "98db4f447264",
+          "MemPerc": "92.34%",
+          "MemUsage": "118.2MiB / 128MiB",
+          "Name": "snackup-realtime-43517178732-1-tls-1",
+          "NetIO": "37.4MB / 39.9MB",
+          "PIDs": "13"
+        },
+        {
+          "BlockIO": "0B / 651kB",
+          "CPUPerc": "4.37%",
+          "Container": "a14f67a11ef5",
+          "ID": "a14f67a11ef5",
+          "MemPerc": "19.14%",
+          "MemUsage": "979.7MiB / 5GiB",
+          "Name": "snackup-realtime-43517178732-1-app-1",
+          "NetIO": "83.8MB / 48.6MB",
+          "PIDs": "79"
+        },
+        {
+          "BlockIO": "0B / 76.1MB",
+          "CPUPerc": "5.23%",
+          "Container": "2fa987310112",
+          "ID": "2fa987310112",
+          "MemPerc": "6.28%",
+          "MemUsage": "128.7MiB / 2GiB",
+          "Name": "snackup-realtime-43517178732-1-db-1",
+          "NetIO": "22.9MB / 75.2MB",
+          "PIDs": "43"
+        }
+      ],
+      "sql": {
+        "active": 1,
+        "idleTransaction": 0,
+        "waits": [],
+        "outboxLag": 0.0
+      }
+    },
+    {
+      "elapsed": 258.17299074999994,
+      "containers": [
+        {
+          "BlockIO": "26.1MB / 47.9MB",
+          "CPUPerc": "1.97%",
+          "Container": "98db4f447264",
+          "ID": "98db4f447264",
+          "MemPerc": "92.17%",
+          "MemUsage": "118MiB / 128MiB",
+          "Name": "snackup-realtime-43517178732-1-tls-1",
+          "NetIO": "38.1MB / 40.7MB",
+          "PIDs": "13"
+        },
+        {
+          "BlockIO": "0B / 651kB",
+          "CPUPerc": "20.11%",
+          "Container": "a14f67a11ef5",
+          "ID": "a14f67a11ef5",
+          "MemPerc": "19.15%",
+          "MemUsage": "980.5MiB / 5GiB",
+          "Name": "snackup-realtime-43517178732-1-app-1",
+          "NetIO": "86MB / 49.5MB",
+          "PIDs": "79"
+        },
+        {
+          "BlockIO": "0B / 76.1MB",
+          "CPUPerc": "1.07%",
+          "Container": "2fa987310112",
+          "ID": "2fa987310112",
+          "MemPerc": "6.28%",
+          "MemUsage": "128.7MiB / 2GiB",
+          "Name": "snackup-realtime-43517178732-1-db-1",
+          "NetIO": "23.3MB / 77.3MB",
+          "PIDs": "43"
+        }
+      ],
+      "sql": {
+        "active": 1,
+        "idleTransaction": 0,
+        "waits": [],
+        "outboxLag": 0.0
+      }
+    },
+    {
+      "elapsed": 265.782708027,
+      "containers": [
+        {
+          "BlockIO": "26.1MB / 47.9MB",
+          "CPUPerc": "11.40%",
+          "Container": "98db4f447264",
+          "ID": "98db4f447264",
+          "MemPerc": "91.68%",
+          "MemUsage": "117.4MiB / 128MiB",
+          "Name": "snackup-realtime-43517178732-1-tls-1",
+          "NetIO": "39.4MB / 42MB",
+          "PIDs": "13"
+        },
+        {
+          "BlockIO": "0B / 655kB",
+          "CPUPerc": "11.16%",
+          "Container": "a14f67a11ef5",
+          "ID": "a14f67a11ef5",
+          "MemPerc": "19.12%",
+          "MemUsage": "979MiB / 5GiB",
+          "Name": "snackup-realtime-43517178732-1-app-1",
+          "NetIO": "88.4MB / 51MB",
+          "PIDs": "79"
+        },
+        {
+          "BlockIO": "0B / 76.9MB",
+          "CPUPerc": "4.78%",
+          "Container": "2fa987310112",
+          "ID": "2fa987310112",
+          "MemPerc": "6.30%",
+          "MemUsage": "129MiB / 2GiB",
+          "Name": "snackup-realtime-43517178732-1-db-1",
+          "NetIO": "23.7MB / 79.4MB",
+          "PIDs": "43"
+        }
+      ],
+      "sql": {
+        "active": 1,
+        "idleTransaction": 0,
+        "waits": [],
+        "outboxLag": 0.0
+      }
+    },
+    {
+      "elapsed": 273.38666637899996,
+      "containers": [
+        {
+          "BlockIO": "26.1MB / 47.9MB",
+          "CPUPerc": "3.05%",
+          "Container": "98db4f447264",
+          "ID": "98db4f447264",
+          "MemPerc": "91.62%",
+          "MemUsage": "117.3MiB / 128MiB",
+          "Name": "snackup-realtime-43517178732-1-tls-1",
+          "NetIO": "40.3MB / 42.9MB",
+          "PIDs": "13"
+        },
+        {
+          "BlockIO": "0B / 655kB",
+          "CPUPerc": "37.18%",
+          "Container": "a14f67a11ef5",
+          "ID": "a14f67a11ef5",
+          "MemPerc": "19.13%",
+          "MemUsage": "979.3MiB / 5GiB",
+          "Name": "snackup-realtime-43517178732-1-app-1",
+          "NetIO": "90.9MB / 52.1MB",
+          "PIDs": "79"
+        },
+        {
+          "BlockIO": "0B / 77.5MB",
+          "CPUPerc": "1.00%",
+          "Container": "2fa987310112",
+          "ID": "2fa987310112",
+          "MemPerc": "6.30%",
+          "MemUsage": "129.1MiB / 2GiB",
+          "Name": "snackup-realtime-43517178732-1-db-1",
+          "NetIO": "24MB / 81.4MB",
+          "PIDs": "43"
+        }
+      ],
+      "sql": {
+        "active": 1,
+        "idleTransaction": 0,
+        "waits": [],
+        "outboxLag": 0.0
+      }
+    },
+    {
+      "elapsed": 281.00396559,
+      "containers": [
+        {
+          "BlockIO": "26.1MB / 47.9MB",
+          "CPUPerc": "11.03%",
+          "Container": "98db4f447264",
+          "ID": "98db4f447264",
+          "MemPerc": "91.62%",
+          "MemUsage": "117.3MiB / 128MiB",
+          "Name": "snackup-realtime-43517178732-1-tls-1",
+          "NetIO": "41.5MB / 44.2MB",
+          "PIDs": "13"
+        },
+        {
+          "BlockIO": "0B / 655kB",
+          "CPUPerc": "9.07%",
+          "Container": "a14f67a11ef5",
+          "ID": "a14f67a11ef5",
+          "MemPerc": "19.13%",
+          "MemUsage": "979.4MiB / 5GiB",
+          "Name": "snackup-realtime-43517178732-1-app-1",
+          "NetIO": "93MB / 53.4MB",
+          "PIDs": "79"
+        },
+        {
+          "BlockIO": "0B / 78.2MB",
+          "CPUPerc": "3.07%",
+          "Container": "2fa987310112",
+          "ID": "2fa987310112",
+          "MemPerc": "6.32%",
+          "MemUsage": "129.5MiB / 2GiB",
+          "Name": "snackup-realtime-43517178732-1-db-1",
+          "NetIO": "24.5MB / 83.6MB",
+          "PIDs": "43"
+        }
+      ],
+      "sql": {
+        "active": 1,
+        "idleTransaction": 0,
+        "waits": [],
+        "outboxLag": 0.0
+      }
+    },
+    {
+      "elapsed": 288.734822353,
+      "containers": [
+        {
+          "BlockIO": "26.1MB / 47.9MB",
+          "CPUPerc": "3.64%",
+          "Container": "98db4f447264",
+          "ID": "98db4f447264",
+          "MemPerc": "91.60%",
+          "MemUsage": "117.3MiB / 128MiB",
+          "Name": "snackup-realtime-43517178732-1-tls-1",
+          "NetIO": "42.3MB / 45MB",
+          "PIDs": "13"
+        },
+        {
+          "BlockIO": "0B / 655kB",
+          "CPUPerc": "49.51%",
+          "Container": "a14f67a11ef5",
+          "ID": "a14f67a11ef5",
+          "MemPerc": "19.13%",
+          "MemUsage": "979.5MiB / 5GiB",
+          "Name": "snackup-realtime-43517178732-1-app-1",
+          "NetIO": "95.7MB / 54.5MB",
+          "PIDs": "79"
+        },
+        {
+          "BlockIO": "0B / 79.1MB",
+          "CPUPerc": "1.20%",
+          "Container": "2fa987310112",
+          "ID": "2fa987310112",
+          "MemPerc": "6.30%",
+          "MemUsage": "129.1MiB / 2GiB",
+          "Name": "snackup-realtime-43517178732-1-db-1",
+          "NetIO": "24.8MB / 85.6MB",
+          "PIDs": "43"
+        }
+      ],
+      "sql": {
+        "active": 1,
+        "idleTransaction": 0,
+        "waits": [],
+        "outboxLag": 0.0
+      }
+    },
+    {
+      "elapsed": 296.345911516,
+      "containers": [
+        {
+          "BlockIO": "26.1MB / 47.9MB",
+          "CPUPerc": "10.16%",
+          "Container": "98db4f447264",
+          "ID": "98db4f447264",
+          "MemPerc": "96.83%",
+          "MemUsage": "123.9MiB / 128MiB",
+          "Name": "snackup-realtime-43517178732-1-tls-1",
+          "NetIO": "43.6MB / 46.3MB",
+          "PIDs": "14"
+        },
+        {
+          "BlockIO": "0B / 655kB",
+          "CPUPerc": "13.63%",
+          "Container": "a14f67a11ef5",
+          "ID": "a14f67a11ef5",
+          "MemPerc": "19.13%",
+          "MemUsage": "979.3MiB / 5GiB",
+          "Name": "snackup-realtime-43517178732-1-app-1",
+          "NetIO": "97.6MB / 55.7MB",
+          "PIDs": "79"
+        },
+        {
+          "BlockIO": "0B / 80MB",
+          "CPUPerc": "1.20%",
+          "Container": "2fa987310112",
+          "ID": "2fa987310112",
+          "MemPerc": "6.30%",
+          "MemUsage": "129MiB / 2GiB",
+          "Name": "snackup-realtime-43517178732-1-db-1",
+          "NetIO": "25.2MB / 87.7MB",
+          "PIDs": "43"
+        }
+      ],
+      "sql": {
+        "active": 1,
+        "idleTransaction": 0,
+        "waits": [],
+        "outboxLag": 0.0
+      }
+    },
+    {
+      "elapsed": 303.947693145,
+      "containers": [
+        {
+          "BlockIO": "26.1MB / 47.9MB",
+          "CPUPerc": "3.91%",
+          "Container": "98db4f447264",
+          "ID": "98db4f447264",
+          "MemPerc": "91.91%",
+          "MemUsage": "117.6MiB / 128MiB",
+          "Name": "snackup-realtime-43517178732-1-tls-1",
+          "NetIO": "44.7MB / 47.5MB",
+          "PIDs": "13"
+        },
+        {
+          "BlockIO": "0B / 655kB",
+          "CPUPerc": "61.13%",
+          "Container": "a14f67a11ef5",
+          "ID": "a14f67a11ef5",
+          "MemPerc": "19.15%",
+          "MemUsage": "980.7MiB / 5GiB",
+          "Name": "snackup-realtime-43517178732-1-app-1",
+          "NetIO": "101MB / 57.1MB",
+          "PIDs": "79"
+        },
+        {
+          "BlockIO": "0B / 80.6MB",
+          "CPUPerc": "1.06%",
+          "Container": "2fa987310112",
+          "ID": "2fa987310112",
+          "MemPerc": "6.33%",
+          "MemUsage": "129.7MiB / 2GiB",
+          "Name": "snackup-realtime-43517178732-1-db-1",
+          "NetIO": "25.6MB / 89.8MB",
+          "PIDs": "43"
+        }
+      ],
+      "sql": {
+        "active": 1,
+        "idleTransaction": 0,
+        "waits": [],
+        "outboxLag": 0.0
+      }
+    },
+    {
+      "elapsed": 311.551813797,
+      "containers": [
+        {
+          "BlockIO": "26.1MB / 47.9MB",
+          "CPUPerc": "0.01%",
+          "Container": "98db4f447264",
+          "ID": "98db4f447264",
+          "MemPerc": "91.36%",
+          "MemUsage": "116.9MiB / 128MiB",
+          "Name": "snackup-realtime-43517178732-1-tls-1",
+          "NetIO": "45.4MB / 48.2MB",
+          "PIDs": "13"
+        },
+        {
+          "BlockIO": "0B / 655kB",
+          "CPUPerc": "4.73%",
+          "Container": "a14f67a11ef5",
+          "ID": "a14f67a11ef5",
+          "MemPerc": "19.14%",
+          "MemUsage": "979.9MiB / 5GiB",
+          "Name": "snackup-realtime-43517178732-1-app-1",
+          "NetIO": "102MB / 58MB",
+          "PIDs": "79"
+        },
+        {
+          "BlockIO": "0B / 81.6MB",
+          "CPUPerc": "0.83%",
+          "Container": "2fa987310112",
+          "ID": "2fa987310112",
+          "MemPerc": "6.33%",
+          "MemUsage": "129.6MiB / 2GiB",
+          "Name": "snackup-realtime-43517178732-1-db-1",
+          "NetIO": "26MB / 91.9MB",
+          "PIDs": "43"
+        }
+      ],
+      "sql": {
+        "active": 1,
+        "idleTransaction": 1,
+        "waits": [],
+        "outboxLag": 0.0
+      }
+    },
+    {
+      "elapsed": 319.15980279300004,
+      "containers": [
+        {
+          "BlockIO": "26.1MB / 47.9MB",
+          "CPUPerc": "8.70%",
+          "Container": "98db4f447264",
+          "ID": "98db4f447264",
+          "MemPerc": "91.46%",
+          "MemUsage": "117.1MiB / 128MiB",
+          "Name": "snackup-realtime-43517178732-1-tls-1",
+          "NetIO": "46.7MB / 49.6MB",
+          "PIDs": "13"
+        },
+        {
+          "BlockIO": "0B / 655kB",
+          "CPUPerc": "73.31%",
+          "Container": "a14f67a11ef5",
+          "ID": "a14f67a11ef5",
+          "MemPerc": "19.35%",
+          "MemUsage": "990.6MiB / 5GiB",
+          "Name": "snackup-realtime-43517178732-1-app-1",
+          "NetIO": "105MB / 59.5MB",
+          "PIDs": "80"
+        },
+        {
+          "BlockIO": "0B / 82.2MB",
+          "CPUPerc": "0.99%",
+          "Container": "2fa987310112",
+          "ID": "2fa987310112",
+          "MemPerc": "6.33%",
+          "MemUsage": "129.6MiB / 2GiB",
+          "Name": "snackup-realtime-43517178732-1-db-1",
+          "NetIO": "26.3MB / 94MB",
+          "PIDs": "43"
+        }
+      ],
+      "sql": {
+        "active": 1,
+        "idleTransaction": 0,
+        "waits": [],
+        "outboxLag": 0.0
+      }
+    }
+  ],
+  "transport": {
+    "origin": "https://localhost:18443",
+    "tlsCertificateValidation": true,
+    "trust": "explicit test CA, client only"
+  },
+  "generatorOpenFilesLimit": {
+    "soft": 65536,
+    "hard": 65536
+  },
+  "ciChecks": {
+    "fullFiveMinuteScenario": true,
+    "verifiedClientTls": true,
+    "oneThousandSubscriptions": true,
+    "fourMeasuredApiWorkers": true,
+    "sufficientGeneratorFileLimit": true,
+    "nonzeroWorkerCpu": true,
+    "allExpectedDeliveries": true,
+    "noMissingUnexpectedOrDuplicateDeliveries": true,
+    "integrityAndDrainedOutbox": true
+  },
+  "environment": {
+    "platform": "Linux-7.0.0-1019-azure-x86_64-with-glibc2.43",
+    "python": "3.12.16",
+    "logicalProcessors": 4,
+    "totalRamKiB": 16366632,
+    "serverCpuSet": "0-3",
+    "appMemoryLimitMiB": 5120,
+    "postgresMemoryLimitMiB": 2048,
+    "tlsGatewayMemoryLimitMiB": 128,
+    "apiWorkers": 4,
+    "writeConcurrencyPerWorker": 2,
+    "topology": "Verified TLS gateway -> application Caddy -> four API workers; PostgreSQL and Redis are real temporary services.",
+    "resourceScope": "Container CPU/RAM samples include app, PostgreSQL and the TLS gateway. The generator shares this GitHub runner."
+  },
+  "scopeLimits": [
+    "This measures the GitHub Actions Linux runner, not the Windows laptop or the future university server.",
+    "The load image uses minimal static pages; the unified-container workflow builds and verifies both Flutter applications separately.",
+    "Accounts, businesses and products are synthetic and isolated; no production service or external mail/push provider is used.",
+    "Connections remain open for this scenario; it does not force token renewal or voluntary reconnects.",
+    "The test CA is supplied only to the client and is never installed in the host trust store."
+  ]
+}

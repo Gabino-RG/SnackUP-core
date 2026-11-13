@@ -1,0 +1,94 @@
+{
+  "commit": "879412334a8b5a803713e7c3a272e7ae7033828b",
+  "diagnosticExitCode": 0,
+  "services": [
+    {
+      "Name": "snackup-realtime-43517178732-1-app-1",
+      "Service": "app",
+      "State": "running",
+      "Health": "healthy",
+      "ExitCode": 0
+    },
+    {
+      "Name": "snackup-realtime-43517178732-1-db-1",
+      "Service": "db",
+      "State": "running",
+      "Health": "healthy",
+      "ExitCode": 0
+    },
+    {
+      "Name": "snackup-realtime-43517178732-1-tls-1",
+      "Service": "tls",
+      "State": "running",
+      "Health": "healthy",
+      "ExitCode": 0
+    }
+  ],
+  "health": {
+    "app": {
+      "oomKilled": false,
+      "checks": [
+        {
+          "exitCode": 0,
+          "output": ""
+        },
+        {
+          "exitCode": 0,
+          "output": ""
+        },
+        {
+          "exitCode": 0,
+          "output": ""
+        }
+      ]
+    },
+    "db": {
+      "oomKilled": false,
+      "checks": [
+        {
+          "exitCode": 0,
+          "output": "/var/run/postgresql:5432 - accepting connections\n"
+        },
+        {
+          "exitCode": 0,
+          "output": "/var/run/postgresql:5432 - accepting connections\n"
+        },
+        {
+          "exitCode": 0,
+          "output": "/var/run/postgresql:5432 - accepting connections\n"
+        }
+      ]
+    },
+    "tls": {
+      "oomKilled": false,
+      "checks": [
+        {
+          "exitCode": 0,
+          "output": ""
+        },
+        {
+          "exitCode": 0,
+          "output": ""
+        },
+        {
+          "exitCode": 0,
+          "output": ""
+        }
+      ]
+    }
+  },
+  "versions": {
+    "caddy": {
+      "exitCode": 0,
+      "version": "v2.11.7 h1:yj0Y4fYZGPkSvibBJ1sTWE33xC0fxztVyXEW5iIdUT4="
+    },
+    "redis": {
+      "exitCode": 0,
+      "version": "Redis server v=7.0.15 sha=00000000:0 malloc=jemalloc-5.3.0 bits=64 build=ae4d7c971a948f0"
+    },
+    "postgres": {
+      "exitCode": 0,
+      "version": "postgres (PostgreSQL) 17.12"
+    }
+  }
+}
