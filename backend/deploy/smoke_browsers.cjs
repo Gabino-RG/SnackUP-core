@@ -5,7 +5,7 @@ const path = require('node:path');
 const { chromium, webkit } = require(process.env.SNACKUP_PLAYWRIGHT || 'playwright');
 
 const origin = process.env.SNACKUP_BROWSER_ORIGIN || 'https://snackup.example.test';
-assert.ok(['https://snackup.example.test', 'http://localhost:18080'].includes(origin));
+assert.ok(['https://snackup.example.test', 'https://localhost:18443', 'http://localhost:18080'].includes(origin));
 const reportPath = process.argv[2] || 'reports/unified/browsers.json';
 const screens = [
   { path: '/', options: '/api/v1/auth/options', email: 'Correo institucional', submit: 'Iniciar sesión' },
@@ -58,7 +58,8 @@ async function main() {
     try {
       browser = await engine.launch();
       for (const screen of screens) {
-        const result = { browser: name, version: browser.version(), path: screen.path, ok: false };
+        const result = { browser: name, version: browser.version(), path: screen.path, ok: false,
+          ignoreHTTPSErrors: origin.startsWith('https:') };
         results.push(result);
         try {
           await checkScreen(browser, screen, result);

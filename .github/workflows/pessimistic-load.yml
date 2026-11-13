@@ -1,0 +1,265 @@
+name: Complete app pessimistic 2 CPU 2 GiB
+on:
+  push:
+    branches: [codex/integracion-local-completa]
+    paths:
+      - .github/workflows/pessimistic-load.yml
+      - backend/load/phase_c/compose.pessimistic.yaml
+      - backend/load/phase_c/pessimistic_suite.py
+      - backend/load/phase_c/verify_pessimistic_limits.py
+      - backend/load/phase_c/smoke_pessimistic.py
+      - backend/load/phase_c/collaboration_probe.py
+      - backend/deploy/smoke_browsers.cjs
+      - backend/tests/test_pessimistic_limits.py
+      - backend/tests/test_pessimistic_suite.py
+      - backend/tests/test_pessimistic_probe.py
+permissions:
+  contents: read
+concurrency:
+  group: pessimistic-load-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  complete-app:
+    if: github.ref == 'refs/heads/codex/integracion-local-completa'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      COMPOSE_PROJECT_NAME: snackup-pessimistic-${{ github.run_id }}-${{ github.run_attempt }}
+      COMPOSE_FILE: ${{ github.workspace }}/backend/load/phase_c/compose.yaml:${{ github.workspace }}/backend/load/phase_c/compose.realtime.yaml:${{ github.workspace }}/backend/load/phase_c/compose.pessimistic.yaml
+      SNACKUP_LOAD_IMAGE: snackup-pessimistic-ci:${{ github.run_id }}-${{ github.run_attempt }}
+      SERVER_CPUS: 0-1
+      WORKERS: '1'
+      PASSWORD_CONCURRENCY: '2'
+      APP_MEMORY: 1152m
+      DB_MEMORY: 768m
+      ALLOW_LOAD: 'YES'
+      SNACKUP_ENVIRONMENT: test
+      SNACKUP_DATABASE_URL: postgresql+psycopg://loadtest:isolated-loadtest-password@127.0.0.1:15432/snackup_loadtest
+      SNACKUP_SECRET_KEY: isolated-phase-c-secret-not-for-production-2026
+      SNACKUP_PUBLIC_ORIGIN: https://localhost:18443
+      SNACKUP_LOAD_BASE_URL: https://localhost:18443
+      SNACKUP_BROWSER_ORIGIN: https://localhost:18443
+      SNACKUP_ADMIN_EMAIL_DOMAINS: load.snackup.invalid
+      SNACKUP_STUDENT_EMAIL_DOMAINS: load.snackup.invalid
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: docker/setup-compose-action@v2
+        with:
+          version: v2.39.4
+      - uses: docker/setup-buildx-action@v3
+      - name: Prepare private fixtures, dependencies and browser binaries outside measurement
+        run: |
+          umask 077
+          mkdir "$RUNNER_TEMP/snackup-pessimistic"
+          mkdir -p reports/pessimistic
+          echo "SNACKUP_LOAD_CA_FILE=$RUNNER_TEMP/snackup-pessimistic/ca.pem" >> "$GITHUB_ENV"
+          echo "SNACKUP_PLAYWRIGHT=$RUNNER_TEMP/snackup-pessimistic-browsers/node_modules/playwright" >> "$GITHUB_ENV"
+          python -m pip install -r requirements.lock
+          python -m pytest --noconftest -q tests/test_load_transport.py tests/test_pessimistic_limits.py tests/test_pessimistic_suite.py tests/test_pessimistic_probe.py
+          npm install --prefix "$RUNNER_TEMP/snackup-pessimistic-browsers" --no-audit --no-fund --ignore-scripts playwright@1.62.1
+          "$RUNNER_TEMP/snackup-pessimistic-browsers/node_modules/.bin/playwright" install --with-deps chromium webkit
+          docker compose --env-file /dev/null config --quiet
+      - name: Verify the merged full-app configuration before starting services
+        run: |
+          python - <<'PY'
+          import json, os, subprocess
+          from pathlib import Path
+          from load.phase_c.verify_pessimistic_limits import BUDGET, RUNTIME
+          config = json.loads(subprocess.check_output(['docker', 'compose', '--env-file', '/dev/null', 'config', '--format', 'json']))
+          services = config['services']
+          assert set(services) == set(BUDGET)
+          for name, budget in BUDGET.items():
+              service = services[name]
+              assert int(service['mem_limit']) == int(service['memswap_limit']) == budget
+              assert service['cpuset'] == '0-1'
+              assert all(port['host_ip'] == '127.0.0.1' for port in service.get('ports', []))
+          app = services['app']
+          assert Path(app['build']['context']).resolve() == Path('..').resolve()
+          assert app['build']['dockerfile'] == 'backend/deploy/unified/Dockerfile'
+          assert {key: str(app['environment'][key]) for key in RUNTIME} == RUNTIME
+          assert len(app['volumes']) == 1
+          assert app['volumes'][0]['target'] == '/app/deploy/unified/Caddyfile'
+          assert app['volumes'][0]['read_only'] is True
+          assert app['image'] == services['tls']['image'] == os.environ['SNACKUP_LOAD_IMAGE']
+          assert os.sched_getaffinity(0).issuperset({0, 1, 2, 3})
+          PY
+      - name: Build both real Flutter clients and start the disposable constrained stack
+        id: services
+        run: |
+          docker compose --env-file /dev/null build app
+          test "$(docker image inspect --format '{{.Config.User}}' "$SNACKUP_LOAD_IMAGE")" = '10001:10001'
+          docker compose --env-file /dev/null up -d --no-build --wait --wait-timeout 300
+      - name: Verify actual Docker and cgroup limits before measurements
+        id: limits
+        run: taskset -c 2,3 python -m load.phase_c.verify_pessimistic_limits --output reports/pessimistic/resources-before.json
+      - name: Trust only this test CA and verify HTTPS readiness
+        id: tls
+        run: |
+          umask 077
+          taskset -c 2,3 python - <<'PY'
+          import json, os, ssl, subprocess, time
+          from pathlib import Path
+          from urllib.request import urlopen
+          result = subprocess.run(['docker', 'compose', '--env-file', '/dev/null', 'exec', '-T', 'tls',
+                                   'cat', '/tmp/caddy-data/caddy/pki/authorities/local/root.crt'], capture_output=True)
+          if result.returncode:
+              raise SystemExit('Cannot read the public test CA: ' + result.stderr.decode(errors='replace')[-1000:])
+          pem = result.stdout.decode('ascii')
+          ssl.PEM_cert_to_DER_cert(pem)
+          ssl.create_default_context(cadata=pem)
+          with Path(os.environ['SNACKUP_LOAD_CA_FILE']).open('xb') as target:
+              target.write(result.stdout)
+          context = ssl.create_default_context(cafile=os.environ['SNACKUP_LOAD_CA_FILE'])
+          assert context.check_hostname and context.verify_mode == ssl.CERT_REQUIRED
+          for attempt in range(30):
+              try:
+                  with urlopen(os.environ['SNACKUP_LOAD_BASE_URL'] + '/health/ready', context=context, timeout=3) as response:
+                      assert json.load(response)['status'] == 'ready'
+                  break
+              except OSError:
+                  time.sleep(1)
+          else:
+              raise SystemExit('Verified TLS readiness failed')
+          PY
+      - name: Create authorized synthetic accounts only in the temporary database
+        id: fixtures
+        run: taskset -c 2,3 python -m load.create_fixtures --students 1000 --businesses 4 --confirm-isolated --output "$RUNNER_TEMP/snackup-pessimistic/accounts.json"
+      - name: Fetch both real clients and assets through verified HTTPS before load
+        continue-on-error: true
+        run: taskset -c 2,3 python -m load.phase_c.smoke_pessimistic --output reports/pessimistic/frontend-before.json
+      - name: Check both screens in Chromium and WebKit before load
+        continue-on-error: true
+        run: taskset -c 2,3 node deploy/smoke_browsers.cjs reports/pessimistic/browsers-before.json
+      - name: Run every pessimistic scenario sequentially without suppressing failures
+        id: suite
+        run: taskset -c 2,3 python -m load.phase_c.pessimistic_suite --fixtures "$RUNNER_TEMP/snackup-pessimistic/accounts.json" --output-dir reports/pessimistic
+      - name: Fetch both real clients and assets through verified HTTPS after load
+        if: always() && steps.fixtures.outcome == 'success'
+        continue-on-error: true
+        run: taskset -c 2,3 python -m load.phase_c.smoke_pessimistic --output reports/pessimistic/frontend-after.json
+      - name: Check both screens in Chromium and WebKit after load
+        if: always() && steps.fixtures.outcome == 'success'
+        continue-on-error: true
+        run: taskset -c 2,3 node deploy/smoke_browsers.cjs reports/pessimistic/browsers-after.json
+      - name: Verify actual limits, OOM counters and restarts after load
+        if: always() && steps.services.outcome == 'success'
+        run: taskset -c 2,3 python -m load.phase_c.verify_pessimistic_limits --output reports/pessimistic/resources-after.json
+      - name: Require all reports and preserve failed scenarios as failures
+        if: always()
+        run: |
+          taskset -c 2,3 python - <<'PY'
+          import json
+          from pathlib import Path
+          from load.phase_c.pessimistic_suite import SCENARIOS
+          from load.phase_c.verify_pessimistic_limits import validate_history
+          directory = Path('reports/pessimistic')
+          checks, errors = {}, {}
+          samples = []
+          for filename in ('summary', 'frontend-before', 'frontend-after', 'resources-before', 'resources-after', 'resources-validation'):
+              try:
+                  report = json.loads((directory / (filename + '.json')).read_text())
+                  checks[filename] = report.get('success', report.get('validation', {}).get('success', False)) is True
+                  if filename in ('resources-before', 'resources-after'):
+                      assert isinstance(report['samples'], list)
+                      samples.extend(report['samples'])
+                  if filename == 'summary':
+                      checks['allScenariosExecuted'] = report['scenarioOrder'] == list(SCENARIOS) and [row['scenario'] for row in report['results']] == list(SCENARIOS)
+              except Exception as error:
+                  checks[filename] = False
+                  errors[filename] = type(error).__name__
+          for phase in ('before', 'after'):
+              filename = 'browsers-' + phase
+              try:
+                  rows = json.loads((directory / (filename + '.json')).read_text())
+                  checks[filename] = (len(rows) == 4 and all(row.get('ok') is True for row in rows)
+                                      and {(row['browser'], row['path']) for row in rows} == {(browser, path) for browser in ('chromium', 'webkit') for path in ('/', '/paneles/')})
+              except Exception as error:
+                  checks[filename] = False
+                  errors[filename] = type(error).__name__
+          checks['beforeAndAfterSameConstrainedContainers'] = len(samples) == 2 and validate_history(samples)['success']
+          result = {'success': bool(checks) and all(checks.values()), 'checks': checks, 'errors': errors,
+                    'browserTlsLimitation': 'Playwright accepts the ephemeral self-signed certificate; HTTP smoke and load generators validate this CA and hostname.'}
+          directory.mkdir(parents=True, exist_ok=True)
+          (directory / 'ci-validation.json').write_text(json.dumps(result, indent=2) + '\n')
+          print(json.dumps(result))
+          raise SystemExit(0 if result['success'] else 1)
+          PY
+      - name: Collect bounded service diagnostics without credentials
+        if: always()
+        run: |
+          taskset -c 2,3 python - <<'PY'
+          import json, os, re, subprocess
+          from pathlib import Path
+          target = Path('reports/pessimistic')
+          target.mkdir(parents=True, exist_ok=True)
+          result = subprocess.run(['docker', 'compose', '--env-file', '/dev/null', 'ps', '--all', '--format', 'json'], capture_output=True, text=True)
+          rows = []
+          if result.returncode == 0 and result.stdout.strip():
+              try:
+                  data = json.loads(result.stdout)
+                  rows = data if isinstance(data, list) else [data]
+              except ValueError:
+                  rows = [json.loads(line) for line in result.stdout.splitlines() if line.strip()]
+          safe = [{key: row.get(key) for key in ('Name', 'Service', 'State', 'Health', 'ExitCode')} for row in rows]
+          health = {}
+          for row in rows:
+              if row.get('Service') not in {'app', 'db', 'tls'} or not row.get('ID'):
+                  continue
+              details = subprocess.run(['docker', 'inspect', row['ID']], capture_output=True, text=True)
+              if details.returncode:
+                  continue
+              state = json.loads(details.stdout)[0].get('State', {})
+              entries = []
+              for entry in state.get('Health', {}).get('Log', [])[-3:]:
+                  output = entry.get('Output', '')[-2000:]
+                  output = re.sub(r'([a-z][a-z0-9+.-]*://)[^/\s]+@', r'\1[REDACTED]@', output)
+                  for key in ('SNACKUP_SECRET_KEY', 'SNACKUP_DATABASE_URL'):
+                      if os.environ.get(key):
+                          output = output.replace(os.environ[key], '[REDACTED]')
+                  entries.append({'exitCode': entry.get('ExitCode'), 'output': output})
+              health[row['Service']] = {'oomKilled': state.get('OOMKilled'), 'checks': entries}
+          versions = {}
+          for label, service, command in [('caddy', 'app', ['caddy', 'version']), ('redis', 'app', ['redis-server', '--version']), ('postgres', 'db', ['postgres', '--version'])]:
+              version = subprocess.run(['docker', 'compose', '--env-file', '/dev/null', 'exec', '-T', service, *command], capture_output=True, text=True)
+              versions[label] = {'exitCode': version.returncode, 'version': version.stdout.strip()[:300]}
+          (target / 'services.json').write_text(json.dumps({'commit': os.environ['GITHUB_SHA'], 'diagnosticExitCode': result.returncode, 'services': safe, 'health': health, 'versions': versions}, indent=2) + '\n')
+          PY
+      - name: Remove only this temporary CI project and fixture credentials
+        if: always()
+        run: |
+          cleanup_status=0
+          docker compose --env-file /dev/null down --volumes --remove-orphans || cleanup_status=$?
+          rm -f "$RUNNER_TEMP/snackup-pessimistic/accounts.json" "$RUNNER_TEMP/snackup-pessimistic/accounts.sessions.json" "$RUNNER_TEMP/snackup-pessimistic/ca.pem" || cleanup_status=$?
+          if test -d "$RUNNER_TEMP/snackup-pessimistic"; then
+            rmdir "$RUNNER_TEMP/snackup-pessimistic" || cleanup_status=$?
+          fi
+          export CLEANUP_STATUS="$cleanup_status"
+          python - <<'PY'
+          import json, os, subprocess
+          from pathlib import Path
+          project = os.environ['COMPOSE_PROJECT_NAME']
+          containers = subprocess.run(['docker', 'ps', '--all', '--quiet', '--filter', 'label=com.docker.compose.project=' + project], capture_output=True, text=True)
+          volumes = subprocess.run(['docker', 'volume', 'ls', '--quiet', '--filter', 'label=com.docker.compose.project=' + project], capture_output=True, text=True)
+          private = Path(os.environ['RUNNER_TEMP']) / 'snackup-pessimistic'
+          success = os.environ['CLEANUP_STATUS'] == '0' and containers.returncode == volumes.returncode == 0 and not containers.stdout.strip() and not volumes.stdout.strip() and not private.exists()
+          target = Path('reports/pessimistic')
+          target.mkdir(parents=True, exist_ok=True)
+          (target / 'cleanup.json').write_text(json.dumps({'success': success, 'cleanupExitCode': int(os.environ['CLEANUP_STATUS']), 'containersRemaining': bool(containers.stdout.strip()), 'volumesRemaining': bool(volumes.stdout.strip()), 'privateDirectoryRemoved': not private.exists()}, indent=2) + '\n')
+          raise SystemExit(0 if success else 1)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pessimistic-2cpu-2gib-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            backend/reports/pessimistic/*.json
+            backend/reports/pessimistic/resources-samples.jsonl
+          retention-days: 30

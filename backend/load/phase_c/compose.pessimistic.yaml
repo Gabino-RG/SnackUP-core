@@ -1,0 +1,25 @@
+# Last overlay: complete app, shared two-CPU set, 2 GiB total, no additional swap.
+services:
+  app:
+    build:
+      context: ../../..
+      dockerfile: backend/deploy/unified/Dockerfile
+    cpuset: '0-1'
+    mem_limit: 1152m
+    memswap_limit: 1152m
+    environment:
+      SNACKUP_WORKERS: '1'
+      SNACKUP_WRITE_CONCURRENCY: '1'
+      SNACKUP_PASSWORD_CONCURRENCY: '2'
+      SNACKUP_POOL_SIZE: '10'
+      SNACKUP_MAX_OVERFLOW: '5'
+    volumes:
+      - ./Caddyfile:/app/deploy/unified/Caddyfile:ro
+  db:
+    cpuset: '0-1'
+    mem_limit: 768m
+    memswap_limit: 768m
+  tls:
+    cpuset: '0-1'
+    mem_limit: 128m
+    memswap_limit: 128m
