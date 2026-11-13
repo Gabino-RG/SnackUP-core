@@ -12,8 +12,10 @@ import math
 import os
 from pathlib import Path
 import random
+import ssl
 import subprocess
 import time
+from urllib.parse import urlsplit
 from uuid import uuid4
 
 import aiohttp
@@ -23,6 +25,23 @@ from sqlalchemy.engine import make_url
 
 BASE = 'http://127.0.0.1:18080'
 COMPOSE = ['docker', 'compose', '-f', 'load/phase_c/compose.yaml']
+
+
+def load_transport():
+    """Allow only a loopback target and keep TLS certificate verification on."""
+    base = os.environ.get('SNACKUP_LOAD_BASE_URL', BASE).rstrip('/')
+    url = urlsplit(base)
+    if (url.scheme not in {'http', 'https'} or url.hostname not in {'localhost', '127.0.0.1', '::1'}
+            or url.username is not None or url.password is not None or url.path
+            or url.query or url.fragment or (url.port is not None and not 1 <= url.port <= 65535)):
+        raise ValueError('The load target must be an HTTP(S) loopback origin')
+    ca_file = os.environ.get('SNACKUP_LOAD_CA_FILE')
+    if ca_file and (url.scheme != 'https' or not Path(ca_file).is_absolute() or not Path(ca_file).is_file()):
+        raise ValueError('The load CA must be an existing absolute file for an HTTPS target')
+    context = ssl.create_default_context(cafile=ca_file) if url.scheme == 'https' else None
+    return base, context, {'origin': base, 'tlsCertificateValidation': url.scheme == 'https',
+                           'trust': ('explicit test CA, client only' if ca_file else 'system trust store')
+                                    if context else 'HTTP'}
 
 
 def quantile(values, fraction):
@@ -51,6 +70,8 @@ class Run:
         self.running = True
         self.worker_samples = []
         self.expected_order_events, self.received_order_events = set(), set()
+        self.tls_context = None
+        self.transport = {'origin': BASE, 'tlsCertificateValidation': False, 'trust': 'HTTP'}
 
     def check(self, condition, message):
         if not condition:
@@ -514,7 +535,7 @@ while True:
 
     async def run(self):
         self.started = time.monotonic()
-        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=2000), cookie_jar=aiohttp.DummyCookieJar(),
+        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=2000, ssl=self.tls_context or True), cookie_jar=aiohttp.DummyCookieJar(),
                                          timeout=aiohttp.ClientTimeout(total=15)) as self.http:
             await self.prepare()
             self.reset()
@@ -563,7 +584,7 @@ while True:
                 report = {'scenario': self.args.scenario, 'profile': self.args.profile, 'quick': self.args.quick,
                     'commit': os.environ.get('GITHUB_SHA'), 'elapsedSeconds': time.monotonic() - self.started,
                     'success': not self.failures, 'failures': dict(Counter(self.failures)), 'details': self.details,
-                    'metrics': metrics, 'resources': self.monitor}
+                    'metrics': metrics, 'resources': self.monitor, 'transport': self.transport}
                 self.auth_path.write_text(json.dumps(self.sessions))
                 self.auth_path.chmod(0o600)
                 Path(self.args.output).write_text(json.dumps(report, indent=2) + '\n')
@@ -573,6 +594,7 @@ while True:
 
 
 def main():
+    global BASE
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--fixtures', required=True)
     parser.add_argument('--output', required=True)
@@ -582,11 +604,14 @@ def main():
     mode.add_argument('--quick', action='store_true')
     mode.add_argument('--full', action='store_true')
     args = parser.parse_args()
+    BASE, context, transport = load_transport()
     if args.profile == 'pessimistic':
         # The two remaining runner CPUs generate load without consuming the
         # two CPUs reserved for the app and PostgreSQL containers.
         os.sched_setaffinity(0, {2, 3})
-    return asyncio.run(Run(args).run())
+    job = Run(args)
+    job.tls_context, job.transport = context, transport
+    return asyncio.run(job.run())
 
 
 if __name__ == '__main__':

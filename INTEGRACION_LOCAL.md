@@ -4,6 +4,10 @@ Esta copia reúne alumnos, Cocina, Administración y la API en un único origen 
 
 El [informe de salida de la rama integrada](docs/qa-salida-integrada-2026-11-06.md) reúne las pruebas de correo, HTTPS, sesiones y disponibilidad, y distingue las que deben repetirse con el servicio de TI.
 
+La [continuación del 10 de noviembre](docs/qa-salida-integrada-2026-11-10.md) registra los ensayos pendientes de compras simultáneas, reintentos automáticos y conexiones en tiempo real. Incluye los resultados de integridad y los límites de rendimiento observados, además de las verificaciones de PostgreSQL y navegadores en GitHub.
+
+La [revisión del 13 de noviembre](docs/qa-salida-integrada-2026-11-13.md) continúa la comprobación WSS en Linux y documenta el bloqueo de PostgreSQL por Device Guard en esta laptop. El arranque local requiere que Windows permita ejecutar PostgreSQL mediante una instalación o autorización aprobada por el administrador del equipo.
+
 ## Política activa de pruebas
 
 Las acciones funcionales se realizan desde la interfaz de Alumnos, Cocina y Administración, con las cuentas locales existentes. Las pantallas se conectan a la API y a PostgreSQL reales de esta laptop; las identidades y el padrón son ficticios y no están conectados a los sistemas de la universidad.

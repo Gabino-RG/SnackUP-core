@@ -6,7 +6,11 @@ El generador es Python (`aiohttp` y `python-socketio`) porque los scripts k6 ori
 
 ## Ejecución reproducible y aislada
 
-Los workflows `phase-c.yml` y `phase-c-soak.yml` se ejecutan exclusivamente en la rama de revisión. Un commit cuyo mensaje contiene `[phase-c-full]` activa las duraciones completas y P12 de dos horas. Las suites usan proyectos Compose y bases independientes, eliminados al terminar. Las métricas y diagnósticos acotados quedan como artifacts durante 30 días.
+En esta rama está disponible el workflow [realtime-load.yml](../../../.github/workflows/realtime-load.yml). Se activa al subir cambios de su configuración o de los archivos de prueba enumerados en su filtro, exclusivamente en `codex/integracion-local-completa`. Ejecuta **P8-1000 completo durante cinco minutos**, con cuatro procesos de API y dos escrituras simultáneas por proceso. Los demás escenarios de esta guía se ejecutan manualmente; esta rama no contiene los workflows históricos `phase-c.yml` ni `phase-c-soak.yml`.
+
+La ejecución de GitHub usa PostgreSQL, Redis, Caddy y API reales en un proyecto Compose independiente. Un Caddy adicional termina TLS en `https://localhost:18443` y envía el tráfico al Caddy de la aplicación, que distribuye las conexiones a los cuatro procesos. La CA efímera se proporciona únicamente al cliente de carga; se verifican el certificado y el nombre del servidor. No se instala una CA en el sistema. El generador solo admite destinos HTTP/HTTPS de bucle local; la URL se configura con `SNACKUP_LOAD_BASE_URL` y la CA con `SNACKUP_LOAD_CA_FILE`, que debe ser un archivo absoluto existente.
+
+El workflow conserva los JSON de resultados y diagnósticos de estado durante 30 días. No incluye credenciales de los fixtures, sesiones, claves ni archivos de la base en los artifacts. Al terminar retira sus contenedores, volúmenes y credenciales temporales. Sus métricas describen el runner Linux de GitHub, compartido con el generador, y no son mediciones de la laptop ni del servidor de TI. El monitor de recursos incluye el contenedor adicional de TLS y exige cuatro procesos de API medidos, entrega completa y cola de publicaciones vacía. Este escenario sostiene las conexiones; no fuerza reconexiones voluntarias ni renovación del token.
 
 Para ejecutar manualmente desde `backend/`, instalar `requirements.lock`, configurar las mismas variables del workflow y usar:
 
@@ -20,6 +24,8 @@ docker compose -f load/phase_c/compose.yaml down --volumes --remove-orphans
 El generador exige `ALLOW_LOAD=YES`, `SNACKUP_ENVIRONMENT=test`, host SQL loopback y una base llamada exactamente `snackup_loadtest`. Borra los pedidos de esa base antes de cada escenario. **Nunca usar estas credenciales, fixtures o composición para producción.** Los archivos privados de sesiones permanecen fuera de los artifacts.
 
 ## Perfiles y límites de comparación
+
+El cuadro describe los perfiles manuales predeterminados. El workflow `realtime-load.yml` aplica su configuración específica de cuatro workers y dos escrituras por worker, indicada arriba.
 
 | Perfil | CPU del servidor | Workers API | Memoria máxima de app / PostgreSQL | Argon2 simultáneos por worker |
 |---|---|---|---|---|

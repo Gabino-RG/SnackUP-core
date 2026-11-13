@@ -1,0 +1,35 @@
+# Isolated GitHub Actions overlay; never use these fixtures for production.
+services:
+  app:
+    image: ${SNACKUP_LOAD_IMAGE:?Set the image tag for this CI run}
+    environment:
+      SNACKUP_PUBLIC_ORIGIN: https://localhost:18443
+      SNACKUP_WORKERS: '4'
+      SNACKUP_WRITE_CONCURRENCY: '2'
+  tls:
+    image: ${SNACKUP_LOAD_IMAGE:?Set the image tag for this CI run}
+    cpuset: ${SERVER_CPUS:-0-3}
+    mem_limit: 128m
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+    environment:
+      XDG_DATA_HOME: /tmp/caddy-data
+      XDG_CONFIG_HOME: /tmp/caddy-config
+    entrypoint: [caddy]
+    command:
+      - reverse-proxy
+      - --from
+      - https://localhost:8443
+      - --to
+      - http://app:8080
+      - --internal-certs
+      - --disable-redirects
+    ports: ['127.0.0.1:18443:8443']
+    depends_on:
+      app: {condition: service_healthy}
+    healthcheck:
+      disable: true
+    logging:
+      options: {max-size: 10m, max-file: '2'}

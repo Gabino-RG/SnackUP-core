@@ -19,7 +19,15 @@ Cada alumno del ensayo sostenido consultó los locales, el menú y sus pedidos, 
 
 Para las mediciones HTTP, el generador compartió laptop con la API y PostgreSQL y distribuyó las peticiones directamente entre puertos locales. El ensayo sostenido repartió alumnos de cada local entre todos los procesos. Los tiempos y la tasa de rechazo de estas pruebas describen esa configuración. En el servidor de TI se deben repetir las mediciones con el dominio, el catálogo, la red y el número de procesos que se van a utilizar. Los escenarios equivalentes de lectura, compra, idempotencia y tiempo real se describen en la [guía de fase C](phase_c/README.md).
 
-Por el apagado quedaron pendientes el ensayo de cinco minutos con 1,000 conexiones WebSocket permanentes, la ráfaga adicional de reintentos automáticos ante 503 y las comprobaciones finales de cancelación, stock e idempotencia del perfil con diez segundos de espera. El escenario WebSocket está preparado para comparar qué cuentas reciben cada versión del producto y contar tanto los destinatarios inesperados como las entregas duplicadas.
+La [continuación del 10 de noviembre](../../docs/qa-salida-integrada-2026-11-10.md) completó los ensayos HTTP pendientes:
+
+| Ensayo | Resultado |
+|---|---|
+| [Cuatro procesos y diez segundos de admisión](../../docs/qa-carga-1000-four-queue10-2026-11-10.json) | 1,000 compras iniciales, repeticiones y cancelaciones correctas. Con 200 compradores por 50 unidades se aceptaron exactamente 50. Diez envíos de cada una de 50 claves conservaron un solo pedido por clave. Inventario completo al cierre. p95 de la ráfaga: 5.07 s, por encima del objetivo de 1.5 s. |
+| [Un único reintento automático ante 503](../../docs/qa-carga-1000-four-auto5-2026-11-10.json) | 804 compras iniciales y 196 respuestas de saturación. Las 196 se confirmaron al repetir una sola vez con la clave original, respetando `Retry-After` más la dispersión de espera. Sin recuperación manual posterior. p95 hasta confirmar la compra: 7.46 s. Todas las cancelaciones recuperaron el inventario. |
+| [WebSocket, medición parcial](../../docs/qa-carga-1000-ws-four-2026-11-10.json) | 1,000 suscripciones durante cinco minutos y 59,000 entregas correctas, p95 243 ms. El observador tomó los PID de los lanzadores de Windows y sus cifras de CPU/TCP fueron inválidas. Se conserva como ensayo inconcluso, sin aprobar el criterio completo. |
+
+El porcentaje de rechazo inicial del ensayo de reintentos fue del 19.6 %, superior al límite del 1 %. La recuperación y la integridad pasaron; los objetivos de latencia de ambas ráfagas no se cumplieron. El generador reprodujo la política de reintento mediante HTTP real, sin ejecutar 1,000 navegadores Flutter. La [revisión del 13 de noviembre](../../docs/qa-salida-integrada-2026-11-13.md) documenta la continuación de la comprobación WSS en Linux y las limitaciones del entorno local.
 
 ## Entorno aislado
 

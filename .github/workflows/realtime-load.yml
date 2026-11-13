@@ -1,0 +1,159 @@
+name: Realtime load P8-1000
+on:
+  push:
+    branches: [codex/integracion-local-completa]
+    paths:
+      - .github/workflows/realtime-load.yml
+      - backend/load/phase_c/runner.py
+      - backend/load/phase_c/compose.yaml
+      - backend/load/phase_c/compose.realtime.yaml
+      - backend/load/phase_c/check_realtime_ci.py
+      - backend/load/phase_c/Dockerfile
+      - backend/load/phase_c/Caddyfile
+      - backend/tests/test_load_transport.py
+permissions:
+  contents: read
+concurrency:
+  group: realtime-load-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  wss-1000:
+    if: github.ref == 'refs/heads/codex/integracion-local-completa'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      COMPOSE_PROJECT_NAME: snackup-realtime-${{ github.run_id }}-${{ github.run_attempt }}
+      COMPOSE_FILE: ${{ github.workspace }}/backend/load/phase_c/compose.yaml:${{ github.workspace }}/backend/load/phase_c/compose.realtime.yaml
+      SNACKUP_LOAD_IMAGE: snackup-realtime-ci:${{ github.run_id }}-${{ github.run_attempt }}
+      SERVER_CPUS: 0-3
+      WORKERS: '4'
+      PASSWORD_CONCURRENCY: '4'
+      APP_MEMORY: 5g
+      DB_MEMORY: 2g
+      ALLOW_LOAD: 'YES'
+      SNACKUP_ENVIRONMENT: test
+      SNACKUP_DATABASE_URL: postgresql+psycopg://loadtest:isolated-loadtest-password@127.0.0.1:15432/snackup_loadtest
+      SNACKUP_SECRET_KEY: isolated-phase-c-secret-not-for-production-2026
+      SNACKUP_PUBLIC_ORIGIN: https://localhost:18443
+      SNACKUP_LOAD_BASE_URL: https://localhost:18443
+      SNACKUP_ADMIN_EMAIL_DOMAINS: load.snackup.invalid
+      SNACKUP_STUDENT_EMAIL_DOMAINS: load.snackup.invalid
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: docker/setup-compose-action@v2
+        with:
+          version: v2.39.4
+      - uses: docker/setup-buildx-action@v3
+      - name: Prepare isolated dependencies and private fixture directory
+        run: |
+          echo "SNACKUP_LOAD_CA_FILE=$RUNNER_TEMP/snackup-realtime/ca.pem" >> "$GITHUB_ENV"
+          python -m pip install -r requirements.lock
+          python -m pytest --noconftest -q tests/test_load_transport.py
+          umask 077
+          mkdir "$RUNNER_TEMP/snackup-realtime"
+          mkdir -p reports/realtime
+          docker compose --env-file /dev/null config --quiet
+      - name: Build and start the disposable database, API workers and TLS proxy
+        run: |
+          docker compose --env-file /dev/null build app
+          docker compose --env-file /dev/null up -d --no-build --wait --wait-timeout 180
+      - name: Trust only this test CA and verify HTTPS readiness
+        run: |
+          for attempt in $(seq 1 30); do
+            if docker compose --env-file /dev/null cp tls:/tmp/caddy-data/caddy/pki/authorities/local/root.crt "$SNACKUP_LOAD_CA_FILE" 2>/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          python - <<'PY'
+          import json, os, ssl, time
+          from urllib.request import urlopen
+          context = ssl.create_default_context(cafile=os.environ['SNACKUP_LOAD_CA_FILE'])
+          assert context.check_hostname and context.verify_mode == ssl.CERT_REQUIRED
+          for attempt in range(30):
+              try:
+                  with urlopen(os.environ['SNACKUP_LOAD_BASE_URL'] + '/health/ready', context=context, timeout=3) as response:
+                      assert json.load(response)['status'] == 'ready'
+                  break
+              except OSError:
+                  time.sleep(1)
+          else:
+              raise SystemExit('Verified TLS readiness failed')
+          PY
+      - name: Create authorized synthetic accounts only in the temporary database
+        run: python -m load.create_fixtures --students 1000 --businesses 4 --confirm-isolated --output "$RUNNER_TEMP/snackup-realtime/accounts.json"
+      - name: Keep 1000 distinct WSS sessions for five full minutes
+        run: |
+          python - --fixtures "$RUNNER_TEMP/snackup-realtime/accounts.json" --profile base --scenario P8-1000 --full --output reports/realtime/P8-1000.json <<'PY'
+          import json, resource
+          from pathlib import Path
+          from load.phase_c import runner
+          soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+          if soft < 4096:
+              if hard != resource.RLIM_INFINITY and hard < 4096:
+                  raise SystemExit('The generator needs at least 4096 open files')
+              resource.setrlimit(resource.RLIMIT_NOFILE, (4096, hard))
+          limits = resource.getrlimit(resource.RLIMIT_NOFILE)
+          runner.COMPOSE = ['docker', 'compose', '--env-file', '/dev/null', '-f', 'load/phase_c/compose.yaml', '-f', 'load/phase_c/compose.realtime.yaml']
+          try:
+              result = runner.main()
+          finally:
+              path = Path('reports/realtime/P8-1000.json')
+              if path.is_file():
+                  report = json.loads(path.read_text())
+                  report['generatorOpenFilesLimit'] = {'soft': limits[0], 'hard': limits[1]}
+                  path.write_text(json.dumps(report, indent=2) + '\n')
+          raise SystemExit(result)
+          PY
+      - name: Verify four measured workers, complete delivery and drained outbox
+        if: always()
+        run: |
+          if test -f reports/realtime/P8-1000.json; then
+            python load/phase_c/check_realtime_ci.py reports/realtime/P8-1000.json
+          else
+            echo 'P8-1000 report is missing; the scenario is not verified.'
+            exit 1
+          fi
+      - name: Collect bounded service diagnostics without credentials
+        if: always()
+        run: |
+          python - <<'PY'
+          import json, os, subprocess
+          from pathlib import Path
+          target = Path('reports/realtime')
+          target.mkdir(parents=True, exist_ok=True)
+          result = subprocess.run(['docker', 'compose', '--env-file', '/dev/null', 'ps', '--all', '--format', 'json'], capture_output=True, text=True)
+          rows = []
+          if result.returncode == 0 and result.stdout.strip():
+              try:
+                  data = json.loads(result.stdout)
+                  rows = data if isinstance(data, list) else [data]
+              except ValueError:
+                  rows = [json.loads(line) for line in result.stdout.splitlines() if line.strip()]
+          safe = [{key: row.get(key) for key in ('Name', 'Service', 'State', 'Health', 'ExitCode')} for row in rows]
+          (target / 'services.json').write_text(json.dumps({'commit': os.environ['GITHUB_SHA'], 'diagnosticExitCode': result.returncode, 'services': safe}, indent=2) + '\n')
+          PY
+      - name: Remove only this temporary CI project and fixture credentials
+        if: always()
+        run: |
+          cleanup_status=0
+          docker compose --env-file /dev/null down --volumes --remove-orphans || cleanup_status=$?
+          rm -f "$RUNNER_TEMP/snackup-realtime/accounts.json" "$RUNNER_TEMP/snackup-realtime/accounts.sessions.json" "$RUNNER_TEMP/snackup-realtime/ca.pem" || cleanup_status=$?
+          if test -d "$RUNNER_TEMP/snackup-realtime"; then
+            rmdir "$RUNNER_TEMP/snackup-realtime" || cleanup_status=$?
+          fi
+          exit "$cleanup_status"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: realtime-P8-1000-${{ github.run_id }}-${{ github.run_attempt }}
+          path: backend/reports/realtime/*.json
+          retention-days: 30

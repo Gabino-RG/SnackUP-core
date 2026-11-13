@@ -1,0 +1,223 @@
+{
+  "commit": "1a12094848b108252aae40d8b433f77554302a43",
+  "sourceDigestBackendPython": "5b014adbda1acb61b61171e775a7d7e79f94dfe002a81a4a09cbaba9c29fabfc",
+  "beganUtc": "2026-11-10T21:27:11.834999+00:00",
+  "finishedUtc": "2026-11-10T21:32:36.843466+00:00",
+  "generatorExitCode": 1,
+  "scope": "1,000 cuentas sintéticas distintas y cuatro locales de prueba, exclusivamente en una base temporal creada vacía. Ningún pedido en la aplicación de demostración.",
+  "environment": {
+    "postgres": "17.11",
+    "redis": "7.4.11",
+    "cpu": "AMD Ryzen AI 9 HX 370",
+    "cores": 12,
+    "logicalProcessors": 24,
+    "ramGiB": 15.62,
+    "workers": 4,
+    "writeConcurrencyPerWorker": 2,
+    "admissionWaitSeconds": 5,
+    "topology": "Caddy 2.11.8 en loopback, con TLS verificado exclusivamente por el cliente de prueba y round_robin a cuatro procesos FastAPI. Redis real compartido. Sin cambios en el almacén de confianza de Windows."
+  },
+  "workload": "P8-1000 del repositorio: mil alumnos con sockets WSS distintos y suscripción confirmada a los productos de su local y a sus propios pedidos. Cuatro operadores alternan disponibilidad real por HTTP durante cinco minutos.",
+  "generatorSha256": {
+    "finalize.py": "8a1ad30aabeac8a9ac67b7948133b2e51d011f638c472ec23338e21598c5e30f",
+    "finite.cjs": "cd4ff6b0a356c9a078f6000b8fc4c56b91dad3840abddcde73d3ef1c42b80dae",
+    "monitor.py": "22ddbb58d9f292581c8c35e0c5bbcf28610d40668e48f7c6819975d7f5773d9a",
+    "orders.cjs": "1cbc528512837db2e3eedcb4d34e5ba4f89a50cc55b2b917673f55b1012b1b5d",
+    "synthetic.py": "5e74b816c0e3f7ff4653dd4eb2965ac8f4b33498464aef283abaed49374a870c",
+    "ws-corrected.py": "c6efde80d8b1b49180ea81c5332614536cbad756727026a713f39c3748fe6b7a",
+    "ws.py": "02cc832438b64a39d2e8f881d3b62240561ccf8d84a69f06accc65f813fdd76d"
+  },
+  "stages": [
+    {
+      "stage": "P8-identities",
+      "students": 1000,
+      "operators": 4,
+      "authenticated": 1004
+    },
+    {
+      "stage": "P8-progress",
+      "seconds": 45.09,
+      "approxEstablishedServerConnectionsByWorker": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "subscribed": 1000
+    },
+    {
+      "stage": "P8-progress",
+      "seconds": 90.19,
+      "approxEstablishedServerConnectionsByWorker": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "subscribed": 1000
+    },
+    {
+      "stage": "P8-progress",
+      "seconds": 135.27,
+      "approxEstablishedServerConnectionsByWorker": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "subscribed": 1000
+    },
+    {
+      "stage": "P8-progress",
+      "seconds": 180.38,
+      "approxEstablishedServerConnectionsByWorker": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "subscribed": 1000
+    },
+    {
+      "stage": "P8-progress",
+      "seconds": 225.47,
+      "approxEstablishedServerConnectionsByWorker": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "subscribed": 1000
+    },
+    {
+      "stage": "P8-progress",
+      "seconds": 270.55,
+      "approxEstablishedServerConnectionsByWorker": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "subscribed": 1000
+    },
+    {
+      "stage": "P8-1000-final",
+      "criterion": "Cero pérdidas y desconexiones inesperadas, p95 de eventos <2000 ms y consumo de CPU del worker más ocupado respecto al menos ocupado <2.",
+      "expectedHoldSeconds": 300,
+      "secondsWithStartupAndDrain": 310.41,
+      "success": false,
+      "failures": {
+        "Exclusive worker CPU ratio must be below 2": 1
+      },
+      "details": {
+        "connections": 1000,
+        "expectedEvents": 59000,
+        "receivedEvents": 59000,
+        "changes": 236,
+        "unexpectedDisconnects": 0,
+        "missingDeliveries": 0,
+        "unexpectedDeliveries": 0,
+        "duplicateDeliveries": 0,
+        "unmappedProductEvents": 0
+      },
+      "metrics": {
+        "toggle": {
+          "count": 236,
+          "p50Ms": 18.13510000010865,
+          "p95Ms": 38.26039999967179,
+          "p99Ms": 146.43859999978304,
+          "statuses": {
+            "200": 236
+          }
+        },
+        "product_event": {
+          "count": 59000,
+          "p50Ms": 106.69755935668945,
+          "p95Ms": 242.97046661376953,
+          "p99Ms": 346.6966152191162,
+          "statuses": {}
+        }
+      },
+      "cpuSecondsPerWorker": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "maxToMinWorkerCpuRatio": null,
+      "perWorkerEstablishedSamples": [
+        [
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0
+        ]
+      ]
+    }
+  ],
+  "database": {
+    "students": 1000,
+    "businesses": 4,
+    "products": 4,
+    "orders": 0,
+    "uniqueBuyers": 0,
+    "pending": 0,
+    "idempotencyRecords": 0,
+    "duplicateNumbers": 0,
+    "duplicateBuyerOrders": 0,
+    "duplicateIdempotencyKeys": 0,
+    "ordersWithoutOneIdempotencyRecord": 0,
+    "negativeStock": 0,
+    "productsNotRestoredToStartingStock": 0,
+    "deadlocks": 0,
+    "byStatus": {},
+    "outboxUnpublished": 0,
+    "duplicatePickupCodes": 0,
+    "waitedForOutboxDrainSeconds": 0.0,
+    "outboxPublishedLagP95Ms": 178.803,
+    "outboxPublishedLagP99Ms": 313.653
+  },
+  "temporaryDatabaseDeleted": true,
+  "privateFixtureCredentialsRemoved": true,
+  "referenceScenario": "backend/load/phase_c/runner.py, Run.realtime(1000, 300). Se ejecuta el generador del repositorio con transporte WSS y monitor de Windows.",
+  "measurementValidity": {
+    "overall": "inconclusive",
+    "eventDelivery": "Se observaron 59000 entregas esperadas, sin pérdidas, duplicados ni desconexiones inesperadas.",
+    "workerCpuAndTcp": "Inválidos: el medidor observó los PID del lanzador de Python del entorno virtual en Windows, no los procesos hijos que atendían los sockets.",
+    "executedMonitor": "ws.py",
+    "unusedMonitorPresentInDigest": "ws-corrected.py estaba preparado pero no se ejecutó en este ensayo.",
+    "capacityAccepted": false,
+    "noteAddedOn": "2026-11-13",
+    "preservedResults": "Se conservan las métricas, el código de salida y el fallo del criterio original. Solo se corrigió la codificación de tres textos descriptivos y se añadió esta aclaración."
+  }
+}

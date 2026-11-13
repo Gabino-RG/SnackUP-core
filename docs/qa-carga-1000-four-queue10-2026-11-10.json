@@ -1,0 +1,405 @@
+{
+  "commit": "c06f57184da67f7dfd92727fc52bb98c442f2b07",
+  "sourceDigestBackendPython": "5b014adbda1acb61b61171e775a7d7e79f94dfe002a81a4a09cbaba9c29fabfc",
+  "beganUtc": "2026-11-10T21:18:55.444216+00:00",
+  "finishedUtc": "2026-11-10T21:22:16.142238+00:00",
+  "generatorExitCode": 0,
+  "scope": "1,000 cuentas sintéticas distintas y cuatro locales de prueba, exclusivamente en una base temporal creada vacía. Ningún pedido en la aplicación de demostración.",
+  "environment": {
+    "postgres": "17.11",
+    "redis": "7.4.11",
+    "cpu": "AMD Ryzen AI 9 HX 370",
+    "cores": 12,
+    "logicalProcessors": 24,
+    "ramGiB": 15.62,
+    "workers": 4,
+    "writeConcurrencyPerWorker": 2,
+    "admissionWaitSeconds": 10,
+    "topology": "Procesos FastAPI con Redis compartido, asignación alterna desde el generador por puertos loopback. PostgreSQL en la misma laptop. HTTP/1.1, sin proxy ni TLS en esta medición."
+  },
+  "workload": "Tras 1,000 inicios de sesión reales en la API, consultas concurrentes de locales, productos y pedidos propios. Un intento de compra simultáneo por usuario. Se conservó la clave de idempotencia para los reintentos, se comprobó cada compra y se solicitó la cancelación por HTTP. Los montos y existencias son de prueba.",
+  "generatorSha256": {
+    "finalize.py": "2c207631f564521dbd21e4e512cb02b277aed42b40f77e3b78c640460afa2268",
+    "finite.cjs": "cd4ff6b0a356c9a078f6000b8fc4c56b91dad3840abddcde73d3ef1c42b80dae",
+    "monitor.py": "22ddbb58d9f292581c8c35e0c5bbcf28610d40668e48f7c6819975d7f5773d9a",
+    "orders.cjs": "1cbc528512837db2e3eedcb4d34e5ba4f89a50cc55b2b917673f55b1012b1b5d",
+    "synthetic.py": "5e74b816c0e3f7ff4653dd4eb2965ac8f4b33498464aef283abaed49374a870c",
+    "ws.py": "02cc832438b64a39d2e8f881d3b62240561ccf8d84a69f06accc65f813fdd76d"
+  },
+  "stages": [
+    {
+      "stage": "auth-1000-preparation",
+      "utcStart": "2026-11-10T21:18:55.523Z",
+      "utcEnd": "2026-11-10T21:19:03.073Z",
+      "clients": 1000,
+      "requests": 1000,
+      "peakClientRequestsInFlight": 8,
+      "seconds": 7.54,
+      "rps": 132.58,
+      "p50Ms": 56.69,
+      "p95Ms": 81.24,
+      "p99Ms": 127.81,
+      "statuses": {
+        "200": 1000
+      },
+      "retryAfter503": {},
+      "healthAfter": [
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "stage": "authenticated",
+      "uniqueAccounts": 1000
+    },
+    {
+      "stage": "catalogue-and-own-orders-paced",
+      "utcStart": "2026-11-10T21:19:03.091Z",
+      "utcEnd": "2026-11-10T21:19:17.407Z",
+      "clients": 10,
+      "requests": 60,
+      "peakClientRequestsInFlight": 1,
+      "seconds": 14.31,
+      "rps": 4.19,
+      "p50Ms": 16.59,
+      "p95Ms": 32.29,
+      "p99Ms": 61.43,
+      "statuses": {
+        "200": 60
+      },
+      "retryAfter503": {},
+      "healthAfter": [
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "stage": "catalogue-and-own-orders-paced",
+      "utcStart": "2026-11-10T21:19:18.918Z",
+      "utcEnd": "2026-11-10T21:19:33.867Z",
+      "clients": 100,
+      "requests": 600,
+      "peakClientRequestsInFlight": 1,
+      "seconds": 14.95,
+      "rps": 40.15,
+      "p50Ms": 5.99,
+      "p95Ms": 10.11,
+      "p99Ms": 20.23,
+      "statuses": {
+        "200": 600
+      },
+      "retryAfter503": {},
+      "healthAfter": [
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "stage": "catalogue-and-own-orders-paced",
+      "utcStart": "2026-11-10T21:19:35.382Z",
+      "utcEnd": "2026-11-10T21:19:50.382Z",
+      "clients": 300,
+      "requests": 1800,
+      "peakClientRequestsInFlight": 2,
+      "seconds": 15,
+      "rps": 120.03,
+      "p50Ms": 5.03,
+      "p95Ms": 7.74,
+      "p99Ms": 9.56,
+      "statuses": {
+        "200": 1800
+      },
+      "retryAfter503": {},
+      "healthAfter": [
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "stage": "catalogue-and-own-orders-paced",
+      "utcStart": "2026-11-10T21:19:51.894Z",
+      "utcEnd": "2026-11-10T21:20:06.904Z",
+      "clients": 1000,
+      "requests": 6000,
+      "peakClientRequestsInFlight": 7,
+      "seconds": 15.01,
+      "rps": 399.84,
+      "p50Ms": 5.5,
+      "p95Ms": 9.37,
+      "p99Ms": 12.55,
+      "statuses": {
+        "200": 6000
+      },
+      "retryAfter503": {},
+      "healthAfter": [
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "stage": "order-simultaneous-first-attempt",
+      "utcStart": "2026-11-10T21:20:08.418Z",
+      "utcEnd": "2026-11-10T21:20:13.724Z",
+      "clients": 1000,
+      "requests": 1000,
+      "peakClientRequestsInFlight": 1000,
+      "seconds": 5.3,
+      "rps": 188.59,
+      "p50Ms": 2925.4,
+      "p95Ms": 5070.34,
+      "p99Ms": 5231.56,
+      "statuses": {
+        "201": 1000
+      },
+      "retryAfter503": {},
+      "healthAfter": [
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "stage": "one-automatic-retry-of-service-busy",
+      "utcStart": "2026-11-10T21:20:08.417Z",
+      "utcEnd": "2026-11-10T21:20:13.727Z",
+      "clients": 1000,
+      "requests": 0,
+      "peakClientRequestsInFlight": 0,
+      "seconds": 5.31,
+      "rps": 0,
+      "p50Ms": null,
+      "p95Ms": null,
+      "p99Ms": null,
+      "statuses": {},
+      "retryAfter503": {},
+      "healthAfter": [
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "stage": "outcome-per-original-intent-after-at-most-one-automatic-retry",
+      "originalIntents": 1000,
+      "firstAttemptAccepted": 1000,
+      "eligibleBusy": 0,
+      "automaticRetryAccepted": 0,
+      "initialOutcomesRecorded": 1000,
+      "acceptedByThen": 1000,
+      "stillUnconfirmed": 0,
+      "jitterMinMs": null,
+      "jitterMaxMs": null,
+      "timeToLastAutomaticOutcomeP95Ms": 5070.4,
+      "timeToLastAutomaticOutcomeP99Ms": 5231.6,
+      "timeToConfirmedPurchaseP95Ms": 5070.4,
+      "timeToConfirmedPurchaseP99Ms": 5231.6
+    },
+    {
+      "stage": "verify-orders-idempotent-replay",
+      "utcStart": "2026-11-10T21:20:13.728Z",
+      "utcEnd": "2026-11-10T21:21:03.700Z",
+      "clients": 1000,
+      "requests": 1000,
+      "peakClientRequestsInFlight": 2,
+      "seconds": 49.97,
+      "rps": 20.01,
+      "p50Ms": 7.52,
+      "p95Ms": 19.96,
+      "p99Ms": 33.51,
+      "statuses": {
+        "201": 1000
+      },
+      "retryAfter503": {},
+      "healthAfter": [
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "stage": "cancel-and-restore-stock",
+      "utcStart": "2026-11-10T21:21:03.701Z",
+      "utcEnd": "2026-11-10T21:22:10.340Z",
+      "clients": 1000,
+      "requests": 1000,
+      "peakClientRequestsInFlight": 3,
+      "seconds": 66.63,
+      "rps": 15.01,
+      "p50Ms": 13.2,
+      "p95Ms": 35.38,
+      "p99Ms": 96.78,
+      "statuses": {
+        "200": 1000
+      },
+      "retryAfter503": {},
+      "healthAfter": [
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "stage": "application-integrity",
+      "acceptedOrders": 1000,
+      "uniqueOrderIds": 1000,
+      "exactOrderIdReplays": 1000,
+      "confirmedCancellations": 1000
+    },
+    {
+      "stage": "additional-same-sku-200-buyers-50-units",
+      "utcStart": "2026-11-10T21:22:10.432Z",
+      "utcEnd": "2026-11-10T21:22:11.836Z",
+      "clients": 200,
+      "requests": 200,
+      "peakClientRequestsInFlight": 200,
+      "seconds": 1.4,
+      "rps": 142.78,
+      "p50Ms": 946.02,
+      "p95Ms": 1348.88,
+      "p99Ms": 1379.82,
+      "statuses": {
+        "201": 50,
+        "422/PRODUCT_UNAVAILABLE": 150
+      },
+      "retryAfter503": {},
+      "healthAfter": [
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "stage": "additional-finite-stock-result",
+      "offered": 50,
+      "buyers": 200,
+      "accepted": 50,
+      "unavailable": 150,
+      "uniqueOrderIds": 50,
+      "stockAfterAttempts": 0,
+      "cancellations": 50,
+      "stockAfterRelease": 50
+    },
+    {
+      "stage": "additional-50-buyers-10-identical-concurrent-submits",
+      "utcStart": "2026-11-10T21:22:12.275Z",
+      "utcEnd": "2026-11-10T21:22:14.964Z",
+      "clients": 50,
+      "requests": 500,
+      "peakClientRequestsInFlight": 500,
+      "seconds": 2.69,
+      "rps": 186.2,
+      "p50Ms": 1098.61,
+      "p95Ms": 1947.01,
+      "p99Ms": 2045.99,
+      "statuses": {
+        "201": 500
+      },
+      "retryAfter503": {},
+      "healthAfter": [
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "stage": "additional-concurrent-idempotency-result",
+      "intents": 50,
+      "submissions": 500,
+      "groupsWithOneAndOnlyOneOrderId": 50,
+      "groupsWithIdenticalResponseBodies": 50,
+      "confirmedCancellations": 50,
+      "unexpectedResponses": 0,
+      "stockAfterRelease": 1000
+    }
+  ],
+  "database": {
+    "students": 1000,
+    "businesses": 4,
+    "products": 4,
+    "orders": 1100,
+    "uniqueBuyers": 1000,
+    "pending": 0,
+    "idempotencyRecords": 1100,
+    "duplicateNumbers": 0,
+    "duplicateIdempotencyKeys": 0,
+    "ordersWithoutOneIdempotencyRecord": 0,
+    "negativeStock": 0,
+    "productsNotRestoredToStartingStock": 0,
+    "deadlocks": 0,
+    "byStatus": {
+      "cancelled": 1100
+    },
+    "outboxUnpublished": 0,
+    "duplicatePickupCodes": 0,
+    "waitedForOutboxDrainSeconds": 0.5,
+    "outboxPublishedLagP95Ms": 1578.569,
+    "outboxPublishedLagP99Ms": 1638.734,
+    "buyersWithMultipleValidIntents": 100
+  },
+  "temporaryDatabaseDeleted": true,
+  "privateFixtureCredentialsRemoved": true,
+  "additionalChecks": "Al terminar la ráfaga principal, 200 alumnos compiten por las mismas 50 unidades. Después, 50 alumnos envían 10 copias simultáneas por intento. Las compras de estas dos comprobaciones se cancelan, y se verifica SQL después de las tres fases.",
+  "resources": {
+    "sampleSeconds": 214,
+    "fromUtc": "2026-11-10T21:18:42.815321+00:00",
+    "throughUtc": "2026-11-10T21:22:16.091190+00:00",
+    "meanTotalLaptopCpuPct": 21.7,
+    "maxTotalLaptopCpuPct": 80.18,
+    "minFreePhysicalMiB": 12,
+    "postgresDatabaseMaxSessions": 16,
+    "postgresDatabaseMaxActive": 6,
+    "postgresDatabaseMaxLockWaiters": 5,
+    "samplingNote": "Muestra cada segundo la laptop completa, incluidos PostgreSQL y el generador. Los valores por proceso o por etapa se informan por separado cuando están disponibles."
+  },
+  "scopeLimits": [
+    "Generador y servidor comparten la misma laptop con 12 núcleos físicos y 24 procesadores lógicos.",
+    "Catálogo sintético de cuatro locales y un producto por local. Los resultados dependen de los datos, del ritmo, de las conexiones y del equipo.",
+    "La capacidad en el servidor asignado por TI y el tráfico por internet se deben medir en ese despliegue.",
+    "En las ráfagas la asignación alterna por cuenta hizo que cada local tendiera a un proceso. Se comparan perfiles de laboratorio, con respuestas del propio backend."
+  ],
+  "backendSha256": {
+    "admission.py": "d87ac378c69789820c40880cd7843273763c24d0434bd34cbf80453178ba4db4",
+    "db.py": "9ff20f11802426c27e7ef702bbd1df63fd35b0100fde63daba491d4cde1df65b",
+    "operations.py": "076f8ca5c92de485cca55e923ba402623d218ff36f1aab04311fd8e3d2424481",
+    "v3_operations.py": "5701825ed859b3a2f5733b3bdb077f0370b4d95ebbed0c6c6a7546965dea8f63",
+    "auth.py": "6e8b820d80916b5c4f15ed4d69013e5c6832431bd3067b3847755665168751ba",
+    "realtime.py": "3c686cd007de7fa478e8ccc2dd324c6c33dede57c98c8c1736ef1b3dd53bb499"
+  },
+  "referenceScenario": "backend/load/phase_c/README.md y backend/load/README.md",
+  "acceptance": {
+    "generatorCompletedSuccessfully": true,
+    "localSqlIntegrityAndDrainedOutbox": true,
+    "firstBurstHttpErrorRateBelow1Percent": true,
+    "firstBurstCreationP95Under1500Ms": false,
+    "verified1000SameOrderIds": true,
+    "cancelledAll1000OriginalIntents": true,
+    "all1000RecoveredAfterUserPolicy": true,
+    "uniqueOrdersAfterExplicitRecovery": true,
+    "exactly50PurchasesFor50Units": true,
+    "fiftyKeysWithTenSubmissionsEach": true,
+    "exactly1100CancelledOrders": true
+  },
+  "criteria": {
+    "failureRateLessThan": 0.01,
+    "readP95MsLessThan": 750,
+    "readP99MsLessThan": 2000,
+    "createP95MsLessThan": 1500
+  },
+  "automaticRetry": "El generador reproduce un único reintento si el API indica HTTP 503 SERVICE_BUSY y Retry-After entre 0 y 5 segundos, conservando cuerpo y clave. Al valor indicado suma una dispersión por intento entre 0 y 1499 ms. El generador usa crypto.randomInt(1500); Flutter obtiene la dispersión con hashCode de la clave % 1500. El rango y la política se reproducen, pero no se ejecutan 1,000 instancias Flutter. La prueba del carrito compilado se documenta aparte."
+}
