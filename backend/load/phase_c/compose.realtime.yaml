@@ -30,6 +30,14 @@ services:
     depends_on:
       app: {condition: service_healthy}
     healthcheck:
-      disable: true
+      test:
+        - CMD
+        - python
+        - -c
+        - "import json, ssl, urllib.request; context=ssl.create_default_context(cafile='/tmp/caddy-data/caddy/pki/authorities/local/root.crt'); response=urllib.request.urlopen('https://localhost:8443/health/ready', context=context, timeout=3); assert json.load(response)['status']=='ready'"
+      interval: 3s
+      timeout: 5s
+      start_period: 20s
+      retries: 20
     logging:
       options: {max-size: 10m, max-file: '2'}
