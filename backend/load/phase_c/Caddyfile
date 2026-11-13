@@ -6,6 +6,7 @@ import routes.caddy
 http://:8080 {
     import snackup_routes
 }
-http://127.0.0.1:8081 {
+http://:8081 {
+    bind 127.0.0.1
     import snackup_routes
 }

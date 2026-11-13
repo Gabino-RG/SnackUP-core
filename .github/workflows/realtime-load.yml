@@ -126,7 +126,7 @@ jobs:
         if: always()
         run: |
           python - <<'PY'
-          import json, os, subprocess
+          import json, os, re, subprocess
           from pathlib import Path
           target = Path('reports/realtime')
           target.mkdir(parents=True, exist_ok=True)
@@ -139,7 +139,28 @@ jobs:
               except ValueError:
                   rows = [json.loads(line) for line in result.stdout.splitlines() if line.strip()]
           safe = [{key: row.get(key) for key in ('Name', 'Service', 'State', 'Health', 'ExitCode')} for row in rows]
-          (target / 'services.json').write_text(json.dumps({'commit': os.environ['GITHUB_SHA'], 'diagnosticExitCode': result.returncode, 'services': safe}, indent=2) + '\n')
+          health = {}
+          for row in rows:
+              if row.get('Service') not in {'app', 'db', 'tls'} or not row.get('ID'):
+                  continue
+              details = subprocess.run(['docker', 'inspect', row['ID']], capture_output=True, text=True)
+              if details.returncode:
+                  continue
+              state = json.loads(details.stdout)[0].get('State', {})
+              entries = []
+              for entry in state.get('Health', {}).get('Log', [])[-3:]:
+                  output = entry.get('Output', '')[-2000:]
+                  output = re.sub(r'([a-z][a-z0-9+.-]*://)[^/\s]+@', r'\1[REDACTED]@', output)
+                  for key in ('SNACKUP_SECRET_KEY', 'SNACKUP_DATABASE_URL'):
+                      if os.environ.get(key):
+                          output = output.replace(os.environ[key], '[REDACTED]')
+                  entries.append({'exitCode': entry.get('ExitCode'), 'output': output})
+              health[row['Service']] = {'oomKilled': state.get('OOMKilled'), 'checks': entries}
+          versions = {}
+          for label, service, command in [('caddy', 'app', ['caddy', 'version']), ('redis', 'app', ['redis-server', '--version']), ('postgres', 'db', ['postgres', '--version'])]:
+              version = subprocess.run(['docker', 'compose', '--env-file', '/dev/null', 'exec', '-T', service, *command], capture_output=True, text=True)
+              versions[label] = {'exitCode': version.returncode, 'version': version.stdout.strip()[:300]}
+          (target / 'services.json').write_text(json.dumps({'commit': os.environ['GITHUB_SHA'], 'diagnosticExitCode': result.returncode, 'services': safe, 'health': health, 'versions': versions}, indent=2) + '\n')
           PY
       - name: Remove only this temporary CI project and fixture credentials
         if: always()
