@@ -652,11 +652,11 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
   }
 
   Widget _buildOrderItemsSummary(List<dynamic> items) {
-    final totalItems = items.fold<int>(0, (sum, item) => sum + (item['quantity'] as int? ?? 1));
-    final itemsSummary = items
-        .map((item) => '${item['quantity']}x ${item['name']}')
-        .take(2)
-        .join(', ');
+    final products = items.whereType<Map<String, dynamic>>();
+    final totalItems = products.fold<int>(
+      0,
+      (total, item) => total + (item['quantity'] as num? ?? 1).toInt(),
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -669,24 +669,32 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
           ),
         ),
         const SizedBox(height: 8),
-        Text(
-          itemsSummary,
-          style: AppText.body.copyWith(
-            color: AppColors.textPrimary,
-          ),
-        ),
-        if (items.length > 2) ...[
-          const SizedBox(height: 4),
-          Text(
-            '+ ${items.length - 2} productos más',
-            style: AppText.notes.copyWith(
-              color: AppColors.textSecondary,
+        for (final item in products)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${(item['quantity'] as num? ?? 1).toInt()}×',
+                  style: AppText.body.copyWith(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    item['name']?.toString() ?? 'Producto',
+                    style: AppText.body.copyWith(color: AppColors.textPrimary),
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
         const SizedBox(height: 4),
         Text(
-          '$totalItems productos en total',
+          totalItems == 1 ? '1 producto en total' : '$totalItems productos en total',
           style: AppText.notes.copyWith(
             color: AppColors.textSecondary,
             fontSize: 12,
