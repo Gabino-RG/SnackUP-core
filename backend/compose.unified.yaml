@@ -1,4 +1,4 @@
-# One application container (API + both web apps + proxy + internal Redis), plus PostgreSQL.
+# One application container (API + three access points + proxy + Redis), plus PostgreSQL.
 # Use alone; do not merge with compose.yaml or deploy/compose.apps.yaml.
 name: snackup-unified
 services:
@@ -43,7 +43,11 @@ services:
       SNACKUP_DATABASE_URL: postgresql+psycopg://${SNACKUP_DB_USER:-snackup}:${SNACKUP_DB_PASSWORD:?Configure SNACKUP_DB_PASSWORD}@db:5432/${POSTGRES_DB:-snackup}
       SNACKUP_REDIS_URL: unix:///tmp/snackup-redis.sock?db=0
       SNACKUP_PUBLIC_ORIGIN: https://${SNACKUP_DOMAIN:?Configure SNACKUP_DOMAIN}
-      SNACKUP_PASSWORD_RESET_FRONTEND_PATH: /paneles/
+      SNACKUP_KITCHEN_PUBLIC_ORIGIN: ${SNACKUP_KITCHEN_PUBLIC_ORIGIN:?Configure SNACKUP_KITCHEN_PUBLIC_ORIGIN}
+      SNACKUP_ADMINISTRATION_PUBLIC_ORIGIN: ${SNACKUP_ADMINISTRATION_PUBLIC_ORIGIN:?Configure SNACKUP_ADMINISTRATION_PUBLIC_ORIGIN}
+      SNACKUP_PASSWORD_RESET_FRONTEND_PATH: /
+      SNACKUP_KITCHEN_PASSWORD_RESET_FRONTEND_PATH: /
+      SNACKUP_ADMIN_PASSWORD_RESET_FRONTEND_PATH: /
       SNACKUP_STUDENT_PASSWORD_RESET_FRONTEND_PATH: /
       SNACKUP_MEDIA_DIR: /data/media
       SNACKUP_SECRET_KEY: ${SNACKUP_SECRET_KEY:?Configure SNACKUP_SECRET_KEY}

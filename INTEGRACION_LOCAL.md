@@ -1,6 +1,6 @@
 # SnackUP: aplicación integrada en la laptop
 
-Esta copia reúne alumnos, Cocina, Administración y la API en un único origen local. Los datos de prueba están en PostgreSQL, fuera del repositorio. El propósito es comprobar recorridos completos y persistencia en la laptop; no certifica capacidad de producción.
+Esta copia reúne Alumnos, Cocina, Administración y la API en la misma laptop, con tres orígenes independientes para separar sesiones y almacenamiento del navegador. Los datos están en PostgreSQL, fuera del repositorio. El propósito es comprobar recorridos completos y persistencia; no certifica capacidad de producción.
 
 El [informe de salida de la rama integrada](docs/qa-salida-integrada-2026-11-06.md) reúne las pruebas de correo, HTTPS, sesiones y disponibilidad, y distingue las que deben repetirse con el servicio de TI.
 
@@ -25,19 +25,20 @@ Para medir la carga se autorizaron 1,000 cuentas y pedidos de ensayo exclusivame
 | Alumnos y backend | `codex/conectar-alumnos-api` — `7c549b7b03ff05847cc6680d687237594e87e12e` |
 | Cocina y Administración | `codex/entrega-paneles-rest` — `9d8f7cb05c57ec5d6b89aca288d04e9d9295d5f5` |
 
-El backend de ambas entregas comparte el árbol `de365689c2ec2001bc05bba3c29908d1ea78828e`. Los paneles están en `app/`; la aplicación de alumnos permanece en la raíz. El lanzador reutiliza FastAPI y sus rutas, añade los dos frontends compilados y ejecuta los trabajos programados cada cinco segundos.
+El backend de ambas entregas comparte el árbol `de365689c2ec2001bc05bba3c29908d1ea78828e`. Los paneles están en `app/`; la aplicación de alumnos permanece en la raíz. El lanzador reutiliza FastAPI y sus rutas, sirve tres builds por su hostname y ejecuta los trabajos programados cada cinco segundos.
 
 ## Requisitos y carpetas
 
 - Windows con PowerShell 5.1 o superior; no se necesita Docker.
 - Python 3.12 con las dependencias de `backend/requirements.lock` ya instaladas. Por defecto se usa `C:/Users/video/Documents/Codex/2026-10-14/h/work/SnackUP-core/backend/.venv/Scripts/python.exe`. Se puede reemplazar mediante `-PythonPath`.
 - PostgreSQL portátil existente en `C:/Users/video/Documents/JC/SnackUP-Integracion-Local/runtime/pgsql/bin`. Los scripts no descargan PostgreSQL, Python, Flutter ni dependencias.
-- Flutter disponible para compilar alumnos y paneles cuando cambie el código. El inicio verifica que ambos builds existan con sus bases correctas.
+- Flutter disponible para compilar cuando cambie el código. El inicio verifica que los tres builds existan con base `/`.
 
 | Ubicación | Contenido |
 |---|---|
 | `build/web/` | Compilación web de alumnos; base `/` |
-| `app/build/web/` | Compilación web de paneles; base `/paneles/` |
+| `app/build/kitchen/web/` | Compilación exclusiva de Cocina; base `/`, audiencia `cocina` |
+| `app/build/administration/web/` | Compilación exclusiva de Administración; base `/`, audiencia `administracion` |
 | `tools/integrated_server.py` | API existente, archivos web y scheduler local |
 | `tools/setup_local_postgres.py` | Prepara o vuelve a iniciar el cluster aislado |
 | `tools/seed_integrated.py` | Preparación opcional de datos ficticios faltantes; no se ejecuta en el inicio habitual ni en la auditoría actual |
@@ -54,7 +55,10 @@ Ejecutar en PowerShell desde esta copia del repositorio. Si los builds ya están
 flutter build web --release --no-web-resources-cdn --pwa-strategy=none
 Push-Location app
 try {
-    flutter build web --release --target lib/main_portal_api.dart --base-href /paneles/ --dart-define=API_BASE_URL=/api/legacy/v1/ --no-web-resources-cdn --pwa-strategy=none
+    flutter build web --release --target lib/main_portal_api.dart --output build/kitchen/web --base-href / --dart-define=PORTAL_AUDIENCE=cocina --dart-define=API_BASE_URL=/api/legacy/v1/ --no-web-resources-cdn --pwa-strategy=none
+    if ($LASTEXITCODE -ne 0) { throw 'Fallo el build de Cocina.' }
+    flutter build web --release --target lib/main_portal_api.dart --output build/administration/web --base-href / --dart-define=PORTAL_AUDIENCE=administracion --dart-define=API_BASE_URL=/api/legacy/v1/ --no-web-resources-cdn --pwa-strategy=none
+    if ($LASTEXITCODE -ne 0) { throw 'Fallo el build de Administracion.' }
 } finally {
     Pop-Location
 }
@@ -62,7 +66,7 @@ try {
 & ./tools/start_integrated_local.ps1
 ```
 
-La plantilla web de Alumnos ya fija `<base href="/">`. Su compilación usa ese valor; no se añade `--base-href /`. Los paneles sí se compilan con `--base-href /paneles/`.
+La plantilla web de Alumnos ya fija `<base href="/">`. Su compilación usa ese valor. Cada panel también usa base `/`, pero se publica en su propio hostname y se compila con su audiencia explícita. La antigua ruta `/paneles/` devuelve 404: no redirige ni ofrece un selector de roles.
 
 El inicio comprueba los builds y el puerto 18080, inicia o reutiliza el cluster PostgreSQL propio, aplica las migraciones pendientes con `alembic upgrade head` y abre el servidor en segundo plano con ventana oculta. **No crea cuentas ni productos de demostración, no restablece existencias y no genera pedidos.** Para retomar la base ya existente basta con `./tools/start_integrated_local.ps1`, sin opciones de semillas. Espera que API y scheduler estén listos antes de anunciar éxito. Repetirlo con un servidor propio saludable no crea otro proceso. Un puerto ocupado por un servidor iniciado manualmente se respeta: hay que detener ese servidor de forma identificada antes de usar estos scripts.
 
@@ -77,9 +81,9 @@ Para elegir otro intérprete o una carpeta externa ya preparada:
     -StartupTimeoutSeconds 90
 ```
 
-`ConfigPath` debe llamarse `config.json`. Su carpeta contiene también `runtime/pgsql/bin`, `postgres-data`, `media` y `logs`. PostgreSQL queda fijo en `127.0.0.1:55432`, base `snackup_integration`, usuario técnico `snackup_local`; la web queda fija en `http://localhost:18080`. Los puertos no se cambian mediante el JSON.
+`ConfigPath` debe llamarse `config.json`. Su carpeta contiene también `runtime/pgsql/bin`, `postgres-data`, `media` y `logs`. PostgreSQL queda fijo en `127.0.0.1:55432`, base `snackup_integration`, usuario técnico `snackup_local`; las tres webs utilizan el puerto 18080 con los hostnames de la tabla siguiente. Los puertos no se cambian mediante el JSON.
 
-Campos utilizados del JSON: `database_url`, `secret_key` (mínimo 32 caracteres aleatorios) y `media_dir` (ruta absoluta fuera del repositorio). `students_web` y `panels_web` permiten indicar otras carpetas de build. `services_file` permite indicar un JSON privado absoluto fuera del repositorio para correo y notificaciones reales; si se omite, esos servicios permanecen deshabilitados. El preparador genera también `public_origin` y `port` como referencia; el lanzador mantiene el origen y puerto fijos. No imprimir el JSON ni pegarlo en un chat. Las migraciones leen los secretos dentro del proceso Python, sin incluirlos en argumentos de consola, y no cargan un `.env` ajeno.
+Campos utilizados del JSON: `database_url`, `secret_key` (mínimo 32 caracteres aleatorios) y `media_dir` (ruta absoluta fuera del repositorio). `students_web`, `kitchen_web` y `administration_web` permiten indicar otras carpetas de build; el antiguo `panels_web` no selecciona ninguno de los nuevos portales. `services_file` permite indicar un JSON privado absoluto fuera del repositorio para correo y notificaciones reales; si se omite, esos servicios permanecen deshabilitados. El preparador genera también `public_origin` y `port` como referencia; el lanzador mantiene los orígenes y puerto fijos. No imprimir el JSON ni pegarlo en un chat. Las migraciones leen los secretos dentro del proceso Python, sin incluirlos en argumentos de consola, y no cargan un `.env` ajeno.
 
 ## Abrir y probar los tres roles
 
@@ -88,12 +92,12 @@ En esta laptop también quedaron `INICIAR_SNACKUP.cmd` y `DETENER_SNACKUP.cmd` e
 | Rol | Dirección | Correo ficticio |
 |---|---|---|
 | Alumno | http://localhost:18080/ | `alumno.demo@utsjr.edu.mx` |
-| Cocina | http://localhost:18080/paneles/ | `operator@staff.example.edu` |
-| Administración maestra | http://localhost:18080/paneles/ | `master@staff.example.edu` |
+| Cocina | http://cocina.localhost:18080/ | `operator@staff.example.edu` |
+| Administración maestra | http://administracion.localhost:18080/ | `master@staff.example.edu` |
 
 La contraseña inicial pública para las tres cuentas de demostración es **`SnackUP-Prueba-V32!`**; si se cambió, el arranque conserva la contraseña actual. No sirve como credencial de producción. En la preparación inicial, la cuenta de alumno recibió matrícula `DEMO-001`, carrera `Desarrollo de Software (prueba)` y grupo `DEMO-1` en el padrón ficticio; el negocio `integration-local` se creó abierto con tres productos y 30 unidades de cada uno. Los valores actuales pueden haber cambiado durante las pruebas. Son cuentas persistidas en el backend local real, no identidades institucionales verificadas. Reiniciar no vuelve a sembrarlas ni restaura las existencias iniciales.
 
-**Usar perfiles independientes de navegador para cada rol**, o navegadores distintos. Varias pestañas del mismo perfil comparten la cookie de renovación del backend y pueden reemplazar la sesión de otra cuenta. Dos ventanas privadas del mismo navegador también pueden compartir cookies entre sí. Usar siempre `localhost`, sin sustituirlo por `127.0.0.1` o una IP de la red, porque el origen forma parte de las comprobaciones de seguridad.
+Los tres roles pueden abrirse en pestañas del mismo navegador: sus cookies de renovación son exclusivas de cada hostname y cada panel admite únicamente su rol. Dos cuentas del mismo rol y hostname sí comparten almacenamiento; para ese caso usar perfiles distintos. Usar las direcciones exactas de la tabla, sin reemplazar el hostname por `127.0.0.1` o una IP de red. Los enlaces antiguos de `/paneles/` ya no son accesos válidos.
 
 Recorrido de prueba vigente, realizado desde la UI:
 
@@ -132,13 +136,13 @@ La parada de la web usa la terminación de procesos de Windows; no equivale a un
 
 ## Correo y notificaciones con proveedores reales
 
-En la aplicación integrada, los enlaces de recuperación llevan a cada cuenta a su propio acceso. Los alumnos vuelven a `/` y el personal a `/paneles/`. El rol guardado en la cuenta determina la ruta.
+Los enlaces de recuperación llevan a cada cuenta a la raíz de su propio origen: `localhost`, `cocina.localhost` o `administracion.localhost`, siempre en el puerto 18080. El rol persistido en el servidor determina el destino.
 
 El 6 de noviembre se comprobó el alta de alumno y la recuperación de Alumnos y Cocina desde las pantallas. Los mensajes llegaron por SMTP con STARTTLS a un buzón aislado de la laptop. La prueba usó una copia temporal de PostgreSQL y los registros locales de QA. El correo y el padrón institucionales siguen pendientes. [Resultados del ensayo de correo](docs/qa-correo-2026-11-06.json)
 
 El lanzador admite una configuración privada explícita; nunca toma credenciales de un `.env` ni de variables `SNACKUP_*` heredadas. La plantilla sin secretos es [tools/integration-services.example.json](tools/integration-services.example.json). Copiarla a una carpeta privada fuera del repositorio y agregar en el `config.json` externo el campo `services_file` con la ruta absoluta a esa copia. No sobrescribir una configuración existente para repetir la preparación.
 
-Correo requiere `smtp.enabled=true`, `host`, `port`, `from` y los datos autorizados por el proveedor. Para autenticación, indicar `user` y `password_file`: este último debe ser un archivo privado absoluto fuera de Git que contenga una sola contraseña o credencial SMTP, sin mostrarla en consola. El puerto 465 usa TLS implícito; los demás exigen `starttls=true`. Sin SMTP configurado, el registro y la recuperación permanecen deshabilitados. Configurar estos campos no demuestra recepción de un mensaje: se necesita una prueba de extremo a extremo con un buzón real autorizado. Los enlaces del correo apuntan a `localhost:18080` y deben abrirse en la misma laptop durante este ensayo.
+Correo requiere `smtp.enabled=true`, `host`, `port`, `from` y los datos autorizados por el proveedor. Para autenticación, indicar `user` y `password_file`: este último debe ser un archivo privado absoluto fuera de Git que contenga una sola contraseña o credencial SMTP, sin mostrarla en consola. El puerto 465 usa TLS implícito; los demás exigen `starttls=true`. Sin SMTP configurado, el registro y la recuperación permanecen deshabilitados. Configurar estos campos no demuestra recepción de un mensaje: se necesita una prueba de extremo a extremo con un buzón real autorizado. Los enlaces del correo apuntan al origen local correspondiente al rol (`localhost`, `cocina.localhost` o `administracion.localhost`, puerto 18080) y deben abrirse en la misma laptop durante este ensayo.
 
 Para notificaciones web se requiere `push.enabled=true` y `push.webpush.private_key_file` apuntando a una clave VAPID PEM EC P-256 privada, más `push.webpush.subject` con un contacto `mailto:` o HTTPS. El backend deriva solo la clave pública para `GET /api/v1/push/options`; nunca devuelve el PEM. El navegador requiere permiso del usuario y una suscripción registrada mediante el endpoint autenticado `POST /api/v1/users/me/devices`. `GET /api/v1/users/me/devices/current` consulta el dispositivo de la familia de sesión actual sin exponer su token; `DELETE /api/v1/users/me/devices/{id}` permite desactivarlo. La autorización del navegador y la recepción de una notificación deben comprobarse desde la interfaz real. El permiso o una respuesta exitosa del proveedor no equivalen a una notificación vista por el usuario.
 
@@ -162,7 +166,7 @@ El diagnóstico muestra únicamente indicadores de configuración y disponibilid
 
 La [revisión funcional del 6 de noviembre](docs/qa-integracion-2026-11-06.md) documenta los pedidos simultáneos, la recuperación tras perder una respuesta, los vales y la entrega con QR leído por la cámara de la laptop.
 
-**Android por cable, sin exponer el servidor a la red.** Con el servidor listo, conecta un solo teléfono desbloqueado por USB y aprueba la depuración en ese dispositivo. Con Android SDK Platform Tools instalado, ejecuta `./tools/open_android_local.ps1 -AdbPath RUTA_A_ADB.EXE`. Añade `-Paneles` para abrir Cocina o Administración. El túnel conserva `http://localhost:18080` como origen en Chrome; no configura HTTPS para la red ni modifica el firewall. Al terminar, desconecta el cable o ejecuta `adb -d reverse --remove tcp:18080` para retirar ese túnel. Puedes desactivar la depuración USB en el teléfono.
+**Android por cable, sin exponer el servidor a la red.** Con el servidor listo, conecta un solo teléfono desbloqueado por USB y aprueba la depuración en ese dispositivo. Con Android SDK Platform Tools instalado, ejecuta `./tools/open_android_local.ps1 -AdbPath RUTA_A_ADB.EXE`. Añade `-Portal cocina` o `-Portal administracion` para abrir el acceso correspondiente; el valor predeterminado es `alumnos`. El túnel conserva el puerto local 18080; no configura HTTPS para la red ni modifica el firewall. Al terminar, desconecta el cable o ejecuta `adb -d reverse --remove tcp:18080` para retirar ese túnel. Puedes desactivar la depuración USB en el teléfono.
 
 El 6 de noviembre de 2026 se restauró una copia de PostgreSQL 17.11 en una base
 vacía de la laptop. La revisión Alembic fue `0003_v32`. Coincidieron los contenidos

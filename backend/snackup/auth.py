@@ -150,7 +150,10 @@ def current_user(request: Request, db: Session = Depends(get_db, scope="function
     scheme, _, token = authorization.partition(" ")
     if scheme.lower() != "bearer" or not token:
         raise ApiError(401, "UNAUTHENTICATED", "Inicia sesión para continuar.")
-    return verify_access_token(token, db, request.app.state.settings)
+    user = verify_access_token(token, db, request.app.state.settings)
+    from .portal_scope import require_portal_role
+    require_portal_role(request, user.role)
+    return user
 
 
 def request_user(request: Request, db: Session = Depends(get_db, scope="function"),
@@ -185,6 +188,8 @@ def login_user(db: Session, request: Request, email: str, password: str) -> User
     # Read related authorization AFTER a possible row-lock wait. Joining it
     # into the locking SELECT could retain a pre-wait PostgreSQL snapshot.
     ensure_account(user, db)
+    from .portal_scope import require_portal_role
+    require_portal_role(request, user.role)
     if replacement:
         user.password_hash = replacement
     return user
@@ -221,5 +226,6 @@ def revoke_user_sessions(db: Session, user: User) -> None:
 
 
 def require_origin(request: Request) -> None:
-    if request.headers.get("origin") != request.app.state.settings.public_origin.rstrip("/"):
+    from .portal_scope import expected_origin
+    if request.headers.get("origin") != expected_origin(request):
         raise ApiError(403, "ORIGIN_NOT_ALLOWED", "El origen de la solicitud no está permitido.")

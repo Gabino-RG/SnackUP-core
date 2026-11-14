@@ -1,0 +1,8 @@
+{
+	admin off
+	auto_https disable_redirects
+}
+https://snackup.example.test:8443, https://cocina.snackup.example.test:8443, https://administracion.snackup.example.test:8443 {
+	tls internal
+	reverse_proxy http://app:8080
+}

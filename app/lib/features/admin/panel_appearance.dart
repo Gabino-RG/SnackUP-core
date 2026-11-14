@@ -3,6 +3,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class PanelAppearance extends ChangeNotifier {
   static const preferenceKey = 'snackup.panels.darkBlue';
+  PanelAppearance({String? namespace})
+    : _preferenceKey = namespace == null
+          ? preferenceKey
+          : '$preferenceKey.$namespace';
+  final String _preferenceKey;
   bool dark = false;
   bool _disposed = false;
   int _revision = 0;
@@ -13,7 +18,7 @@ class PanelAppearance extends ChangeNotifier {
     try {
       final preferences = await SharedPreferences.getInstance();
       if (!_disposed && revision == _revision) {
-        dark = preferences.getBool(preferenceKey) ?? false;
+        dark = preferences.getBool(_preferenceKey) ?? false;
         notifyListeners();
       }
     } catch (_) {
@@ -29,7 +34,7 @@ class PanelAppearance extends ChangeNotifier {
     _saving = _saving.then((_) async {
       try {
         final preferences = await SharedPreferences.getInstance();
-        await preferences.setBool(preferenceKey, value);
+        await preferences.setBool(_preferenceKey, value);
       } catch (_) {
         // Keep the selected appearance for this session.
       }

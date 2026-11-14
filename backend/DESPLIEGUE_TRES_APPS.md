@@ -3,6 +3,9 @@
 El requisito vigente es un contenedor de aplicación. Usar
 [DESPLIEGUE_CONTENEDOR_UNICO.md](DESPLIEGUE_CONTENEDOR_UNICO.md) y
 `compose.unified.yaml`; este documento conserva la alternativa anterior.
+Los archivos históricos `deploy/compose.apps.yaml` y `deploy/Caddy.apps` no
+implementan los accesos actuales separados por dominio. No usarlos para una
+nueva entrega de Cocina y Administración.
 
 # SnackUP: tres ramas y tres aplicaciones Docker
 

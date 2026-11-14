@@ -14,8 +14,12 @@ class Settings(BaseSettings):
     database_url: str = 'sqlite:///./data/snackup.db'
     secret_key: str
     public_origin: str = 'http://localhost:8000'
+    kitchen_public_origin: str | None = None
+    administration_public_origin: str | None = None
     password_reset_frontend_path: str = '/'
     student_password_reset_frontend_path: str | None = None
+    kitchen_password_reset_frontend_path: str | None = None
+    admin_password_reset_frontend_path: str | None = None
     admin_email_domains: str = ''
     student_email_domains: str = ''
     institution_id: str = 'institution'
@@ -67,13 +71,41 @@ class Settings(BaseSettings):
     # Microsoft's notify.windows.com namespace; no configured wildcards.
     push_webpush_allowed_hosts: str = 'fcm.googleapis.com,updates.push.services.mozilla.com,web.push.apple.com'
 
+    @field_validator('kitchen_public_origin', 'administration_public_origin', mode='before')
+    @classmethod
+    def optional_staff_origin(cls, value):
+        if not value:
+            return None
+        if not isinstance(value, str):
+            raise ValueError('Staff public origins must be URL strings.')
+        origin = urlsplit(value)
+        if (origin.scheme not in {'http', 'https'} or not origin.hostname or origin.username is not None
+                or origin.path not in {'', '/'} or origin.query or origin.fragment
+                or origin.hostname.endswith('.') or origin.port == 0):
+            raise ValueError('Staff public origins must be HTTP(S) origins without credentials or paths.')
+        hostname = origin.hostname.lower()
+        authority = '[' + hostname + ']' if ':' in hostname else hostname
+        if origin.port is not None and origin.port != (443 if origin.scheme == 'https' else 80):
+            authority += ':' + str(origin.port)
+        return origin.scheme + '://' + authority
+
+    def staff_origin_for_role(self, role):
+        return {'business': self.kitchen_public_origin, 'admin': self.administration_public_origin}.get(role)
+
+    def origin_for_role(self, role):
+        return self.staff_origin_for_role(role) or self.public_origin
+
+    def public_origins(self):
+        return [value for value in (self.public_origin, self.kitchen_public_origin, self.administration_public_origin) if value]
+
     @field_validator('push_fcm_credentials_file', 'push_apns_key_file', 'push_webpush_private_key_file', mode='before')
     @classmethod
     def optional_credential_file(cls, value):
         # Compose supplies empty variables for providers that are not enabled.
         return None if value == '' else value
 
-    @field_validator('password_reset_frontend_path', 'student_password_reset_frontend_path')
+    @field_validator('password_reset_frontend_path', 'student_password_reset_frontend_path',
+                     'kitchen_password_reset_frontend_path', 'admin_password_reset_frontend_path')
     @classmethod
     def local_password_reset_frontend_path(cls, value: str | None, info: ValidationInfo) -> str | None:
         # Restrict to unencoded local segments so browsers cannot reinterpret
@@ -89,6 +121,10 @@ class Settings(BaseSettings):
     def password_reset_path_for(self, role: str) -> str:
         if role == 'user' and self.student_password_reset_frontend_path:
             return self.student_password_reset_frontend_path
+        if role == 'business' and self.kitchen_password_reset_frontend_path:
+            return self.kitchen_password_reset_frontend_path
+        if role == 'admin' and self.admin_password_reset_frontend_path:
+            return self.admin_password_reset_frontend_path
         return self.password_reset_frontend_path
 
     @model_validator(mode='after')
@@ -99,6 +135,9 @@ class Settings(BaseSettings):
         if origin.scheme not in {'http', 'https'} or not origin.hostname or origin.path not in {'', '/'} or origin.query or origin.fragment or origin.username:
             raise ValueError('SNACKUP_PUBLIC_ORIGIN must be an HTTP(S) origin without credentials or path.')
         self.public_origin = self.public_origin.rstrip('/')
+        hosts = [urlsplit(value).hostname for value in self.public_origins()]
+        if len(set(hosts)) != len(hosts):
+            raise ValueError('Student, kitchen and administration origins must use distinct hostnames; cookies are not isolated by port.')
         if not (1 <= self.pool_size <= 50 and 0 <= self.max_overflow <= 50):
             raise ValueError('Invalid SQL connection pool limits.')
         if not (0.1 <= self.pool_timeout_seconds <= 10 and 0.1 <= self.admission_wait_seconds <= 10
@@ -121,7 +160,7 @@ class Settings(BaseSettings):
         if self.environment == 'production':
             if not self.database_url.startswith('postgresql+psycopg://'):
                 raise ValueError('Production requires PostgreSQL with the psycopg driver.')
-            if origin.scheme != 'https':
+            if any(urlsplit(value).scheme != 'https' for value in self.public_origins()):
                 raise ValueError('Production requires an HTTPS public origin.')
             if not self.redis_url:
                 raise ValueError('Production requires Redis for cross-worker events and rate limits.')

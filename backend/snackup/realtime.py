@@ -17,6 +17,7 @@ from sqlalchemy import or_, select
 
 from .db import OutboxEvent, utcnow
 from .errors import ApiError
+from .portal_scope import expected_origin, portal_for, require_browser_entry, require_role_for_portal
 
 router = APIRouter()
 log = logging.getLogger('snackup.events')
@@ -153,10 +154,12 @@ class EventBridge:
             self.redis.close()
 
 
-def socket_identity(app, token):
+def socket_identity(app, token, portal=None, origin=None):
     from .auth import verify_access_token
     with app.state.db.sessions() as db:
         user = verify_access_token(token, db, app.state.settings)
+        require_role_for_portal(portal, user.role)
+        require_browser_entry(app.state.settings, portal, origin, user.role)
         if user.role == 'business' and user.business_id:
             return {f'business:{user.business_id}:orders', f'business:{user.business_id}'}
         if user.role == 'user':
@@ -174,7 +177,7 @@ async def realtime(websocket: WebSocket):
     app = websocket.app
     settings = app.state.settings
     bridge = app.state.events
-    if websocket.headers.get('origin') != settings.public_origin or bridge.connections >= settings.max_websockets:
+    if websocket.headers.get('origin') != expected_origin(websocket) or bridge.connections >= settings.max_websockets:
         await websocket.close(code=1008)
         return
     # Authentication is a message, never a credential in the URL.
@@ -190,6 +193,8 @@ async def realtime(websocket: WebSocket):
     incoming = outgoing = None
     last_validation = time.monotonic()
     authenticated_at = None
+    portal = portal_for(websocket)
+    origin = websocket.headers.get('origin')
     try:
         await websocket.accept()
         first = await asyncio.wait_for(websocket.receive_text(), timeout=10)
@@ -199,7 +204,7 @@ async def realtime(websocket: WebSocket):
         if message.get('action') != 'auth' or not isinstance(message.get('token'), str):
             raise ApiError(401, 'UNAUTHENTICATED')
         token = message['token']
-        allowed = await asyncio.to_thread(socket_identity, app, token)
+        allowed = await asyncio.to_thread(socket_identity, app, token, portal, origin)
         authenticated_at = time.monotonic()
         bridge.clients[queue] = set()
         incoming = asyncio.create_task(websocket.receive_text())
@@ -211,7 +216,7 @@ async def realtime(websocket: WebSocket):
                                          return_when=asyncio.FIRST_COMPLETED)
             now = time.monotonic()
             if now - last_validation >= settings.websocket_revalidate_seconds:
-                refreshed = await asyncio.to_thread(socket_identity, app, token)
+                refreshed = await asyncio.to_thread(socket_identity, app, token, portal, origin)
                 if refreshed != allowed or now - authenticated_at > 90:
                     raise ApiError(401, 'UNAUTHENTICATED')
                 last_validation = now
@@ -229,7 +234,7 @@ async def realtime(websocket: WebSocket):
                     new_token = message.get('token')
                     if not isinstance(new_token, str):
                         raise ApiError(401, 'UNAUTHENTICATED')
-                    refreshed = await asyncio.to_thread(socket_identity, app, new_token)
+                    refreshed = await asyncio.to_thread(socket_identity, app, new_token, portal, origin)
                     if refreshed != allowed:
                         raise ApiError(401, 'UNAUTHENTICATED')
                     token = new_token
@@ -246,7 +251,7 @@ async def realtime(websocket: WebSocket):
                 event = outgoing.result()
                 outgoing = asyncio.create_task(queue.get())
                 # Revalidate on every notification, including revoked assignments.
-                if await asyncio.to_thread(socket_identity, app, token) != allowed:
+                if await asyncio.to_thread(socket_identity, app, token, portal, origin) != allowed:
                     raise ApiError(401, 'UNAUTHENTICATED')
                 await websocket.send_json(event)
                 if event.get('type') == 'error':

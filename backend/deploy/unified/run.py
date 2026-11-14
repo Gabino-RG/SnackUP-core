@@ -11,6 +11,7 @@ import signal
 import subprocess
 import sys
 import time
+from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
@@ -77,7 +78,14 @@ def main():
     from redis import Redis
     from snackup.config import Settings
 
-    Settings()  # Validate production settings before accepting any requests.
+    settings = Settings()  # Validate production settings before accepting requests.
+    origins = {'USERS': settings.public_origin,
+               'KITCHEN': settings.kitchen_public_origin or 'http://cocina.localhost',
+               'ADMINISTRATION': settings.administration_public_origin or 'http://administracion.localhost'}
+    for portal, origin in origins.items():
+        os.environ['SNACKUP_' + portal + '_HOST'] = urlsplit(origin).hostname
+        # CI terminates TLS at its disposable gateway and overrides only SITE.
+        os.environ.setdefault('SNACKUP_' + portal + '_SITE', origin)
     workers = int(os.environ.get('SNACKUP_WORKERS', '2'))
     if not 1 <= workers <= 8:
         raise ValueError('SNACKUP_WORKERS must be between 1 and 8')

@@ -1,49 +1,66 @@
-# Shared by the public HTTPS site and the loopback-only readiness listener.
+# Trusted hosts have separate frontend roots; API paths keep their role boundary.
 (snackup_routes) {
-	encode zstd gzip
-	header {
-		-Server
-		X-Content-Type-Options nosniff
-		Referrer-Policy no-referrer
-		X-Frame-Options DENY
-	}
-	request_body {
-		max_size 6MB
-	}
-	route {
-		@backend path /api /api/* /socket.io /socket.io/* /media /media/* /health /health/*
-		handle @backend {
-			reverse_proxy {$SNACKUP_UPSTREAMS:127.0.0.1:8000} {
+    encode zstd gzip
+    header {
+        -Server
+        X-Content-Type-Options nosniff
+        Referrer-Policy no-referrer
+        X-Frame-Options DENY
+    }
+    request_body {
+        max_size 6MB
+    }
+    route {
+        @backend path /api /api/* /socket.io /socket.io/* /media /media/* /health /health/* /cocina/api /cocina/api/* /administracion/api /administracion/api/* /cocina/socket.io /cocina/socket.io/* /administracion/socket.io /administracion/socket.io/*
+        handle @backend {
+            reverse_proxy {$SNACKUP_UPSTREAMS:127.0.0.1:8000} {
                 lb_policy least_conn
                 transport http {
                     keepalive 30s
                 }
             }
-		}
-		redir /paneles /paneles/ 308
-		handle_path /paneles/* {
-			root * {$SNACKUP_PANELS_WEB:/srv/paneles}
-			header Cache-Control no-cache
-			@panels_asset path_regexp panels_asset \.[^/]+$
-			handle @panels_asset {
-				file_server
-			}
-			handle {
-				try_files {path} /index.html
-				file_server
-			}
-		}
-		handle {
-			root * {$SNACKUP_USERS_WEB:/srv/usuarios}
-			header Cache-Control no-cache
-			@users_asset path_regexp users_asset \.[^/]+$
-			handle @users_asset {
-				file_server
-			}
-			handle {
-				try_files {path} /index.html
-				file_server
-			}
-		}
-	}
+        }
+        @retired_paths path /paneles /paneles/* /cocina /cocina/* /administracion /administracion/*
+        respond @retired_paths 404
+        @kitchen host {$SNACKUP_KITCHEN_HOST:cocina.localhost}
+        handle @kitchen {
+            root * {$SNACKUP_KITCHEN_WEB:/srv/cocina}
+            header Cache-Control no-cache
+            @kitchen_asset path_regexp kitchen_asset \.[^/]+$
+            handle @kitchen_asset {
+                file_server
+            }
+            handle {
+                try_files {path} /index.html
+                file_server
+            }
+        }
+        @administration host {$SNACKUP_ADMINISTRATION_HOST:administracion.localhost}
+        handle @administration {
+            root * {$SNACKUP_ADMIN_WEB:/srv/administracion}
+            header Cache-Control no-cache
+            @admin_asset path_regexp admin_asset \.[^/]+$
+            handle @admin_asset {
+                file_server
+            }
+            handle {
+                try_files {path} /index.html
+                file_server
+            }
+        }
+        @students host {$SNACKUP_USERS_HOST:localhost}
+        handle @students {
+            root * {$SNACKUP_USERS_WEB:/srv/usuarios}
+            header Cache-Control no-cache
+            @users_asset path_regexp users_asset \.[^/]+$
+            handle @users_asset {
+                file_server
+            }
+            handle {
+                try_files {path} /index.html
+                file_server
+            }
+        }
+        respond 404
+    }
 }

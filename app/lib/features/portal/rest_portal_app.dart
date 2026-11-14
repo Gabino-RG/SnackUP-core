@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import '../../api/api_client.dart';
 import '../../api/rest_session.dart';
+import '../../api/portal_audience.dart';
 import '../../api/reset_location.dart';
 import 'reset_access_screen.dart';
 import '../../catalog/rest_catalog_repository.dart';
@@ -36,7 +37,7 @@ class RestPortalApp extends StatefulWidget {
 }
 
 class _RestPortalAppState extends State<RestPortalApp> {
-  final _appearance = PanelAppearance();
+  late final PanelAppearance _appearance;
   SessionHttpClient? _client;
   SessionHttpClient? _canonicalClient;
   V32Repository? _v32;
@@ -48,10 +49,12 @@ class _RestPortalAppState extends State<RestPortalApp> {
   @override
   void initState() {
     super.initState();
+    _appearance = PanelAppearance(namespace: widget.session.audience?.name);
     _appearance.restore();
     if (widget.resetToken != null) clearResetLocation();
-    if (widget.restoreOnStart && widget.resetToken == null)
+    if (widget.restoreOnStart && widget.resetToken == null) {
       widget.session.restore();
+    }
   }
 
   void _prepareDataSession() {
@@ -101,7 +104,9 @@ class _RestPortalAppState extends State<RestPortalApp> {
       final account = session.account;
       if (_dataGeneration != session.generation) _v32?.clearChatDrafts();
       final authenticated =
-          session.phase == PortalSessionPhase.authenticated && account != null;
+          session.phase == PortalSessionPhase.authenticated &&
+          account != null &&
+          (session.audience == null || session.audience!.accepts(account.role));
       if (authenticated) _prepareDataSession();
       // Replacing the root Navigator removes every protected route and dialog.
       final navigationKey = authenticated
@@ -198,7 +203,7 @@ class _RestPortalAppState extends State<RestPortalApp> {
         controller: _appearance,
         child: MaterialApp(
           key: ValueKey(navigationKey),
-          title: 'SnackUP · Paneles',
+          title: session.audience?.applicationTitle ?? 'SnackUP · Paneles',
           locale: const Locale('es', 'MX'),
           supportedLocales: const [Locale('es', 'MX')],
           localizationsDelegates: GlobalMaterialLocalizations.delegates,
@@ -303,11 +308,12 @@ class _PortalLoginState extends State<_PortalLogin> {
   Future<void> _loadOptions() async {
     try {
       final options = await AccessRepository(widget.session.api).options();
-      if (mounted)
+      if (mounted) {
         setState(() {
           _accessOptions = options;
           _optionsFailed = false;
         });
+      }
     } catch (_) {
       if (mounted) setState(() => _optionsFailed = true);
     }
@@ -318,8 +324,9 @@ class _PortalLoginState extends State<_PortalLogin> {
     try {
       beginExternalLogin(AccessRepository(widget.session.api).googleStart);
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(() => _notice = 'No se pudo abrir Google. Intenta de nuevo.');
+      }
     }
   }
 
@@ -355,19 +362,21 @@ class _PortalLoginState extends State<_PortalLogin> {
     });
     try {
       await widget.session.forgotPassword(_email.text);
-      if (mounted)
+      if (mounted) {
         setState(
           () => _notice = const bool.fromEnvironment('REVIEW_MODE')
               ? 'Solicitud de prueba recibida. Esta versión local no envía correos; utiliza las credenciales indicadas o crea otra cuenta desde administración.'
               : 'Si el correo tiene una cuenta, recibirás las instrucciones para recuperar el acceso.',
         );
+      }
     } catch (error) {
-      if (mounted)
+      if (mounted) {
         setState(
           () => _notice = error is ApiException
               ? error.message
               : 'No se pudo solicitar la recuperación.',
         );
+      }
     } finally {
       if (mounted) setState(() => _recovering = false);
     }
@@ -426,7 +435,8 @@ class _PortalLoginState extends State<_PortalLogin> {
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        'Acceso a SnackUP',
+                        widget.session.audience?.loginTitle ??
+                            'Acceso a SnackUP',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 26,
@@ -435,11 +445,14 @@ class _PortalLoginState extends State<_PortalLogin> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      const Text(
-                        'Cafetería universitaria · Locales y administración',
+                      Text(
+                        widget.session.audience?.subtitle ??
+                            'Cafetería universitaria · Locales y administración',
                         textAlign: TextAlign.center,
                       ),
-                      if (const bool.fromEnvironment('REVIEW_MODE')) ...[
+                      if (const bool.fromEnvironment('REVIEW_MODE') &&
+                          widget.session.audience !=
+                              PortalAudience.administration) ...[
                         const SizedBox(height: 20),
                         FilledButton.icon(
                           onPressed: _busy ? null : _enterReviewLocal,
@@ -542,7 +555,8 @@ class _PortalLoginState extends State<_PortalLogin> {
                           child: const Text('Reintentar cierre de sesión'),
                         ),
                       TextButton(
-                        onPressed: _busy || _accessOptions?.selfRegistration != true
+                        onPressed:
+                            _busy || _accessOptions?.selfRegistration != true
                             ? null
                             : _recover,
                         child: Text(
@@ -559,6 +573,7 @@ class _PortalLoginState extends State<_PortalLogin> {
                                 await Navigator.of(context).push(
                                   MaterialPageRoute(
                                     builder: (_) => RequestAccessScreen(
+                                      audience: widget.session.audience,
                                       repository: AccessRepository(
                                         widget.session.api,
                                       ),
@@ -596,7 +611,8 @@ class _PortalLoginState extends State<_PortalLogin> {
                           child: const Text('Reintentar opciones de acceso'),
                         ),
                       const SizedBox(height: 12),
-                      if (const bool.fromEnvironment('REVIEW_MODE'))
+                      if (const bool.fromEnvironment('REVIEW_MODE') &&
+                          widget.session.audience == null)
                         const Padding(
                           padding: EdgeInsets.only(bottom: 12),
                           child: SelectableText(
@@ -606,7 +622,8 @@ class _PortalLoginState extends State<_PortalLogin> {
                           ),
                         ),
                       Text(
-                        'Cada cuenta entra únicamente a su panel: Administración o su local. Para acceder a un local, solicita tu cuenta o pide a la cuenta maestra que la cree y autorice.',
+                        widget.session.audience?.help ??
+                            'Cada cuenta entra únicamente a su panel: Administración o su local. Para acceder a un local, solicita tu cuenta o pide a la cuenta maestra que la cree y autorice.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 12,

@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
 import '../../api/access_repository.dart';
+import '../../api/portal_audience.dart';
 import '../../operations/kitchen_controller.dart';
 
 class RequestAccessScreen extends StatefulWidget {
-  const RequestAccessScreen({super.key, required this.repository});
+  const RequestAccessScreen({
+    super.key,
+    required this.repository,
+    this.audience,
+  });
   final AccessRepository repository;
+  final PortalAudience? audience;
   @override
   State<RequestAccessScreen> createState() => _RequestAccessScreenState();
 }
@@ -19,6 +25,12 @@ class _RequestAccessScreenState extends State<RequestAccessScreen> {
   String _role = 'business';
   String? _error;
   bool _busy = false, _sent = false, _hide = true;
+  @override
+  void initState() {
+    super.initState();
+    _role = widget.audience?.role ?? 'business';
+  }
+
   @override
   void dispose() {
     for (final c in [_name, _email, _password, _context, _confirm]) {
@@ -119,26 +131,31 @@ class _RequestAccessScreenState extends State<RequestAccessScreen> {
                               : 'Escribe un correo válido.',
                         ),
                         const SizedBox(height: 12),
-                        DropdownButtonFormField<String>(
-                          value: _role,
-                          isExpanded: true,
-                          decoration: const InputDecoration(
-                            labelText: 'Acceso que solicitas',
+                        if (widget.audience == null)
+                          DropdownButtonFormField<String>(
+                            value: _role,
+                            isExpanded: true,
+                            decoration: const InputDecoration(
+                              labelText: 'Acceso que solicitas',
+                            ),
+                            items: const [
+                              DropdownMenuItem(
+                                value: 'business',
+                                child: Text('Operar un local'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'admin',
+                                child: Text('Administración institucional'),
+                              ),
+                            ],
+                            onChanged: _busy
+                                ? null
+                                : (v) => setState(() => _role = v!),
                           ),
-                          items: const [
-                            DropdownMenuItem(
-                              value: 'business',
-                              child: Text('Operar un local'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'admin',
-                              child: Text('Administración institucional'),
-                            ),
-                          ],
-                          onChanged: _busy
-                              ? null
-                              : (v) => setState(() => _role = v!),
-                        ),
+                        if (widget.audience != null)
+                          Text(
+                            'Solicitud de acceso a ${widget.audience!.label}',
+                          ),
                         const SizedBox(height: 8),
                         if (_role == 'admin')
                           const Padding(

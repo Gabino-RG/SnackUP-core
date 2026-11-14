@@ -18,6 +18,7 @@ from sqlalchemy import select
 from .auth import verify_access_token, verify_access_tokens
 from .errors import ApiError
 from .operation_models import Business
+from .portal_scope import PORTALS, SCOPE_KEY, require_browser_entry, require_role_for_portal, role_matches_portal
 
 
 @dataclass(frozen=True)
@@ -34,6 +35,8 @@ class Connection:
     topics: set[str] = field(default_factory=set)
     window: float = field(default_factory=time.monotonic)
     messages: int = 0
+    portal: str | None = None
+    browser_origin: str | None = None
 
 
 def _identity(db, token, settings):
@@ -115,7 +118,7 @@ class SocketIOGateway:
         # Do not let a deployment-wide logging level expose access tokens.
         protocol_log.disabled = True
         self.sio = socketio.AsyncServer(async_mode="asgi", transports=["websocket"], allow_upgrades=False,
-            cors_allowed_origins=[self.settings.public_origin], cors_credentials=False,
+            cors_allowed_origins=self.settings.public_origins(), cors_credentials=False,
             max_http_buffer_size=16384, logger=protocol_log, engineio_logger=protocol_log, async_handlers=False,
             ping_interval=25, ping_timeout=20)
         self.connections: dict[str, Connection] = {}
@@ -132,9 +135,11 @@ class SocketIOGateway:
         self.asgi = socketio.ASGIApp(self.sio, socketio_path=None)
         self.bridge.add_listener(self._enqueue)
 
-    def _validate(self, token, expected=None, topics=()):
+    def _validate(self, token, expected=None, topics=(), portal=None, browser_origin=None):
         with self.db.sessions() as db:
             identity = _identity(db, token, self.settings)
+            require_role_for_portal(portal, identity.role)
+            require_browser_entry(self.settings, portal, browser_origin, identity.role)
             if expected is not None and identity != expected:
                 raise ApiError(401, "UNAUTHENTICATED")
             public_businesses = _topic_businesses(identity, topics)
@@ -161,10 +166,12 @@ class SocketIOGateway:
                     continue
                 identity = Identity(user.id, user.role, user.business_id)
                 try:
+                    require_browser_entry(self.settings, connection.portal, connection.browser_origin, identity.role)
                     destinations = _topic_businesses(identity, [topic] if topic else connection.topics)
                 except ApiError:
                     continue
-                if identity == connection.identity and destinations <= active:
+                if (identity == connection.identity and destinations <= active
+                        and role_matches_portal(connection.portal, identity.role)):
                     valid.add(sid)
         return valid
 
@@ -176,14 +183,16 @@ class SocketIOGateway:
         if not isinstance(auth, dict) or set(auth) != {"token"} or not isinstance(auth["token"], str) or len(auth["token"]) > 8192:
             raise socketio.exceptions.ConnectionRefusedError("UNAUTHENTICATED", {"code": "UNAUTHENTICATED"})
         scope = environ.get("asgi.scope", {})
+        portal = scope.get(SCOPE_KEY)
+        browser_origin = next((value.decode('ascii') for key, value in scope.get('headers', []) if key.lower() == b'origin'), None)
         remaining = max(0, scope.get("snackup.auth_deadline", time.monotonic() + self.handshake_timeout_seconds) - time.monotonic())
         try:
-            identity = await asyncio.wait_for(self._validated(auth["token"]), timeout=remaining)
+            identity = await asyncio.wait_for(self._validated(auth["token"], None, (), portal, browser_origin), timeout=remaining)
         except ApiError as error:
             raise socketio.exceptions.ConnectionRefusedError(error.code, {"code": error.code}) from None
         except Exception:
             raise socketio.exceptions.ConnectionRefusedError("AUTH_UNAVAILABLE", {"code": "AUTH_UNAVAILABLE"}) from None
-        self.connections[sid] = Connection(auth["token"], identity)
+        self.connections[sid] = Connection(auth["token"], identity, portal=portal, browser_origin=browser_origin)
         if scope.get("snackup.authenticated") is not None:
             scope["snackup.authenticated"].set()
         await self.start()
@@ -222,7 +231,7 @@ class SocketIOGateway:
         if subscribe and len(connection.topics | topics) > 64:
             return {"ok": False, "error": {"code": "SUBSCRIPTION_LIMIT"}}
         try:
-            await self._validated(connection.token, connection.identity, topics)
+            await self._validated(connection.token, connection.identity, topics, connection.portal, connection.browser_origin)
         except ApiError as error:
             if error.code != "FORBIDDEN":
                 await self._close(sid)
@@ -348,7 +357,8 @@ class SocketIOGateway:
             origin = headers.get(b"origin")
             if (set(query) - {"EIO", "transport", "sid", "t", "b64"}
                     or query.get("transport") != ["websocket"] or query.get("EIO") != ["4"]
-                    or (origin is not None and origin.decode("ascii") != self.settings.public_origin)):
+                    or (origin is not None and origin.decode("ascii") !=
+                        self.settings.origin_for_role(PORTALS.get(scope.get(SCOPE_KEY))))):
                 raise ValueError
             if scope["type"] != "websocket" or self.bridge.connections >= self.settings.max_websockets:
                 raise ValueError

@@ -1,4 +1,4 @@
-"""Fetch both compiled clients and API options through verified local HTTPS."""
+"""Fetch all three compiled clients through each verified HTTPS origin."""
 import argparse
 import json
 from pathlib import Path
@@ -23,7 +23,15 @@ def main():
     try:
         require(probe.json('/health/ready') == {'status': 'ready'}, 'Backend unavailable')
         probe.frontend('/', integrated=True)
-        probe.frontend('/paneles/', integrated=True)
+        for portal in ('cocina', 'administracion'):
+            url = urlsplit(base)
+            staff_base = url._replace(netloc=portal + '.' + url.netloc).geturl()
+            staff = Smoke(staff_base, urlsplit(staff_base).netloc, staff_base)
+            staff.opener = build_opener(ProxyHandler({}), NoRedirect(), HTTPSHandler(context=context))
+            staff.results = probe.results
+            staff.frontend('/', integrated=True)
+            require(staff.json('/api/legacy/v1/auth/options')['passwordLogin'] is True, 'Staff password login unavailable')
+        probe.get('/paneles/', 404)
         for path in ('/api/v1/auth/options', '/api/legacy/v1/auth/options'):
             require(probe.json(path)['passwordLogin'] is True, 'Password login unavailable')
     except Exception as error:

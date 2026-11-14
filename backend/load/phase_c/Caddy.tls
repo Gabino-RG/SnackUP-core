@@ -1,0 +1,8 @@
+{
+	admin off
+	auto_https disable_redirects
+}
+https://localhost:8443, https://cocina.localhost:8443, https://administracion.localhost:8443 {
+	tls internal
+	reverse_proxy http://app:8080
+}

@@ -17,17 +17,18 @@ from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from .auth import (JWT_AUDIENCE, JWT_ISSUER, PASSWORDS, REFRESH_COOKIE, as_utc,
+from .auth import (JWT_AUDIENCE, JWT_ISSUER, PASSWORDS, as_utc,
                    current_user, ensure_account, hash_password, password_matches,
                    require_origin, revoke_user_sessions, token_hash)
 from .common import iso, require, version_check
 from .db import get_db, new_id, utcnow
 from .errors import ApiError
-from .identity import (_clear_cookie, _consume_token, _cookie, _mail_token,
+from .identity import (_clear_cookie, _consume_token, _cookie, _entry_role, _mail_token,
                        confirm_verification_token, normalize_email, resend_email_verification,
                        student_roster_record, verification_page)
 from .identity_models import AcademicGroup, AcademicRecord, Career, RefreshSession, User, audit_event
 from .mailer import mail_available
+from .portal_scope import expected_role, refresh_cookie, require_portal_role, role_matches, session_matches_portal
 
 router = APIRouter(tags=["V3 · Identidad"])
 ROLE_TO_API = {"user": "ALUMNO", "business": "COCINA", "admin": "ADMIN"}
@@ -151,11 +152,11 @@ def _refresh_value(request: Request, data: RefreshInput | None, *, optional=Fals
     data = data or RefreshInput()
     if _is_web(request):
         require(data.refreshToken is None, 422, "COOKIE_REFRESH_REQUIRED", "El navegador renueva mediante cookie.")
-        raw = request.cookies.get(REFRESH_COOKIE)
+        raw = request.cookies.get(refresh_cookie(request)[0])
     else:
         # A browser cookie without Origin must not be interpreted as native auth.
         raw = data.refreshToken
-        if not raw and request.cookies.get(REFRESH_COOKIE):
+        if not raw and request.cookies.get(refresh_cookie(request)[0]):
             raise ApiError(403, "ORIGIN_NOT_ALLOWED", "El origen de la solicitud no está permitido.")
     if not optional:
         require(bool(raw), 401, "UNAUTHENTICATED", "La sesión no es válida.")
@@ -187,7 +188,7 @@ def _issue_v3_session(db: Session, user: User, request: Request, response: Respo
     tokens = {"accessToken": access, "accessTokenExpiresAt": iso(expiry),
               "refreshTokenExpiresAt": iso(session.expires_at)}
     if _is_web(request):
-        _cookie(response, raw, settings, session.expires_at)
+        _cookie(response, raw, settings, session.expires_at, request)
     else:
         tokens["refreshToken"] = raw
     response.headers["Cache-Control"] = "no-store"
@@ -196,12 +197,13 @@ def _issue_v3_session(db: Session, user: User, request: Request, response: Respo
 
 @router.get("/auth/options", response_model=OptionsResponse)
 def options(request: Request):
-    return {"passwordLogin": True, "selfRegistration": mail_available(request.app.state.settings), "googleEnabled": False}
+    return {"passwordLogin": True, "selfRegistration": expected_role(request) is None and mail_available(request.app.state.settings), "googleEnabled": False}
 
 
 @router.post("/auth/register", status_code=202, response_model=ReceivedResponse,
              description="Solo ALUMNO. Acuse genérico sin sesión; requiere padrón y confirmación de correo.")
 def register(request: Request, data: RegisterInput, db: Session = Depends(get_db, scope="function")):
+    require_portal_role(request, 'user')
     _is_web(request)
     settings = request.app.state.settings
     require(mail_available(settings), 503, "EMAIL_UNAVAILABLE", "El registro requiere envío de correo configurado.")
@@ -261,12 +263,13 @@ def refresh(request: Request, response: Response, data: RefreshInput | None = Bo
                      .execution_options(populate_existing=True))
     session = db.scalar(select(RefreshSession).where(RefreshSession.id == initial.id).with_for_update()
                         .execution_options(populate_existing=True))
+    require_portal_role(request, user.role if user is not None else None)
     if session.rotated_at is not None:
         db.execute(update(RefreshSession).where(RefreshSession.family_id == session.family_id).values(revoked_at=utcnow()))
         from .push import detach_devices_for_families
         detach_devices_for_families(db, {session.family_id}, user_id=user.id if user is not None else None)
         failure = JSONResponse({"error": {"code": "SESSION_REPLAY", "message": "La sesión fue revocada. Inicia sesión nuevamente."}}, status_code=401)
-        _clear_cookie(failure, request.app.state.settings)
+        _clear_cookie(failure, request.app.state.settings, request)
         return failure  # Commit revocation even though the response is an error.
     require(user is not None and session.revoked_at is None and as_utc(session.expires_at) > utcnow()
             and session.auth_version == user.auth_version, 401, "UNAUTHENTICATED", "La sesión fue revocada.")
@@ -281,7 +284,7 @@ def logout(request: Request, data: RefreshInput | None = Body(default=None),
     families = set()
     if raw:
         session = db.scalar(select(RefreshSession).where(RefreshSession.token_hash == token_hash(raw)))
-        if session is not None:
+        if session is not None and session_matches_portal(request, session, db):
             families.add(session.family_id)
     authorization = request.headers.get("authorization", "")
     scheme, _, access = authorization.partition(" ")
@@ -291,7 +294,7 @@ def logout(request: Request, data: RefreshInput | None = Body(default=None),
                                 issuer=JWT_ISSUER, audience=JWT_AUDIENCE,
                                 options={"verify_exp": False, "require": ["sid", "sub", "iss", "aud"]})
             session = db.get(RefreshSession, claims["sid"])
-            if session is not None and session.user_id == claims["sub"]:
+            if session is not None and session.user_id == claims["sub"] and session_matches_portal(request, session, db):
                 families.add(session.family_id)
         except (jwt.InvalidTokenError, TypeError):
             pass
@@ -302,7 +305,7 @@ def logout(request: Request, data: RefreshInput | None = Body(default=None),
         from .push import detach_devices_for_families
         detach_devices_for_families(db, families)
     response = Response(status_code=204)
-    _clear_cookie(response, request.app.state.settings)
+    _clear_cookie(response, request.app.state.settings, request)
     return response
 
 
@@ -350,7 +353,7 @@ def forgot_password(request: Request, data: EmailInput, db: Session = Depends(ge
     require(mail_available(settings), 503, "EMAIL_UNAVAILABLE", "La recuperación requiere envío de correo configurado.")
     email = normalize_email(data.email)
     user = db.scalar(select(User).where(User.email == email).with_for_update())
-    if user is not None and user.approval_status != "rejected":
+    if user is not None and user.approval_status != "rejected" and role_matches(request, _entry_role(db, user)):
         _mail_token(db, user, settings, "reset", getattr(request.app.state, "mailer", None))
     return Response(status_code=204)
 
@@ -359,6 +362,7 @@ def forgot_password(request: Request, data: EmailInput, db: Session = Depends(ge
 def reset_password(request: Request, data: ResetInput, db: Session = Depends(get_db, scope="function")):
     _is_web(request)
     _, user = _consume_token(db, data.token, "reset")
+    require_portal_role(request, _entry_role(db, user))
     user.password_hash = hash_password(data.newPassword)
     user.version += 1
     revoke_user_sessions(db, user)
@@ -367,7 +371,7 @@ def reset_password(request: Request, data: ResetInput, db: Session = Depends(get
     detach_devices_for_families(db, families, user_id=user.id)
     audit_event(db, user.id, "password.reset", "user", user.id)
     response = Response(status_code=204)
-    _clear_cookie(response, request.app.state.settings)
+    _clear_cookie(response, request.app.state.settings, request)
     return response
 
 
@@ -377,7 +381,8 @@ def resend(request: Request, data: EmailInput, db: Session = Depends(get_db, sco
     settings = request.app.state.settings
     require(mail_available(settings), 503, "EMAIL_UNAVAILABLE", "El envío de correo aún no está configurado.")
     user = db.scalar(select(User).where(User.email == normalize_email(data.email)).with_for_update())
-    if user is not None and not user.email_verified and user.approval_status != "rejected":
+    if (user is not None and not user.email_verified and user.approval_status != "rejected"
+            and role_matches(request, _entry_role(db, user))):
         resend_email_verification(db, user, settings, getattr(request.app.state, "mailer", None))
     return {"status": "received"}
 
@@ -390,7 +395,7 @@ def resend(request: Request, data: EmailInput, db: Session = Depends(get_db, sco
 })
 def verify_email(request: Request, data: VerifyInput, db: Session = Depends(get_db, scope="function")):
     _is_web(request)
-    return confirm_verification_token(db, request.app.state.settings, data.token)
+    return confirm_verification_token(db, request.app.state.settings, data.token, request)
 
 
 @router.get("/auth/verify-email", response_class=HTMLResponse, include_in_schema=False)

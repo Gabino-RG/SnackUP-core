@@ -68,6 +68,8 @@ jobs:
       COMPOSE_PROJECT_NAME: snackup-unified-ci-${{ github.run_id }}-${{ github.run_attempt }}
       COMPOSE_FILE: ${{ github.workspace }}/backend/compose.unified.yaml:${{ github.workspace }}/backend/deploy/unified/compose.ci.yaml
       SNACKUP_DOMAIN: snackup.example.test
+      SNACKUP_KITCHEN_PUBLIC_ORIGIN: https://cocina.snackup.example.test
+      SNACKUP_ADMINISTRATION_PUBLIC_ORIGIN: https://administracion.snackup.example.test
       TLS_ACME_EMAIL: ci@snackup.example.test
       POSTGRES_DB: snackup_unified_ci
       POSTGRES_USER: postgres_ci
@@ -113,11 +115,13 @@ jobs:
           assert str(ports[0]['published']) == '18080'
           env = config['services']['app']['environment']
           assert env['SNACKUP_REDIS_URL'].startswith('unix:///')
-          assert env['SNACKUP_PASSWORD_RESET_FRONTEND_PATH'] == '/paneles/'
+          assert env['SNACKUP_PASSWORD_RESET_FRONTEND_PATH'] == '/'
+          assert env['SNACKUP_KITCHEN_PUBLIC_ORIGIN'] == 'https://cocina.snackup.example.test'
+          assert env['SNACKUP_ADMINISTRATION_PUBLIC_ORIGIN'] == 'https://administracion.snackup.example.test'
           assert env['SNACKUP_STUDENT_PASSWORD_RESET_FRONTEND_PATH'] == '/'
           assert env['SNACKUP_PUBLIC_ORIGIN'] == 'https://snackup.example.test'
           PY
-      - name: Build the server and both REST clients from this checkout
+      - name: Build the server and all three REST access points from this checkout
         run: docker compose --env-file /dev/null build app
       - name: Verify Linux supervisor shutdown inside the release image
         run: |
@@ -140,19 +144,18 @@ jobs:
           PY
           python -m pip install -r reports/unified/smoke-requirements.txt
           python deploy/smoke_apps.py --integrated --report reports/unified/smoke.json
-      - name: Check both sign-in screens in Chromium and WebKit
+      - name: Check all three sign-in screens in Chromium and WebKit
         run: |
           npm install --prefix "$RUNNER_TEMP/snackup-browsers" --no-audit --no-fund --ignore-scripts playwright@1.62.1
           "$RUNNER_TEMP/snackup-browsers/node_modules/.bin/playwright" install --with-deps chromium webkit
           export SNACKUP_PLAYWRIGHT="$RUNNER_TEMP/snackup-browsers/node_modules/playwright"
           # Use the real configured HTTPS origin so cookies and API-origin checks behave as deployed.
-          echo '127.0.0.1 snackup.example.test' | sudo tee -a /etc/hosts >/dev/null
+          echo '127.0.0.1 snackup.example.test cocina.snackup.example.test administracion.snackup.example.test' | sudo tee -a /etc/hosts >/dev/null
           gateway="${COMPOSE_PROJECT_NAME}-browser-tls"
           docker run --detach --name "$gateway" --network "${COMPOSE_PROJECT_NAME}_edge" \
             --publish 127.0.0.1:443:8443 --read-only --tmpfs /tmp --cap-drop ALL \
             --security-opt no-new-privileges:true --env XDG_DATA_HOME=/tmp/caddy-data \
-            --entrypoint caddy snackup-unified:local reverse-proxy --from https://snackup.example.test:8443 \
-            --to http://app:8080 --internal-certs --disable-redirects
+            --entrypoint caddy snackup-unified:local run --config /app/deploy/unified/Caddy.browser-ci --adapter caddyfile
           trap 'docker rm -f "$gateway" >/dev/null' EXIT
           curl --noproxy '*' --fail --silent --show-error --insecure --retry 15 --retry-all-errors \
             --retry-delay 1 https://snackup.example.test/health/ready >/dev/null

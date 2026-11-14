@@ -5,6 +5,7 @@ import 'api/api_client.dart';
 import 'api/platform_http_client.dart';
 import 'api/rest_session.dart';
 import 'api/preferences_session_intent.dart';
+import 'api/portal_audience.dart';
 import 'features/portal/rest_portal_app.dart';
 
 void main() => runApiPortal();
@@ -27,25 +28,42 @@ class _PortalLauncherState extends State<_PortalLauncher> {
   void initState() {
     super.initState();
     try {
-      if (!kIsWeb)
+      if (!kIsWeb) {
         throw const ApiException(
           'Abre el portal desde el navegador del equipo.',
         );
+      }
       MobileScannerPlatform.instance.setBarcodeLibraryScriptUrl(
         Uri.base.resolve('vendor/zxing-0.21.3.min.js').toString(),
       );
       final fragment = Uri.tryParse(Uri.base.fragment);
-      if (fragment?.path == '/reset-password')
+      if (fragment?.path == '/reset-password') {
         _resetToken = fragment!.queryParameters['token'];
-      const configured = String.fromEnvironment(
-        'API_BASE_URL',
-        defaultValue: '/api/legacy/v1/',
+      }
+      final audience = PortalAudience.forLocation(
+        Uri.base,
+        configured: const String.fromEnvironment('PORTAL_AUDIENCE'),
       );
-      final base = apiBaseUri(Uri.base.resolve(configured));
+      const configured = String.fromEnvironment('API_BASE_URL');
+      final base = apiBaseUri(
+        Uri.base.resolve(
+          configured.isNotEmpty ? configured : '/api/legacy/v1/',
+        ),
+      );
+      if (audience != null && !audience.acceptsApiBase(Uri.base, base)) {
+        throw const ApiException(
+          'La API no corresponde a este portal.',
+          code: 'CONFIGURATION',
+        );
+      }
       _session = RestSession(
         baseUri: base,
+        audience: audience,
         client: createPortalHttpClient(),
-        intentStore: PreferencesSessionIntentStore(base.toString()),
+        intentStore: PreferencesSessionIntentStore(
+          base.toString(),
+          namespace: audience?.name,
+        ),
       );
     } catch (_) {
       _configurationError =

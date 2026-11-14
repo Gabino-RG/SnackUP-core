@@ -1,10 +1,10 @@
 #Requires -Version 5.1
-<# Open the same localhost origin in Android Chrome, without exposing a LAN port.
+<# Open the selected local origin in Android Chrome, without exposing a LAN port.
    Requires one unlocked Android phone with USB debugging approved on this PC. #>
 [CmdletBinding()]
 param(
     [string]$AdbPath = 'adb',
-    [switch]$Paneles
+    [ValidateSet('alumnos', 'cocina', 'administracion')][string]$Portal = 'alumnos'
 )
 $ErrorActionPreference = 'Stop'
 $adb = (Get-Command $AdbPath -CommandType Application -ErrorAction Stop).Source
@@ -26,7 +26,11 @@ if ($existing.Count -eq 0) {
     & $adb -d reverse --no-rebind tcp:18080 tcp:18080
     if ($LASTEXITCODE -ne 0) {throw 'No se pudo abrir el tunel USB.'}
 }
-$target = if ($Paneles) { "$origin/paneles/" } else { "$origin/" }
+$target = switch ($Portal) {
+    'cocina' { 'http://cocina.localhost:18080/' }
+    'administracion' { 'http://administracion.localhost:18080/' }
+    default { "$origin/" }
+}
 & $adb -d shell am start -a android.intent.action.VIEW -d $target -p com.android.chrome
 if ($LASTEXITCODE -ne 0) {throw 'Abre Chrome en el telefono y escribe la direccion local indicada en la guia.'}
 Write-Output "SnackUP solicitado en Chrome del telefono: $target"

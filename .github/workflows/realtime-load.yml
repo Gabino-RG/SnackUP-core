@@ -10,6 +10,7 @@ on:
       - backend/load/phase_c/check_realtime_ci.py
       - backend/load/phase_c/Dockerfile
       - backend/load/phase_c/Caddyfile
+      - backend/load/phase_c/Caddy.tls
       - backend/tests/test_load_transport.py
 permissions:
   contents: read

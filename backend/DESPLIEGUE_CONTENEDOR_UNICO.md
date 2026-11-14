@@ -1,20 +1,26 @@
 # SnackUP: un contenedor de aplicación y PostgreSQL
 
 El nuevo requisito reemplaza la propuesta de tres contenedores de aplicaciones.
-**Un contenedor `app` ejecuta FastAPI, sirve la PWA de usuarios y sirve
-Cocina/Administración.** Incluye Caddy para HTTPS y Redis para coordinación interna.
+**Un contenedor `app` ejecuta FastAPI y sirve Alumnos, Cocina y Administración
+en tres orígenes separados.** Incluye Caddy para HTTPS y Redis para coordinación interna.
 PostgreSQL se mantiene en `db`, con su propio volumen persistente y sin publicar
 su puerto. Son dos contenedores totales, uno de ellos para las tres aplicaciones.
 
-| URL del mismo dominio | Componente |
+| Origen o ruta | Componente |
 |---|---|
-| `/` | Alumnos con API REST en PostgreSQL |
-| `/paneles/` | Cocina/Administración REST |
+| `https://snackup.example.edu/` | Alumnos con API REST en PostgreSQL |
+| `https://cocina.snackup.example.edu/` | Cocina, solo cuentas de local |
+| `https://administracion.snackup.example.edu/` | Administración, solo cuentas administrativas |
 | `/api/v1/` | Contrato canónico FastAPI |
 | `/api/legacy/v1/` | Compatibilidad del portal actual |
 | `/socket.io/` | Socket.IO V3 |
 | `/api/legacy/v1/realtime` | WebSocket del portal actual |
 | `/media/` | Imágenes gestionadas por backend |
+
+Los dominios son ejemplos configurables. Las rutas API pertenecen al origen de
+cada interfaz; el backend valida su audiencia y rol. Las cookies de sesión no
+incluyen atributo `Domain` y no se comparten entre portales. La ruta anterior
+`/paneles/` devuelve 404 y no ofrece un selector ni redirecciones entre roles.
 
 En esta rama las pantallas integradas de Alumnos, Cocina y Administración trabajan
 contra FastAPI. Para incorporar datos institucionales anteriores, TI debe validar
@@ -23,7 +29,7 @@ la fuente y acordar el procedimiento de importación.
 ## Levantamiento en un servidor nuevo
 
 Requisitos: Docker Engine y Compose **2.24.4 o posterior** con BuildKit,
-acceso a los registros Docker y a los paquetes Python/Flutter, un dominio
+acceso a los registros Docker y a los paquetes Python/Flutter, tres nombres DNS
 apuntando al servidor y puertos públicos 80/443. El override de CI usa `!override`;
 no se utiliza en producción. Las imágenes Flutter fijadas requieren un servidor
 de construcción compatible con esa imagen (CI valida Linux amd64).
@@ -38,11 +44,15 @@ docker compose -f compose.unified.yaml up -d --build --wait --wait-timeout 180
 docker compose -f compose.unified.yaml ps
 ```
 
-`SNACKUP_DOMAIN` es solo el dominio, sin esquema ni ruta. Las contraseñas generadas
+`SNACKUP_DOMAIN` es el dominio de Alumnos, sin esquema ni ruta. Configurar
+`SNACKUP_KITCHEN_PUBLIC_ORIGIN` y `SNACKUP_ADMINISTRATION_PUBLIC_ORIGIN` con sus
+orígenes HTTPS completos, en hostnames distintos de Alumnos y entre sí.
+Caddy obtiene de esa configuración los nombres que debe servir; no hace falta
+duplicarlos en otras variables de dominio. Las contraseñas generadas
 en hexadecimal evitan caracteres reservados dentro de `DATABASE_URL`. Configurar
 dominios institucionales reales y SMTP; el ejemplo no acredita acceso al padrón.
-En esta entrega, el enlace de recuperación de contraseña abre Alumnos en `/`
-para una cuenta de alumno y abre `/paneles/` para Cocina y Administración.
+El enlace de recuperación de contraseña abre `/` en el origen correspondiente
+al rol persistido de la cuenta; también se separan las cookies y el almacenamiento.
 Los campos de secretos vacíos bloquean Compose, no generan credenciales por defecto.
 
 El arranque espera PostgreSQL, abre Redis por un socket Unix privado, aplica
@@ -111,15 +121,16 @@ siguen sin desplegar el servicio en producción ni migrar Firestore.
 
 Registrar el resultado de `git rev-parse HEAD` de la entrega y compilar desde una
 copia limpia de esa revisión. El contexto del Dockerfile es la raíz del repositorio.
-La primera etapa Flutter toma Alumnos de la raíz, la segunda toma los paneles de
-`app/` y la imagen final incorpora la API de `backend/`. El archivo
+La primera etapa Flutter toma Alumnos de la raíz; desde `app/` se generan dos
+builds de paneles, con `PORTAL_AUDIENCE=cocina` y `PORTAL_AUDIENCE=administracion`.
+La imagen final incorpora la API de `backend/`. El archivo
 `deploy/unified/Dockerfile.dockerignore` limita los archivos enviados al constructor.
-Los dos frontends incorporan el script de notificaciones propio. Sus bases públicas
-son `/` y `/paneles/`.
+Los tres builds incorporan el script de notificaciones propio. Todos usan base
+`/`, cada uno en su origen, con service workers y suscripciones independientes.
 
 El API del portal conserva `/api/legacy/v1/`. Cambiarlo a `/api/v1/` sin adaptar
-payloads/roles/realtime rompería la integración. Enlaces de recuperación apuntan
-a `/paneles/`, que sí implementa el tratamiento del token.
+payloads/roles/realtime rompería la integración. Los dos paneles implementan el
+tratamiento del token de recuperación en la raíz de su propio origen.
 
 Referencias de configuración: [contextos de Docker](https://docs.docker.com/build/concepts/context/),
 [Compose build](https://docs.docker.com/reference/compose-file/build/),

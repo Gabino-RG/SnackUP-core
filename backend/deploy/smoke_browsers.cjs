@@ -7,10 +7,23 @@ const { chromium, webkit } = require(process.env.SNACKUP_PLAYWRIGHT || 'playwrig
 const origin = process.env.SNACKUP_BROWSER_ORIGIN || 'https://snackup.example.test';
 assert.ok(['https://snackup.example.test', 'https://localhost:18443', 'http://localhost:18080'].includes(origin));
 const reportPath = process.argv[2] || 'reports/unified/browsers.json';
+const staffOrigin = portal => {
+  const url = new URL(origin);
+  url.hostname = `${portal}.${url.hostname}`;
+  return url.origin;
+};
 const screens = [
-  { path: '/', options: '/api/v1/auth/options', email: 'Correo institucional', submit: 'Iniciar sesión' },
-  { path: '/paneles/', options: '/api/legacy/v1/auth/options', email: 'Correo electrónico', submit: 'Entrar' },
+  { portal: 'alumnos', origin, path: '/', options: '/api/v1/auth/options', email: 'Correo institucional', submit: 'Iniciar sesión' },
+  { portal: 'cocina', origin: staffOrigin('cocina'), path: '/', options: '/api/legacy/v1/auth/options', email: 'Correo electrónico', submit: 'Entrar', heading: 'Acceso a Cocina' },
+  { portal: 'administracion', origin: staffOrigin('administracion'), path: '/', options: '/api/legacy/v1/auth/options', email: 'Correo electrónico', submit: 'Entrar', heading: 'Acceso a Administración' },
 ];
+
+function semanticLine(page, label) {
+  // Flutter may merge static text into one multiline aria-label.
+  const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return page.getByText(label, { exact: true })
+    .or(page.getByLabel(new RegExp('(?:^|\\n)' + escaped + '(?:\\n|$)'))).first();
+}
 
 async function checkScreen(browser, screen, result) {
   const context = await browser.newContext({ locale: 'es-MX', ignoreHTTPSErrors: origin.startsWith('https:') });
@@ -23,9 +36,9 @@ async function checkScreen(browser, screen, result) {
     const [response] = await Promise.all([
       page.waitForResponse(r => {
         const url = new URL(r.url());
-        return url.origin === origin && url.pathname === screen.options && r.request().method() === 'GET';
+        return url.origin === screen.origin && url.pathname === screen.options && r.request().method() === 'GET';
       }, { timeout: 60000 }),
-      page.goto(origin + screen.path, { waitUntil: 'domcontentloaded' }),
+      page.goto(screen.origin + screen.path, { waitUntil: 'domcontentloaded' }),
     ]);
     result.optionsStatus = response.status();
     assert.equal(result.optionsStatus, 200);
@@ -38,6 +51,7 @@ async function checkScreen(browser, screen, result) {
       await page.getByRole('button', { name: 'Enable accessibility' }).dispatchEvent('click');
     }
     await email.waitFor();
+    if (screen.heading) await semanticLine(page, screen.heading).waitFor();
     await page.getByRole('textbox', { name: 'Contraseña', exact: true }).waitFor();
     result.phase = 'validation';
     await page.getByRole('button', { name: screen.submit, exact: true }).click();
@@ -58,7 +72,7 @@ async function main() {
     try {
       browser = await engine.launch();
       for (const screen of screens) {
-        const result = { browser: name, version: browser.version(), path: screen.path, ok: false,
+        const result = { browser: name, version: browser.version(), portal: screen.portal, origin: screen.origin, path: screen.path, ok: false,
           ignoreHTTPSErrors: origin.startsWith('https:') };
         results.push(result);
         try {

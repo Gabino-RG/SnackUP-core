@@ -6,12 +6,12 @@
 }
 import routes.caddy
 
-{$SNACKUP_DOMAIN} {
+{$SNACKUP_DOMAIN}, {$SNACKUP_KITCHEN_SITE}, {$SNACKUP_ADMINISTRATION_SITE} {
 	import snackup_routes
 	# No access log: reset links and authentication material stay out of logs.
 }
 
-# No port publication. Checks the actual proxy and both static applications.
+# No port publication. Checks the actual proxy and all three static applications.
 http://:8081 {
 	bind 127.0.0.1
 	import snackup_routes

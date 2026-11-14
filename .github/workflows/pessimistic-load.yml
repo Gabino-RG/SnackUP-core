@@ -1,5 +1,6 @@
 name: Complete app pessimistic 2 CPU 2 GiB
 on:
+  workflow_dispatch:
   push:
     branches: [codex/integracion-local-completa]
     paths:
@@ -20,7 +21,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   complete-app:
-    if: github.ref == 'refs/heads/codex/integracion-local-completa'
+    if: github.ref == 'refs/heads/codex/integracion-local-completa' && (github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[load-2gib]'))
     runs-on: ubuntu-latest
     timeout-minutes: 90
     defaults:
@@ -60,6 +61,7 @@ jobs:
           umask 077
           mkdir "$RUNNER_TEMP/snackup-pessimistic"
           mkdir -p reports/pessimistic
+          echo '127.0.0.1 localhost cocina.localhost administracion.localhost' | sudo tee -a /etc/hosts >/dev/null
           echo "SNACKUP_LOAD_CA_FILE=$RUNNER_TEMP/snackup-pessimistic/ca.pem" >> "$GITHUB_ENV"
           echo "SNACKUP_PLAYWRIGHT=$RUNNER_TEMP/snackup-pessimistic-browsers/node_modules/playwright" >> "$GITHUB_ENV"
           python -m pip install -r requirements.lock
@@ -91,7 +93,7 @@ jobs:
           assert app['image'] == services['tls']['image'] == os.environ['SNACKUP_LOAD_IMAGE']
           assert os.sched_getaffinity(0).issuperset({0, 1, 2, 3})
           PY
-      - name: Build both real Flutter clients and start the disposable constrained stack
+      - name: Build all three Flutter portals and start the disposable constrained stack
         id: services
         run: |
           docker compose --env-file /dev/null build app
@@ -132,20 +134,20 @@ jobs:
       - name: Create authorized synthetic accounts only in the temporary database
         id: fixtures
         run: taskset -c 2,3 python -m load.create_fixtures --students 1000 --businesses 4 --confirm-isolated --output "$RUNNER_TEMP/snackup-pessimistic/accounts.json"
-      - name: Fetch both real clients and assets through verified HTTPS before load
+      - name: Fetch all three portals and assets through verified HTTPS before load
         continue-on-error: true
         run: taskset -c 2,3 python -m load.phase_c.smoke_pessimistic --output reports/pessimistic/frontend-before.json
-      - name: Check both screens in Chromium and WebKit before load
+      - name: Check all three screens in Chromium and WebKit before load
         continue-on-error: true
         run: taskset -c 2,3 node deploy/smoke_browsers.cjs reports/pessimistic/browsers-before.json
       - name: Run every pessimistic scenario sequentially without suppressing failures
         id: suite
         run: taskset -c 2,3 python -m load.phase_c.pessimistic_suite --fixtures "$RUNNER_TEMP/snackup-pessimistic/accounts.json" --output-dir reports/pessimistic
-      - name: Fetch both real clients and assets through verified HTTPS after load
+      - name: Fetch all three portals and assets through verified HTTPS after load
         if: always() && steps.fixtures.outcome == 'success'
         continue-on-error: true
         run: taskset -c 2,3 python -m load.phase_c.smoke_pessimistic --output reports/pessimistic/frontend-after.json
-      - name: Check both screens in Chromium and WebKit after load
+      - name: Check all three screens in Chromium and WebKit after load
         if: always() && steps.fixtures.outcome == 'success'
         continue-on-error: true
         run: taskset -c 2,3 node deploy/smoke_browsers.cjs reports/pessimistic/browsers-after.json
@@ -179,8 +181,8 @@ jobs:
               filename = 'browsers-' + phase
               try:
                   rows = json.loads((directory / (filename + '.json')).read_text())
-                  checks[filename] = (len(rows) == 4 and all(row.get('ok') is True for row in rows)
-                                      and {(row['browser'], row['path']) for row in rows} == {(browser, path) for browser in ('chromium', 'webkit') for path in ('/', '/paneles/')})
+                  checks[filename] = (len(rows) == 6 and all(row.get('ok') is True for row in rows)
+                                      and {(row['browser'], row['portal']) for row in rows} == {(browser, portal) for browser in ('chromium', 'webkit') for portal in ('alumnos', 'cocina', 'administracion')})
               except Exception as error:
                   checks[filename] = False
                   errors[filename] = type(error).__name__

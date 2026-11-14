@@ -80,7 +80,7 @@ def create_app(settings: Settings | None = None):
                        write_concurrency=settings.write_concurrency)
     app.state.limiter = RateLimiter(settings)
     app.state.events = EventBridge(database, settings)
-    app.add_middleware(TrustedHostMiddleware, allowed_hosts=[urlsplit(settings.public_origin).hostname])
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=[urlsplit(value).hostname for value in settings.public_origins()])
 
     @app.exception_handler(ApiError)
     async def api_error(_, error):
@@ -126,7 +126,8 @@ def create_app(settings: Settings | None = None):
             if request.method in {'POST', 'PUT', 'PATCH', 'DELETE'}:
                 origin = request.headers.get('origin')
                 # Cookie endpoints enforce presence too; bearer CLI clients can omit Origin.
-                if origin and origin != settings.public_origin:
+                from .portal_scope import expected_origin
+                if origin and origin != expected_origin(request):
                     raise ApiError(403, 'ORIGIN_DENIED', 'Origen no autorizado.')
                 maximum = 6 * 1024 * 1024 if path in {'/api/v1/media', '/api/legacy/v1/media'} else 64 * 1024
                 try:
@@ -163,6 +164,15 @@ def create_app(settings: Settings | None = None):
         response.headers['X-Frame-Options'] = 'DENY'
         if path.startswith('/api/'):
             response.headers['Cache-Control'] = 'no-store'
+        if request.method in {'GET', 'HEAD'} and path.startswith('/media/'):
+            # Public image URLs retain their canonical origin. CanvasKit on a
+            # separate staff site needs CORS to decode them into its canvas.
+            # Do not expose credentialed API responses or permit media writes.
+            response.headers.add_vary_header('Origin')
+            origin = request.headers.get('origin')
+            if (origin and origin in {settings.kitchen_public_origin, settings.administration_public_origin}
+                    and (200 <= response.status_code < 300 or response.status_code == 304)):
+                response.headers['Access-Control-Allow-Origin'] = origin
         if settings.environment == 'production':
             response.headers['Strict-Transport-Security'] = 'max-age=31536000'
         log.info('%s %s %d %.0fms', request.method, path, response.status_code, (time.monotonic() - started) * 1000)
@@ -219,4 +229,8 @@ def create_app(settings: Settings | None = None):
 
     from .openapi import install_openapi
     install_openapi(app)
+    # Last-added middleware is outermost: scoped staff API requests must reach
+    # the same origin, size, throttling and admission guards as /api requests.
+    from .portal_scope import PortalScopeMiddleware
+    app.add_middleware(PortalScopeMiddleware, settings=settings)
     return app

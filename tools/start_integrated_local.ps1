@@ -68,14 +68,16 @@ try {
         throw 'Falta Python con las dependencias del backend. Indica -PythonPath; no se instala automaticamente.'
     }
     $students = Join-Path $repo 'build/web'
-    $panels = Join-Path $repo 'app/build/web'
+    $kitchen = Join-Path $repo 'app/build/kitchen/web'
+    $administration = Join-Path $repo 'app/build/administration/web'
     if (Test-Path -LiteralPath $ConfigPath) {
         try { $settings = Get-Content -LiteralPath $ConfigPath -Raw | ConvertFrom-Json }
         catch { throw 'config.json no contiene JSON valido; no se muestra su contenido privado.' }
         if ($settings.PSObject.Properties.Name -contains 'students_web') { $students = $settings.students_web }
-        if ($settings.PSObject.Properties.Name -contains 'panels_web') { $panels = $settings.panels_web }
+        if ($settings.PSObject.Properties.Name -contains 'kitchen_web') { $kitchen = $settings.kitchen_web }
+        if ($settings.PSObject.Properties.Name -contains 'administration_web') { $administration = $settings.administration_web }
     }
-    foreach ($build in @(@($students, '/'), @($panels, '/paneles/'))) {
+    foreach ($build in @(@($students, '/'), @($kitchen, '/'), @($administration, '/'))) {
         $index = Join-Path $build[0] 'index.html'
         if (-not (Test-Path -LiteralPath $index -PathType Leaf) -or
             -not (Test-Path -LiteralPath (Join-Path $build[0] 'flutter_bootstrap.js') -PathType Leaf) -or
@@ -93,7 +95,7 @@ try {
         if ($existing) {
             $listeners = Get-Listeners
             if ($listeners.Count -gt 0 -and @($listeners | Where-Object OwningProcess -ne $existing.ProcessId).Count -eq 0 -and (Test-Ready)) {
-                Write-Host 'SnackUP ya esta listo: http://localhost:18080/ y http://localhost:18080/paneles/'
+                Write-Host 'SnackUP ya esta listo: http://localhost:18080/ | http://cocina.localhost:18080/ | http://administracion.localhost:18080/'
                 return
             }
             throw 'El proceso propio sigue activo pero no esta listo. Revisa logs o usa stop_integrated_local.ps1.'
@@ -162,7 +164,7 @@ except Exception as error:
             }
             Save-Ownership $actual $launched
             if (Test-Ready) {
-                Write-Host 'SnackUP listo. Alumnos: http://localhost:18080/ | Cocina/Administracion: http://localhost:18080/paneles/'
+                Write-Host 'SnackUP listo. Alumnos: http://localhost:18080/ | Cocina: http://cocina.localhost:18080/ | Administracion: http://administracion.localhost:18080/'
                 Write-Host ('Logs privados: ' + $logs)
                 return
             }

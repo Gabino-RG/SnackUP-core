@@ -15,7 +15,7 @@ from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from .auth import (JWT_AUDIENCE, JWT_ISSUER, PASSWORDS, REFRESH_COOKIE, as_utc,
+from .auth import (JWT_AUDIENCE, JWT_ISSUER, PASSWORDS, as_utc,
                    current_user, ensure_account, hash_password, password_matches,
                    require_origin, revoke_user_sessions, token_hash)
 from .common import iso, require, validate_body
@@ -25,6 +25,8 @@ from .identity_models import (AcademicGroup, AcademicRecord, AccessRequest, Care
                               RefreshSession, User, VerificationToken, audit_event)
 from .mailer import mail_available, send_mail
 from .push_models import Device
+from .portal_scope import (expected_origin, refresh_cookie, require_portal_role,
+                           role_matches, session_matches_portal)
 
 router = APIRouter()
 EMAIL_PATTERN = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
@@ -70,21 +72,25 @@ def serialize_profile(user: User, db: Session) -> dict:
     return result
 
 
-def _cookie(response: Response, token: str, settings, expires_at) -> None:
-    response.set_cookie(REFRESH_COOKIE, token, max_age=max(1, int((as_utc(expires_at) - utcnow()).total_seconds())),
-                        httponly=True, secure=settings.public_origin.startswith("https://"),
-                        samesite="strict", path="/api")
+def _cookie(response: Response, token: str, settings, expires_at, request=None) -> None:
+    name, path = refresh_cookie(request)
+    origin = expected_origin(request) if request is not None else settings.public_origin
+    response.set_cookie(name, token, max_age=max(1, int((as_utc(expires_at) - utcnow()).total_seconds())),
+                        httponly=True, secure=origin.startswith("https://"),
+                        samesite="strict", path=path)
     response.headers["Cache-Control"] = "no-store"
 
 
-def _clear_cookie(response: Response, settings) -> None:
-    response.delete_cookie(REFRESH_COOKIE, path="/api", httponly=True,
-                           secure=settings.public_origin.startswith("https://"), samesite="strict")
+def _clear_cookie(response: Response, settings, request=None) -> None:
+    name, path = refresh_cookie(request)
+    origin = expected_origin(request) if request is not None else settings.public_origin
+    response.delete_cookie(name, path=path, httponly=True,
+                           secure=origin.startswith("https://"), samesite="strict")
     response.headers["Cache-Control"] = "no-store"
 
 
 def _issue_session(db: Session, user: User, response: Response, settings,
-                   previous: RefreshSession | None = None) -> dict:
+                   previous: RefreshSession | None = None, request=None) -> dict:
     now = utcnow()
     raw = secrets.token_urlsafe(48)
     # Look up the registration owned by this family. Older rotations omitted
@@ -104,7 +110,7 @@ def _issue_session(db: Session, user: User, response: Response, settings,
     access = jwt.encode({"sub": user.id, "sid": session.id, "ver": user.auth_version,
                          "iat": now, "exp": expiry, "iss": JWT_ISSUER, "aud": JWT_AUDIENCE},
                         settings.secret_key, algorithm="HS256")
-    _cookie(response, raw, settings, session.expires_at)
+    _cookie(response, raw, settings, session.expires_at, request)
     return {"tokens": {"accessToken": access, "accessTokenExpiresAt": iso(expiry)}}
 
 
@@ -121,14 +127,17 @@ def _mail_token(db: Session, user: User, settings, purpose: str, mailer=None, re
                              token_hash=token_hash(raw), expires_at=now + timedelta(minutes=30),
                              registration_data=registration_data))
     db.flush()
+    # A student may be recovering an unverified staff request for the same
+    # address. The fresh proof belongs to the student flow, not that old role.
+    role = 'user' if registration_data and registration_data.get('kind') == 'student_registration' else _entry_role(db, user)
     if purpose == "verify":
-        link = settings.public_origin.rstrip("/") + "/api/v1/auth/verify-email#token=" + quote(raw)
+        link = settings.origin_for_role(role) + "/api/v1/auth/verify-email#token=" + quote(raw)
         subject = "Confirma tu correo de SnackUP"
         content = ("Confirma que este correo te pertenece. Abre el enlace y pulsa Confirmar correo.\n\n"
                    + link + "\n\nEl enlace vence en 30 minutos y se usa una sola vez. "
                    "Verificar el correo no otorga permisos administrativos. Si no solicitaste el registro, ignora este mensaje.")
     else:
-        link = (settings.public_origin.rstrip("/") + settings.password_reset_path_for(user.role)
+        link = (settings.origin_for_role(role) + settings.password_reset_path_for(role)
                 + "#/reset-password?token=" + quote(raw))
         subject = "Restablece tu contraseña de SnackUP"
         content = ("Solicitaste restablecer la contraseña de SnackUP:\n\n" + link +
@@ -162,9 +171,19 @@ def student_roster_record(db, settings, email, control):
     return record
 
 
-def confirm_verification_token(db: Session, settings, raw: str) -> Response:
+def _entry_role(db, user):
+    if user.role != 'pending':
+        return user.role
+    requested = db.scalar(select(AccessRequest.requested_role).where(AccessRequest.user_id == user.id))
+    return requested or user.role
+
+
+def confirm_verification_token(db: Session, settings, raw: str, request=None) -> Response:
     token, user = _consume_token(db, raw, "verify")
     metadata = token.registration_data
+    if request is not None:
+        role = 'user' if metadata and metadata.get('kind') == 'student_registration' else _entry_role(db, user)
+        require_portal_role(request, role)
     if metadata and metadata.get("kind") == "student_registration":
         record = student_roster_record(db, settings, user.email, metadata["numeroDeControl"])
         require(record is not None and record.id == metadata.get("recordId"), 403, "ACCESS_REVOKED",
@@ -197,7 +216,7 @@ def confirm_verification_token(db: Session, settings, raw: str) -> Response:
         access.version += 1
     token.registration_data = None  # Remove the transient credential hash after use.
     return Response(status_code=204, headers={
-        "X-SnackUP-Login-Path": settings.password_reset_path_for(user.role),
+        "X-SnackUP-Login-Path": settings.password_reset_path_for(_entry_role(db, user)),
         "Cache-Control": "no-store",
     })
 
@@ -215,14 +234,14 @@ def login(request: Request, response: Response, data: dict = Body(...), db: Sess
     email = normalize_email(data["email"])
     from .auth import login_user
     user = login_user(db, request, email, data["password"])
-    return _issue_session(db, user, response, request.app.state.settings)
+    return _issue_session(db, user, response, request.app.state.settings, request=request)
 
 
 @router.post("/auth/refresh")
 def refresh(request: Request, response: Response, data: dict = Body(...), db: Session = Depends(get_db, scope="function")):
     require_origin(request)
     validate_body("refresh", data)
-    raw = request.cookies.get(REFRESH_COOKIE, "")
+    raw = request.cookies.get(refresh_cookie(request)[0], "")
     initial = db.scalar(select(RefreshSession).where(RefreshSession.token_hash == token_hash(raw))) if raw else None
     if initial is None:
         raise ApiError(401, "UNAUTHENTICATED", "La sesión no es válida.")
@@ -230,6 +249,7 @@ def refresh(request: Request, response: Response, data: dict = Body(...), db: Se
     user = db.scalar(select(User).where(User.id == initial.user_id).with_for_update())
     session = db.scalar(select(RefreshSession).where(RefreshSession.id == initial.id).with_for_update()
                         .execution_options(populate_existing=True))
+    require_portal_role(request, user.role if user is not None else None)
     if session.rotated_at is not None:
         db.execute(update(RefreshSession).where(RefreshSession.family_id == session.family_id)
                    .values(revoked_at=utcnow()))
@@ -238,13 +258,13 @@ def refresh(request: Request, response: Response, data: dict = Body(...), db: Se
         # Returning an error response (rather than raising) lets get_db commit
         # the revocation. An exception would roll this security action back.
         failure = JSONResponse({"error": {"code": "SESSION_REPLAY", "message": "La sesión fue revocada. Inicia sesión nuevamente."}}, status_code=401)
-        _clear_cookie(failure, request.app.state.settings)
+        _clear_cookie(failure, request.app.state.settings, request)
         return failure
     if (user is None or session.revoked_at is not None or as_utc(session.expires_at) <= utcnow()
             or session.auth_version != user.auth_version):
         raise ApiError(401, "UNAUTHENTICATED", "La sesión fue revocada.")
     ensure_account(user, db)
-    return _issue_session(db, user, response, request.app.state.settings, previous=session)
+    return _issue_session(db, user, response, request.app.state.settings, previous=session, request=request)
 
 
 @router.post("/auth/logout", status_code=204)
@@ -252,10 +272,10 @@ def logout(request: Request, data: dict = Body(...), db: Session = Depends(get_d
     require_origin(request)
     validate_body("logout", data)
     families = set()
-    raw = request.cookies.get(REFRESH_COOKIE)
+    raw = request.cookies.get(refresh_cookie(request)[0])
     if raw:
         session = db.scalar(select(RefreshSession).where(RefreshSession.token_hash == token_hash(raw)))
-        if session:
+        if session and session_matches_portal(request, session, db):
             families.add(session.family_id)
     authorization = request.headers.get("authorization", "")
     scheme, _, access = authorization.partition(" ")
@@ -265,7 +285,7 @@ def logout(request: Request, data: dict = Body(...), db: Session = Depends(get_d
                                 issuer=JWT_ISSUER, audience=JWT_AUDIENCE,
                                 options={"verify_exp": False, "require": ["sid", "sub", "iss", "aud"]})
             session = db.get(RefreshSession, claims["sid"])
-            if session and session.user_id == claims["sub"]:
+            if session and session.user_id == claims["sub"] and session_matches_portal(request, session, db):
                 families.add(session.family_id)
         except (jwt.InvalidTokenError, TypeError):
             pass
@@ -277,7 +297,7 @@ def logout(request: Request, data: dict = Body(...), db: Session = Depends(get_d
         from .push import detach_devices_for_families
         detach_devices_for_families(db, families)
     response = Response(status_code=204)
-    _clear_cookie(response, request.app.state.settings)
+    _clear_cookie(response, request.app.state.settings, request)
     return response
 
 
@@ -289,6 +309,7 @@ def profile(user: User = Depends(request_user), db: Session = Depends(get_db, sc
 @router.post("/auth/register", status_code=202)
 def register(request: Request, data: dict = Body(...), db: Session = Depends(get_db, scope="function")):
     validate_body("requestAccess", data)
+    require_portal_role(request, data['requestedRole'])
     settings = request.app.state.settings
     if not mail_available(settings):
         raise ApiError(503, "EMAIL_UNAVAILABLE", "El registro requiere envío de correo configurado.")
@@ -316,6 +337,7 @@ def register(request: Request, data: dict = Body(...), db: Session = Depends(get
 
 @router.post("/student/register", status_code=202)
 def register_student(request: Request, data: dict = Body(...), db: Session = Depends(get_db, scope="function")):
+    require_portal_role(request, 'user')
     if set(data) != {"email", "password"} or not isinstance(data.get("password"), str):
         raise ApiError(422, "INVALID_INPUT", "Se requieren únicamente correo y contraseña.")
     email = normalize_email(data["email"])
@@ -352,7 +374,7 @@ def forgot_password(request: Request, data: dict = Body(...), db: Session = Depe
         raise ApiError(503, "EMAIL_UNAVAILABLE", "La recuperación requiere envío de correo configurado.")
     email = normalize_email(data["email"])
     user = db.scalar(select(User).where(User.email == email).with_for_update())
-    if user is not None and user.approval_status != "rejected":
+    if user is not None and user.approval_status != "rejected" and role_matches(request, _entry_role(db, user)):
         _mail_token(db, user, request.app.state.settings, "reset", getattr(request.app.state, "mailer", None))
     return Response(status_code=204)
 
@@ -366,7 +388,8 @@ def resend_verification(request: Request, data: dict = Body(...), db: Session = 
     if not mail_available(settings):
         raise ApiError(503, "EMAIL_UNAVAILABLE", "El envío de correo aún no está configurado.")
     user = db.scalar(select(User).where(User.email == email).with_for_update())
-    if user is not None and not user.email_verified and user.approval_status != "rejected":
+    if (user is not None and not user.email_verified and user.approval_status != "rejected"
+            and role_matches(request, _entry_role(db, user))):
         resend_email_verification(db, user, settings, getattr(request.app.state, "mailer", None))
     return {"status": "received"}
 
@@ -393,11 +416,12 @@ def reset_password(request: Request, data: dict = Body(...), db: Session = Depen
     require_origin(request)
     validate_body("resetPassword", data)
     _, user = _consume_token(db, data["token"], "reset")
+    require_portal_role(request, _entry_role(db, user))
     user.password_hash = hash_password(data["newPassword"])
     user.version += 1
     revoke_user_sessions(db, user)
     response = Response(status_code=204)
-    _clear_cookie(response, request.app.state.settings)
+    _clear_cookie(response, request.app.state.settings, request)
     return response
 
 
@@ -406,7 +430,7 @@ def verify_email(request: Request, data: dict = Body(...), db: Session = Depends
     require_origin(request)
     if set(data) != {"token"}:
         raise ApiError(422, "INVALID_INPUT", "Se requiere un token de verificación.")
-    return confirm_verification_token(db, request.app.state.settings, data["token"])
+    return confirm_verification_token(db, request.app.state.settings, data["token"], request)
 
 
 @router.get("/auth/google/start")

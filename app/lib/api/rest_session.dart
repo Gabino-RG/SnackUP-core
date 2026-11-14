@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../notifications/browser_push.dart';
 import 'api_client.dart';
+import 'portal_audience.dart';
 
 enum PortalSessionPhase {
   restoring,
@@ -97,6 +98,7 @@ class RestSession extends ChangeNotifier {
     required http.Client client,
     DateTime Function()? now,
     SessionIntentStore? intentStore,
+    this.audience,
   }) : rawClient = client,
        api = ApiClient(baseUri: baseUri, client: client),
        intentStore = intentStore ?? MemorySessionIntentStore(),
@@ -104,6 +106,7 @@ class RestSession extends ChangeNotifier {
   final http.Client rawClient;
   final ApiClient api;
   final SessionIntentStore intentStore;
+  final PortalAudience? audience;
   final DateTime Function() _now;
   PortalSessionPhase phase = PortalSessionPhase.restoring;
   PortalAccount? account;
@@ -137,14 +140,23 @@ class RestSession extends ChangeNotifier {
     return next;
   }
 
-  Future<PortalAccount> _profile(_AccessToken token) async =>
-      PortalAccount.fromJson(
-        await api.json(
-          'GET',
-          'users/me',
-          headers: {'Authorization': 'Bearer ${token.value}'},
-        ),
+  Future<PortalAccount> _profile(_AccessToken token) async {
+    final profile = PortalAccount.fromJson(
+      await api.json(
+        'GET',
+        'users/me',
+        headers: {'Authorization': 'Bearer ${token.value}'},
+      ),
+    );
+    if (audience != null && !audience!.accepts(profile.role)) {
+      throw ApiException(
+        audience!.accessNotice,
+        code: 'WRONG_PORTAL',
+        status: 403,
       );
+    }
+    return profile;
+  }
 
   Future<void> restore() async {
     if (logoutPending) {
@@ -184,7 +196,11 @@ class RestSession extends ChangeNotifier {
       if (error is ApiException &&
           (error.status == 401 || error.status == 403)) {
         phase = PortalSessionPhase.signedOut;
-        message = null;
+        message = error.code == 'WRONG_PORTAL'
+            ? error.message
+            : error.code == 'PORTAL_ROLE_MISMATCH'
+            ? audience?.accessNotice
+            : null;
       } else {
         phase = PortalSessionPhase.unavailable;
         message = error is ApiException
@@ -198,8 +214,9 @@ class RestSession extends ChangeNotifier {
   Future<void> signIn(String email, String password) async {
     if (phase == PortalSessionPhase.signingIn ||
         phase == PortalSessionPhase.signingOut ||
-        logoutPending)
+        logoutPending) {
       return;
+    }
     final normalized = email.trim().toLowerCase();
     if (!RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(normalized) ||
         password.isEmpty) {
@@ -242,6 +259,9 @@ class RestSession extends ChangeNotifier {
                 'Tu solicitud no fue autorizada. Contacta a la cuenta maestra.',
               'ACCESS_REVOKED' =>
                 'Tu acceso está suspendido. Contacta a la cuenta maestra.',
+              'PORTAL_ROLE_MISMATCH' =>
+                audience?.accessNotice ??
+                    'Tu cuenta no pertenece a este acceso.',
               _ => error.message,
             }
           : 'No se pudo iniciar sesión.';
@@ -273,16 +293,19 @@ class RestSession extends ChangeNotifier {
       }
     }
     final token = _token;
-    if (token == null)
+    if (token == null) {
       throw const ApiException('Tu sesión terminó.', code: 'UNAUTHENTICATED');
+    }
     return token.value;
   }
 
   Future<bool> refresh({String? expectedToken}) {
-    if (_token == null || phase != PortalSessionPhase.authenticated)
+    if (_token == null || phase != PortalSessionPhase.authenticated) {
       return Future.value(false);
-    if (expectedToken != null && _token!.value != expectedToken)
+    }
+    if (expectedToken != null && _token!.value != expectedToken) {
       return Future.value(true);
+    }
     final running = _refreshing;
     if (running != null) return running;
     if (_renewalError != null && _renewalRetryAt!.isAfter(_now())) {
@@ -308,7 +331,9 @@ class RestSession extends ChangeNotifier {
       // A different tab may have replaced the browser's shared refresh cookie.
       // Require a fresh login here before displaying the other person's panel.
       if (profile.id != account?.id) {
-        invalidate('La cuenta cambió en otra pestaña. Vuelve a iniciar sesión.');
+        invalidate(
+          'La cuenta cambió en otra pestaña. Vuelve a iniciar sesión.',
+        );
         return false;
       }
       if (profile.identity != account?.identity) _generation++;
@@ -332,7 +357,13 @@ class RestSession extends ChangeNotifier {
         _changed();
         rethrow;
       }
-      invalidate('No se pudo renovar tu sesión. Vuelve a iniciar sesión.');
+      invalidate(
+        error is ApiException && error.code == 'WRONG_PORTAL'
+            ? error.message
+            : error is ApiException && error.code == 'PORTAL_ROLE_MISMATCH'
+            ? audience?.accessNotice ?? 'Tu cuenta no pertenece a este acceso.'
+            : 'No se pudo renovar tu sesión. Vuelve a iniciar sesión.',
+      );
       return false;
     }
   }
@@ -440,8 +471,9 @@ class SessionHttpClient extends http.BaseClient {
     final bytes = await request.finalize().toBytes();
     for (var attempt = 0; attempt < 2; attempt++) {
       final token = await session.accessToken();
-      if (generation != session.generation)
+      if (generation != session.generation) {
         throw const ApiException('La sesión cambió.', code: 'SESSION_CHANGED');
+      }
       final abort = Completer<void>();
       final outgoing =
           http.AbortableRequest(
@@ -476,7 +508,11 @@ class SessionHttpClient extends http.BaseClient {
       } else if (response.statusCode == 401) {
         session.invalidate('Tu sesión terminó. Vuelve a iniciar sesión.');
       } else if (response.statusCode == 403 &&
-          ['ROLE_REVOKED', 'ACCESS_REVOKED'].contains(code)) {
+          [
+            'ROLE_REVOKED',
+            'ACCESS_REVOKED',
+            'PORTAL_ROLE_MISMATCH',
+          ].contains(code)) {
         session.invalidate('Tu acceso cambió. Vuelve a iniciar sesión.');
       }
       return http.StreamedResponse(

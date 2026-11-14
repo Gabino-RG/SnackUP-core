@@ -62,9 +62,9 @@ class Smoke:
         except HTTPError as error:
             response = error
         with response:
-            # Two main.dart.js files are the only potentially large responses.
+            # The three main.dart.js files are the only potentially large responses.
             body = response.read(64 * 1024 * 1024 + 1)
-            item = {"method": method, "path": path, "status": response.status,
+            item = {"method": method, "path": path, "host": self.host, "status": response.status,
                     "contentType": response.headers.get("Content-Type", ""),
                     "bytes": len(body), "sha256": hashlib.sha256(body).hexdigest(),
                     "ok": False}
@@ -165,15 +165,21 @@ class Smoke:
         require(self.json("/health/live") == {"status": "ok"}, "Liveness failed")
         require(self.json("/health/ready") == {"status": "ready"}, "Database/Redis readiness failed")
         self.frontend("/", pwa=True, integrated=integrated)
-        headers, _ = self.get("/paneles", 308)
-        require(headers.get("Location") == "/paneles/", "Panel prefix redirect is incorrect")
-        self.frontend("/paneles/", integrated=integrated)
+        for portal in ('cocina', 'administracion'):
+            staff = Smoke(self.url, portal + '.' + self.host, self.origin.replace('://', '://' + portal + '.', 1))
+            staff.results = self.results
+            staff.frontend('/', integrated=integrated)
+            require(staff.json('/api/legacy/v1/auth/options')['passwordLogin'] is True,
+                    'Staff login is unavailable at its own origin')
+            staff.get('/paneles/', 404)
+        self.get('/paneles', 404)
+        self.get('/paneles/', 404)
         canonical = self.json("/api/v1/auth/options")
         legacy = self.json("/api/legacy/v1/auth/options")
         expected_options = {"passwordLogin": True, "selfRegistration": False, "googleEnabled": False}
         require(canonical == legacy == expected_options,
                 "Auth options differ from the empty CI installation or legacy adapter")
-        # Missing endpoints/assets must reach FastAPI, never either Flutter SPA.
+        # Missing endpoints/assets must reach FastAPI, never a Flutter SPA.
         for path in ["/api/v1/__ci_missing__", "/api/legacy/v1/__ci_missing__",
                      "/media/__ci_missing__.webp"]:
             self.json(path, 404)
@@ -186,7 +192,7 @@ def main():
     parser.add_argument("--host", default="snackup.example.test")
     parser.add_argument("--origin", default="https://snackup.example.test")
     parser.add_argument("--report", required=True, type=Path)
-    parser.add_argument("--integrated", action="store_true", help="Check the current two REST builds and their push assets.")
+    parser.add_argument("--integrated", action="store_true", help="Check all three REST builds and their push assets.")
     args = parser.parse_args()
     endpoint = urlsplit(args.url)
     if (endpoint.scheme != "http" or endpoint.hostname not in {"127.0.0.1", "localhost", "::1"}

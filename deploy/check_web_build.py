@@ -27,7 +27,7 @@ class Index(HTMLParser):
             self.scripts.append(attributes["src"])
 
 
-def validate(directory: Path, base: str) -> None:
+def validate(directory: Path, base: str, portal: str | None = None) -> None:
     if not base.startswith("/") or not base.endswith("/") or "//" in base or ".." in base.split("/"):
         raise ValueError("--base must be a local absolute directory path ending in '/'.")
     required = ["index.html", "flutter_bootstrap.js", "flutter.js", "main.dart.js", "assets/FontManifest.json", "assets/AssetManifest.bin"]
@@ -59,7 +59,7 @@ def validate(directory: Path, base: str) -> None:
     if re.search(r'["\']?serviceWorkerVersion["\']?\s*:\s*["\'][^"\']+["\']', bootstrap):
         raise ValueError("A generated service worker is enabled; rebuild with --pwa-strategy=none.")
     program = (directory / "main.dart.js").read_text(encoding="utf-8")
-    api_root = "/api/legacy/v1/" if base == "/paneles/" else "/api/v1"
+    api_root = "/api/legacy/v1/" if portal in {"kitchen", "administration"} or base == "/paneles/" else "/api/v1"
     if api_root not in program:
         raise ValueError(f"The compiled client does not contain its expected REST API root {api_root}.")
 
@@ -68,10 +68,11 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("directory", type=Path)
     parser.add_argument("--base", required=True)
+    parser.add_argument("--portal", choices=["users", "kitchen", "administration"])
     parser.add_argument("--mode", choices=["rest", "firebase"], default="rest")
     args = parser.parse_args()
     try:
-        validate(args.directory.resolve(), args.base)
+        validate(args.directory.resolve(), args.base, args.portal)
     except (OSError, ValueError) as error:
         print(f"Web build validation failed: {error}", file=sys.stderr)
         return 1

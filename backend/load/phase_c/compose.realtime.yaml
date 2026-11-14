@@ -4,6 +4,8 @@ services:
     image: ${SNACKUP_LOAD_IMAGE:?Set the image tag for this CI run}
     environment:
       SNACKUP_PUBLIC_ORIGIN: https://localhost:18443
+      SNACKUP_KITCHEN_PUBLIC_ORIGIN: https://cocina.localhost:18443
+      SNACKUP_ADMINISTRATION_PUBLIC_ORIGIN: https://administracion.localhost:18443
       SNACKUP_WORKERS: '4'
       SNACKUP_WRITE_CONCURRENCY: '2'
   tls:
@@ -18,14 +20,9 @@ services:
       XDG_DATA_HOME: /tmp/caddy-data
       XDG_CONFIG_HOME: /tmp/caddy-config
     entrypoint: [caddy]
-    command:
-      - reverse-proxy
-      - --from
-      - https://localhost:8443
-      - --to
-      - http://app:8080
-      - --internal-certs
-      - --disable-redirects
+    command: [run, --config, /etc/snackup-test-tls.Caddyfile, --adapter, caddyfile]
+    volumes:
+      - ./Caddy.tls:/etc/snackup-test-tls.Caddyfile:ro
     ports: ['127.0.0.1:18443:8443']
     depends_on:
       app: {condition: service_healthy}
@@ -34,7 +31,7 @@ services:
         - CMD
         - python
         - -c
-        - "import json, ssl, urllib.request; context=ssl.create_default_context(cafile='/tmp/caddy-data/caddy/pki/authorities/local/root.crt'); response=urllib.request.urlopen('https://localhost:8443/health/ready', context=context, timeout=3); assert json.load(response)['status']=='ready'"
+        - "import json, ssl, urllib.request; context=ssl.create_default_context(cafile='/tmp/caddy-data/caddy/pki/authorities/local/root.crt'); request=urllib.request.Request('https://localhost:8443/health/ready', headers={'Host':'localhost:18443'}); response=urllib.request.urlopen(request, context=context, timeout=3); assert json.load(response)['status']=='ready'"
       interval: 3s
       timeout: 5s
       start_period: 20s

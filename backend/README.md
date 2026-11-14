@@ -108,7 +108,11 @@ docker compose run --rm --no-deps -v /ruta/privada/padron.csv:/input/padron.csv:
 
 Revisar el resultado y repetir sin `--dry-run` para persistirlo. El padrón debe ser legible por el usuario del contenedor. El uso de [`service_healthy`](https://docs.docker.com/compose/how-tos/startup-order/) y la [red interna](https://docs.docker.com/reference/compose-file/networks/) no sustituye controles de firewall o acceso al host.
 
-### Tres aplicaciones en contenedores separados
+### Alternativa histórica: tres aplicaciones en contenedores separados
+
+La entrega vigente usa [el contenedor unificado](DESPLIEGUE_CONTENEDOR_UNICO.md)
+y tres orígenes separados. La alternativa descrita a continuación se conserva
+como antecedente y no implementa esa separación de accesos.
 
 El despliegue conjunto utiliza `compose.yaml` más `deploy/compose.apps.yaml`.
 Construye la PWA de alumnos desde `codex/usuarios-pwa` y el portal desde
@@ -118,9 +122,9 @@ Los tres comparten el mismo origen público para conservar cookies y reglas de
 `Origin`. Los enlaces de recuperación se dirigen a la pantalla existente del
 portal en `/paneles/#/reset-password`.
 
-Seguir [la guía de despliegue de las tres aplicaciones](DESPLIEGUE_TRES_APPS.md)
-para clonar las ramas, construir y arrancar en el orden correcto. La PWA de
-alumnos aún usa Firebase; contenerizarla no la conecta automáticamente a REST.
+La [guía histórica de las tres aplicaciones](DESPLIEGUE_TRES_APPS.md) corresponde
+a esas ramas anteriores. Su antigua PWA de alumnos usaba Firebase; esa
+descripción no corresponde al cliente REST integrado actual.
 
 ### Montaje histórico de un frontend compilado
 
