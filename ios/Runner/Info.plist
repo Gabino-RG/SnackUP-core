@@ -22,7 +22,9 @@
 		<string>????</string>
 		<key>CFBundleVersion</key>
 		<string>$(FLUTTER_BUILD_NUMBER)</string>
-		<key>LSRequiresIPhoneOS</key>
+		<key>NSCameraUsageDescription</key>
+	<string>SnackUp usa la cámara para escanear el código QR del estudiante al entregar el pedido.</string>
+	<key>LSRequiresIPhoneOS</key>
 		<true/>
 		<key>UILaunchStoryboardName</key>
 		<string>LaunchScreen</string>

@@ -1,6 +1,10 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../auth/auth_gate.dart';
 import 'package:snackup/theme/app_colors.dart';
 import 'package:snackup/theme/app_text.dart';
@@ -48,64 +52,23 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     }
   }
 
-  void _startScanner(BuildContext context, String numeroDeControlCorrecto) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (scannerContext) => Scaffold(
-          appBar: AppBar(
-            title: const Text('Escanear QR de Entrega'),
-            backgroundColor: AppColors.background,
-            foregroundColor: AppColors.textPrimary,
-          ),
-          body: Column(
-            children: [
-              Expanded(
-                child: MobileScanner(
-                  controller: MobileScannerController(
-                    formats: [BarcodeFormat.qrCode],
-                    detectionSpeed: DetectionSpeed.normal,
-                  ),
-                  onDetect: (capture) {
-                    final List<Barcode> barcodes = capture.barcodes;
-                    if (barcodes.isNotEmpty) {
-                      final String qrValue = barcodes.first.rawValue ?? '';
-                      
-                      if (qrValue == numeroDeControlCorrecto) {
-                        _updateOrderStatus('completed');
-                        if (Navigator.of(scannerContext).canPop()) {
-                          Navigator.of(scannerContext).pop();
-                        }
-                      } else {
-                        if (Navigator.of(scannerContext).canPop()){
-                          Navigator.of(scannerContext).pop();
-                        }
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: const Text('QR incorrecto. Este no es el pedido.'),
-                            backgroundColor: AppColors.error,
-                            behavior: SnackBarBehavior.floating,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                        );
-                      }
-                    }
-                  },
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.all(20),
-                color: AppColors.background,
-                child: Text(
-                  'Escanea el código QR del estudiante para confirmar la entrega',
-                  style: AppText.body.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ],
-          ),
-        ),
+  Future<void> _startScanner(String numeroDeControlCorrecto) async {
+    final qrValue = await Navigator.of(context).push<String>(
+      MaterialPageRoute(builder: (_) => const _DeliveryScannerScreen()),
+    );
+    if (!mounted || qrValue == null) return;
+
+    if (qrValue == numeroDeControlCorrecto) {
+      await _updateOrderStatus('completed');
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('QR incorrecto. Este no es el pedido.'),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
@@ -607,7 +570,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       return Column(
         children: [
           ElevatedButton(
-            onPressed: () => _startScanner(context, numeroDeControl),
+            onPressed: () => _startScanner(numeroDeControl),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.success,
               foregroundColor: Colors.white,
@@ -710,5 +673,183 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       case 'cancelled': return 'CANCELADO';
       default: return status.toUpperCase();
     }
+  }
+}
+
+class _DeliveryScannerScreen extends StatefulWidget {
+  const _DeliveryScannerScreen();
+
+  @override
+  State<_DeliveryScannerScreen> createState() => _DeliveryScannerScreenState();
+}
+
+class _DeliveryScannerScreenState extends State<_DeliveryScannerScreen> {
+  MobileScannerController _controller = _createController();
+
+  static MobileScannerController _createController() => MobileScannerController(
+    autoStart: false,
+    formats: const [BarcodeFormat.qrCode],
+  );
+  Future<void>? _cameraChange;
+  bool _finished = false;
+  String? _cameraError;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _toggleCamera();
+    });
+  }
+
+  Future<void> _toggleCamera() async {
+    if (_cameraChange != null || _finished) return;
+
+    final turningOff = _controller.value.isRunning;
+    final change = turningOff ? _controller.stop() : _startCamera();
+    setState(() {
+      _cameraChange = change;
+      _cameraError = null;
+    });
+    try {
+      await change;
+    } catch (_) {
+      if (mounted) {
+        _cameraError = turningOff
+            ? 'No se pudo apagar la cámara. Intenta de nuevo.'
+            : 'No se pudo activar la cámara. Intenta de nuevo.';
+      }
+    } finally {
+      if (mounted) setState(() => _cameraChange = null);
+    }
+  }
+
+  Future<void> _startCamera() async {
+    if (kIsWeb && (_controller.value.error != null || _cameraError != null)) {
+      final previous = _controller;
+      final replacement = _createController();
+      setState(() => _controller = replacement);
+      await previous.dispose();
+      if (!mounted) return;
+    }
+    await _controller.start();
+  }
+
+  void _onDetect(BarcodeCapture capture) {
+    if (_finished || !_controller.value.isRunning) return;
+    for (final barcode in capture.barcodes) {
+      final value = barcode.rawValue;
+      if (value == null || value.isEmpty) continue;
+      _finished = true;
+      Navigator.of(context).pop(value);
+      return;
+    }
+  }
+
+  @override
+  void dispose() {
+    final change = _cameraChange;
+    if (change == null) {
+      unawaited(_controller.dispose().catchError((Object _) {}));
+    } else {
+      unawaited(change.whenComplete(_controller.dispose).catchError((Object _) {}));
+    }
+    super.dispose();
+  }
+
+  String _statusMessage(MobileScannerState camera, bool busy, bool denied) {
+    if (busy) return 'Actualizando cámara…';
+    if (denied) return 'Se requiere activar la cámara para escanear el QR.';
+    if (camera.isRunning) {
+      return 'Escanea el código QR del estudiante para confirmar la entrega.';
+    }
+    if (camera.error != null) {
+      return 'No se pudo abrir la cámara. Revisa que esté disponible e inténtalo de nuevo.';
+    }
+    return 'La cámara está apagada. Actívala para escanear el QR.';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Escanear QR de Entrega'),
+        backgroundColor: AppColors.background,
+        foregroundColor: AppColors.textPrimary,
+      ),
+      body: SafeArea(
+        child: ValueListenableBuilder<MobileScannerState>(
+          valueListenable: _controller,
+          builder: (context, camera, _) {
+            final denied =
+                camera.error?.errorCode == MobileScannerErrorCode.permissionDenied;
+            final running = camera.isRunning;
+            final busy = _cameraChange != null;
+            return Column(
+              children: [
+                Expanded(
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      MobileScanner(
+                        controller: _controller,
+                        onDetect: _onDetect,
+                        errorBuilder: (_, _) => const SizedBox.shrink(),
+                        placeholderBuilder: (_) => const SizedBox.shrink(),
+                      ),
+                      if (!running)
+                        ColoredBox(
+                          color: AppColors.componentBase,
+                          child: Center(
+                            child: busy
+                                ? const CircularProgressIndicator()
+                                : const Icon(Icons.videocam_off_outlined, size: 56),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        _cameraError ?? _statusMessage(camera, busy, denied),
+                        textAlign: TextAlign.center,
+                        style: AppText.body.copyWith(color: AppColors.textPrimary),
+                      ),
+                      if (denied && !busy) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          kIsWeb
+                              ? 'Si el navegador bloqueó la cámara, permite su uso desde los permisos del sitio y vuelve a intentarlo.'
+                              : 'Si el permiso sigue bloqueado, habilítalo en Ajustes y vuelve a intentarlo.',
+                          textAlign: TextAlign.center,
+                          style: AppText.notes.copyWith(color: AppColors.textSecondary),
+                        ),
+                        if (!kIsWeb &&
+                            (defaultTargetPlatform == TargetPlatform.android ||
+                                defaultTargetPlatform == TargetPlatform.iOS))
+                          TextButton(
+                            onPressed: () async => openAppSettings(),
+                            child: const Text('Abrir ajustes'),
+                          ),
+                      ],
+                      const SizedBox(height: 12),
+                      FilledButton.icon(
+                        onPressed: busy ? null : _toggleCamera,
+                        icon: Icon(running ? Icons.videocam_off : Icons.videocam),
+                        label: Text(running ? 'Apagar cámara' : 'Activar cámara'),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
   }
 }
