@@ -64,4 +64,10 @@ Chromium y WebKit aprobaron 14 comprobaciones funcionales por motor: acceso por 
 
 El verificador exige `SameSite=Strict` en la cabecera enviada por el servidor. La lectura de ese atributo en el almacén de cookies de WebKit para Windows se registra como limitación: ese runtime devuelve `None`, un comportamiento reconocido en las [pruebas de Playwright](https://github.com/microsoft/playwright/blob/main/tests/library/browsercontext-cookies.spec.ts#L110-L131). La comprobación de ese metadato se mantiene en Chromium y en los otros sistemas; no se cambia la política de la aplicación para acomodar al verificador.
 
+En WebKit para Windows se observó una pantalla blanca al cambiar el viewport en vivo; recargar al tamaño móvil vuelve a dibujar la aplicación. Las capturas de ese entorno requieren recarga y no certifican el redimensionamiento en vivo ni Safari en un dispositivo real. El verificador registra esta limitación y comprueba que las capturas guardadas tengan contenido visible.
+
+La [ejecución de GitHub Actions 43537938201](https://github.com/Gabino-RG/SnackUP-core/actions/runs/43537938201), sobre el cambio de aplicación `a6ff8e3`, aprobó **430 pruebas con PostgreSQL y Redis**, la construcción de la imagen Linux, dos pruebas del supervisor, seis pantallas en Chromium/WebKit y 42 comprobaciones HTTP/WebSocket antes y después de recuperar el servicio. La [verificación de Alumnos](https://github.com/Gabino-RG/SnackUP-core/actions/runs/43537938220) también aprobó; su código no cambió.
+
+La [comprobación P8 de 1.000 conexiones WSS](https://github.com/Gabino-RG/SnackUP-core/actions/runs/43537938409) aprobó sus nueve controles de entrega e integridad con el perfil base de CI. No utilizó el límite de 2 GiB y no mide 1.000 compras simultáneas.
+
 Se conservaron las cuentas, pedidos y archivos de la base local de demostración. Esta verificación funcional no mide capacidad de carga ni cambia el resultado anterior del ensayo de 2 CPU y 2 GiB.

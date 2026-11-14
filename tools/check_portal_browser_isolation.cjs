@@ -163,7 +163,10 @@ async function waitPanel(page, portal) {
   await semantics(page);
   detail(page, 'wait_authenticated_panel_controls');
   await page.getByRole('button', { name: 'Cerrar sesión', exact: true }).first().waitFor();
-  await page.getByRole('button', { name: portal.marker, exact: true }).first().waitFor();
+  // Both panels disable refresh until their actual initial data load ends.
+  // Presence alone would capture placeholders and zero-valued loading cards.
+  await page.getByRole('button', { name: portal.marker, exact: true, disabled: false }).first().waitFor();
+  assert.equal(await text(page, 'No se pudieron cargar los datos').count(), 0);
   assert.equal(await text(page, portal.heading).count(), 0);
   assert.equal(new URL(page.url()).origin, portal.origin);
 }
@@ -196,20 +199,96 @@ async function signOut(page, portal) {
   await text(page, portal.heading).waitFor();
 }
 
-async function screenshots(page, portal, engine, phase, result) {
+async function waitForPaint(page, size) {
+  await page.waitForFunction(({ width, height }) => {
+    const view = document.querySelector('flutter-view');
+    const bounds = view?.getBoundingClientRect();
+    return window.innerWidth === width && window.innerHeight === height && bounds &&
+      Math.round(bounds.width) === width && Math.round(bounds.height) === height;
+  }, size);
+  // Include real image/font fetches, which can finish after semantic controls.
+  await page.waitForLoadState('networkidle', { timeout: 15000 });
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  });
+}
+
+async function imageContent(page, png) {
+  // Inspect the produced PNG, not Flutter's semantic tree: after resize WebKit
+  // can expose the new controls while its compositor still returns white.
+  return page.evaluate(async data => {
+    const image = new Image();
+    image.src = 'data:image/png;base64,' + data;
+    await image.decode();
+    const canvas = document.createElement('canvas');
+    canvas.width = image.width;
+    canvas.height = image.height;
+    const context = canvas.getContext('2d', { willReadFrequently: true });
+    context.drawImage(image, 0, 0);
+    const rgba = context.getImageData(0, 0, image.width, image.height).data;
+    const colors = new Set();
+    let samples = 0, nonWhite = 0;
+    for (let y = 0; y < image.height; y += 4) {
+      for (let x = 0; x < image.width; x += 4) {
+        const offset = (y * image.width + x) * 4;
+        const r = rgba[offset], g = rgba[offset + 1], b = rgba[offset + 2];
+        colors.add((r >> 4) * 256 + (g >> 4) * 16 + (b >> 4));
+        if (Math.min(r, g, b) < 235) nonWhite++;
+        samples++;
+      }
+    }
+    const nonWhiteRatio = nonWhite / samples;
+    return { width: image.width, height: image.height, sampledPixels: samples,
+      nonWhiteRatio: Number(nonWhiteRatio.toFixed(4)), colorBins: colors.size,
+      nonBlank: nonWhiteRatio > 0.01 && colors.size >= 8 };
+  }, png.toString('base64'));
+}
+
+async function screenshots(page, portal, engine, phase, result, expectedIdentity) {
   await page.bringToFront();
+  const reloadOnResize = process.platform === 'win32' && engine === 'webkit';
+  if (reloadOnResize) {
+    // Native Windows WebKit was observed to produce a persistently white
+    // canvas after live resize. Fresh navigation at that size paints correctly.
+    // This verifies each target viewport, not live resize or real Safari.
+    result.visualLimitations = [{ code: 'LIVE_RESIZE_WHITE_RENDER', status: 'not_verified',
+      observed: 'Native Windows WebKit rendered white after live viewport resize',
+      workaround: 'Reload the same portal at each changed viewport and verify identity again',
+      attribution: 'Undetermined; observed in this test runtime', realSafariVerified: false }];
+  }
+  async function resize(size) {
+    const previous = page.viewportSize();
+    const changed = previous.width !== size.width || previous.height !== size.height;
+    await page.setViewportSize(size);
+    if (reloadOnResize && changed) {
+      if (phase === 'login') await openLogin(page, portal);
+      else await restoredIdentity(page, portal, expectedIdentity);
+    }
+    return reloadOnResize && changed;
+  }
   for (const [screen, size] of [['desktop', { width: 1440, height: 1000 }],
                               ['mobile', { width: 390, height: 844 }]]) {
-    await page.setViewportSize(size);
+    const viewportReloaded = await resize(size);
     await semantics(page);
     if (phase === 'login') await text(page, portal.heading).waitFor();
     else await waitPanel(page, portal);
     detail(page, 'capture_' + phase + '_' + screen);
     const file = `${engine}-${portal.key}-${phase}-${screen}.png`;
-    await page.screenshot({ path: path.join(output, file), animations: 'disabled' });
-    result.screenshots.push({ portal: portal.key, phase, viewport: size, file });
+    const deadline = Date.now() + 15000;
+    let png, pixels, attempts = 0;
+    do {
+      await waitForPaint(page, size);
+      png = await page.screenshot({ animations: 'disabled' });
+      pixels = await imageContent(page, png);
+      attempts++;
+    } while (!pixels.nonBlank && Date.now() < deadline);
+    assert.ok(pixels.nonBlank, 'The rendered screenshot must contain painted application content');
+    fs.writeFileSync(path.join(output, file), png);
+    result.screenshots.push({ portal: portal.key, phase, viewport: size, file,
+      dataLoadCompleted: phase === 'authenticated', viewportReloaded, captureAttempts: attempts, pixels });
   }
-  await page.setViewportSize({ width: 1440, height: 1000 });
+  await resize({ width: 1440, height: 1000 });
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
 }
 
@@ -307,7 +386,7 @@ async function checkEngine(engineName, engine) {
         // two pages still share this context and its untouched cookie jar.
         await openLogin(page, portal);
         identities.set(portal.key, await signIn(page, portal, portal.account, 200, () => loggedIn.add(portal.key)));
-        await screenshots(page, portal, engineName, 'authenticated', result);
+        await screenshots(page, portal, engineName, 'authenticated', result, identities.get(portal.key));
       });
     }
     await check('host_only_http_only_cookies_are_independent', () => cookieIsolation(context, result));
