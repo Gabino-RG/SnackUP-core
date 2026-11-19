@@ -1,3 +1,4 @@
+import '../firestore_list_support.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:audioplayers/audioplayers.dart';
@@ -91,7 +92,7 @@ class _OrderListTabState extends State<OrderListTab> {
 
   @override
   Widget build(BuildContext context) {
-    Query query = FirebaseFirestore.instance
+    final query = FirebaseFirestore.instance
         .collection('orders')
         .where('businessId', isEqualTo: widget.businessId)
         .where('status', isEqualTo: widget.status);
@@ -100,19 +101,13 @@ class _OrderListTabState extends State<OrderListTab> {
     String emptySubtitle = 'Los nuevos pedidos aparecerán aquí';
 
     if (widget.orderType == 'asap') {
-      query = query.where('scheduledPickupTime', isEqualTo: null)
-                   .orderBy('createdAt', descending: true);
       emptyMessage = 'No hay pedidos nuevos';
       emptySubtitle = 'Los pedidos para ahora aparecerán aquí';
 
     } else if (widget.orderType == 'scheduled') {
-      query = query.where('scheduledPickupTime', isGreaterThan: Timestamp.now())
-                   .orderBy('scheduledPickupTime', descending: false);
       emptyMessage = 'No hay pedidos programados';
       emptySubtitle = 'Los pedidos programados aparecerán aquí';
 
-    } else {
-      query = query.orderBy('createdAt', descending: true);
     }
 
     final Stream<QuerySnapshot> ordersStream = query.snapshots();
@@ -121,13 +116,21 @@ class _OrderListTabState extends State<OrderListTab> {
       stream: ordersStream,
       builder: (context, snapshot) {
         if (snapshot.hasError) {
-          return _buildErrorState();
+          return _buildErrorState(snapshot.error);
         }
         if (snapshot.connectionState == ConnectionState.waiting) {
           return _buildLoadingState();
         }
 
-        final docs = snapshot.data?.docs ?? [];
+        final docs = (snapshot.data?.docs ?? []).where((doc) {
+          final order = doc.data() as Map<String, dynamic>;
+          final scheduled = order['scheduledPickupTime'] is Timestamp;
+          return switch (widget.orderType) {
+            'scheduled' => scheduled,
+            'asap' => !scheduled,
+            _ => true,
+          };
+        }).toList()..sort(_compareOrders);
 
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
@@ -144,7 +147,24 @@ class _OrderListTabState extends State<OrderListTab> {
     );
   }
 
-  Widget _buildErrorState() {
+  int _compareOrders(QueryDocumentSnapshot a, QueryDocumentSnapshot b) {
+    final left = a.data() as Map<String, dynamic>;
+    final right = b.data() as Map<String, dynamic>;
+    int time(Map<String, dynamic> order, String field) {
+      final value = order[field];
+      return value is Timestamp ? value.microsecondsSinceEpoch : 0;
+    }
+
+    if (widget.orderType == 'scheduled') {
+      final when = time(left, 'scheduledPickupTime')
+          .compareTo(time(right, 'scheduledPickupTime'));
+      if (when != 0) return when;
+    }
+    final arrival = time(left, 'createdAt').compareTo(time(right, 'createdAt'));
+    return arrival == 0 ? a.id.compareTo(b.id) : arrival;
+  }
+
+  Widget _buildErrorState(Object? error) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24.0),
@@ -166,7 +186,7 @@ class _OrderListTabState extends State<OrderListTab> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Verifica tu conexión e intenta nuevamente',
+              firestoreListError(error),
               style: AppText.body.copyWith(
                 color: AppColors.textSecondary,
               ),

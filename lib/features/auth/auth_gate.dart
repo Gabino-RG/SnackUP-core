@@ -7,16 +7,23 @@ import '../home/user_dashboard_screen.dart'; // <-- ¡USAMOS EL NUEVO DASHBOARD!
 import '../home/business_home_screen.dart';
 
 // --- 1. AuthWrapper (Modificado) ---
-class AuthWrapper extends StatelessWidget {
+class AuthWrapper extends StatefulWidget {
   const AuthWrapper({super.key});
+
+  @override
+  State<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends State<AuthWrapper> {
+  late final _authState = FirebaseAuth.instance.authStateChanges();
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
+      stream: _authState,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const LoadingScreen();
+          return const _StartupSplash();
         }
         if (snapshot.hasData) {
           return RoleGate(userId: snapshot.data!.uid);
@@ -66,14 +73,44 @@ class RoleGate extends StatelessWidget {
   }
 }
 
-// --- Pantalla de Carga (Sin cambios) ---
 class LoadingScreen extends StatelessWidget {
   const LoadingScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     return const Scaffold(
-      body: Center(
-        child: CircularProgressIndicator(),
+      body: Center(child: CircularProgressIndicator()),
+    );
+  }
+}
+
+class _StartupSplash extends StatelessWidget {
+  const _StartupSplash();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: DecoratedBox(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF4A54DF), Color(0xFFC942BA)],
+          ),
+        ),
+        child: Center(
+          child: FractionallySizedBox(
+            widthFactor: 0.6,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 320, maxHeight: 320),
+              child: Image.asset(
+                'web/logo_carga.png',
+                fit: BoxFit.contain,
+                semanticLabel: 'Cargando SnackUp',
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

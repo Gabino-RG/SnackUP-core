@@ -50,7 +50,10 @@ class _SearchScreenState extends State<SearchScreen> {
             .get();
         
         setState(() {
-          _results = snapshot.docs;
+          _results = snapshot.docs.where((doc) {
+            final stock = doc.data()['stock'];
+            return stock is int && stock > 0;
+          }).toList();
         });
         
       } catch (e) {

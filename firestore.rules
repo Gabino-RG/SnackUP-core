@@ -1,0 +1,160 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function hasRole(role) {
+      return signedIn()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
+    }
+
+    function ownsBusiness(id) {
+      return hasRole('business')
+        && get(/databases/$(database)/documents/businesses/$(id)).data.ownerId == request.auth.uid;
+    }
+
+    function nonBlank(text, maxLength) {
+      return text is string && text.size() <= maxLength
+        && text.matches('[\\s\\S]*[^\\s][\\s\\S]*');
+    }
+
+    function validProduct(product) {
+      return nonBlank(product.name, 120) && nonBlank(product.category, 80)
+        && product.price is number && product.price > 0 && product.price <= 1000000
+        && product.stock is int && product.stock >= 0 && product.stock <= 1000000
+        && product.isAvailable is bool && (!product.isAvailable || product.stock > 0)
+        && product.isFeatured is bool;
+    }
+
+    function validItem(item, businessId) {
+      let product = get(/databases/$(database)/documents/products/$(item.productId)).data;
+      return item.productId is string && product.businessId == businessId
+        && product.isAvailable == true && item.quantity is int && item.quantity > 0
+        && item.quantity <= product.stock && item.price == product.price
+        && item.name == product.name && item.notes is string;
+    }
+
+    function lineTotal(item) {
+      return item.price * item.quantity;
+    }
+
+    function distinctProducts(items) {
+      let ids = [items[0].productId]
+        + (items.size() > 1 ? [items[1].productId] : [])
+        + (items.size() > 2 ? [items[2].productId] : [])
+        + (items.size() > 3 ? [items[3].productId] : [])
+        + (items.size() > 4 ? [items[4].productId] : [])
+        + (items.size() > 5 ? [items[5].productId] : [])
+        + (items.size() > 6 ? [items[6].productId] : [])
+        + (items.size() > 7 ? [items[7].productId] : []);
+      return ids.toSet().size() == items.size();
+    }
+
+    function validTotal(order, items) {
+      let expected = lineTotal(items[0])
+        + (items.size() > 1 ? lineTotal(items[1]) : 0)
+        + (items.size() > 2 ? lineTotal(items[2]) : 0)
+        + (items.size() > 3 ? lineTotal(items[3]) : 0)
+        + (items.size() > 4 ? lineTotal(items[4]) : 0)
+        + (items.size() > 5 ? lineTotal(items[5]) : 0)
+        + (items.size() > 6 ? lineTotal(items[6]) : 0)
+        + (items.size() > 7 ? lineTotal(items[7]) : 0);
+      return order.totalPrice is number
+        && order.totalPrice > expected - 0.001 && order.totalPrice < expected + 0.001;
+    }
+
+    function validCheckout(order) {
+      let items = order.items;
+      return items is list && items.size() >= 1 && items.size() <= 8
+        && (items.size() <= 0 || validItem(items[0], order.businessId))
+        && (items.size() <= 1 || validItem(items[1], order.businessId))
+        && (items.size() <= 2 || validItem(items[2], order.businessId))
+        && (items.size() <= 3 || validItem(items[3], order.businessId))
+        && (items.size() <= 4 || validItem(items[4], order.businessId))
+        && (items.size() <= 5 || validItem(items[5], order.businessId))
+        && (items.size() <= 6 || validItem(items[6], order.businessId))
+        && (items.size() <= 7 || validItem(items[7], order.businessId))
+        && distinctProducts(items) && validTotal(order, items);
+    }
+
+    function validStatusChange(oldOrder, newOrder) {
+      return newOrder.diff(oldOrder).affectedKeys()
+          .hasOnly(['status', 'statusUpdatedAt', 'cancellationReason'])
+        && newOrder.statusUpdatedAt == request.time
+        && (
+          (newOrder.status == 'cancelled' && oldOrder.status in ['pending', 'preparing']
+            && nonBlank(newOrder.cancellationReason, 250))
+          || (!newOrder.diff(oldOrder).affectedKeys().hasAny(['cancellationReason'])
+            && ((oldOrder.status == 'pending' && newOrder.status == 'preparing')
+              || (oldOrder.status == 'preparing' && newOrder.status == 'ready')
+              || (oldOrder.status == 'ready' && newOrder.status == 'completed')))
+        );
+    }
+
+    match /users/{uid} {
+      allow get: if isSelf(uid);
+      allow create: if isSelf(uid) && request.resource.data.role == 'user'
+        && request.auth.token.email.matches('[^@]+@utsjr[.]edu[.]mx');
+      allow update: if isSelf(uid) && request.resource.data.role == resource.data.role;
+
+      match /{collection}/{docId} {
+        allow read, write: if isSelf(uid) && collection in ['cart', 'favorites'];
+      }
+    }
+
+    match /businesses/{id} {
+      allow read: if signedIn();
+      allow update: if ownsBusiness(id)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isOpen'])
+        && request.resource.data.isOpen is bool;
+    }
+
+    match /products/{id} {
+      allow read: if signedIn()
+        && (resource.data.isAvailable == true || ownsBusiness(resource.data.businessId));
+      allow create: if ownsBusiness(request.resource.data.businessId)
+        && validProduct(request.resource.data);
+      allow update: if ownsBusiness(resource.data.businessId)
+        && request.resource.data.businessId == resource.data.businessId
+        && validProduct(request.resource.data);
+    }
+
+    match /orders/{id} {
+      allow read: if isSelf(resource.data.userId) || ownsBusiness(resource.data.businessId);
+      allow create: if hasRole('user')
+        && isSelf(request.resource.data.userId)
+        && request.resource.data.keys().hasOnly([
+          'userId', 'businessId', 'userDisplayName', 'userNumeroDeControl',
+          'status', 'totalPrice', 'paymentMethod', 'createdAt',
+          'scheduledPickupTime', 'items'
+        ])
+        && request.resource.data.status == 'pending'
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.paymentMethod in ['Efectivo', 'Tarjeta', 'Vale']
+        && (request.resource.data.scheduledPickupTime == null
+          || request.resource.data.scheduledPickupTime is timestamp)
+        && get(/databases/$(database)/documents/businesses/$(request.resource.data.businessId)).data.isOpen == true
+        && validCheckout(request.resource.data);
+      allow update: if ownsBusiness(resource.data.businessId)
+        && validStatusChange(resource.data, request.resource.data);
+    }
+
+    match /reviews/{id} {
+      function validReview(review) {
+        let order = get(/databases/$(database)/documents/orders/$(review.orderId)).data;
+        return order.userId == request.auth.uid && order.businessId == review.businessId
+          && order.status == 'completed' && review.rating is number
+          && review.rating >= 1 && review.rating <= 5;
+      }
+      allow read: if signedIn();
+      allow create: if hasRole('user') && isSelf(request.resource.data.userId)
+        && validReview(request.resource.data);
+    }
+  }
+}

@@ -18,13 +18,6 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
   int _selectedIndex = 0;
   final PageController _pageController = PageController();
 
-  static const List<Widget> _widgetOptions = <Widget>[
-    UserHomeScreen(),       // 0: Inicio
-    SearchScreen(),         // 1: Buscar
-    CartScreen(),           // 2: Carrito
-    ProfileOrdersScreen(),  // 3: Pedidos
-  ];
-
   final List<String> _appBarTitles = [
     'SnackUp UTSJR',
     'Buscar Comida',
@@ -75,7 +68,12 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
         controller: _pageController,
         physics: const NeverScrollableScrollPhysics(), // Desactiva scroll horizontal
         onPageChanged: _onPageChanged,
-        children: _widgetOptions,
+        children: [
+          const UserHomeScreen(),
+          const SearchScreen(),
+          CartScreen(onContinueShopping: () => _onItemTapped(0)),
+          const ProfileOrdersScreen(),
+        ],
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(

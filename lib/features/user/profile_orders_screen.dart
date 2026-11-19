@@ -444,6 +444,8 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
                       color: AppColors.textSecondary,
                     ),
                   ),
+                  if (!isCompleted && order['cancellationReason'] is String)
+                    Text('Motivo: ${order['cancellationReason']}'),
                   if (createdAt != null) ...[
                     const SizedBox(height: 4),
                     Text(

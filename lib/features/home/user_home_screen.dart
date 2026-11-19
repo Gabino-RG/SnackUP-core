@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../user/menu_screen.dart';
+import 'campus_weather_card.dart';
 import 'package:snackup/theme/app_colors.dart';
 import 'package:snackup/theme/app_text.dart';
 
@@ -18,6 +19,7 @@ class UserHomeScreen extends StatelessWidget {
           children: [
             // HEADER DE BIENVENIDA
             _buildWelcomeHeader(),
+            const CampusWeatherCard(),
             
             const SizedBox(height: 8),
 
@@ -186,7 +188,11 @@ class UserHomeScreen extends StatelessWidget {
             return _buildEmptyPromotions();
           }
 
-          final docs = snapshot.data!.docs;
+          final docs = snapshot.data!.docs.where((doc) {
+            final stock = (doc.data() as Map<String, dynamic>)['stock'];
+            return stock is int && stock > 0;
+          }).toList();
+          if (docs.isEmpty) return const SizedBox.shrink();
           
           return PageView.builder(
             itemCount: docs.length,

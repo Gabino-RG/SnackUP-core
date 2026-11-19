@@ -158,7 +158,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         'description': _descriptionController.text.trim(),
         'price': price,
         'stock': stock,
-        'isAvailable': _isAvailable,
+        'isAvailable': _isAvailable && stock > 0,
         'isFeatured': _isFeatured,
         'category': _categoryController.text.trim().toUpperCase(),
         'imageUrl': imageUrl,
@@ -433,7 +433,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
           controller: _nameController,
           label: 'Nombre del Producto',
           hintText: 'Ej: Taco al Pastor',
-          validator: (value) => value == null || value.isEmpty
+          validator: (value) => value == null || value.trim().isEmpty || value.trim().length > 120
               ? 'El nombre es obligatorio'
               : null,
         ),
@@ -445,7 +445,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
           controller: _categoryController,
           label: 'Categoría',
           hintText: 'Ej: TACOS, BEBIDAS, POSTRES',
-          validator: (value) => value == null || value.isEmpty
+          validator: (value) => value == null || value.trim().isEmpty || value.trim().length > 80
               ? 'La categoría es obligatoria'
               : null,
         ),
@@ -476,7 +476,8 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                     return 'El precio es obligatorio';
                   }
                   final price = double.tryParse(value);
-                  if (price == null || price <= 0) {
+                  if (price == null || !price.isFinite || price <= 0 || price > 1000000 ||
+                      !RegExp(r'^\d+(\.\d{1,2})?$').hasMatch(value.trim())) {
                     return 'Precio inválido';
                   }
                   return null;
@@ -495,7 +496,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                     return 'El stock es obligatorio';
                   }
                   final stock = int.tryParse(value);
-                  if (stock == null || stock < 0) {
+                  if (stock == null || stock < 0 || stock > 1000000) {
                     return 'Stock inválido';
                   }
                   return null;

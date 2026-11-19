@@ -65,12 +65,13 @@ class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
     final query = FirebaseFirestore.instance
         .collection('orders')
         .where('businessId', isEqualTo: businessId)
-        .where('status', isEqualTo: 'pending')
-        .where('scheduledPickupTime', isEqualTo: null);
+        .where('status', isEqualTo: 'pending');
 
     _newOrderSubscription = query.snapshots().listen(
       (snapshot) {
-        final currentOrderCount = snapshot.docs.length;
+        final currentOrderCount = snapshot.docs
+            .where((doc) => doc.data()['scheduledPickupTime'] is! Timestamp)
+            .length;
         _pendingOrdersCount = currentOrderCount; // Actualizar contador
 
         if (_previousNewOrderCount != -1 && 

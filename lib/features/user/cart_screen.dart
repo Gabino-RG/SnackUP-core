@@ -5,7 +5,9 @@ import 'package:snackup/theme/app_colors.dart';
 import 'package:snackup/theme/app_text.dart';
 
 class CartScreen extends StatefulWidget {
-  const CartScreen({super.key});
+  const CartScreen({super.key, required this.onContinueShopping});
+
+  final VoidCallback onContinueShopping;
 
   @override
   State<CartScreen> createState() => _CartScreenState();
@@ -92,6 +94,11 @@ class _CartScreenState extends State<CartScreen> {
       return;
     }
 
+    if (cartDocs.length > 8) {
+      _showError('Puedes pedir hasta 8 productos distintos por pedido.');
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
@@ -111,16 +118,35 @@ class _CartScreenState extends State<CartScreen> {
       }
       final userData = userDoc.data()!;
       
-      final List<Map<String, dynamic>> orderItems = cartDocs.map((doc) {
+      final firestore = FirebaseFirestore.instance;
+      final products = await Future.wait(cartDocs.map((doc) =>
+          firestore.collection('products').doc(doc.id).get(
+            const GetOptions(source: Source.server),
+          )));
+      final orderItems = <Map<String, dynamic>>[];
+      for (final (index, doc) in cartDocs.indexed) {
         final data = doc.data() as Map<String, dynamic>;
-        return {
-          'productId': data['productId'],
-          'name': data['name'],
-          'quantity': data['quantity'],
-          'price': data['price'],
+        final product = products[index].data();
+        final quantity = data['quantity'];
+        final stock = product?['stock'];
+        if (product == null || product['isAvailable'] != true ||
+            product['businessId'] != businessId || stock is! int ||
+            quantity is! int || quantity < 1 || quantity > stock) {
+          _showError('Revisa las cantidades y el stock antes de hacer tu pedido.');
+          return;
+        }
+        if (product['price'] != data['price']) {
+          _showError('Cambió un precio. Quita y vuelve a añadir el producto.');
+          return;
+        }
+        orderItems.add({
+          'productId': doc.id,
+          'name': product['name'],
+          'quantity': quantity,
+          'price': product['price'],
           'notes': data['notes'] ?? '',
-        };
-      }).toList();
+        });
+      }
 
       Timestamp? pickupTimestamp;
       if (_selectedTime != null) {
@@ -157,6 +183,10 @@ class _CartScreenState extends State<CartScreen> {
 
       _showSuccess('¡Pedido realizado con éxito!');
 
+    } on FirebaseException catch (error) {
+      _showError(error.code == 'permission-denied'
+          ? 'Revisa la disponibilidad de los productos y que la cafetería esté abierta.'
+          : 'No se pudo completar el pedido. Revisa tu conexión.');
     } catch (e) {
       _showError('Error al crear el pedido: ${e.toString()}');
     } finally {
@@ -227,19 +257,24 @@ class _CartScreenState extends State<CartScreen> {
             totalPrice += (item['price'] ?? 0.0) * (item['quantity'] ?? 1);
           }
 
-          return Column(
-            children: [
-              // HEADER INFORMATIVO
-              _buildCartHeader(cartDocs.length),
-              
-              // LISTA DE ITEMS
-              Expanded(
-                child: _buildCartItems(cartDocs),
-              ),
-              
-              // SECCIÓN DE CHECKOUT
-              _buildCheckoutArea(totalPrice, cartDocs),
-            ],
+          return ListView.builder(
+            itemCount: cartDocs.length + 3,
+            itemBuilder: (context, index) {
+              if (index == 0) return _buildCartHeader(cartDocs.length);
+              if (index <= cartDocs.length) {
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  child: _buildCartItem(cartDocs[index - 1]),
+                );
+              }
+              if (index == cartDocs.length + 1) {
+                return Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: _buildContinueShoppingButton(),
+                );
+              }
+              return _buildCheckoutArea(totalPrice, cartDocs);
+            },
           );
         },
       ),
@@ -276,7 +311,7 @@ class _CartScreenState extends State<CartScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Mi Carrito',
+                  'Tu pedido',
                   style: AppText.h3.copyWith(
                     color: AppColors.textPrimary,
                   ),
@@ -296,14 +331,11 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  Widget _buildCartItems(List<QueryDocumentSnapshot> cartDocs) {
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: cartDocs.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 12),
-      itemBuilder: (context, index) {
-        return _buildCartItem(cartDocs[index]);
-      },
+  Widget _buildContinueShoppingButton() {
+    return OutlinedButton.icon(
+      onPressed: _isLoading ? null : widget.onContinueShopping,
+      icon: const Icon(Icons.restaurant_menu_rounded),
+      label: const Text('Seguir pidiendo'),
     );
   }
 
@@ -696,7 +728,7 @@ class _CartScreenState extends State<CartScreen> {
 
   Widget _buildEmptyState() {
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(32.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -730,6 +762,8 @@ class _CartScreenState extends State<CartScreen> {
               ),
               textAlign: TextAlign.center,
             ),
+            const SizedBox(height: 20),
+            _buildContinueShoppingButton(),
           ],
         ),
       ),

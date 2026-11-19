@@ -18,7 +18,7 @@ class _ViewOrdersScreenState extends State<ViewOrdersScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
   }
 
   @override
@@ -69,10 +69,11 @@ class _ViewOrdersScreenState extends State<ViewOrdersScreen>
               ),
               isScrollable: true,
               tabs: [
-                _buildTab('Programados', Icons.schedule_rounded),
                 _buildTab('Nuevos', Icons.access_time_rounded),
+                _buildTab('Programados', Icons.schedule_rounded),
                 _buildTab('Preparando', Icons.restaurant_rounded),
                 _buildTab('Listos', Icons.check_circle_rounded),
+                _buildTab('Cancelados', Icons.cancel_outlined),
               ],
             ),
           ),
@@ -83,16 +84,7 @@ class _ViewOrdersScreenState extends State<ViewOrdersScreen>
         child: TabBarView(
           controller: _tabController,
           children: [
-            // Pestaña 1: Pedidos Programados
-            _buildTabContent(
-              status: 'pending',
-              orderType: 'scheduled',
-              icon: Icons.schedule_rounded,
-              title: 'Pedidos Programados',
-              description: 'Pedidos agendados para recoger en el futuro',
-            ),
-
-            // Pestaña 2: Pedidos Nuevos (ASAP)
+            // Pestaña 1: Pedidos Nuevos (ASAP)
             _buildTabContent(
               status: 'pending',
               orderType: 'asap',
@@ -100,6 +92,15 @@ class _ViewOrdersScreenState extends State<ViewOrdersScreen>
               title: 'Pedidos Nuevos',
               description: 'Pedidos para preparar inmediatamente',
               isUrgent: true,
+            ),
+
+            // Pestaña 2: Pedidos Programados
+            _buildTabContent(
+              status: 'pending',
+              orderType: 'scheduled',
+              icon: Icons.schedule_rounded,
+              title: 'Pedidos Programados',
+              description: 'Pedidos ordenados por horario de recogida',
             ),
 
             // Pestaña 3: Pedidos en Preparación
@@ -118,6 +119,13 @@ class _ViewOrdersScreenState extends State<ViewOrdersScreen>
               icon: Icons.check_circle_rounded,
               title: 'Listos para Recoger',
               description: 'Pedidos listos para entrega',
+            ),
+            _buildTabContent(
+              status: 'cancelled',
+              orderType: 'all',
+              icon: Icons.cancel_outlined,
+              title: 'Pedidos cancelados',
+              description: 'Consulta el motivo registrado en cada pedido',
             ),
           ],
         ),

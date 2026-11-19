@@ -104,3 +104,23 @@ lib/
 <p align="center">
 Desarrollado con ❤️ por el equipo de <strong>SnackUP</strong>
 </p>
+
+## Sprint 9 · Panel Negocio y clima
+
+- Las cuentas de negocio se asignan desde Firebase con el rol `business` en
+  `users/{uid}` y la propiedad `ownerId` en `businesses/{businessId}`.
+- En checkout se validan stock, precio y total con los datos de Firestore. El
+  límite es de ocho productos distintos por pedido para respetar el límite de
+  lecturas de Firestore Rules. El stock sigue siendo administrado por Negocio.
+- Inicio sugiere un platillo disponible del menú de negocios abiertos, con preferencia según el clima. Open-Meteo recibe las coordenadas
+  fijas del campus y la selección de variables climáticas. El menú carga por
+  separado. Si el servicio falla, la sugerencia usa el último dato válido de
+  la sesión durante una hora o muestra una sugerencia general.
+- Antes de publicar las reglas e índices, prueba los dos roles en un proyecto
+  de Firebase de prueba. La carpeta incluye el archivo de reglas y los índices.
+
+Pruebas de permisos en el emulador, con Firebase CLI, Java y Node.js 22:
+
+```powershell
+firebase emulators:exec --only firestore --project demo-snackup-sprint9 "node test/firestore_sprint9.mjs"
+```

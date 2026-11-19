@@ -1,3 +1,4 @@
+import '../firestore_list_support.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'add_edit_product_screen.dart';
@@ -13,8 +14,6 @@ class ManageMenuScreen extends StatelessWidget {
     final Stream<QuerySnapshot> productsStream = FirebaseFirestore.instance
         .collection('products')
         .where('businessId', isEqualTo: businessId)
-        .orderBy('category')
-        .orderBy('name')
         .snapshots();
 
     return Scaffold(
@@ -34,7 +33,7 @@ class ManageMenuScreen extends StatelessWidget {
         stream: productsStream,
         builder: (context, snapshot) {
           if (snapshot.hasError) {
-            return _buildErrorState('Error al cargar productos');
+            return _buildErrorState('Error al cargar productos', snapshot.error);
           }
           
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -45,7 +44,7 @@ class ManageMenuScreen extends StatelessWidget {
             return _buildEmptyState(context);
           }
 
-          final docs = snapshot.data!.docs;
+          final docs = snapshot.data!.docs.toList()..sort(compareMenuProducts);
           return _buildProductList(context, docs);
         },
       ),
@@ -65,7 +64,7 @@ class ManageMenuScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildErrorState(String message) {
+  Widget _buildErrorState(String message, Object? error) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24.0),
@@ -87,7 +86,7 @@ class ManageMenuScreen extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Verifica tu conexión e intenta nuevamente',
+              firestoreListError(error),
               style: AppText.notes.copyWith(
                 color: AppColors.textSecondary.withOpacity(0.7),
               ),

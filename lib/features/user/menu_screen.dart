@@ -1,3 +1,4 @@
+import '../firestore_list_support.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'product_detail_screen.dart';
@@ -20,8 +21,6 @@ class MenuScreen extends StatelessWidget {
         .collection('products')
         .where('businessId', isEqualTo: businessId)
         .where('isAvailable', isEqualTo: true)
-        .orderBy('category')
-        .orderBy('name')
         .snapshots();
 
     return Scaffold(
@@ -41,7 +40,7 @@ class MenuScreen extends StatelessWidget {
         stream: productsStream,
         builder: (context, snapshot) {
           if (snapshot.hasError) {
-            return _buildErrorState();
+            return _buildErrorState(snapshot.error);
           }
           
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -52,7 +51,11 @@ class MenuScreen extends StatelessWidget {
             return _buildEmptyState();
           }
 
-          final docs = snapshot.data!.docs;
+          final docs = snapshot.data!.docs.where((doc) {
+            final stock = (doc.data() as Map<String, dynamic>)['stock'];
+            return stock is int && stock > 0;
+          }).toList()..sort(compareMenuProducts);
+          if (docs.isEmpty) return _buildEmptyState();
           
           return _buildMenuList(docs);
         },
@@ -380,7 +383,7 @@ class MenuScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildErrorState() {
+  Widget _buildErrorState(Object? error) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24.0),
@@ -402,7 +405,7 @@ class MenuScreen extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Verifica tu conexión e intenta nuevamente',
+              firestoreListError(error),
               style: AppText.body.copyWith(
                 color: AppColors.textSecondary,
               ),
