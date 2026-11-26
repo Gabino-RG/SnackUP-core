@@ -131,12 +131,42 @@ class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
           }
 
           for (final order in newCancellations) {
-            final customer = order.data()['userDisplayName'];
-            final message = customer is String && customer.trim().isNotEmpty
-                ? '$customer canceló su pedido.'
-                : 'Un cliente canceló su pedido.';
+            final data = order.data();
+            final customer = data['userDisplayName'];
+            final customerName = customer is String && customer.trim().isNotEmpty
+                ? customer.trim()
+                : 'Un cliente';
+            final orderNumber = order.id.length > 8
+                ? order.id.substring(0, 8)
+                : order.id;
+            final items = data['items'];
+            final names = <String>[];
+            if (items is List) {
+              for (final item in items.whereType<Map>()) {
+                final name = item['name'];
+                if (name is! String || name.trim().isEmpty) continue;
+                final quantity = item['quantity'];
+                names.add(quantity is int && quantity > 1
+                    ? '$quantity× ${name.trim()}'
+                    : name.trim());
+              }
+            }
+            final summary = names.take(2).join(', ');
+            final extra = names.length > 2 ? ' y ${names.length - 2} más' : '';
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(message)),
+              SnackBar(
+                duration: const Duration(seconds: 10),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('$customerName canceló el pedido #$orderNumber.'),
+                    if (summary.isNotEmpty)
+                      Text('$summary$extra', maxLines: 2,
+                          overflow: TextOverflow.ellipsis),
+                  ],
+                ),
+              ),
             );
           }
         }, onError: (Object error) {
