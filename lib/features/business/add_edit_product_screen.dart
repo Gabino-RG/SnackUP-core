@@ -1,11 +1,7 @@
-import 'dart:async';
-
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:snackup/theme/app_colors.dart';
 import 'package:snackup/theme/app_text.dart';
 
@@ -31,19 +27,12 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
   final _stockController = TextEditingController();
   final _categoryController = TextEditingController();
 
-  static const _uploadTimeout = Duration(seconds: 45);
-  static const _imageReadTimeout = Duration(seconds: 15);
-  static const _maxImageBytes = 5 * 1024 * 1024;
-
-  Uint8List? _imageBytes;
-  String? _imageContentType;
-  bool _isPickingImage = false;
+  final _imageUrlController = TextEditingController();
   String? _existingImageUrl;
   bool _isFeatured = false;
   bool _isAvailable = true;
   bool _isLoading = false;
   bool _isEditing = false;
-  double _uploadProgress = 0;
 
   @override
   void initState() {
@@ -73,7 +62,8 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         setState(() {
           _isFeatured = data['isFeatured'] ?? false;
           _isAvailable = data['isAvailable'] ?? true;
-          _existingImageUrl = data['imageUrl'];
+          _existingImageUrl = data['imageUrl'] as String?;
+          _imageUrlController.text = _existingImageUrl ?? '';
         });
       }
     } catch (e) {
@@ -82,107 +72,15 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     if (mounted) setState(() => _isLoading = false);
   }
 
-  Future<void> _pickImage() async {
-    if (_isLoading || _isPickingImage) return;
-    setState(() => _isPickingImage = true);
-
-    try {
-      final file = await ImagePicker().pickImage(
-        source: ImageSource.gallery,
-        imageQuality: kIsWeb ? null : 70,
-        maxWidth: kIsWeb ? null : 800,
-        maxHeight: kIsWeb ? null : 800,
-      );
-      if (!mounted || file == null) return;
-
-      final contentType = switch (file.name.split('.').last.toLowerCase()) {
-        'jpg' || 'jpeg' => 'image/jpeg',
-        'png' => 'image/png',
-        'webp' => 'image/webp',
-        'gif' => 'image/gif',
-        _ => null,
-      };
-      if (contentType == null) {
-        _showError('Selecciona una imagen JPG, PNG, WebP o GIF.');
-        return;
-      }
-      final length = await file.length().timeout(_imageReadTimeout);
-      if (length == 0 || length > _maxImageBytes) {
-        _showError('Selecciona una imagen de hasta 5 MB.');
-        return;
-      }
-
-      final bytes = await file.readAsBytes().timeout(_imageReadTimeout);
-      if (!mounted) return;
-      setState(() {
-        _imageBytes = bytes;
-        _imageContentType = contentType;
-      });
-    } catch (error) {
-      _showError('No se pudo abrir la imagen: $error');
-    } finally {
-      if (mounted) setState(() => _isPickingImage = false);
-    }
-  }
-
-  Future<String> _uploadImage(Uint8List bytes, String contentType) async {
-    final imageId = FirebaseFirestore.instance.collection('products').doc().id;
-    final storageRef = FirebaseStorage.instance
-        .ref('product_images/${widget.businessId}/$imageId');
-    final task = storageRef.putData(
-      bytes,
-      SettableMetadata(contentType: contentType),
-    );
-    final progress = task.snapshotEvents.listen((snapshot) {
-      if (mounted && snapshot.totalBytes > 0) {
-        setState(() {
-          _uploadProgress = snapshot.bytesTransferred / snapshot.totalBytes;
-        });
-      }
-    }, onError: (Object _) {
-      // El error se maneja al esperar el resultado de la carga.
-    });
-
-    try {
-      final snapshot = await task.timeout(_uploadTimeout);
-      return await snapshot.ref.getDownloadURL().timeout(_imageReadTimeout);
-    } on TimeoutException {
-      unawaited(task.cancel().then<void>((_) {}, onError: (Object _) {}));
-      rethrow;
-    } finally {
-      await progress.cancel();
-    }
-  }
-
   Future<void> _saveProduct() async {
-    if (_isLoading || _isPickingImage || !_formKey.currentState!.validate()) {
+    if (_isLoading || !_formKey.currentState!.validate()) {
       return;
     }
 
     setState(() => _isLoading = true);
 
     try {
-      var imageUrl = _existingImageUrl;
-      final bytes = _imageBytes;
-      if (bytes != null) {
-        try {
-          imageUrl = await _uploadImage(bytes, _imageContentType!);
-        } on TimeoutException {
-          _showError('La foto tardó demasiado en subir. Puedes volver a intentar.');
-          return;
-        } on FirebaseException catch (error) {
-          _showError(switch (error.code) {
-            'unauthorized' || 'permission-denied' =>
-              'Firebase Storage rechazó la foto. Revisa los permisos del negocio.',
-            'bucket-not-found' || 'no-default-bucket' =>
-              'El almacenamiento de imágenes no está configurado en Firebase.',
-            _ => 'No se pudo subir la foto (${error.code}). Intenta de nuevo.',
-          });
-          return;
-        }
-        if (!mounted) return;
-      }
-
+      final imageUrl = _imageUrlController.text.trim();
       final price = double.tryParse(_priceController.text) ?? 0.0;
       final stock = int.tryParse(_stockController.text) ?? 0;
 
@@ -195,7 +93,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         'isAvailable': _isAvailable && stock > 0,
         'isFeatured': _isFeatured,
         'category': _categoryController.text.trim().toUpperCase(),
-        'imageUrl': imageUrl,
+        'imageUrl': imageUrl.isEmpty ? null : imageUrl,
         'updatedAt': FieldValue.serverTimestamp(),
         'name_searchable': _nameController.text.trim().toLowerCase(),
       };
@@ -219,7 +117,6 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _uploadProgress = 0;
         });
       }
     }
@@ -253,7 +150,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         foregroundColor: AppColors.textPrimary,
         actions: _isEditing ? [_buildDeleteButton()] : null,
       ),
-      body: _isLoading && _imageBytes == null
+      body: _isLoading
           ? const Center(
               child: CircularProgressIndicator(
                 color: AppColors.primary,
@@ -302,33 +199,9 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                     const SizedBox(height: 24),
 
                     // SELECTOR DE IMAGEN MEJORADO
-                    _buildImagePicker(),
+                    _buildImageUrlField(),
 
                     const SizedBox(height: 16),
-
-                    // BARRA DE PROGRESO DE SUBIDA
-                    if (_isLoading && _imageBytes != null) ...[
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Subiendo imagen... ${(_uploadProgress * 100).toStringAsFixed(0)}%',
-                            style: AppText.notes.copyWith(
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          LinearProgressIndicator(
-                            value: _uploadProgress > 0 ? _uploadProgress : null,
-                            minHeight: 6,
-                            borderRadius: BorderRadius.circular(3),
-                            color: AppColors.primary,
-                            backgroundColor: AppColors.componentBase,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                    ],
 
                     // FORMULARIO MEJORADO
                     _buildFormFields(),
@@ -344,120 +217,59 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     );
   }
 
-  Widget _buildImagePicker() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Imagen del Producto',
-          style: AppText.body.copyWith(
-            fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        const SizedBox(height: 8),
-        GestureDetector(
-          onTap: _isLoading || _isPickingImage ? null : _pickImage,
-          child: Container(
-            height: 180,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: AppColors.componentBase,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: AppColors.borders,
-                width: 2,
-              ),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(14),
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  // CONTENIDO DE LA IMAGEN
-                  _buildImageContent(),
-                  
-                  // OVERLAY PARA SELECCIONAR
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.3),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Center(
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.9),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          _imageBytes != null || _existingImageUrl != null
-                              ? Icons.camera_alt_rounded
-                              : Icons.add_photo_alternate_rounded,
-                          color: AppColors.primary,
-                          size: 30,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Toca para seleccionar una imagen',
-          style: AppText.notes.copyWith(
-            color: AppColors.textSecondary,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildImageContent() {
-    if (_imageBytes != null) {
-      return Image.memory(_imageBytes!, fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => const Center(child: Icon(Icons.broken_image_outlined)),
-      );
-    } else if (_existingImageUrl != null) {
-      return Image.network(
-        _existingImageUrl!,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => _buildPlaceholder(),
-        loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null) return child;
-          return Center(
-            child: CircularProgressIndicator(
-              value: loadingProgress.expectedTotalBytes != null
-                  ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                  : null,
-              color: AppColors.primary,
-            ),
-          );
-        },
-      );
-    } else {
-      return _buildPlaceholder();
+  String? _validateImageUrl(String? value) {
+    final url = value?.trim() ?? '';
+    if (url.isEmpty || url == _existingImageUrl) return null;
+    final uri = Uri.tryParse(url);
+    if (uri == null ||
+        uri.scheme != 'https' ||
+        uri.host.isEmpty ||
+        uri.userInfo.isNotEmpty ||
+        RegExp(r'\s').hasMatch(url)) {
+      return 'Pega una URL HTTPS válida de la imagen.';
     }
+    return null;
   }
 
-  Widget _buildPlaceholder() {
+  Widget _buildImageUrlField() {
     return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Icon(
-          Icons.fastfood_rounded,
-          size: 60,
-          color: AppColors.textSecondary.withOpacity(0.5),
+        TextFormField(
+          controller: _imageUrlController,
+          keyboardType: TextInputType.url,
+          autocorrect: false,
+          maxLength: 2048,
+          decoration: const InputDecoration(
+            labelText: 'URL de la foto (opcional)',
+            hintText: 'https://ejemplo.com/foto.jpg',
+            helperText: 'Usa un enlace directo que abra sin iniciar sesión.',
+            prefixIcon: Icon(Icons.link),
+          ),
+          validator: _validateImageUrl,
         ),
         const SizedBox(height: 8),
-        Text(
-          'Agregar imagen',
-          style: AppText.notes.copyWith(
-            color: AppColors.textSecondary,
-          ),
+        ValueListenableBuilder<TextEditingValue>(
+          valueListenable: _imageUrlController,
+          builder: (context, value, _) {
+            final url = value.text.trim();
+            if (url.isEmpty || _validateImageUrl(url) != null) {
+              return const SizedBox.shrink();
+            }
+            return ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Image.network(
+                url,
+                height: 180,
+                fit: BoxFit.cover,
+                webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
+                errorBuilder: (_, __, ___) => const Padding(
+                  padding: EdgeInsets.all(12),
+                  child: Text('No se pudo mostrar la foto. Verifica el enlace.'),
+                ),
+              ),
+            );
+          },
         ),
       ],
     );
@@ -662,7 +474,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
 
   Widget _buildSaveButton() {
     return ElevatedButton(
-      onPressed: _isLoading || _isPickingImage ? null : _saveProduct,
+      onPressed: _isLoading ? null : _saveProduct,
       style: ElevatedButton.styleFrom(
         backgroundColor: _isEditing ? AppColors.accent : AppColors.primary,
         foregroundColor: Colors.white,
@@ -722,6 +534,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     _priceController.dispose();
     _stockController.dispose();
     _categoryController.dispose();
+    _imageUrlController.dispose();
     super.dispose();
   }
 }
