@@ -90,13 +90,29 @@ class _OrderListTabState extends State<OrderListTab> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final query = FirebaseFirestore.instance
+  Stream<QuerySnapshot<Map<String, dynamic>>> _subscribeToOrders() {
+    return FirebaseFirestore.instance
         .collection('orders')
         .where('businessId', isEqualTo: widget.businessId)
-        .where('status', isEqualTo: widget.status);
+        .where('status', isEqualTo: widget.status)
+        .snapshots();
+  }
 
+  late Stream<QuerySnapshot<Map<String, dynamic>>> _ordersStream =
+      _subscribeToOrders();
+
+  @override
+  void didUpdateWidget(covariant OrderListTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.businessId != widget.businessId ||
+        oldWidget.status != widget.status) {
+      _ordersStream = _subscribeToOrders();
+      _previousOrderCount = -1;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     String emptyMessage = 'No hay pedidos ${_getTabTitle().toLowerCase()}';
     String emptySubtitle = 'Los nuevos pedidos aparecerán aquí';
 
@@ -110,10 +126,8 @@ class _OrderListTabState extends State<OrderListTab> {
 
     }
 
-    final Stream<QuerySnapshot> ordersStream = query.snapshots();
-
-    return StreamBuilder<QuerySnapshot>(
-      stream: ordersStream,
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: _ordersStream,
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return _buildErrorState(snapshot.error);
@@ -123,7 +137,8 @@ class _OrderListTabState extends State<OrderListTab> {
         }
 
         final docs = (snapshot.data?.docs ?? []).where((doc) {
-          final order = doc.data() as Map<String, dynamic>;
+          final order = doc.data();
+          if (order['status'] != widget.status) return false;
           final scheduled = order['scheduledPickupTime'] is Timestamp;
           return switch (widget.orderType) {
             'scheduled' => scheduled,
@@ -155,6 +170,11 @@ class _OrderListTabState extends State<OrderListTab> {
       return value is Timestamp ? value.microsecondsSinceEpoch : 0;
     }
 
+    if (widget.status == 'cancelled') {
+      final cancelledAt = time(right, 'statusUpdatedAt')
+          .compareTo(time(left, 'statusUpdatedAt'));
+      if (cancelledAt != 0) return cancelledAt;
+    }
     if (widget.orderType == 'scheduled') {
       final when = time(left, 'scheduledPickupTime')
           .compareTo(time(right, 'scheduledPickupTime'));
@@ -352,6 +372,17 @@ class _OrderListTabState extends State<OrderListTab> {
                         ],
                       ],
                     ),
+
+                    if (widget.status == 'cancelled') ...[
+                      const SizedBox(height: 8),
+                      _buildInfoChip(
+                        icon: Icons.cancel_outlined,
+                        text: order['cancelledBy'] == 'customer'
+                            ? 'Cancelado por el cliente'
+                            : 'Pedido cancelado',
+                        color: AppColors.error,
+                      ),
+                    ],
 
                     // INDICADOR DE NUEVO PEDIDO (solo para pendientes ASAP)
                     if (widget.status == 'pending' && widget.orderType == 'asap') ...[
