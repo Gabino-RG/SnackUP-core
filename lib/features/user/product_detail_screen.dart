@@ -211,6 +211,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         color: AppColors.componentBase,
                         child: Image.network(
                           imageUrl.isNotEmpty ? imageUrl : 'https://via.placeholder.com/400x280',
+                          webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) {
                             return Container(

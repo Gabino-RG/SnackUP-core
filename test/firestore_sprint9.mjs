@@ -104,3 +104,25 @@ await expect('negocio no cambia total', change(manager, {
 await expect('negocio cancela con motivo', change(manager, { status: 'cancelled', cancellationReason: 'Sin insumos' }));
 await expect('pedido cancelado no se reabre', change(manager, { status: 'preparing' }), 403);
 
+const customerOrder = 'customer-cancellation-' + suffix;
+const readyOrder = 'ready-order-' + suffix;
+const cancellation = {
+  status: 'cancelled',
+  cancellationReason: 'Cancelado por el cliente',
+  cancelledBy: 'customer',
+};
+const cancel = (uid, id, data = cancellation) => commit(uid,
+  write('orders/' + id, data, 'statusUpdatedAt', true));
+await expect('crear pedido para cancelación', commit(student,
+  write('orders/' + customerOrder, checkout, 'createdAt')));
+await expect('otro estudiante no cancela', cancel(stranger, customerOrder), 403);
+await expect('cliente no modifica el importe al cancelar',
+  cancel(student, customerOrder, { ...cancellation, totalPrice: 0 }), 403);
+await expect('cliente cancela su pedido', cancel(student, customerOrder));
+await expect('la cafetería puede leer el pedido cancelado',
+  request(manager, '/orders/' + customerOrder));
+await expect('cliente no vuelve a cancelar el mismo pedido',
+  cancel(student, customerOrder), 403);
+await expect('crear pedido listo para verificar transición', commit('owner',
+  write('orders/' + readyOrder, { ...checkout, status: 'ready' }, 'createdAt')));
+await expect('cliente no cancela un pedido listo', cancel(student, readyOrder), 403);

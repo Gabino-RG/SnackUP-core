@@ -1,10 +1,8 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:snackup/theme/app_colors.dart';
 import 'package:snackup/theme/app_text.dart';
 
@@ -30,7 +28,11 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
   final _stockController = TextEditingController();
   final _categoryController = TextEditingController();
 
-  File? _imageFile;
+  static const _maxImageBytes = 5 * 1024 * 1024;
+
+  Uint8List? _imageBytes;
+  String? _imageContentType;
+  bool _isPickingImage = false;
   String? _existingImageUrl;
   bool _isFeatured = false;
   bool _isAvailable = true;
@@ -55,6 +57,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
           .doc(widget.productId)
           .get();
 
+      if (!mounted) return;
       if (doc.exists && doc.data() != null) {
         final data = doc.data()!;
         _nameController.text = data['name'] ?? '';
@@ -71,84 +74,92 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     } catch (e) {
       _showError('Error al cargar producto: ${e.toString()}');
     }
-    setState(() => _isLoading = false);
+    if (mounted) setState(() => _isLoading = false);
   }
 
   Future<void> _pickImage() async {
-    var status = await Permission.photos.request();
-    if (status.isDenied || status.isPermanentlyDenied) {
-      _showError('Necesitas dar permiso a la galería para subir fotos.');
-      return;
-    }
-    
-    final ImagePicker picker = ImagePicker();
-    final XFile? pickedFile = await picker.pickImage(
-      source: ImageSource.gallery, 
-      imageQuality: 70,
-      maxWidth: 800,
-    );
+    if (_isLoading || _isPickingImage) return;
+    setState(() => _isPickingImage = true);
 
-    if (pickedFile != null) {
+    try {
+      final file = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 70,
+        maxWidth: 800,
+        maxHeight: 800,
+      );
+      if (!mounted || file == null) return;
+
+      final contentType = switch (file.name.split('.').last.toLowerCase()) {
+        'jpg' || 'jpeg' => 'image/jpeg',
+        'png' => 'image/png',
+        'webp' => 'image/webp',
+        'gif' => 'image/gif',
+        _ => null,
+      };
+      if (contentType == null) {
+        _showError('Selecciona una imagen JPG, PNG, WebP o GIF.');
+        return;
+      }
+      final length = await file.length();
+      if (length == 0 || length > _maxImageBytes) {
+        _showError('Selecciona una imagen de hasta 5 MB.');
+        return;
+      }
+
+      final bytes = await file.readAsBytes();
+      if (!mounted) return;
       setState(() {
-        _imageFile = File(pickedFile.path);
+        _imageBytes = bytes;
+        _imageContentType = contentType;
       });
+    } catch (error) {
+      _showError('No se pudo abrir la imagen: $error');
+    } finally {
+      if (mounted) setState(() => _isPickingImage = false);
     }
   }
 
-  Future<String?> _uploadImage() async {
-    if (_imageFile == null) return null;
-    
-    setState(() => _isLoading = true);
-    
-    try {
-      String fileName = '${widget.businessId}-${DateTime.now().millisecondsSinceEpoch}.jpg';
-      Reference storageRef = FirebaseStorage.instance
-          .ref()
-          .child('product_images')
-          .child(fileName);
-
-      UploadTask uploadTask = storageRef.putFile(_imageFile!);
-
-      uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
+  Future<String> _uploadImage(Uint8List bytes, String contentType) async {
+    final imageId = FirebaseFirestore.instance.collection('products').doc().id;
+    final storageRef = FirebaseStorage.instance
+        .ref('product_images/${widget.businessId}/$imageId');
+    final task = storageRef.putData(
+      bytes,
+      SettableMetadata(contentType: contentType),
+    );
+    final progress = task.snapshotEvents.listen((snapshot) {
+      if (mounted && snapshot.totalBytes > 0) {
         setState(() {
-          _uploadProgress = (snapshot.bytesTransferred / snapshot.totalBytes);
+          _uploadProgress = snapshot.bytesTransferred / snapshot.totalBytes;
         });
-      });
+      }
+    }, onError: (Object _) {
+      // El error se maneja al esperar el resultado de la carga.
+    });
 
-      TaskSnapshot taskSnapshot = await uploadTask;
-      String downloadUrl = await taskSnapshot.ref.getDownloadURL();
-      
-      setState(() {
-        _isLoading = false;
-        _uploadProgress = 0;
-      });
-      return downloadUrl;
-
-    } catch (e) {
-      _showError('Error al subir imagen: $e');
-      setState(() {
-        _isLoading = false;
-        _uploadProgress = 0;
-      });
-      return null;
+    try {
+      final snapshot = await task;
+      return await snapshot.ref.getDownloadURL();
+    } finally {
+      await progress.cancel();
     }
   }
 
   Future<void> _saveProduct() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (_isLoading || _isPickingImage || !_formKey.currentState!.validate()) {
+      return;
+    }
 
     setState(() => _isLoading = true);
 
     try {
-      String? imageUrl;
-
-      if (_imageFile != null) {
-        imageUrl = await _uploadImage();
-        if (imageUrl == null) return;
-      } else {
-        imageUrl = _existingImageUrl;
+      var imageUrl = _existingImageUrl;
+      final bytes = _imageBytes;
+      if (bytes != null) {
+        imageUrl = await _uploadImage(bytes, _imageContentType!);
       }
-      
+
       final price = double.tryParse(_priceController.text) ?? 0.0;
       final stock = int.tryParse(_stockController.text) ?? 0;
 
@@ -181,10 +192,13 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
 
     } catch (e) {
       _showError('Error al guardar: ${e.toString()}');
-    }
-    
-    if (mounted) {
-      setState(() => _isLoading = false);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _uploadProgress = 0;
+        });
+      }
     }
   }
 
@@ -320,7 +334,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         ),
         const SizedBox(height: 8),
         GestureDetector(
-          onTap: _pickImage,
+          onTap: _isLoading || _isPickingImage ? null : _pickImage,
           child: Container(
             height: 180,
             width: double.infinity,
@@ -354,7 +368,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
-                          _imageFile != null || _existingImageUrl != null
+                          _imageBytes != null || _existingImageUrl != null
                               ? Icons.camera_alt_rounded
                               : Icons.add_photo_alternate_rounded,
                           color: AppColors.primary,
@@ -380,8 +394,10 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
   }
 
   Widget _buildImageContent() {
-    if (_imageFile != null) {
-      return Image.file(_imageFile!, fit: BoxFit.cover);
+    if (_imageBytes != null) {
+      return Image.memory(_imageBytes!, fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => const Center(child: Icon(Icons.broken_image_outlined)),
+      );
     } else if (_existingImageUrl != null) {
       return Image.network(
         _existingImageUrl!,
@@ -623,7 +639,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
 
   Widget _buildSaveButton() {
     return ElevatedButton(
-      onPressed: _isLoading ? null : _saveProduct,
+      onPressed: _isLoading || _isPickingImage ? null : _saveProduct,
       style: ElevatedButton.styleFrom(
         backgroundColor: _isEditing ? AppColors.accent : AppColors.primary,
         foregroundColor: Colors.white,

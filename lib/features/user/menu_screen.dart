@@ -213,6 +213,7 @@ class MenuScreen extends StatelessWidget {
                           borderRadius: BorderRadius.circular(12),
                           child: Image.network(
                             imageUrl.isNotEmpty ? imageUrl : 'https://via.placeholder.com/100',
+                            webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
                             fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) {
                               return Container(

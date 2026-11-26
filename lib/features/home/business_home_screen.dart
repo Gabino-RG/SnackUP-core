@@ -21,6 +21,7 @@ class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
   int _selectedIndex = 0;
   String? _fetchedBusinessId;
   StreamSubscription? _newOrderSubscription;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _cancellationSubscription;
   int _previousNewOrderCount = -1;
   final AudioPlayer _audioPlayer = AudioPlayer();
   bool _alertShownForThisBatch = false;
@@ -36,6 +37,7 @@ class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
     _fetchedBusinessId = await _getBusinessId();
     if (_fetchedBusinessId != null && mounted) {
       _listenForNewOrders(_fetchedBusinessId!);
+      _listenForCancellations(_fetchedBusinessId!);
       setState(() {});
     } else if (mounted) {
       print("Error: No se encontró businessId vinculado");
@@ -107,6 +109,39 @@ class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
         print("Error escuchando nuevos pedidos: $error");
       },
     );
+  }
+
+  void _listenForCancellations(String businessId) {
+    var hasServerSnapshot = false;
+    final seenIds = <String>{};
+    _cancellationSubscription = FirebaseFirestore.instance
+        .collection('orders')
+        .where('businessId', isEqualTo: businessId)
+        .where('status', isEqualTo: 'cancelled')
+        .snapshots(includeMetadataChanges: true)
+        .listen((snapshot) {
+          if (!mounted || snapshot.metadata.isFromCache) return;
+
+          final newCancellations = snapshot.docs
+              .where((doc) => doc.data()['cancelledBy'] == 'customer' && seenIds.add(doc.id))
+              .toList();
+          if (!hasServerSnapshot) {
+            hasServerSnapshot = true;
+            return;
+          }
+
+          for (final order in newCancellations) {
+            final customer = order.data()['userDisplayName'];
+            final message = customer is String && customer.trim().isNotEmpty
+                ? '$customer canceló su pedido.'
+                : 'Un cliente canceló su pedido.';
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(message)),
+            );
+          }
+        }, onError: (Object error) {
+          debugPrint('Error al escuchar cancelaciones: $error');
+        });
   }
 
   void _showNewOrderDialog(BuildContext context, int orderCount) {
@@ -231,6 +266,7 @@ class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
 
   @override
   void dispose() {
+    _cancellationSubscription?.cancel();
     _newOrderSubscription?.cancel();
     _audioPlayer.dispose();
     super.dispose();

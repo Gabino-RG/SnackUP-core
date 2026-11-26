@@ -143,6 +143,15 @@ service cloud.firestore {
         && validCheckout(request.resource.data);
       allow update: if ownsBusiness(resource.data.businessId)
         && validStatusChange(resource.data, request.resource.data);
+      allow update: if isSelf(resource.data.userId)
+        && resource.data.status in ['pending', 'preparing']
+        && request.resource.data.status == 'cancelled'
+        && request.resource.data.statusUpdatedAt == request.time
+        && request.resource.data.cancelledBy == 'customer'
+        && request.resource.data.cancellationReason == 'Cancelado por el cliente'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status', 'statusUpdatedAt', 'cancellationReason', 'cancelledBy'
+        ]);
     }
 
     match /reviews/{id} {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:another_stepper/another_stepper.dart';
+import '../firestore_list_support.dart';
 import 'show_qr_screen.dart';
 import 'rate_order_screen.dart'; // NUEVO: Pantalla de calificación
 import 'package:snackup/theme/app_colors.dart';
@@ -19,6 +20,7 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
   late TabController _tabController;
   late Stream<QuerySnapshot> _allOrdersStream;
   late Stream<QuerySnapshot> _favoritesStream;
+  final Set<String> _cancellingOrders = {};
   final String userId = FirebaseAuth.instance.currentUser!.uid;
 
   @override
@@ -29,7 +31,6 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
     _allOrdersStream = FirebaseFirestore.instance
         .collection('orders')
         .where('userId', isEqualTo: userId)
-        .orderBy('createdAt', descending: true)
         .snapshots();
 
     _favoritesStream = FirebaseFirestore.instance
@@ -87,89 +88,119 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
           ),
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildActiveOrdersTab(),
-          _buildHistoryTab(),
-          _buildFavoritesTab(),
-        ],
+      body: StreamBuilder<QuerySnapshot>(
+        stream: _allOrdersStream,
+        builder: (context, snapshot) {
+          final docs = snapshot.data?.docs.toList() ?? [];
+          docs.sort((a, b) {
+            int createdAt(QueryDocumentSnapshot doc) {
+              final value = (doc.data() as Map<String, dynamic>)['createdAt'];
+              return value is Timestamp ? value.microsecondsSinceEpoch : 0;
+            }
+
+            final byDate = createdAt(b).compareTo(createdAt(a));
+            return byDate == 0 ? a.id.compareTo(b.id) : byDate;
+          });
+
+          return TabBarView(
+            controller: _tabController,
+            children: [
+              _buildOrdersTab(snapshot, docs, history: false),
+              _buildOrdersTab(snapshot, docs, history: true),
+              _buildFavoritesTab(),
+            ],
+          );
+        },
       ),
     );
   }
 
-  Widget _buildActiveOrdersTab() {
-    return StreamBuilder<QuerySnapshot>(
-      stream: _allOrdersStream,
-      builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          return _buildErrorState('Error al cargar pedidos activos');
-        }
-        
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return _buildLoadingState('Cargando pedidos activos...');
-        }
-        
-        final activeDocs = snapshot.data!.docs.where((doc) {
-          final status = (doc.data() as Map<String, dynamic>)['status'];
-          return status == 'pending' || status == 'preparing' || status == 'ready';
-        }).toList();
-        
-        if (activeDocs.isEmpty) {
-          return _buildEmptyState(
-            icon: Icons.pending_actions_rounded,
-            title: 'No tienes pedidos activos',
-            subtitle: 'Los pedidos que hagas aparecerán aquí'
-          );
-        }
+  Widget _buildOrdersTab(
+    AsyncSnapshot<QuerySnapshot> snapshot,
+    List<QueryDocumentSnapshot> docs, {
+    required bool history,
+  }) {
+    if (snapshot.hasError) {
+      return _buildErrorState(firestoreListError(snapshot.error));
+    }
+    if (!snapshot.hasData) {
+      return _buildLoadingState(
+        history ? 'Cargando historial...' : 'Cargando pedidos activos...',
+      );
+    }
 
-        return ListView.separated(
-          padding: const EdgeInsets.all(16),
-          separatorBuilder: (context, index) => const SizedBox(height: 16),
-          itemCount: activeDocs.length,
-          itemBuilder: (context, index) {
-            return _buildActiveOrderCard(activeDocs[index]);
-          },
-        );
-      },
+    final statuses = history
+        ? const {'completed', 'cancelled'}
+        : const {'pending', 'preparing', 'ready'};
+    final visibleDocs = docs.where((doc) {
+      return statuses.contains((doc.data() as Map<String, dynamic>)['status']);
+    }).toList();
+
+    if (visibleDocs.isEmpty) {
+      return _buildEmptyState(
+        icon: history ? Icons.history_rounded : Icons.pending_actions_rounded,
+        title: history ? 'No hay historial de pedidos' : 'No tienes pedidos activos',
+        subtitle: history
+            ? 'Tu historial de pedidos aparecerá aquí'
+            : 'Los pedidos que hagas aparecerán aquí',
+      );
+    }
+
+    return ListView.separated(
+      key: PageStorageKey(history ? 'order-history' : 'active-orders'),
+      padding: const EdgeInsets.all(16),
+      separatorBuilder: (context, index) => SizedBox(height: history ? 12 : 16),
+      itemCount: visibleDocs.length,
+      itemBuilder: (context, index) => history
+          ? _buildHistoryOrderCard(visibleDocs[index])
+          : _buildActiveOrderCard(visibleDocs[index]),
     );
   }
 
-  Widget _buildHistoryTab() {
-    return StreamBuilder<QuerySnapshot>(
-      stream: _allOrdersStream,
-      builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          return _buildErrorState('Error al cargar historial');
-        }
-        
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return _buildLoadingState('Cargando historial...');
-        }
-        
-        final historyDocs = snapshot.data!.docs.where((doc) {
-          final status = (doc.data() as Map<String, dynamic>)['status'];
-          return status == 'completed' || status == 'cancelled';
-        }).toList();
-        
-        if (historyDocs.isEmpty) {
-          return _buildEmptyState(
-            icon: Icons.history_rounded,
-            title: 'No hay historial de pedidos',
-            subtitle: 'Tu historial de pedidos aparecerá aquí'
-          );
-        }
-
-        return ListView.separated(
-          padding: const EdgeInsets.all(16),
-          separatorBuilder: (context, index) => const SizedBox(height: 12),
-          itemCount: historyDocs.length,
-          itemBuilder: (context, index) {
-            return _buildHistoryOrderCard(historyDocs[index]);
-          },
-        );
-      },
+  Future<void> _cancelOrder(QueryDocumentSnapshot doc) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('¿Cancelar pedido?'),
+        content: const Text('Le avisaremos a la cafetería de la cancelación.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Conservar pedido'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Cancelar pedido'),
+          ),
+        ],
+      ),
     );
+    if (!mounted || confirmed != true || _cancellingOrders.contains(doc.id)) {
+      return;
+    }
+
+    setState(() => _cancellingOrders.add(doc.id));
+    try {
+      await doc.reference.update({
+        'status': 'cancelled',
+        'statusUpdatedAt': FieldValue.serverTimestamp(),
+        'cancellationReason': 'Cancelado por el cliente',
+        'cancelledBy': 'customer',
+      });
+    } on FirebaseException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            error.code == 'permission-denied'
+                ? 'El pedido ya no se puede cancelar. Revisa su estado.'
+                : 'No se pudo cancelar el pedido. Intenta de nuevo.',
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _cancellingOrders.remove(doc.id));
+    }
   }
 
   Widget _buildFavoritesTab() {
@@ -208,10 +239,8 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
     final order = doc.data()! as Map<String, dynamic>;
     final String status = order['status'] ?? 'unknown';
     final String numeroDeControl = order['userNumeroDeControl'] ?? '0000';
-    final double totalPrice = order['totalPrice'] ?? 0.0;
+    final double totalPrice = (order['totalPrice'] as num?)?.toDouble() ?? 0.0;
     final List<dynamic> items = order['items'] ?? [];
-    final Timestamp? createdAt = order['createdAt'] as Timestamp?;
-
     // Determinar paso actual del stepper
     int currentStep = 0;
     String statusText = 'Recibido';
@@ -344,6 +373,17 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
 
             const SizedBox(height: 16),
 
+            if (status == 'pending' || status == 'preparing')
+              Center(
+                child: TextButton.icon(
+                  onPressed: _cancellingOrders.contains(doc.id)
+                      ? null
+                      : () => _cancelOrder(doc),
+                  icon: const Icon(Icons.cancel_outlined),
+                  label: const Text('Cancelar pedido'),
+                ),
+              ),
+
             // BOTÓN DE QR (SOLO CUANDO ESTÉ LISTO)
             if (status == 'ready')
               Center(
@@ -391,7 +431,7 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
   Widget _buildHistoryOrderCard(QueryDocumentSnapshot doc) {
     final order = doc.data()! as Map<String, dynamic>;
     final String status = order['status'] ?? 'unknown';
-    final double totalPrice = order['totalPrice'] ?? 0.0;
+    final double totalPrice = (order['totalPrice'] as num?)?.toDouble() ?? 0.0;
     final List<dynamic> items = order['items'] ?? [];
     final Timestamp? createdAt = order['createdAt'] as Timestamp?;
     final String businessId = order['businessId'] ?? '';
