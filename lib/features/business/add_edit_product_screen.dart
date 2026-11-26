@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -28,6 +31,8 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
   final _stockController = TextEditingController();
   final _categoryController = TextEditingController();
 
+  static const _uploadTimeout = Duration(seconds: 45);
+  static const _imageReadTimeout = Duration(seconds: 15);
   static const _maxImageBytes = 5 * 1024 * 1024;
 
   Uint8List? _imageBytes;
@@ -84,9 +89,9 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     try {
       final file = await ImagePicker().pickImage(
         source: ImageSource.gallery,
-        imageQuality: 70,
-        maxWidth: 800,
-        maxHeight: 800,
+        imageQuality: kIsWeb ? null : 70,
+        maxWidth: kIsWeb ? null : 800,
+        maxHeight: kIsWeb ? null : 800,
       );
       if (!mounted || file == null) return;
 
@@ -101,13 +106,13 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         _showError('Selecciona una imagen JPG, PNG, WebP o GIF.');
         return;
       }
-      final length = await file.length();
+      final length = await file.length().timeout(_imageReadTimeout);
       if (length == 0 || length > _maxImageBytes) {
         _showError('Selecciona una imagen de hasta 5 MB.');
         return;
       }
 
-      final bytes = await file.readAsBytes();
+      final bytes = await file.readAsBytes().timeout(_imageReadTimeout);
       if (!mounted) return;
       setState(() {
         _imageBytes = bytes;
@@ -139,8 +144,11 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     });
 
     try {
-      final snapshot = await task;
-      return await snapshot.ref.getDownloadURL();
+      final snapshot = await task.timeout(_uploadTimeout);
+      return await snapshot.ref.getDownloadURL().timeout(_imageReadTimeout);
+    } on TimeoutException {
+      unawaited(task.cancel().then<void>((_) {}, onError: (Object _) {}));
+      rethrow;
     } finally {
       await progress.cancel();
     }
@@ -157,7 +165,22 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
       var imageUrl = _existingImageUrl;
       final bytes = _imageBytes;
       if (bytes != null) {
-        imageUrl = await _uploadImage(bytes, _imageContentType!);
+        try {
+          imageUrl = await _uploadImage(bytes, _imageContentType!);
+        } on TimeoutException {
+          _showError('La foto tardó demasiado en subir. Puedes volver a intentar.');
+          return;
+        } on FirebaseException catch (error) {
+          _showError(switch (error.code) {
+            'unauthorized' || 'permission-denied' =>
+              'Firebase Storage rechazó la foto. Revisa los permisos del negocio.',
+            'bucket-not-found' || 'no-default-bucket' =>
+              'El almacenamiento de imágenes no está configurado en Firebase.',
+            _ => 'No se pudo subir la foto (${error.code}). Intenta de nuevo.',
+          });
+          return;
+        }
+        if (!mounted) return;
       }
 
       final price = double.tryParse(_priceController.text) ?? 0.0;
@@ -230,7 +253,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         foregroundColor: AppColors.textPrimary,
         actions: _isEditing ? [_buildDeleteButton()] : null,
       ),
-      body: _isLoading && _uploadProgress == 0
+      body: _isLoading && _imageBytes == null
           ? const Center(
               child: CircularProgressIndicator(
                 color: AppColors.primary,
@@ -284,7 +307,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                     const SizedBox(height: 16),
 
                     // BARRA DE PROGRESO DE SUBIDA
-                    if (_isLoading && _uploadProgress > 0) ...[
+                    if (_isLoading && _imageBytes != null) ...[
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -296,7 +319,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                           ),
                           const SizedBox(height: 8),
                           LinearProgressIndicator(
-                            value: _uploadProgress,
+                            value: _uploadProgress > 0 ? _uploadProgress : null,
                             minHeight: 6,
                             borderRadius: BorderRadius.circular(3),
                             color: AppColors.primary,
