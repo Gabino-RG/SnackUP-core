@@ -1,0 +1,44 @@
+SNACKUP - ENTREGA DEL SPRINT 10
+
+Cambios en GitHub:
+https://github.com/Gabino-RG/SnackUP-core/pull/27
+Rama: codex/sprint10-entrega
+Pull request en borrador; falta revisión del equipo antes de fusionar.
+
+QUÉ SE PREPARÓ
+- Corrección de pedidos válidos y límites en Firestore Rules.
+- Eliminación autorizada de productos y recuperación de contraseña.
+- Recuperación de perfiles de registro incompleto.
+- QR distinto por pedido y código manual.
+- Inicio con reintento, servicio climático probado y ajustes Android.
+- Documentación, pruebas y compilación de APK mediante GitHub Actions.
+
+PRUEBAS EJECUTADAS
+23 pruebas Flutter aprobadas y 40 comprobaciones Firestore aprobadas.
+Los casos de clima y recuperación usan simulaciones; Firestore usa datos ficticios.
+Sin escrituras en la base de datos real.
+
+ANTES DE SUBIR LA ASIGNACIÓN
+1. Instalar el APK exacto entregado en un teléfono Android.
+2. Iniciar sesión como estudiante y negocio y completar un pedido.
+3. Verificar cámara, QR, CRUD, errores y conexión con Firebase.
+4. Confirmar que las reglas e índices usados en la demostración están publicados.
+   La eliminación de productos nueva requiere las reglas del Sprint 10.
+5. Añadir nombres, grupo, Scrum Master y fecha asignada a la documentación.
+6. Integrar los documentos de Sprints anteriores que conserva el equipo.
+7. Scrum Master sube APK y documentación. Los demás marcan entregada.
+8. Todos asisten presencialmente y puntuales el día asignado: 1 o 3 de diciembre.
+
+No incluir contraseñas de demostración ni credenciales administrativas en GitHub
+ni dentro de la documentación pública.
+
+La firma del APK académico es debug. No es una liberación firmada para producción.
+El registro de instalación y las comprobaciones manuales están en
+docs/PRUEBAS_Y_CIERRE.txt dentro del código fuente.
+
+APK COMPILADO Y COMPROBADO
+Archivo: SnackUP-1.0.0+10.apk
+Código: ff8b54d2a826171e0098669b5a9f2da04d97124c
+SHA256: 50e7b8945b1f13d28b8be92a0ecefd0b2b004e3a403ffe02627a739c680a0358
+CI: https://github.com/Gabino-RG/SnackUP-core/actions/runs/46070359806
+Firma v1/v2 verificada; instalación en teléfono aún pendiente.

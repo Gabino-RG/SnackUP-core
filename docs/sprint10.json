@@ -9,7 +9,7 @@
       "title": "1 Identificación y estado del documento",
       "paragraphs": [
         "SnackUP permite consultar alimentos del campus y gestionar pedidos entre estudiantes y negocios desde una aplicación móvil Flutter. El Sprint 10 integra la base sprint9, corrige fallos de acceso, pedidos y Android, y añade pruebas reproducibles. La versión preparada es 1.0.0+10.",
-        "La validación local aprobó 23 pruebas Flutter y 40 comprobaciones de Firestore. La liberación requiere completar la compilación del APK, instalarlo y recorrer los dos roles en Android con los servicios utilizados por el equipo."
+        "La validación local aprobó 23 pruebas Flutter y 40 comprobaciones de Firestore. GitHub Actions generó el APK 1.0.0+10 y su firma se verificó también tras descargarlo. La instalación y el recorrido de ambos roles en un teléfono Android con los servicios publicados permanecen pendientes."
       ],
       "bullets": [],
       "table": {
@@ -28,7 +28,7 @@
           ],
           [
             "Versión",
-            "1.0.0+10"
+            "1.0.0+10 | código ff8b54d"
           ],
           [
             "Equipo y grupo",
@@ -83,7 +83,7 @@
           [
             "1. Integración y documentación",
             "Parcial",
-            "Base sprint9, README.md y test/. Integrar documentos anteriores y anexar resultados reales del Sprint 10."
+            "Base sprint9 y documentación Sprint 10 con resultados en docs/. Integrar los documentos anteriores que conserva el equipo."
           ],
           [
             "2. Nube, CRUD y autenticación",
@@ -117,13 +117,13 @@
           ],
           [
             "8. Errores y validaciones",
-            "Código y pruebas preparados",
-            "lib/app_bootstrap.dart; lib/features/auth/complete_profile_screen.dart; firestore.rules; test/weather_service_test.dart. Adjuntar ejecución y casos negativos."
+            "Pruebas aisladas aprobadas",
+            "lib/app_bootstrap.dart; auth/complete_profile_screen.dart; firestore.rules y test/. 23 pruebas Flutter y 40 comprobaciones de reglas; falta demostración real."
           ],
           [
             "9. Versionamiento y liberación",
-            "Pendiente de cierre",
-            "Historial Git, pubspec.yaml y android/app/build.gradle.kts. Publicar revisión final, generar APK, registrar firma/hash e instalación Android. Este corte no incluye APK validado."
+            "APK generado",
+            "Código ff8b54d; GitHub Actions aprobado, firma verificada y SHA256 registrado. Falta instalación y flujo completo en un teléfono Android."
           ]
         ]
       },
@@ -169,7 +169,8 @@
         ]
       },
       "paragraphs": [
-        "Se retiraron permisos amplios de fotos y almacenamiento sin flujo necesario. Los avisos actuales del negocio provienen de listeners Firestore y se muestran mediante interfaz y sonido mientras la aplicación está activa. No hay un backend de envío push acreditado para aplicación cerrada."
+        "Se retiraron permisos amplios de fotos y almacenamiento sin flujo necesario. Los avisos actuales del negocio provienen de listeners Firestore y se muestran mediante interfaz y sonido mientras la aplicación está activa. No hay un backend de envío push acreditado para aplicación cerrada.",
+        "El manifest fusionado del APK también contiene permisos incorporados por los SDK: WAKE_LOCK, ACCESS_NETWORK_STATE y servicios de Google, entre otros. La evidencia android-apk.txt conserva la lista obtenida del archivo compilado; declarar permiso de notificaciones no prueba un emisor push."
       ],
       "bullets": []
     },
@@ -193,7 +194,11 @@
         "Ejecución local el 27 de noviembre de 2026. Entorno: Windows, Flutter 3.32.4, Dart 3.8.1 y Node.js 24.22.3. Firestore Emulator 1.19.8 se inició con Java 21, idioma inglés, proyecto ficticio demo-snackup-sprint9 y host 127.0.0.1:8080. Las pruebas no escribieron en la base real.",
         "Flutter aprobó 23 pruebas: cinco de referencias QR, siete del servicio climático, cuatro de arranque y siete de recuperación de contraseña. Se simularon respuestas y errores para comprobar la lógica sin depender de cuentas reales.",
         "Firestore aprobó las 40 comprobaciones del script, incluyendo preparación de datos. Verificó permisos por rol, precios y totales, stock agotado, transiciones y cancelaciones, eliminación exclusiva del dueño, conservación de pedidos históricos y límites de ocho y nueve productos. El primer intento detectó la operación inválida list + list; el caso de ocho productos detectó además exceso de evaluaciones. Ambas regresiones quedaron corregidas.",
-        "flutter analyze --no-pub --no-fatal-infos terminó con código 0 y sin errores ni advertencias. Quedaron 195 avisos informativos de estilo, APIs obsoletas y otros lints. Este resultado no equivale a un análisis sin avisos."
+        "flutter analyze --no-pub --no-fatal-infos terminó con código 0 y sin errores ni advertencias. Quedaron 195 avisos informativos de estilo, APIs obsoletas y otros lints. Este resultado no equivale a un análisis sin avisos.",
+        "GitHub Actions completó la compilación en Ubuntu con Java 17 y Flutter 3.32.4. Se descargó el APK y coincidió su SHA256 con el generado en CI. apksigner verificó firmas v1 y v2. aapt confirmó com.example.snackup, versionName 1.0.0, versionCode 10, minSdk 23 y targetSdk 36. La firma es Android Debug para evaluación académica.",
+        "APK: SnackUP-1.0.0+10.apk. Tamaño: 79297538 bytes.",
+        "SHA256: 50e7b8945b1f13d28b8be92a0ecefd0b2b004e3a403ffe02627a739c680a0358",
+        "Compilación y registros: https://github.com/Gabino-RG/SnackUP-core/actions/runs/46070359806"
       ],
       "table": {
         "headers": [
@@ -223,9 +228,14 @@
             "195 avisos informativos"
           ],
           [
-            "APK e instalación",
+            "APK y firma",
+            "Generado y verificado",
+            "docs/evidencias/android-apk.txt"
+          ],
+          [
+            "Instalación en teléfono",
             "Pendiente",
-            "Completar tras la compilación"
+            "Modelo, Android y captura por registrar"
           ],
           [
             "Servicios publicados y ambos roles",
@@ -295,14 +305,15 @@
       "title": "12 Limitaciones y trabajo pendiente",
       "paragraphs": [
         "El inventario se valida al pedir, pero no se descuenta ni reserva automáticamente: pedidos simultáneos pueden superar existencias. La propiedad del correo institucional no se verifica mediante emailVerified. Los métodos Efectivo, Tarjeta y Vale son una selección del pedido; no acreditan una pasarela de cobro.",
-        "No se localizaron documentos de Sprints previos en la copia revisada. La compilación del APK está bloqueada en este corte por el espacio disponible en C: —aproximadamente 130 MB—; liberar espacio, compilar y probar en Android son actividades pendientes. Este documento no acredita despliegue de reglas, instalación ni demostración final."
+        "Falta integrar los documentos de Sprints anteriores del equipo, completar sus datos y confirmar que la arquitectura descrita corresponde a la seleccionada en el curso. El APK ya fue generado en GitHub Actions; falta instalarlo, recorrer ambos roles y comprobar los servicios y reglas publicados. No se realizaron cambios de despliegue en Firebase durante esta preparación."
       ],
       "bullets": []
     },
     {
       "title": "13 Fuentes y trazabilidad",
       "paragraphs": [
-        "Base revisada: Gabino-RG/SnackUP-core, rama sprint9, commit 04865e07e4cd7a2068c183b44741c915894a5623. Las mejoras se prepararon en codex/sprint10-entrega. El historial y las pruebas del paquete permiten relacionar los cambios con la revisión del código.",
+        "Base revisada: Gabino-RG/SnackUP-core, sprint9, commit 04865e07e4cd7a2068c183b44741c915894a5623. Código del APK: ff8b54d2a826171e0098669b5a9f2da04d97124c. Las mejoras se revisan en el pull request 27, rama codex/sprint10-entrega. Las actualizaciones posteriores de documentación no modifican el binario.",
+        "Pull request de revisión: https://github.com/Gabino-RG/SnackUP-core/pull/27",
         "Repositorio base: https://github.com/Gabino-RG/SnackUP-core/tree/sprint9",
         "Firebase y protección de datos: https://firebase.google.com/support/privacy",
         "Reglas Firebase y listas: https://firebase.google.com/docs/reference/rules/rules.List",
@@ -312,5 +323,8 @@
       ]
     }
   ],
-  "branch": "codex/sprint10-entrega"
+  "branch": "codex/sprint10-entrega",
+  "code_commit": "ff8b54d2a826171e0098669b5a9f2da04d97124c",
+  "ci_url": "https://github.com/Gabino-RG/SnackUP-core/actions/runs/46070359806",
+  "apk_sha256": "50e7b8945b1f13d28b8be92a0ecefd0b2b004e3a403ffe02627a739c680a0358"
 }

@@ -42,11 +42,14 @@ M13 Recorrer Inicio, Buscar, Carrito, Pedidos, menú negocio y estadísticas.
 Para cada caso: fecha, ejecutor, pasos, esperado, observado, aprobado/fallido, evidencia.
 
 REGISTRO DEL APK Y DISPOSITIVO
-Archivo APK:
-Commit de compilación:
-URL de ejecución GitHub Actions:
-SHA256:
-Tipo de firma: académica debug (salvo cambio explícito documentado)
+Archivo APK: SnackUP-1.0.0+10.apk
+Commit de compilación: ff8b54d2a826171e0098669b5a9f2da04d97124c
+URL de ejecución GitHub Actions: https://github.com/Gabino-RG/SnackUP-core/actions/runs/46070359806
+SHA256: 50e7b8945b1f13d28b8be92a0ecefd0b2b004e3a403ffe02627a739c680a0358
+Tipo de firma: académica Android Debug; apksigner v1 y v2 verificadas
+Paquete: com.example.snackup | versionName 1.0.0 | versionCode 10
+minSdk 23 | targetSdk 36
+Instalación en teléfono y flujo de dos roles: PENDIENTES
 Modelo Android:
 Versión Android:
 Fecha y resultado de instalación:

@@ -6,7 +6,7 @@ Aplicación móvil Flutter para pedidos de cafetería universitaria. Incluye acc
 
 Versión preparada: **1.0.0+10**. Base: `sprint9`, commit `04865e07e4cd7a2068c183b44741c915894a5623`.
 
-Se aprobaron 23 pruebas Flutter y 40 comprobaciones de Firestore en el emulador local el 27 de noviembre de 2026. La instalación y el recorrido completo en Android con Firebase publicado deben quedar registrados antes de entregar. El APK debe descargarse del workflow o generarse localmente; el código fuente por sí solo no sustituye al APK.
+Se aprobaron 23 pruebas Flutter y 40 comprobaciones de Firestore en el emulador local el 27 de noviembre de 2026. La instalación y el recorrido completo en Android con Firebase publicado deben quedar registrados antes de entregar. El APK fue generado en [GitHub Actions](https://github.com/Gabino-RG/SnackUP-core/actions/runs/46070359806) y se verificó su firma v1/v2. Código del APK: `ff8b54d2a826171e0098669b5a9f2da04d97124c`. El archivo debe descargarse del workflow o generarse localmente; el código fuente por sí solo no sustituye al APK.
 
 ## Política de integración del equipo
 
@@ -51,6 +51,8 @@ adb install -r "SnackUP-1.0.0+10.apk"
 Get-FileHash "SnackUP-1.0.0+10.apk" -Algorithm SHA256
 ```
 
+Android exige la misma firma para actualizar una instalación existente. La firma debug de este runner puede diferir de una versión instalada desde otro equipo; conservar la clave propia del equipo si se necesitan actualizaciones continuas.
+
 ## Arquitectura implementada
 
 `lib/features/{auth,home,user,business}` agrupa pantallas por función; `lib/theme` comparte estilos; `lib/services/weather_service.dart` separa la API climática. Widgets gestionan estado local con setState y observan datos con StreamBuilder/FutureBuilder. Muchas pantallas acceden directamente a Firebase. Provider está declarado, pero no se usa como patrón de estado; no afirmar MVVM ni una capa completa de repositorios.
@@ -67,6 +69,8 @@ Permisos declarados: internet, cámara y notificaciones. Los avisos actuales del
 
 ## Documentación y pendientes de cierre
 
+- `docs/SnackUP_Documentacion_Sprint10.pdf`: informe de entrega.
+- `docs/Sprint10.html`: copia editable del informe.
 - `docs/sprint10.json`: contenido de documentación y matriz de requisitos.
 - `docs/PRUEBAS_Y_CIERRE.txt`: resultados, casos manuales y checklist.
 - `docs/evidencias/`: registros reales de Flutter y Firestore.
