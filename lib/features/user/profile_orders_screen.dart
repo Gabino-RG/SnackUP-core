@@ -238,7 +238,6 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
   Widget _buildActiveOrderCard(QueryDocumentSnapshot doc) {
     final order = doc.data()! as Map<String, dynamic>;
     final String status = order['status'] ?? 'unknown';
-    final String numeroDeControl = order['userNumeroDeControl'] ?? '0000';
     final double totalPrice = (order['totalPrice'] as num?)?.toDouble() ?? 0.0;
     final List<dynamic> items = order['items'] ?? [];
     // Determinar paso actual del stepper
@@ -393,7 +392,6 @@ class _ProfileOrdersScreenState extends State<ProfileOrdersScreen>
                       MaterialPageRoute(
                         builder: (ctx) => ShowQrScreen(
                           orderId: doc.id,
-                          qrData: numeroDeControl,
                         ),
                       ),
                     );

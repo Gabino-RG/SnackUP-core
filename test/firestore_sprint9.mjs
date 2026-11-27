@@ -126,3 +126,32 @@ await expect('cliente no vuelve a cancelar el mismo pedido',
 await expect('crear pedido listo para verificar transición', commit('owner',
   write('orders/' + readyOrder, { ...checkout, status: 'ready' }, 'createdAt')));
 await expect('cliente no cancela un pedido listo', cancel(student, readyOrder), 403);
+
+// La eliminación debe respetar el propietario y conservar pedidos históricos.
+const removableProduct = 'removable-product-' + suffix;
+const removeProduct = (uid) => commit(uid, { delete: root + '/products/' + removableProduct });
+await expect('crear producto para eliminación', commit(manager,
+  write('products/' + removableProduct, productData)));
+const historicalOrder = 'historical-order-' + suffix;
+await expect('crear pedido antes de eliminar producto', commit(student,
+  write('orders/' + historicalOrder, {
+    ...checkout, items: [{ ...item, productId: removableProduct }],
+  }, 'createdAt')));
+await expect('estudiante no elimina producto', removeProduct(student), 403);
+await expect('otro negocio no elimina producto', removeProduct(otherManager), 403);
+await expect('negocio propietario elimina producto', removeProduct(manager));
+await expect('producto eliminado no existe', request('owner', '/products/' + removableProduct), 404);
+await expect('pedido previo permanece después de eliminar producto', request(student, '/orders/' + historicalOrder));
+
+// Regresión: concatenar IDs con List.concat, sin permitir productos repetidos.
+const boundaryProducts = Array.from({ length: 9 }, (_, i) => 'boundary-' + i + '-' + suffix);
+await expect('preparar productos para límites de checkout', commit('owner',
+  ...boundaryProducts.map((id) => write('products/' + id, productData))));
+const boundaryItems = boundaryProducts.map((id) => ({ ...item, productId: id }));
+const boundaryCheckout = (id, items) => commit(student, write('orders/' + id + '-' + suffix,
+  { ...checkout, items, totalPrice: items.reduce((total, line) => total + line.price * line.quantity, 0) }, 'createdAt'));
+await expect('ocho productos distintos permitidos', boundaryCheckout('eight', boundaryItems.slice(0, 8)));
+await expect('nueve productos distintos rechazados', boundaryCheckout('nine', boundaryItems), 403);
+await expect('productos repetidos con notas distintas rechazados', boundaryCheckout('duplicate',
+  [item, { ...item, notes: 'Otra nota' }]), 403);
+await expect('cantidad cero rechazada', boundaryCheckout('zero', [{ ...item, quantity: 0 }]), 403);

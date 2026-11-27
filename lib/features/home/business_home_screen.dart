@@ -382,11 +382,20 @@ class _BusinessHomeScreenState extends State<BusinessHomeScreen> {
           const SizedBox(width: 6),
           Switch(
             value: isOpen,
-            onChanged: (newValue) {
-              FirebaseFirestore.instance
-                  .collection('businesses')
-                  .doc(_fetchedBusinessId!)
-                  .update({'isOpen': newValue});
+            onChanged: (newValue) async {
+              try {
+                await FirebaseFirestore.instance
+                    .collection('businesses')
+                    .doc(_fetchedBusinessId!)
+                    .update({'isOpen': newValue});
+              } catch (_) {
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text(
+                    'No se pudo cambiar el estado del negocio. Revisa tu conexión e inténtalo de nuevo.',
+                  )),
+                );
+              }
             },
             activeColor: AppColors.success,
             inactiveThumbColor: AppColors.error,

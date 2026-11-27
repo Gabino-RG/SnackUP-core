@@ -13,7 +13,6 @@ android {
     compileSdk = 36
     ndkVersion = "27.0.12077973"
 
-    android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -22,9 +21,6 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
-}
-
-
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.example.snackup"
@@ -32,14 +28,14 @@ android {
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = 23
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = flutter.versionCode
+        versionName = flutter.versionName
     }
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
+            // Academic demonstration APK. This debug signature is not a
+            // production release identity; preserve its keystore for updates.
             signingConfig = signingConfigs.getByName("debug")
         }
     }

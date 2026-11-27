@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'business_login_screen.dart';
 import 'register_screen.dart';
+import 'password_recovery.dart';
 import 'package:snackup/theme/app_colors.dart';
 import 'package:snackup/theme/app_text.dart';
 
@@ -16,15 +17,17 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
+  bool _isRecoveringPassword = false;
   bool _obscurePassword = true;
   String _errorMessage = '';
 
   Future<void> _signIn() async {
+    if (_isLoading || _isRecoveringPassword) return;
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
       setState(() => _errorMessage = 'Por favor, llena ambos campos');
       return;
     }
-    
+
     setState(() {
       _isLoading = true;
       _errorMessage = '';
@@ -33,17 +36,35 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
+        password: _passwordController.text,
       );
     } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
-        if (e.code == 'user-not-found' || e.code == 'wrong-password' || e.code == 'invalid-credential') {
+        if (e.code == 'user-not-found' ||
+            e.code == 'wrong-password' ||
+            e.code == 'invalid-credential') {
           _errorMessage = 'Correo o contraseña incorrectos';
         } else {
           _errorMessage = 'Ocurrió un error. Intenta de nuevo.';
         }
       });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'No se pudo iniciar sesión. Revisa tu conexión.';
+      });
+    }
+  }
+
+  Future<void> _recoverPassword() async {
+    setState(() => _isRecoveringPassword = true);
+    try {
+      await showPasswordRecovery(context, initialEmail: _emailController.text);
+    } finally {
+      if (mounted) setState(() => _isRecoveringPassword = false);
     }
   }
 
@@ -206,9 +227,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
-                    onPressed: () {
-                      // TODO: Implementar recuperación de contraseña
-                    },
+                    onPressed: _isLoading || _isRecoveringPassword
+                        ? null
+                        : _recoverPassword,
                     child: Text(
                       '¿Olvidaste tu contraseña?',
                       style: AppText.notes.copyWith(
@@ -235,7 +256,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         height: 24,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.white,
+                          ),
                         ),
                       ),
                     ),
@@ -311,10 +334,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   decoration: BoxDecoration(
                     border: Border(
-                      top: BorderSide(
-                        color: AppColors.borders,
-                        width: 1,
-                      ),
+                      top: BorderSide(color: AppColors.borders, width: 1),
                     ),
                   ),
                   child: Column(
@@ -322,9 +342,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       // BOTÓN DE REGISTRO
                       FilledButton.tonal(
                         onPressed: () {
-                          Navigator.of(context).push(MaterialPageRoute(
-                            builder: (context) => const RegisterScreen(),
-                          ));
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => const RegisterScreen(),
+                            ),
+                          );
                         },
                         style: FilledButton.styleFrom(
                           backgroundColor: AppColors.accent.withOpacity(0.1),
@@ -353,9 +375,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       // BOTÓN PARA NEGOCIOS
                       OutlinedButton(
                         onPressed: () {
-                          Navigator.of(context).push(MaterialPageRoute(
-                            builder: (context) => const BusinessLoginScreen(),
-                          ));
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => const BusinessLoginScreen(),
+                            ),
+                          );
                         },
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.textSecondary,
@@ -363,9 +387,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          side: BorderSide(
-                            color: AppColors.borders,
-                          ),
+                          side: BorderSide(color: AppColors.borders),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,

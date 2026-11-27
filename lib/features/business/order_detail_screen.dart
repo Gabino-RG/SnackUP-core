@@ -6,6 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:snackup/theme/app_colors.dart';
 import 'package:snackup/theme/app_text.dart';
+import '../delivery_qr.dart';
 
 import 'camera_permission_stub.dart'
     if (dart.library.js_interop) 'camera_permission_web.dart';
@@ -96,12 +97,12 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     }
   }
 
-  Future<void> _startScanner(BuildContext context, String numeroDeControlCorrecto) async {
+  Future<void> _startScanner(BuildContext context) async {
     final code = await Navigator.of(context).push<String>(
       MaterialPageRoute(builder: (_) => const _DeliveryScanner()),
     );
     if (!mounted || code == null) return;
-    if (code == numeroDeControlCorrecto) {
+    if (matchesDeliveryQr(code, widget.orderId)) {
       await _updateOrderStatus('completed');
     } else {
       ScaffoldMessenger.of(this.context).showSnackBar(
@@ -113,7 +114,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     }
   }
 
-  void _showManualInputDialog(String numeroDeControlCorrecto) {
+  void _showManualInputDialog() {
     final TextEditingController manualInputController = TextEditingController();
     showDialog(
       context: context,
@@ -129,7 +130,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Ingresa el número de control del estudiante:',
+              'Ingresa el código del pedido que aparece debajo del QR del cliente:',
               style: AppText.body.copyWith(
                 color: AppColors.textSecondary,
               ),
@@ -137,10 +138,11 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             const SizedBox(height: 16),
             TextField(
               controller: manualInputController,
-              keyboardType: TextInputType.number,
+              keyboardType: TextInputType.text,
+              autocorrect: false,
+              enableSuggestions: false,
               decoration: InputDecoration(
-                labelText: 'Número de Control',
-                hintText: 'Ej. 2023143096',
+                labelText: 'Código del pedido',
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -163,15 +165,15 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           ),
           ElevatedButton(
             onPressed: () {
-              final enteredNumber = manualInputController.text.trim();
-              if (enteredNumber == numeroDeControlCorrecto) {
+              final enteredCode = manualInputController.text.trim();
+              if (enteredCode.isNotEmpty && enteredCode == widget.orderId) {
                 Navigator.of(dialogContext).pop();
                 _updateOrderStatus('completed');
               } else {
                 Navigator.of(dialogContext).pop();
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: const Text('Número de Control incorrecto'),
+                    content: const Text('El código no corresponde a este pedido'),
                     backgroundColor: AppColors.error,
                     behavior: SnackBarBehavior.floating,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -381,7 +383,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                       // BOTONES DE ACCIÓN
                       if (status == 'cancelled' && order['cancellationReason'] is String)
                         Text('Motivo: ${order['cancellationReason']}'),
-                      _buildActionButtons(status, numeroDeControl),
+                      _buildActionButtons(status),
                     ],
                   ),
                 ),
@@ -519,7 +521,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     );
   }
 
-  Widget _buildActionButtons(String status, String numeroDeControl) {
+  Widget _buildActionButtons(String status) {
     if (status == 'pending') {
       return Column(
         children: [
@@ -612,7 +614,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       return Column(
         children: [
           ElevatedButton(
-            onPressed: () => _startScanner(context, numeroDeControl),
+            onPressed: () => _startScanner(context),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.success,
               foregroundColor: Colors.white,
@@ -639,7 +641,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           ),
           const SizedBox(height: 12),
           OutlinedButton(
-            onPressed: () => _showManualInputDialog(numeroDeControl),
+            onPressed: _showManualInputDialog,
             style: OutlinedButton.styleFrom(
               foregroundColor: AppColors.textSecondary,
               minimumSize: const Size(double.infinity, 56),

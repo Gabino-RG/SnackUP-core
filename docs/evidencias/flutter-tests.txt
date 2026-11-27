@@ -1,0 +1,25 @@
+00:00 +0: loading <workspace>/test/delivery_qr_test.dart
+00:00 +0: <workspace>/test/delivery_qr_test.dart: accepts the QR generated for the current order
+00:00 +1: <workspace>/test/password_recovery_test.dart: un correo inválido no envía una solicitud
+00:00 +2: <workspace>/test/password_recovery_test.dart: un correo inválido no envía una solicitud
+00:00 +3: <workspace>/test/password_recovery_test.dart: un correo inválido no envía una solicitud
+00:00 +4: <workspace>/test/password_recovery_test.dart: un correo inválido no envía una solicitud
+00:00 +5: <workspace>/test/password_recovery_test.dart: un correo inválido no envía una solicitud
+00:03 +6: <workspace>/test/password_recovery_test.dart: un correo inválido no envía una solicitud
+00:03 +7: <workspace>/test/password_recovery_test.dart: un correo inválido no envía una solicitud
+00:03 +8: <workspace>/test/password_recovery_test.dart: un correo inválido no envía una solicitud
+00:03 +9: <workspace>/test/password_recovery_test.dart: un correo inválido no envía una solicitud
+00:04 +10: <workspace>/test/password_recovery_test.dart: un correo inválido no envía una solicitud
+00:04 +11: <workspace>/test/password_recovery_test.dart: un correo inválido no envía una solicitud
+00:04 +12: <workspace>/test/password_recovery_test.dart: un correo inválido no envía una solicitud
+00:06 +13: <workspace>/test/password_recovery_test.dart: envía el correo sin espacios y confirma el resultado
+00:06 +14: <workspace>/test/widget_test.dart: espera a los servicios antes de mostrar la aplicación
+00:07 +15: <workspace>/test/widget_test.dart: espera a los servicios antes de mostrar la aplicación
+00:07 +16: <workspace>/test/widget_test.dart: espera a los servicios antes de mostrar la aplicación
+00:07 +17: <workspace>/test/widget_test.dart: espera a los servicios antes de mostrar la aplicación
+00:08 +18: <workspace>/test/widget_test.dart: espera a los servicios antes de mostrar la aplicación
+00:08 +19: <workspace>/test/widget_test.dart: espera a los servicios antes de mostrar la aplicación
+00:08 +20: <workspace>/test/widget_test.dart: un fallo de inicio permite reintentar sin cerrar la app
+00:09 +21: <workspace>/test/widget_test.dart: reconstruir el widget no repite la inicialización
+00:09 +22: <workspace>/test/widget_test.dart: captura también un fallo síncrono del inicializador
+00:09 +23: All tests passed!

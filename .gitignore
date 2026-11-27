@@ -50,7 +50,10 @@ app.*.map.json
 ios/Flutter/dart_tool/
 android/key.properties
 ios/Runner/GoogleService-Info.plist
-android/app/google-services.json
+# Android Firebase client identifiers are public configuration, matching
+# lib/firebase_options.dart. Never commit service-account keys or signing keys.
+*.jks
+*.keystore
 
 # iOS específico (Evita conflictos de pods y configs locales)
 ios/.http/

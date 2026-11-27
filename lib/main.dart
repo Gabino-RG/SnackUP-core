@@ -5,16 +5,25 @@ import 'package:flutter/foundation.dart'; // <--- IMPORTANTE: Agregué esto para
 
 // Tus imports originales
 import 'features/auth/auth_gate.dart';
+import 'app_bootstrap.dart';
 import 'firebase_options.dart';
 import 'theme/app_colors.dart';
 import 'theme/app_text.dart';
 
-void main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  runApp(
+    SnackUpBootstrap(
+      initialize: _initializeServices,
+      child: const SnackUpApp(),
+    ),
+  );
+}
 
+Future<void> _initializeServices() async {
   // --- AQUÍ ESTÁ LA MAGIA ---
   // Si es Web, usamos las llaves manuales. Si es Android, usa el archivo generado.
-  if (kIsWeb) {
+  if (Firebase.apps.isEmpty && kIsWeb) {
     await Firebase.initializeApp(
       options: const FirebaseOptions(
         apiKey: "AIzaSyDK5N-TA3bA7VKv5TJQqUXICA617wOywzU",
@@ -26,7 +35,7 @@ void main() async {
         measurementId: "G-PE33SNB39W",
       ),
     );
-  } else {
+  } else if (Firebase.apps.isEmpty) {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
@@ -36,14 +45,10 @@ void main() async {
   // Configuración de notificaciones (solo intentamos si ya se inicializó)
   try {
     FirebaseMessaging messaging = FirebaseMessaging.instance;
-    await messaging.requestPermission(
-      alert: true, badge: true, sound: true,
-    );
+    await messaging.requestPermission(alert: true, badge: true, sound: true);
   } catch (e) {
-    print('Nota: Las notificaciones pueden no estar configuradas en Web o dieron error: $e');
+    debugPrint('No se pudieron configurar las notificaciones: $e');
   }
-  
-  runApp(const SnackUpApp());
 }
 
 class SnackUpApp extends StatelessWidget {
@@ -64,25 +69,25 @@ class SnackUpApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(
           seedColor: AppColors.primary,
           brightness: Brightness.light,
-          
+
           // Primarios
           primary: AppColors.primary,
           onPrimary: Colors.white,
-          
+
           // Secundarios
           secondary: AppColors.accent,
           onSecondary: Colors.white,
-          
+
           // Terciarios
           tertiary: AppColors.tertiary,
           onTertiary: Colors.white,
-          
+
           // Fondos y superficies
           background: AppColors.background,
           onBackground: AppColors.textPrimary,
           surface: AppColors.componentBase,
           onSurface: AppColors.textPrimary,
-          
+
           // Variantes modernas
           surfaceVariant: AppColors.componentBase.withOpacity(0.6),
           outline: AppColors.borders,
@@ -93,11 +98,9 @@ class SnackUpApp extends StatelessWidget {
           // Display (Pantallas principales)
           displayLarge: AppText.h1,
           displayMedium: AppText.h1.copyWith(fontSize: 24), // H2
-          
           // Headlines
           headlineMedium: AppText.h3,
           headlineSmall: AppText.h3.copyWith(fontSize: 18), // H4
-          
           // Titles
           titleLarge: AppText.h3.copyWith(fontWeight: FontWeight.w700),
           titleMedium: AppText.body.copyWith(
@@ -108,12 +111,12 @@ class SnackUpApp extends StatelessWidget {
             fontSize: 14,
             fontWeight: FontWeight.w500,
           ),
-          
+
           // Body
           bodyLarge: AppText.body,
           bodyMedium: AppText.body.copyWith(fontSize: 14),
           bodySmall: AppText.notes,
-          
+
           // Labels (Botones, Chips)
           labelLarge: AppText.body.copyWith(
             fontWeight: FontWeight.w600,
@@ -177,9 +180,7 @@ class SnackUpApp extends StatelessWidget {
         textButtonTheme: TextButtonThemeData(
           style: TextButton.styleFrom(
             foregroundColor: AppColors.primary,
-            textStyle: AppText.body.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
+            textStyle: AppText.body.copyWith(fontWeight: FontWeight.w600),
             padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
@@ -211,10 +212,7 @@ class SnackUpApp extends StatelessWidget {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(
-              color: AppColors.primary,
-              width: 2,
-            ),
+            borderSide: const BorderSide(color: AppColors.primary, width: 2),
           ),
           errorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
@@ -242,9 +240,7 @@ class SnackUpApp extends StatelessWidget {
             horizontal: 16,
             vertical: 12,
           ),
-          titleTextStyle: AppText.body.copyWith(
-            fontWeight: FontWeight.w500,
-          ),
+          titleTextStyle: AppText.body.copyWith(fontWeight: FontWeight.w500),
           subtitleTextStyle: AppText.notes,
         ),
 
@@ -281,7 +277,8 @@ class SnackUpApp extends StatelessWidget {
         ),
       ),
 
-      home: const AuthWrapper(), // Asegúrate de que AuthWrapper esté en auth_gate.dart
+      home:
+          const AuthWrapper(), // Asegúrate de que AuthWrapper esté en auth_gate.dart
     );
   }
 }

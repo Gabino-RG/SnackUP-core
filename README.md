@@ -1,126 +1,76 @@
-# SnackUP-Core `v1.0`
+# SnackUP Sprint 10
 
-![SnackUP Banner](https://img.shields.io/badge/SnackUP-Official_Production_Repo-orange?style=for-the-badge&logo=fastapi)
-[![Flutter Version](https://img.shields.io/badge/Flutter-3.29.0%2B-02569B?style=flat&logo=flutter)](https://flutter.dev)
-[![Firebase](https://img.shields.io/badge/Backend-Firebase-FFCA28?style=flat&logo=firebase&logoColor=black)](https://firebase.google.com)
+Aplicación móvil Flutter para pedidos de cafetería universitaria. Incluye acceso de estudiante y negocio, menú, carrito, pedidos y entrega mediante QR por pedido.
 
-Bienvenido al repositorio central de **SnackUP**. Esta es la versión profesional destinada a producción, optimizada para escalabilidad y rendimiento.
+## Estado de la entrega
 
----
+Versión preparada: **1.0.0+10**. Base: `sprint9`, commit `04865e07e4cd7a2068c183b44741c915894a5623`.
 
-## ⚠️ Regla de Oro (Políticas de Git)
+Se aprobaron 23 pruebas Flutter y 40 comprobaciones de Firestore en el emulador local el 27 de noviembre de 2026. La instalación y el recorrido completo en Android con Firebase publicado deben quedar registrados antes de entregar. El APK debe descargarse del workflow o generarse localmente; el código fuente por sí solo no sustituye al APK.
 
-> **Prohibido hacer push directo a `main` o `develop`.**
-> Todo cambio debe integrarse mediante **Pull Request (PR)** y requiere al menos **1 aprobación** de un socio para ser fusionado.
+## Política de integración del equipo
 
----
+Prohibido hacer push directo a `main` o `develop`. Integrar mediante pull request y al menos una aprobación de un socio. Esta preparación utiliza la rama `codex/sprint10-entrega`, sin fusionar automáticamente.
 
-## 🛠️ Stack Tecnológico
+## Entorno probado
 
-| Componente | Tecnología | Detalle |
-| :--- | :--- | :--- |
-| **Framework** | Flutter 3.29.0+ | UI Multiplataforma |
-| **Lenguaje** | Dart (SDK >=3.8.0) | Tipado fuerte |
-| **Backend** | Firebase | Firestore, Auth, Storage |
-| **Estado** | Provider | ChangeNotifiers |
+- Flutter 3.32.4 y Dart 3.8.1. `pubspec.yaml` exige Dart ^3.8.0.
+- Android: minSdk 23, compileSdk y targetSdk 36; NDK 27.0.12077973.
+- Java 17 para compilar Android; Java 21 usado en el emulador Firestore local.
+- Node 22 o superior para las pruebas de Firestore y Firebase CLI.
 
----
+## Preparación
 
-## 📋 Requisitos Previos
-
-Para que el proyecto compile a la primera, es **obligatorio**:
-
-1. **Actualizar Flutter:**
-
-```bash
-flutter upgrade
-```
-
-Verifica con `flutter --version` que estés en la 3.29.0 o superior.
-
-2. **Firebase CLI:**
-
-```bash
-npm install -g firebase-tools
-firebase login
-```
-
----
-
-## ⚙️ Configuración Inicial
-
-Si es la primera vez que clonas el repo, sigue este orden exacto:
-
-1. **Obtener dependencias:**
-
-```bash
+```powershell
 flutter pub get
+flutter analyze --no-fatal-infos
+flutter test --reporter expanded
+flutter build apk --release --build-name=1.0.0 --build-number=10
 ```
 
-2. **Vincular Firebase:**
+La salida será `build/app/outputs/flutter-apk/app-release.apk`. El build release conserva la **firma debug para demostración académica**. Para distribución de producción se necesita una clave propia y conservarla de forma privada. No incluir `.jks`, `.keystore` ni `android/key.properties` en Git.
 
-```bash
-flutterfire configure
-```
+La configuración cliente de Firebase usa el proyecto **snackup-8fe96** y el paquete `com.example.snackup`. `android/app/google-services.json` contiene únicamente la configuración pública equivalente a `lib/firebase_options.dart`. Las claves cliente no conceden acceso administrativo; la autorización se implementa con Auth y Rules. Si se cambia de proyecto, regenerar ambos mediante FlutterFire de forma coherente. No seleccionar el nombre antiguo snackup-official por error.
 
-Selecciona el proyecto **snackup-official** cuando el terminal te lo solicite.
-
-3. **Limpieza (Solo si algo falla):**
-
-```bash
-flutter clean && flutter pub get
-```
-
----
-
-## 🌿 Flujo de Trabajo (GitFlow Pro)
-
-Para mantener el código limpio y profesional, seguimos este estándar:
-
-| Acción | Rama / Prefijo | Ejemplo de Commit |
-| :--- | :--- | :--- |
-| **Nueva Mejora** | `feat/` | `feat: add qr scanner integration` |
-| **Arreglo de Bug** | `fix/` | `fix: resolve login timeout` |
-| **Refactor** | `refactor/` | `refactor: optimize provider logic` |
-
-> [!TIP]
-> **Antes de empezar cualquier tarea:** Asegúrate de estar al día ejecutando `git pull origin develop` para evitar conflictos de merge.
-
----
-
-## 📁 Estructura del Proyecto
-
-```text
-lib/
-├── models/      # Definición de datos (Data classes)
-├── services/    # Lógica de Firebase y APIs externas
-├── providers/   # Manejo de estado global (ChangeNotifiers)
-├── screens/     # Pantallas principales de la UI
-└── widgets/     # Componentes reutilizables
-```
-
----
-
-<p align="center">
-Desarrollado con ❤️ por el equipo de <strong>SnackUP</strong>
-</p>
-
-## Sprint 9 · Panel Negocio y clima
-
-- Las cuentas de negocio se asignan desde Firebase con el rol `business` en
-  `users/{uid}` y la propiedad `ownerId` en `businesses/{businessId}`.
-- En checkout se validan stock, precio y total con los datos de Firestore. El
-  límite es de ocho productos distintos por pedido para respetar el límite de
-  lecturas de Firestore Rules. El stock sigue siendo administrado por Negocio.
-- Inicio sugiere un platillo disponible del menú de negocios abiertos, con preferencia según el clima. Open-Meteo recibe las coordenadas
-  fijas del campus y la selección de variables climáticas. El menú carga por
-  separado. Si el servicio falla, la sugerencia usa el último dato válido de
-  la sesión durante una hora o muestra una sugerencia general.
-- Antes de publicar las reglas e índices, prueba los dos roles en un proyecto
-  de Firebase de prueba. La carpeta incluye el archivo de reglas y los índices.
-
-Pruebas de permisos en el emulador, con Firebase CLI, Java y Node.js 22:
+## Pruebas Firestore con datos ficticios
 
 ```powershell
 firebase emulators:exec --only firestore --project demo-snackup-sprint9 "node test/firestore_sprint9.mjs"
 ```
+
+El script solo permite localhost y usa un proyecto `demo-`. No ejecutarlo contra la base real. Si una versión antigua del emulador falla por el idioma Java, iniciarlo con `-Duser.language=en -Duser.country=US`. La bitácora detalla la versión ejecutada.
+
+Las reglas e índices del repositorio **no demuestran estar desplegados**. Probarlos en un proyecto de prueba y revisar las cuentas de demostración antes de publicar cambios de backend. La eliminación de productos nueva requiere la regla `allow delete` del propietario; con reglas antiguas puede recibir permission-denied.
+
+## Descargar el APK desde GitHub Actions
+
+El workflow `.github/workflows/android-apk.yml` se ejecuta al cambiar código en `codex/**`, y también permite ejecución manual. Compila con Flutter 3.32.4, analiza, ejecuta pruebas y verifica la firma. En una ejecución aprobada, descargar el artefacto `SnackUP-Android-1.0.0-build10-*`, extraer el APK y su SHA256, e instalar ese mismo archivo en el teléfono. El artefacto se conserva 30 días; Scrum Master debe subir el APK a la asignación, no solo el enlace temporal de Actions.
+
+```powershell
+adb install -r "SnackUP-1.0.0+10.apk"
+Get-FileHash "SnackUP-1.0.0+10.apk" -Algorithm SHA256
+```
+
+## Arquitectura implementada
+
+`lib/features/{auth,home,user,business}` agrupa pantallas por función; `lib/theme` comparte estilos; `lib/services/weather_service.dart` separa la API climática. Widgets gestionan estado local con setState y observan datos con StreamBuilder/FutureBuilder. Muchas pantallas acceden directamente a Firebase. Provider está declarado, pero no se usa como patrón de estado; no afirmar MVVM ni una capa completa de repositorios.
+
+WeatherService permite inyectar HTTP, reloj y timeout. Consulta Open-Meteo con coordenadas fijas del campus; no envía nombre, correo ni GPS del estudiante. Caché en memoria 15 minutos y fallback menor de una hora. Ante fallo conserva el menú y una sugerencia general.
+
+## Roles y demostración
+
+El registro crea rol `user` con correo @utsjr.edu.mx. Una cuenta de negocio debe ser asignada por el administrador autorizado con `users/{uid}.role = business` y `businesses/{businessId}.ownerId = uid`. Elegir el acceso Negocio no concede permisos.
+
+El QR utiliza `snackup:order:<orderId>` y se compara con el pedido abierto. El código manual es el ID completo. Es una referencia del pedido, no una credencial secreta; Rules restringe las transiciones al dueño del negocio.
+
+Permisos declarados: internet, cámara y notificaciones. Los avisos actuales del negocio utilizan Firestore y sonido dentro de la aplicación activa. No se acredita un backend de notificaciones push para app cerrada.
+
+## Documentación y pendientes de cierre
+
+- `docs/sprint10.json`: contenido de documentación y matriz de requisitos.
+- `docs/PRUEBAS_Y_CIERRE.txt`: resultados, casos manuales y checklist.
+- `docs/evidencias/`: registros reales de Flutter y Firestore.
+
+Completar integrantes, grupo, Scrum Master, arquitectura elegida previamente, fecha asignada y documentos de sprints anteriores. Todos deben asistir presencialmente y puntuales el 1 o 3 de diciembre según la asignación del grupo. Solo Scrum Master sube APK y documentación; los demás marcan entregada.
+
+Limitaciones: el stock se valida pero no se descuenta ni reserva automáticamente; no se verifica propiedad del correo institucional con emailVerified; Tarjeta/Vale son selección del pedido, sin pasarela de pago integrada; no se ha demostrado cifrado de extremo a extremo ni cifrado propio de campos. Firebase proporciona protección de transporte y cifrado administrado de su servicio, que debe describirse con precisión.

@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -110,7 +109,6 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
       }
 
       if (mounted) Navigator.of(context).pop();
-
     } catch (e) {
       _showError('Error al guardar: ${e.toString()}');
     } finally {
@@ -152,9 +150,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
       ),
       body: _isLoading
           ? const Center(
-              child: CircularProgressIndicator(
-                color: AppColors.primary,
-              ),
+              child: CircularProgressIndicator(color: AppColors.primary),
             )
           : SingleChildScrollView(
               padding: const EdgeInsets.all(20.0),
@@ -183,9 +179,9 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
-                              _isEditing 
-                                ? 'Actualiza la información de tu producto'
-                                : 'Agrega un nuevo producto a tu menú',
+                              _isEditing
+                                  ? 'Actualiza la información de tu producto'
+                                  : 'Agrega un nuevo producto a tu menú',
                               style: AppText.notes.copyWith(
                                 color: AppColors.tertiary,
                                 fontWeight: FontWeight.w500,
@@ -265,7 +261,9 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                 webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
                 errorBuilder: (_, __, ___) => const Padding(
                   padding: EdgeInsets.all(12),
-                  child: Text('No se pudo mostrar la foto. Verifica el enlace.'),
+                  child: Text(
+                    'No se pudo mostrar la foto. Verifica el enlace.',
+                  ),
                 ),
               ),
             );
@@ -284,7 +282,8 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
           controller: _nameController,
           label: 'Nombre del Producto',
           hintText: 'Ej: Taco al Pastor',
-          validator: (value) => value == null || value.trim().isEmpty || value.trim().length > 120
+          validator: (value) =>
+              value == null || value.trim().isEmpty || value.trim().length > 120
               ? 'El nombre es obligatorio'
               : null,
         ),
@@ -296,7 +295,8 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
           controller: _categoryController,
           label: 'Categoría',
           hintText: 'Ej: TACOS, BEBIDAS, POSTRES',
-          validator: (value) => value == null || value.trim().isEmpty || value.trim().length > 80
+          validator: (value) =>
+              value == null || value.trim().isEmpty || value.trim().length > 80
               ? 'La categoría es obligatoria'
               : null,
         ),
@@ -327,7 +327,10 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                     return 'El precio es obligatorio';
                   }
                   final price = double.tryParse(value);
-                  if (price == null || !price.isFinite || price <= 0 || price > 1000000 ||
+                  if (price == null ||
+                      !price.isFinite ||
+                      price <= 0 ||
+                      price > 1000000 ||
                       !RegExp(r'^\d+(\.\d{1,2})?$').hasMatch(value.trim())) {
                     return 'Precio inválido';
                   }
@@ -456,9 +459,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
               const SizedBox(height: 4),
               Text(
                 subtitle,
-                style: AppText.notes.copyWith(
-                  color: AppColors.textSecondary,
-                ),
+                style: AppText.notes.copyWith(color: AppColors.textSecondary),
               ),
             ],
           ),
@@ -479,11 +480,10 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         backgroundColor: _isEditing ? AppColors.accent : AppColors.primary,
         foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(vertical: 16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         elevation: 2,
-        shadowColor: (_isEditing ? AppColors.accent : AppColors.primary).withOpacity(0.3),
+        shadowColor: (_isEditing ? AppColors.accent : AppColors.primary)
+            .withOpacity(0.3),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -498,15 +498,12 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
               ),
             )
           else
-            Icon(
-              _isEditing ? Icons.save_rounded : Icons.add_rounded,
-              size: 20,
-            ),
+            Icon(_isEditing ? Icons.save_rounded : Icons.add_rounded, size: 20),
           const SizedBox(width: 8),
           Text(
-            _isLoading 
-              ? 'Guardando...' 
-              : (_isEditing ? 'Guardar Cambios' : 'Agregar Producto'),
+            _isLoading
+                ? 'Guardando...'
+                : (_isEditing ? 'Guardar Cambios' : 'Agregar Producto'),
             style: AppText.body.copyWith(
               fontWeight: FontWeight.w600,
               color: Colors.white,
@@ -521,10 +518,55 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
   Widget _buildDeleteButton() {
     return IconButton(
       icon: const Icon(Icons.delete_outline_rounded),
-      onPressed: () {
-        // TODO: Implementar eliminación
-      },
+      tooltip: 'Eliminar producto',
+      onPressed: _isLoading ? null : _deleteProduct,
     );
+  }
+
+  Future<void> _deleteProduct() async {
+    if (_isLoading || widget.productId == null) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Eliminar producto'),
+        content: Text(
+          '¿Eliminar "${_nameController.text}" del menú? Los pedidos anteriores conservarán su información.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => _isLoading = true);
+    try {
+      await FirebaseFirestore.instance
+          .collection('products')
+          .doc(widget.productId)
+          .delete();
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Producto eliminado.')));
+      Navigator.of(context).pop();
+    } on FirebaseException catch (error) {
+      _showError(
+        error.code == 'permission-denied'
+            ? 'No tienes permiso para eliminar este producto.'
+            : 'No se pudo eliminar el producto. Revisa tu conexión.',
+      );
+    } catch (_) {
+      _showError('No se pudo eliminar el producto. Inténtalo de nuevo.');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override

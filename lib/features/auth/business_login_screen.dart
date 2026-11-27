@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'password_recovery.dart';
 import 'package:snackup/theme/app_colors.dart'; // Ajusta la ruta según tu proyecto
 import 'package:snackup/theme/app_text.dart';
 
@@ -14,10 +15,12 @@ class _BusinessLoginScreenState extends State<BusinessLoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
+  bool _isRecoveringPassword = false;
   bool _obscurePassword = true;
   String _errorMessage = '';
 
   Future<void> _signInAsBusiness() async {
+    if (_isLoading || _isRecoveringPassword) return;
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
       setState(() => _errorMessage = 'Por favor, llena ambos campos');
       return;
@@ -31,27 +34,39 @@ class _BusinessLoginScreenState extends State<BusinessLoginScreen> {
     try {
       await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
+        password: _passwordController.text,
       );
 
       if (mounted) {
         Navigator.of(context).pop();
       }
-
     } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
-        if (e.code == 'user-not-found' || e.code == 'wrong-password' || e.code == 'invalid-credential') {
+        if (e.code == 'user-not-found' ||
+            e.code == 'wrong-password' ||
+            e.code == 'invalid-credential') {
           _errorMessage = 'Correo o contraseña incorrectos';
         } else {
           _errorMessage = 'Ocurrió un error. Intenta de nuevo.';
         }
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
         _errorMessage = 'Ocurrió un error inesperado.';
       });
+    }
+  }
+
+  Future<void> _recoverPassword() async {
+    setState(() => _isRecoveringPassword = true);
+    try {
+      await showPasswordRecovery(context, initialEmail: _emailController.text);
+    } finally {
+      if (mounted) setState(() => _isRecoveringPassword = false);
     }
   }
 
@@ -219,9 +234,9 @@ class _BusinessLoginScreenState extends State<BusinessLoginScreen> {
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
-                  onPressed: () {
-                    // TODO: Implementar recuperación de contraseña
-                  },
+                  onPressed: _isLoading || _isRecoveringPassword
+                      ? null
+                      : _recoverPassword,
                   child: Text(
                     '¿Olvidaste tu contraseña?',
                     style: AppText.notes.copyWith(
@@ -291,9 +306,7 @@ class _BusinessLoginScreenState extends State<BusinessLoginScreen> {
                   decoration: BoxDecoration(
                     color: AppColors.error.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: AppColors.error.withOpacity(0.3),
-                    ),
+                    border: Border.all(color: AppColors.error.withOpacity(0.3)),
                   ),
                   child: Row(
                     children: [

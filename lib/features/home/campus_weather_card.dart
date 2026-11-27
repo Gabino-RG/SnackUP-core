@@ -1,10 +1,7 @@
-import 'dart:async';
-import 'dart:convert';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 
+import '../../services/weather_service.dart';
 import '../user/product_detail_screen.dart';
 
 class CampusWeatherCard extends StatefulWidget {
@@ -15,17 +12,7 @@ class CampusWeatherCard extends StatefulWidget {
 }
 
 class _CampusWeatherCardState extends State<CampusWeatherCard> {
-  static const _latitude = String.fromEnvironment(
-    'SNACKUP_CAMPUS_LATITUDE',
-    defaultValue: '20.36778',
-  );
-  static const _longitude = String.fromEnvironment(
-    'SNACKUP_CAMPUS_LONGITUDE',
-    defaultValue: '-100.010095',
-  );
-
-  static ({double temperature, int code, DateTime fetchedAt})? _cached;
-  late final _weather = _load();
+  late final _weather = WeatherService.instance.load();
   late final _openBusinesses = FirebaseFirestore.instance
       .collection('businesses')
       .where('isOpen', isEqualTo: true)
@@ -34,46 +21,6 @@ class _CampusWeatherCardState extends State<CampusWeatherCard> {
       .collection('products')
       .where('isAvailable', isEqualTo: true)
       .snapshots();
-
-  Future<({double temperature, int code, DateTime fetchedAt})?> _load() async {
-    final cached = _cached;
-    final age = cached == null
-        ? null
-        : DateTime.now().difference(cached.fetchedAt);
-    if (age != null && age < const Duration(minutes: 15)) return cached;
-
-    final client = http.Client();
-    try {
-      final response = await client
-          .get(
-            Uri.https('api.open-meteo.com', '/v1/forecast', {
-              'latitude': _latitude,
-              'longitude': _longitude,
-              'current': 'temperature_2m,weather_code',
-            }),
-          )
-          .timeout(const Duration(seconds: 5));
-      if (response.statusCode == 200) {
-        final current = (jsonDecode(response.body) as Map)['current'] as Map;
-        final temperature = (current['temperature_2m'] as num).toDouble();
-        final code = current['weather_code'] as int;
-        if (temperature.isFinite) {
-          return _cached = (
-            temperature: temperature,
-            code: code,
-            fetchedAt: DateTime.now(),
-          );
-        }
-      }
-    } on Exception {
-      // The menu stays usable if weather is unavailable.
-    } on TypeError {
-      // Unexpected response shape.
-    } finally {
-      client.close();
-    }
-    return age != null && age < const Duration(hours: 1) ? cached : null;
-  }
 
   @override
   Widget build(BuildContext context) {

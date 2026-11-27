@@ -1,0 +1,65 @@
+SNACKUP SPRINT 10 - PRUEBAS Y CIERRE
+Fecha de ejecución local: 27 de noviembre de 2026
+Versión preparada: 1.0.0+10
+Base: 04865e07e4cd7a2068c183b44741c915894a5623, rama sprint9
+Rama de mejoras: codex/sprint10-entrega
+
+RESULTADOS REALES
+Flutter 3.32.4 / Dart 3.8.1: 23 pruebas aprobadas.
+  5 referencias QR, 7 clima, 4 bootstrap, 7 recuperación de contraseña.
+Firestore Emulator 1.19.8 / Java21 / Node24.22.3: 40 comprobaciones aprobadas.
+  Incluye preparación de datos, roles, lectura de pedidos, stock, totales,
+  estados, cancelación, eliminación autorizada, histórico, 8/9 productos y duplicados.
+flutter analyze --no-pub --no-fatal-infos: código 0, 0 errores y 0 advertencias;
+  195 avisos informativos pendientes de mantenimiento.
+Datos ficticios: demo-snackup-sprint9, 127.0.0.1:8080. Sin escrituras en Firebase real.
+Las pruebas de clima y recuperación usan respuestas simuladas.
+Evidencia en docs/evidencias/.
+
+FALLOS DETECTADOS Y CORREGIDOS
+1. list + list no admitido en Rules bloqueaba checkout válido.
+2. Ocho productos excedían el límite de expresiones: reglas optimizadas.
+3. Eliminar producto y recuperar contraseña tenían botones vacíos.
+4. Registro incompleto causaba cierre de sesión o reintento de cuenta duplicada.
+5. QR estático de alumno servía para diferentes pedidos del mismo alumno.
+6. Inicio no mostraba recuperación si fallaba Firebase.
+7. Configuración Android ausente y versión fija en Gradle.
+
+VALIDACIÓN MANUAL PENDIENTE - NO REGISTRAR COMO APROBADA SIN EJECUTAR
+M01 Instalar APK: anotar fecha, nombre, SHA256, modelo, Android, versión y captura.
+M02 Abrir la app y comprobar inicio sin error con Firebase configurado.
+M03 Entrar con estudiante y negocio; probar credenciales inválidas y cerrar sesión.
+M04 Registrar cuenta institucional y recuperar perfil tras interrupción de red.
+M05 Recuperar contraseña y abrir el enlace recibido con una cuenta de demostración.
+M06 Crear, consultar, editar y eliminar producto temporal como dueño.
+M07 Probar permiso cámara permitido/denegado y reintento desde Ajustes.
+M08 Cliente envía pedido; negocio prepara, marca listo y completa con su QR.
+M09 Rechazar QR de otro pedido; comprobar alternativa de código manual.
+M10 Cancelar pedido permitido y rechazar modificación del importe/estado ajeno.
+M11 Mostrar clima real y fallo API sin bloquear menú.
+M12 Verificar reglas e índices publicados y acceso autorizado a base durante evaluación.
+M13 Recorrer Inicio, Buscar, Carrito, Pedidos, menú negocio y estadísticas.
+Para cada caso: fecha, ejecutor, pasos, esperado, observado, aprobado/fallido, evidencia.
+
+REGISTRO DEL APK Y DISPOSITIVO
+Archivo APK:
+Commit de compilación:
+URL de ejecución GitHub Actions:
+SHA256:
+Tipo de firma: académica debug (salvo cambio explícito documentado)
+Modelo Android:
+Versión Android:
+Fecha y resultado de instalación:
+Fecha y resultado del flujo completo:
+Capturas o video:
+
+ENTREGA
+[ ] APK descargable e instalado; usar el mismo archivo probado.
+[ ] Documentación Sprint10 y resultados reales.
+[ ] Integrar Sprints anteriores que conserva el equipo.
+[ ] Completar nombres, grupo, Scrum Master y fecha asignada.
+[ ] Confirmar arquitectura y patrones que se seleccionaron durante el curso.
+[ ] GitHub actualizado mediante PR y revisión según política del equipo.
+[ ] Acceso a Firebase y cuentas de demostración sin publicar contraseñas.
+[ ] Todos presentes y puntuales el 1 o 3 de diciembre según fecha asignada.
+[ ] Scrum Master sube APK y documentación; resto marca entregada.

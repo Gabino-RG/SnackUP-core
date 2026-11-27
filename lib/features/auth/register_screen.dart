@@ -23,9 +23,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   String _errorMessage = '';
+  User? _registeredUser;
 
   Future<void> _register() async {
-    if (!_formKey.currentState!.validate()) {
+    if (_isLoading || !_formKey.currentState!.validate()) {
       return;
     }
 
@@ -35,15 +36,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
 
     try {
-      UserCredential userCredential =
-          await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-      );
+      // Si Firestore falló después del alta, reintentar guarda el mismo perfil.
+      if (_registeredUser == null) {
+        final credential = await FirebaseAuth.instance
+            .createUserWithEmailAndPassword(
+              email: _emailController.text.trim(),
+              password: _passwordController.text,
+            );
+        _registeredUser = credential.user;
+      }
 
-      if (userCredential.user != null) {
-        String uid = userCredential.user!.uid;
-        String email = _emailController.text.trim();
+      if (_registeredUser != null) {
+        String uid = _registeredUser!.uid;
+        String email = _registeredUser!.email ?? _emailController.text.trim();
         String numeroControl = _numeroControlController.text.trim();
         String name = _nameController.text.trim();
 
@@ -57,14 +62,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
         });
 
         // Actualizar perfil de Firebase Auth
-        await userCredential.user!.updateDisplayName(name);
+        await _registeredUser!.updateDisplayName(name);
       }
 
       if (mounted) {
         Navigator.of(context).pop();
       }
-
     } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
         if (e.code == 'weak-password') {
@@ -76,9 +81,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
         }
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
-        _errorMessage = 'Ocurrió un error inesperado';
+        _errorMessage = _registeredUser == null
+            ? 'No se pudo crear tu cuenta. Revisa tu conexión e inténtalo de nuevo.'
+            : 'Tu cuenta se creó, pero no se completó el perfil. Reintenta o vuelve al inicio para completarlo.';
       });
     }
   }
@@ -179,6 +187,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                   const SizedBox(height: 40),
 
+                  if (_registeredUser != null) ...[
+                    Text(
+                      'Cuenta creada para ${_registeredUser!.email ?? _emailController.text.trim()}. Completa tu nombre y número de control para terminar el registro.',
+                      style: AppText.body.copyWith(
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+
                   // FORMULARIO DE REGISTRO
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -193,6 +211,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       const SizedBox(height: 8),
                       TextFormField(
                         controller: _nameController,
+                        enabled: !_isLoading,
                         style: AppText.body,
                         decoration: InputDecoration(
                           hintText: 'Juan Pérez García',
@@ -234,6 +253,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       const SizedBox(height: 8),
                       TextFormField(
                         controller: _emailController,
+                        enabled: !_isLoading && _registeredUser == null,
                         style: AppText.body,
                         decoration: InputDecoration(
                           hintText: 'tu.correo@utsjr.edu.mx',
@@ -274,6 +294,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       const SizedBox(height: 8),
                       TextFormField(
                         controller: _numeroControlController,
+                        enabled: !_isLoading,
                         style: AppText.body,
                         decoration: InputDecoration(
                           hintText: '202314096',
@@ -314,6 +335,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       const SizedBox(height: 8),
                       TextFormField(
                         controller: _passwordController,
+                        enabled: !_isLoading && _registeredUser == null,
                         style: AppText.body,
                         decoration: InputDecoration(
                           hintText: 'Mínimo 6 caracteres',
@@ -360,6 +382,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       const SizedBox(height: 8),
                       TextFormField(
                         controller: _confirmPasswordController,
+                        enabled: !_isLoading && _registeredUser == null,
                         style: AppText.body,
                         decoration: InputDecoration(
                           hintText: 'Repite tu contraseña',
@@ -407,7 +430,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           height: 24,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
                           ),
                         ),
                       ),
@@ -431,7 +456,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           const Icon(Icons.person_add_rounded, size: 20),
                           const SizedBox(width: 8),
                           Text(
-                            'Crear Mi Cuenta',
+                            _registeredUser == null
+                                ? 'Crear Mi Cuenta'
+                                : 'Completar Registro',
                             style: AppText.body.copyWith(
                               fontWeight: FontWeight.w600,
                               color: Colors.white,
