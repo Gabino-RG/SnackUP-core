@@ -68,7 +68,7 @@ jobs:
       - name: Build the academic Android APK
         # The project signs this academic build with the Android debug key.
         # This workflow does not deploy Firebase or publish a store release.
-        run: flutter build apk --release --build-name=1.0.0 --build-number=10
+        run: flutter build apk --release --build-name=1.0.1 --build-number=11
 
       - name: Verify the APK signature and prepare its checksum
         run: |
@@ -76,22 +76,23 @@ jobs:
           test -s "$snackup_apk"
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$snackup_apk"
           mkdir -p build/entrega
-          cp "$snackup_apk" 'build/entrega/SnackUP-1.0.0+10.apk'
+          cp "$snackup_apk" 'build/entrega/SnackUP-1.0.1+11.apk'
           (
             cd build/entrega
-            sha256sum 'SnackUP-1.0.0+10.apk' > SHA256SUMS.txt
+            sha256sum 'SnackUP-1.0.1+11.apk' > SHA256SUMS.txt
           )
-          printf 'Commit: %s\nVersion: 1.0.0+10\nFlutter: 3.32.4\nSignature: academic debug key\n' \
+          printf 'Commit: %s\nVersion: 1.0.1+11\nFlutter: 3.32.4\nSignature: academic debug key\n' \
             "$GITHUB_SHA" > build/entrega/BUILD-INFO.txt
 
       - name: Upload the APK and SHA256
         uses: actions/upload-artifact@v7
         with:
-          name: SnackUP-Android-1.0.0-build10-${{ github.run_number }}
+          name: SnackUP-Android-1.0.1-build11-${{ github.run_number }}
           path: |
-            build/entrega/SnackUP-1.0.0+10.apk
+            build/entrega/SnackUP-1.0.1+11.apk
             build/entrega/SHA256SUMS.txt
             build/entrega/BUILD-INFO.txt
           if-no-files-found: error
           compression-level: 0
           retention-days: 30
+

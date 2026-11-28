@@ -78,3 +78,11 @@ Permisos declarados: internet, cámara y notificaciones. Los avisos actuales del
 Completar integrantes, grupo, Scrum Master, arquitectura elegida previamente, fecha asignada y documentos de sprints anteriores. Todos deben asistir presencialmente y puntuales el 1 o 3 de diciembre según la asignación del grupo. Solo Scrum Master sube APK y documentación; los demás marcan entregada.
 
 Limitaciones: el stock se valida pero no se descuenta ni reserva automáticamente; no se verifica propiedad del correo institucional con emailVerified; Tarjeta/Vale son selección del pedido, sin pasarela de pago integrada; no se ha demostrado cifrado de extremo a extremo ni cifrado propio de campos. Firebase proporciona protección de transporte y cifrado administrado de su servicio, que debe describirse con precisión.
+
+## Fotos desde galería en Firebase Spark
+
+Versión de fotos: 1.0.1+11. El negocio selecciona una foto, ve la vista previa y puede cambiarla o quitarla. Se comprime a JPEG de hasta 150 KiB, sin EXIF, en productImages/{productId}. Los bytes se guardan separados del catálogo y se excluyen de índices. La operación de producto y foto es atómica. Carrito y favoritos conservan referencias, sin duplicar los bytes.
+
+Cloud Storage requiere Blaze; esta función usa la cuota gratuita de Firestore y no cambia el plan ni vincula tarjeta. Es una solución para catálogos pequeños: siguen aplicando cuotas de almacenamiento, lecturas y transferencia. Fuente: https://firebase.google.com/docs/firestore/quotas
+
+Validación: 37 pruebas Flutter aprobadas; 48 comprobaciones nuevas de fotos y 40 de pedidos aprobadas en emulador local. El despliegue en el proyecto real snackup-8fe96 requiere autorización; las reglas nuevas aún no están publicadas. Sin esas reglas, guardar fotos puede devolver permission-denied.

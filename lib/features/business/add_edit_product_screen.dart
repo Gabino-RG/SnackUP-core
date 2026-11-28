@@ -1,8 +1,14 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:snackup/theme/app_colors.dart';
 import 'package:snackup/theme/app_text.dart';
+
+import '../../services/product_photo_service.dart';
+import '../../widgets/product_photo.dart';
 
 class AddEditProductScreen extends StatefulWidget {
   final String businessId;
@@ -26,8 +32,13 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
   final _stockController = TextEditingController();
   final _categoryController = TextEditingController();
 
-  final _imageUrlController = TextEditingController();
+  final _photoService = ProductPhotoService();
+  final _imagePicker = ImagePicker();
   String? _existingImageUrl;
+  Uint8List? _selectedPhoto;
+  bool _hasPhoto = false;
+  bool _removePhoto = false;
+  bool _isPickingPhoto = false;
   bool _isFeatured = false;
   bool _isAvailable = true;
   bool _isLoading = false;
@@ -62,7 +73,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
           _isFeatured = data['isFeatured'] ?? false;
           _isAvailable = data['isAvailable'] ?? true;
           _existingImageUrl = data['imageUrl'] as String?;
-          _imageUrlController.text = _existingImageUrl ?? '';
+          _hasPhoto = data['hasPhoto'] == true;
         });
       }
     } catch (e) {
@@ -72,14 +83,13 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
   }
 
   Future<void> _saveProduct() async {
-    if (_isLoading || !_formKey.currentState!.validate()) {
+    if (_isLoading || _isPickingPhoto || !_formKey.currentState!.validate()) {
       return;
     }
 
     setState(() => _isLoading = true);
 
     try {
-      final imageUrl = _imageUrlController.text.trim();
       final price = double.tryParse(_priceController.text) ?? 0.0;
       final stock = int.tryParse(_stockController.text) ?? 0;
 
@@ -92,25 +102,27 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         'isAvailable': _isAvailable && stock > 0,
         'isFeatured': _isFeatured,
         'category': _categoryController.text.trim().toUpperCase(),
-        'imageUrl': imageUrl.isEmpty ? null : imageUrl,
         'updatedAt': FieldValue.serverTimestamp(),
         'name_searchable': _nameController.text.trim().toLowerCase(),
       };
 
-      if (_isEditing) {
-        await FirebaseFirestore.instance
-            .collection('products')
-            .doc(widget.productId)
-            .update(productData);
-      } else {
-        await FirebaseFirestore.instance
-            .collection('products')
-            .add(productData);
-      }
+      await _photoService.saveProduct(
+        businessId: widget.businessId,
+        productId: widget.productId,
+        data: productData,
+        photoBytes: _selectedPhoto,
+        removePhoto: _removePhoto,
+      );
 
       if (mounted) Navigator.of(context).pop();
-    } catch (e) {
-      _showError('Error al guardar: ${e.toString()}');
+    } on FirebaseException catch (error) {
+      _showError(
+        error.code == 'permission-denied'
+            ? 'No tienes permiso para guardar este producto.'
+            : 'No se pudo guardar el producto. Revisa tu conexión.',
+      );
+    } catch (_) {
+      _showError('No se pudo guardar el producto. Inténtalo de nuevo.');
     } finally {
       if (mounted) {
         setState(() {
@@ -195,7 +207,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                     const SizedBox(height: 24),
 
                     // SELECTOR DE IMAGEN MEJORADO
-                    _buildImageUrlField(),
+                    _buildPhotoPicker(),
 
                     const SizedBox(height: 16),
 
@@ -213,62 +225,122 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     );
   }
 
-  String? _validateImageUrl(String? value) {
-    final url = value?.trim() ?? '';
-    if (url.isEmpty || url == _existingImageUrl) return null;
-    final uri = Uri.tryParse(url);
-    if (uri == null ||
-        uri.scheme != 'https' ||
-        uri.host.isEmpty ||
-        uri.userInfo.isNotEmpty ||
-        RegExp(r'\s').hasMatch(url)) {
-      return 'Pega una URL HTTPS válida de la imagen.';
+  bool get _hasVisiblePhoto =>
+      _selectedPhoto != null ||
+      (!_removePhoto &&
+          (_hasPhoto || (_existingImageUrl?.isNotEmpty ?? false)));
+
+  Future<void> _pickPhoto() async {
+    if (_isLoading || _isPickingPhoto) return;
+    setState(() => _isPickingPhoto = true);
+    try {
+      final picked = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1280,
+        maxHeight: 1280,
+        imageQuality: 85,
+      );
+      if (picked == null || !mounted) return;
+      if (await picked.length() > 10 * 1024 * 1024) {
+        throw const FormatException('Elige una foto de hasta 10 MB.');
+      }
+      final photo = await ProductPhotoService.prepare(
+        await picked.readAsBytes(),
+      );
+      if (!mounted) return;
+      setState(() {
+        _selectedPhoto = photo;
+        _removePhoto = false;
+      });
+    } on PlatformException catch (error) {
+      _showError(
+        error.code == 'photo_access_denied' ||
+                error.code == 'photo_access_restricted'
+            ? 'No se pudo acceder a las fotos. Revisa el permiso de la galería en Ajustes.'
+            : 'No se pudo abrir la galería. Inténtalo de nuevo.',
+      );
+    } on FormatException catch (error) {
+      _showError(error.message);
+    } catch (_) {
+      _showError('No se pudo preparar la foto. Elige otra imagen.');
+    } finally {
+      if (mounted) setState(() => _isPickingPhoto = false);
     }
-    return null;
   }
 
-  Widget _buildImageUrlField() {
+  void _clearPhoto() {
+    if (_isLoading || _isPickingPhoto) return;
+    setState(() {
+      _selectedPhoto = null;
+      _hasPhoto = false;
+      _removePhoto = true;
+    });
+  }
+
+  Widget _buildPhotoPicker() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        TextFormField(
-          controller: _imageUrlController,
-          keyboardType: TextInputType.url,
-          autocorrect: false,
-          maxLength: 2048,
-          decoration: const InputDecoration(
-            labelText: 'URL de la foto (opcional)',
-            hintText: 'https://ejemplo.com/foto.jpg',
-            helperText: 'Usa un enlace directo que abra sin iniciar sesión.',
-            prefixIcon: Icon(Icons.link),
-          ),
-          validator: _validateImageUrl,
+        Text(
+          'Foto del producto (opcional)',
+          style: AppText.body.copyWith(fontWeight: FontWeight.w600),
         ),
-        const SizedBox(height: 8),
-        ValueListenableBuilder<TextEditingValue>(
-          valueListenable: _imageUrlController,
-          builder: (context, value, _) {
-            final url = value.text.trim();
-            if (url.isEmpty || _validateImageUrl(url) != null) {
-              return const SizedBox.shrink();
-            }
-            return ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: Image.network(
-                url,
-                height: 180,
-                fit: BoxFit.cover,
-                webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
-                errorBuilder: (_, __, ___) => const Padding(
-                  padding: EdgeInsets.all(12),
-                  child: Text(
-                    'No se pudo mostrar la foto. Verifica el enlace.',
+        const SizedBox(height: 12),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: _selectedPhoto != null
+              ? Image.memory(
+                  _selectedPhoto!,
+                  height: 180,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                )
+              : _hasVisiblePhoto && widget.productId != null
+              ? ProductPhoto(
+                  productId: widget.productId!,
+                  hasPhoto: _hasPhoto,
+                  legacyUrl: _existingImageUrl,
+                  height: 180,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                )
+              : Container(
+                  height: 150,
+                  color: AppColors.componentBase,
+                  child: const Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.add_photo_alternate_outlined, size: 40),
+                      SizedBox(height: 8),
+                      Text('Agrega una foto de tu producto'),
+                    ],
                   ),
                 ),
-              ),
-            );
-          },
         ),
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          onPressed: _isLoading || _isPickingPhoto ? null : _pickPhoto,
+          icon: _isPickingPhoto
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.photo_library_outlined),
+          label: Text(
+            _isPickingPhoto
+                ? 'Cargando foto...'
+                : _hasVisiblePhoto
+                ? 'Cambiar foto'
+                : 'Elegir foto de la galería',
+          ),
+        ),
+        if (_hasVisiblePhoto)
+          TextButton.icon(
+            onPressed: _isLoading || _isPickingPhoto ? null : _clearPhoto,
+            icon: const Icon(Icons.delete_outline),
+            label: const Text('Quitar foto'),
+          ),
       ],
     );
   }
@@ -475,7 +547,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
 
   Widget _buildSaveButton() {
     return ElevatedButton(
-      onPressed: _isLoading ? null : _saveProduct,
+      onPressed: _isLoading || _isPickingPhoto ? null : _saveProduct,
       style: ElevatedButton.styleFrom(
         backgroundColor: _isEditing ? AppColors.accent : AppColors.primary,
         foregroundColor: Colors.white,
@@ -519,12 +591,12 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     return IconButton(
       icon: const Icon(Icons.delete_outline_rounded),
       tooltip: 'Eliminar producto',
-      onPressed: _isLoading ? null : _deleteProduct,
+      onPressed: _isLoading || _isPickingPhoto ? null : _deleteProduct,
     );
   }
 
   Future<void> _deleteProduct() async {
-    if (_isLoading || widget.productId == null) return;
+    if (_isLoading || _isPickingPhoto || widget.productId == null) return;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -547,10 +619,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     if (confirmed != true || !mounted) return;
     setState(() => _isLoading = true);
     try {
-      await FirebaseFirestore.instance
-          .collection('products')
-          .doc(widget.productId)
-          .delete();
+      await _photoService.deleteProduct(productId: widget.productId!);
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
@@ -576,7 +645,6 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     _priceController.dispose();
     _stockController.dispose();
     _categoryController.dispose();
-    _imageUrlController.dispose();
     super.dispose();
   }
 }

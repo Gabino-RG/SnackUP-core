@@ -109,5 +109,11 @@
       ]
     }
   ],
-  "fieldOverrides": []
+  "fieldOverrides": [
+    {
+      "collectionGroup": "productImages",
+      "fieldPath": "imageBytes",
+      "indexes": []
+    }
+  ]
 }

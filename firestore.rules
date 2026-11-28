@@ -29,7 +29,8 @@ service cloud.firestore {
         && product.price is number && product.price > 0 && product.price <= 1000000
         && product.stock is int && product.stock >= 0 && product.stock <= 1000000
         && product.isAvailable is bool && (!product.isAvailable || product.stock > 0)
-        && product.isFeatured is bool;
+        && product.isFeatured is bool
+        && (!('hasPhoto' in product) || product.hasPhoto is bool);
     }
 
     function validItem(item, businessId) {
@@ -128,6 +129,36 @@ service cloud.firestore {
         && request.resource.data.businessId == resource.data.businessId
         && validProduct(request.resource.data);
       allow delete: if ownsBusiness(resource.data.businessId);
+    }
+
+    match /productImages/{productId} {
+      function validProductImage(photo) {
+        return photo.keys().hasAll(['businessId', 'imageBytes', 'contentType', 'updatedAt'])
+          && photo.keys().hasOnly(['businessId', 'imageBytes', 'contentType', 'updatedAt'])
+          && nonBlank(photo.businessId, 128)
+          && ownsBusiness(photo.businessId)
+          && getAfter(/databases/$(database)/documents/products/$(productId)).data.businessId == photo.businessId
+          && photo.imageBytes is bytes
+          && photo.imageBytes.size() > 0 && photo.imageBytes.size() <= 150 * 1024
+          && photo.contentType == 'image/jpeg'
+          && photo.updatedAt == request.time;
+      }
+
+      // Product photos share the visibility of their product. No collection scan.
+      allow get: if signedIn()
+        && exists(/databases/$(database)/documents/products/$(productId))
+        && (get(/databases/$(database)/documents/products/$(productId)).data.isAvailable == true
+          || ownsBusiness(get(/databases/$(database)/documents/products/$(productId)).data.businessId));
+      allow create: if validProductImage(request.resource.data);
+      allow update: if request.resource.data.businessId == resource.data.businessId
+        && validProductImage(request.resource.data);
+      // get() intentionally sees the product before a batched deletion. It also
+      // permits removing a missing legacy photo without reading its bytes first.
+      allow delete: if
+        (exists(/databases/$(database)/documents/products/$(productId))
+          && ownsBusiness(get(/databases/$(database)/documents/products/$(productId)).data.businessId))
+        || (exists(/databases/$(database)/documents/productImages/$(productId))
+          && ownsBusiness(resource.data.businessId));
     }
 
     match /orders/{id} {
