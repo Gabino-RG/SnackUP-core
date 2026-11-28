@@ -85,4 +85,5 @@ Versión de fotos: 1.0.1+11. El negocio selecciona una foto, ve la vista previa 
 
 Cloud Storage requiere Blaze; esta función usa la cuota gratuita de Firestore y no cambia el plan ni vincula tarjeta. Es una solución para catálogos pequeños: siguen aplicando cuotas de almacenamiento, lecturas y transferencia. Fuente: https://firebase.google.com/docs/firestore/quotas
 
-Validación: 37 pruebas Flutter aprobadas; 48 comprobaciones nuevas de fotos y 40 de pedidos aprobadas en emulador local. El despliegue en el proyecto real snackup-8fe96 requiere autorización; las reglas nuevas aún no están publicadas. Sin esas reglas, guardar fotos puede devolver permission-denied.
+Validación: 37 pruebas Flutter aprobadas; 48 comprobaciones nuevas de fotos y 40 de pedidos aprobadas en emulador local. Con autorización del usuario se publicó únicamente el bloque productImages en snackup-8fe96, conservando literalmente todas las reglas anteriores. No se modificaron datos, índices ni facturación. El archivo firestore.rules del repositorio contiene además las reglas completas propuestas del Sprint 10: esta autorización limitada no comprende desplegar ese archivo completo.
+
