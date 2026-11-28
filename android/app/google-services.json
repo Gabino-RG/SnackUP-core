@@ -1,0 +1,23 @@
+{
+  "project_info": {
+    "project_number": "685155856831",
+    "project_id": "snackup-8fe96",
+    "storage_bucket": "snackup-8fe96.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:685155856831:android:2df64bce8711eb6ef5b10a",
+        "android_client_info": {
+          "package_name": "com.example.snackup"
+        }
+      },
+      "api_key": [
+        {
+          "current_key": "AIzaSyAdNKrdRBFXOW0rOei9AddO7joTayLRB8o"
+        }
+      ]
+    }
+  ],
+  "configuration_version": "1"
+}

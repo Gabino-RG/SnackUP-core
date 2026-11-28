@@ -1,0 +1,40 @@
+OK preparar datos
+OK registro institucional
+OK estudiante no cambia rol
+OK alta de producto por dueño
+OK rechazar producto inválido
+OK estudiante no crea productos
+OK estudiante no edita productos
+OK compra de producto agotado rechazada
+OK total alterado rechazado
+OK checkout válido
+OK estudiante lee su pedido
+OK estudiante no lee pedido ajeno
+OK estudiante no cambia estado
+OK otro negocio no cancela
+OK impedir salto de estado
+OK negocio cambia a preparación
+OK motivo vacío rechazado
+OK negocio no cambia total
+OK negocio cancela con motivo
+OK pedido cancelado no se reabre
+OK crear pedido para cancelación
+OK otro estudiante no cancela
+OK cliente no modifica el importe al cancelar
+OK cliente cancela su pedido
+OK la cafetería puede leer el pedido cancelado
+OK cliente no vuelve a cancelar el mismo pedido
+OK crear pedido listo para verificar transición
+OK cliente no cancela un pedido listo
+OK crear producto para eliminación
+OK crear pedido antes de eliminar producto
+OK estudiante no elimina producto
+OK otro negocio no elimina producto
+OK negocio propietario elimina producto
+OK producto eliminado no existe
+OK pedido previo permanece después de eliminar producto
+OK preparar productos para límites de checkout
+OK ocho productos distintos permitidos
+OK nueve productos distintos rechazados
+OK productos repetidos con notas distintas rechazados
+OK cantidad cero rechazada

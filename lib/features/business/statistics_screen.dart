@@ -465,7 +465,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 
     final List<BarChartGroupData> barGroups = List.generate(top5Items.length, (index) {
       final item = top5Items[index];
-      final percentage = (item.value / maxValue * 100).round();
       
       return BarChartGroupData(
         x: index,

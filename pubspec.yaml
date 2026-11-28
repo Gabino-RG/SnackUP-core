@@ -1,5 +1,5 @@
 name: snackup
-description: "A new Flutter project."
+description: "SnackUP para pedidos de cafetería universitaria."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.0+1
+version: 1.0.1+11
 
 environment:
   sdk: ^3.8.0
@@ -51,6 +51,7 @@ dependencies:
   fl_chart: ^0.68.0
   firebase_storage: ^11.7.5  # Para subir archivos a Firebase Storage
   image_picker: ^1.1.2      # Para abrir la galería/cámara del teléfono
+  image: ^4.5.4            # Comprimir fotos pequeñas antes de guardarlas
   permission_handler: ^11.3.1 # Para pedir permisos de galería
   another_stepper: ^1.2.2 # (O la versión más reciente)
   firebase_messaging: ^14.9.2 # (O la versión más reciente)

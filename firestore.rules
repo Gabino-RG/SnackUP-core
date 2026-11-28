@@ -29,7 +29,8 @@ service cloud.firestore {
         && product.price is number && product.price > 0 && product.price <= 1000000
         && product.stock is int && product.stock >= 0 && product.stock <= 1000000
         && product.isAvailable is bool && (!product.isAvailable || product.stock > 0)
-        && product.isFeatured is bool;
+        && product.isFeatured is bool
+        && (!('hasPhoto' in product) || product.hasPhoto is bool);
     }
 
     function validItem(item, businessId) {
@@ -45,41 +46,45 @@ service cloud.firestore {
     }
 
     function distinctProducts(items) {
-      let ids = [items[0].productId]
-        + (items.size() > 1 ? [items[1].productId] : [])
-        + (items.size() > 2 ? [items[2].productId] : [])
-        + (items.size() > 3 ? [items[3].productId] : [])
-        + (items.size() > 4 ? [items[4].productId] : [])
-        + (items.size() > 5 ? [items[5].productId] : [])
-        + (items.size() > 6 ? [items[6].productId] : [])
-        + (items.size() > 7 ? [items[7].productId] : []);
-      return ids.toSet().size() == items.size();
+      let n = items.size();
+      let ids = [items[0].productId,
+        n > 1 ? items[1].productId : null,
+        n > 2 ? items[2].productId : null,
+        n > 3 ? items[3].productId : null,
+        n > 4 ? items[4].productId : null,
+        n > 5 ? items[5].productId : null,
+        n > 6 ? items[6].productId : null,
+        n > 7 ? items[7].productId : null];
+      return ids[0:n].toSet().size() == n;
     }
 
     function validTotal(order, items) {
+      let n = items.size();
       let expected = lineTotal(items[0])
-        + (items.size() > 1 ? lineTotal(items[1]) : 0)
-        + (items.size() > 2 ? lineTotal(items[2]) : 0)
-        + (items.size() > 3 ? lineTotal(items[3]) : 0)
-        + (items.size() > 4 ? lineTotal(items[4]) : 0)
-        + (items.size() > 5 ? lineTotal(items[5]) : 0)
-        + (items.size() > 6 ? lineTotal(items[6]) : 0)
-        + (items.size() > 7 ? lineTotal(items[7]) : 0);
+        + (n > 1 ? lineTotal(items[1]) : 0)
+        + (n > 2 ? lineTotal(items[2]) : 0)
+        + (n > 3 ? lineTotal(items[3]) : 0)
+        + (n > 4 ? lineTotal(items[4]) : 0)
+        + (n > 5 ? lineTotal(items[5]) : 0)
+        + (n > 6 ? lineTotal(items[6]) : 0)
+        + (n > 7 ? lineTotal(items[7]) : 0);
       return order.totalPrice is number
         && order.totalPrice > expected - 0.001 && order.totalPrice < expected + 0.001;
     }
 
     function validCheckout(order) {
       let items = order.items;
-      return items is list && items.size() >= 1 && items.size() <= 8
-        && (items.size() <= 0 || validItem(items[0], order.businessId))
-        && (items.size() <= 1 || validItem(items[1], order.businessId))
-        && (items.size() <= 2 || validItem(items[2], order.businessId))
-        && (items.size() <= 3 || validItem(items[3], order.businessId))
-        && (items.size() <= 4 || validItem(items[4], order.businessId))
-        && (items.size() <= 5 || validItem(items[5], order.businessId))
-        && (items.size() <= 6 || validItem(items[6], order.businessId))
-        && (items.size() <= 7 || validItem(items[7], order.businessId))
+      let n = items.size();
+      let businessId = order.businessId;
+      return items is list && n >= 1 && n <= 8
+        && validItem(items[0], businessId)
+        && (n <= 1 || validItem(items[1], businessId))
+        && (n <= 2 || validItem(items[2], businessId))
+        && (n <= 3 || validItem(items[3], businessId))
+        && (n <= 4 || validItem(items[4], businessId))
+        && (n <= 5 || validItem(items[5], businessId))
+        && (n <= 6 || validItem(items[6], businessId))
+        && (n <= 7 || validItem(items[7], businessId))
         && distinctProducts(items) && validTotal(order, items);
     }
 
@@ -123,6 +128,37 @@ service cloud.firestore {
       allow update: if ownsBusiness(resource.data.businessId)
         && request.resource.data.businessId == resource.data.businessId
         && validProduct(request.resource.data);
+      allow delete: if ownsBusiness(resource.data.businessId);
+    }
+
+    match /productImages/{productId} {
+      function validProductImage(photo) {
+        return photo.keys().hasAll(['businessId', 'imageBytes', 'contentType', 'updatedAt'])
+          && photo.keys().hasOnly(['businessId', 'imageBytes', 'contentType', 'updatedAt'])
+          && nonBlank(photo.businessId, 128)
+          && ownsBusiness(photo.businessId)
+          && getAfter(/databases/$(database)/documents/products/$(productId)).data.businessId == photo.businessId
+          && photo.imageBytes is bytes
+          && photo.imageBytes.size() > 0 && photo.imageBytes.size() <= 150 * 1024
+          && photo.contentType == 'image/jpeg'
+          && photo.updatedAt == request.time;
+      }
+
+      // Product photos share the visibility of their product. No collection scan.
+      allow get: if signedIn()
+        && exists(/databases/$(database)/documents/products/$(productId))
+        && (get(/databases/$(database)/documents/products/$(productId)).data.isAvailable == true
+          || ownsBusiness(get(/databases/$(database)/documents/products/$(productId)).data.businessId));
+      allow create: if validProductImage(request.resource.data);
+      allow update: if request.resource.data.businessId == resource.data.businessId
+        && validProductImage(request.resource.data);
+      // get() intentionally sees the product before a batched deletion. It also
+      // permits removing a missing legacy photo without reading its bytes first.
+      allow delete: if
+        (exists(/databases/$(database)/documents/products/$(productId))
+          && ownsBusiness(get(/databases/$(database)/documents/products/$(productId)).data.businessId))
+        || (exists(/databases/$(database)/documents/productImages/$(productId))
+          && ownsBusiness(resource.data.businessId));
     }
 
     match /orders/{id} {

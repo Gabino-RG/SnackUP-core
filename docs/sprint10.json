@@ -1,0 +1,330 @@
+{
+  "title": "SnackUP Integración y entrega del Sprint 10",
+  "subtitle": "Aplicación móvil Android y documentación de pruebas",
+  "date": "27 de noviembre de 2026",
+  "repository": "https://github.com/Gabino-RG/SnackUP-core/tree/sprint9",
+  "base_commit": "04865e07e4cd7a2068c183b44741c915894a5623",
+  "sections": [
+    {
+      "title": "1 Identificación y estado del documento",
+      "paragraphs": [
+        "SnackUP permite consultar alimentos del campus y gestionar pedidos entre estudiantes y negocios desde una aplicación móvil Flutter. El Sprint 10 integra la base sprint9, corrige fallos de acceso, pedidos y Android, y añade pruebas reproducibles. La versión preparada es 1.0.0+10.",
+        "La validación local aprobó 23 pruebas Flutter y 40 comprobaciones de Firestore. GitHub Actions generó el APK 1.0.0+10 y su firma se verificó también tras descargarlo. La instalación y el recorrido de ambos roles en un teléfono Android con los servicios publicados permanecen pendientes."
+      ],
+      "bullets": [],
+      "table": {
+        "headers": [
+          "Dato de la entrega",
+          "Registro"
+        ],
+        "rows": [
+          [
+            "Proyecto",
+            "SnackUP"
+          ],
+          [
+            "Fecha de preparación",
+            "27 de noviembre de 2026"
+          ],
+          [
+            "Versión",
+            "1.0.0+10 | código ff8b54d"
+          ],
+          [
+            "Equipo y grupo",
+            "Por completar por el equipo"
+          ],
+          [
+            "Integrantes",
+            "Por completar por el equipo"
+          ],
+          [
+            "Scrum Master",
+            "Por completar por el equipo"
+          ],
+          [
+            "Evaluación asignada",
+            "Confirmar 1 o 3 de diciembre de 2026"
+          ]
+        ]
+      }
+    },
+    {
+      "title": "2 Objetivos y alcance funcional",
+      "paragraphs": [
+        "El objetivo del Sprint 10 es integrar una versión móvil demostrable, corregir fallos detectados, hacer verificable la seguridad y preparar la liberación Android con documentación de pruebas. La aceptación exige completar un pedido con dos roles, probar errores y permisos, instalar el APK y relacionar cada requisito con evidencia."
+      ],
+      "bullets": [
+        "Estudiante: registro institucional, acceso y recuperación de contraseña; inicio con negocios y sugerencia climática; búsqueda, detalle, favoritos, carrito, envío y seguimiento de pedidos, cancelación permitida, código de entrega y valoración.",
+        "Negocio: acceso de una cuenta previamente autorizada; apertura o cierre, consulta y edición del menú, alta y eliminación confirmada de productos, gestión de pedidos y estados, lectura de QR o confirmación manual, y estadísticas.",
+        "Las cuentas de negocio se vinculan mediante role=business y businesses.ownerId. Elegir una pantalla de negocio no concede ese permiso. La interfaz web complementaria no sustituye la aplicación Android."
+      ]
+    },
+    {
+      "title": "3 Arquitectura y organización reales",
+      "paragraphs": [
+        "El código se organiza por funcionalidades en lib/features/auth, home, user y business, con estilos compartidos en lib/theme. Los Widgets manejan estado local con setState y reciben datos asíncronos mediante StreamBuilder y FutureBuilder. Muchas pantallas consultan directamente Firebase; no se presenta esta implementación como MVVM ni como arquitectura completa de repositorios. Provider figura como dependencia, pero no se utiliza para el estado de la aplicación.",
+        "WeatherService, en lib/services/weather_service.dart, separa HTTP, validación y caché del Widget climático. Su cliente, reloj y tiempo límite son inyectables para pruebas. La instancia compartida conserva el dato durante la sesión. SnackUpBootstrap controla inicialización, carga y reintento; AuthWrapper y RoleGate seleccionan el acceso según sesión y perfil. La composición de Widgets y los observadores de streams son mecanismos efectivamente utilizados."
+      ],
+      "bullets": []
+    },
+    {
+      "title": "4 Matriz de los nueve requisitos",
+      "paragraphs": [
+        "Cada fila distingue la implementación local de la evidencia necesaria para cerrar la evaluación. No se declara un porcentaje global de cumplimiento sin completar la validación."
+      ],
+      "table": {
+        "headers": [
+          "Requisito",
+          "Estado",
+          "Evidencia y cierre"
+        ],
+        "rows": [
+          [
+            "1. Integración y documentación",
+            "Parcial",
+            "Base sprint9 y documentación Sprint 10 con resultados en docs/. Integrar los documentos anteriores que conserva el equipo."
+          ],
+          [
+            "2. Nube, CRUD y autenticación",
+            "Código local",
+            "lib/features/auth/register_screen.dart; lib/features/user/cart_screen.dart; lib/features/business/add_edit_product_screen.dart. CRUD de productos y carrito/favoritos; demostrar persistencia real."
+          ],
+          [
+            "3. Protección de datos",
+            "Código local",
+            "firestore.rules, storage.rules y lib/features/auth/auth_gate.dart. Roles, propiedad y validaciones; comprobar reglas publicadas y accesos rechazados."
+          ],
+          [
+            "4. API de terceros",
+            "Código local",
+            "lib/services/weather_service.dart y lib/features/home/campus_weather_card.dart. Mostrar respuesta Open-Meteo y comportamiento ante fallo."
+          ],
+          [
+            "5. Permisos",
+            "Código local",
+            "android/app/src/main/AndroidManifest.xml; lib/main.dart; lib/features/business/order_detail_screen.dart. Probar cámara permitida, denegada y reintento."
+          ],
+          [
+            "6. Interfaces y navegación",
+            "Código local",
+            "lib/features/home/user_dashboard_screen.dart; lib/features/home/business_home_screen.dart; lib/features/user/show_qr_screen.dart. Recorrer ambos roles y volver sin bloqueos."
+          ],
+          [
+            "7. Arquitectura y patrones",
+            "Implementación documentada",
+            "lib/features/, lib/theme/, lib/services/weather_service.dart y lib/app_bootstrap.dart. Contrastar con la selección original del curso."
+          ],
+          [
+            "8. Errores y validaciones",
+            "Pruebas aisladas aprobadas",
+            "lib/app_bootstrap.dart; auth/complete_profile_screen.dart; firestore.rules y test/. 23 pruebas Flutter y 40 comprobaciones de reglas; falta demostración real."
+          ],
+          [
+            "9. Versionamiento y liberación",
+            "APK generado",
+            "Código ff8b54d; GitHub Actions aprobado, firma verificada y SHA256 registrado. Falta instalación y flujo completo en un teléfono Android."
+          ]
+        ]
+      },
+      "bullets": []
+    },
+    {
+      "title": "5 Datos, autenticación y autorización",
+      "paragraphs": [
+        "Firebase Authentication gestiona correo y contraseña; el perfil Firestore conserva nombre, correo, número de control y rol. Pedidos contienen referencias de usuario y negocio, productos, cantidades, precios, método elegido, estados y fechas. Carrito y favoritos pertenecen al usuario. Las contraseñas no se guardan como campos de esos documentos.",
+        "Firestore Rules restringe perfiles, pedidos y productos según identidad, rol y propiedad. Valida cantidades, precios, total, disponibilidad, hasta ocho productos distintos y transiciones de estado. El cliente no puede autoconcederse el rol business. Las reglas locales deben probarse y comprobarse en el proyecto antes de afirmar que protegen la versión publicada.",
+        "El transporte de los servicios de Google utiliza HTTPS/TLS y Firestore dispone de cifrado administrado en reposo. Esto corresponde a la plataforma: SnackUP no implementa cifrado de extremo a extremo ni demuestra aquí cifrado propio de campos o del caché local. El QR identifica un pedido; no es una credencial secreta. La autorización de entrega permanece en las reglas."
+      ],
+      "bullets": []
+    },
+    {
+      "title": "6 Integración Open-Meteo",
+      "paragraphs": [
+        "WeatherService consulta por HTTPS api.open-meteo.com/v1/forecast con coordenadas fijas del campus y las variables temperature_2m y weather_code. No envía nombre, correo ni ubicación personal. Convierte la respuesta en WeatherReading y verifica tipos y temperatura finita.",
+        "La petición tiene un límite de cinco segundos. Se reutiliza el dato de sesión durante quince minutos; si una nueva consulta falla, puede usarse el último dato válido menor de una hora. Sin dato útil se muestra una sugerencia general. La recomendación considera productos disponibles con stock de negocios abiertos; un fallo del clima no debe bloquear el menú."
+      ],
+      "bullets": []
+    },
+    {
+      "title": "7 Permisos y avisos",
+      "table": {
+        "headers": [
+          "Permiso",
+          "Uso y comprobación"
+        ],
+        "rows": [
+          [
+            "INTERNET",
+            "Firebase y API climática. Comprobar acceso y comportamiento sin conexión."
+          ],
+          [
+            "CAMERA",
+            "Escaneo QR de entrega. Activación explícita, error comprensible, reintento y alternativa manual."
+          ],
+          [
+            "POST_NOTIFICATIONS",
+            "Solicitud de autorización en Android compatible. Registrar aceptación o rechazo; la declaración no acredita envíos push."
+          ]
+        ]
+      },
+      "paragraphs": [
+        "Se retiraron permisos amplios de fotos y almacenamiento sin flujo necesario. Los avisos actuales del negocio provienen de listeners Firestore y se muestran mediante interfaz y sonido mientras la aplicación está activa. No hay un backend de envío push acreditado para aplicación cerrada.",
+        "El manifest fusionado del APK también contiene permisos incorporados por los SDK: WAKE_LOCK, ACCESS_NETWORK_STATE y servicios de Google, entre otros. La evidencia android-apk.txt conserva la lista obtenida del archivo compilado; declarar permiso de notificaciones no prueba un emisor push."
+      ],
+      "bullets": []
+    },
+    {
+      "title": "8 Cambios preparados en Sprint 10",
+      "bullets": [
+        "Inicio con pantalla de carga, error y reintento, además de pruebas del arranque.",
+        "Recuperación de contraseña desde los accesos y recuperación de un perfil incompleto tras un registro interrumpido.",
+        "Extracción de WeatherService y pruebas con respuestas simuladas, caché, datos inválidos y fallos.",
+        "QR específico del pedido con prefijo snackup:order:, validación del pedido correcto y código manual alfanumérico; rechazo del antiguo número de control.",
+        "Eliminación de productos con confirmación desde su edición y autorización del propietario en reglas; validaciones de productos y pedidos reforzadas.",
+        "Corrección de distinctProducts con una lista de IDs y un rango de los elementos existentes; la operación anterior + entre listas bloqueaba pedidos válidos. Se redujeron evaluaciones de reglas para aceptar ocho productos sin superar el límite de expresiones. Las regresiones prueban ocho productos, nueve, duplicados con notas diferentes y cantidad cero.",
+        "Permisos Android reducidos a los usos declarados.",
+        "Configuración Android coherente con FirebaseOptions; Gradle sin bloque anidado y versión desde pubspec.yaml. El APK académico conserva firma debug, identificada expresamente como tal."
+      ],
+      "paragraphs": []
+    },
+    {
+      "title": "9 Resultados de pruebas",
+      "paragraphs": [
+        "Ejecución local el 27 de noviembre de 2026. Entorno: Windows, Flutter 3.32.4, Dart 3.8.1 y Node.js 24.22.3. Firestore Emulator 1.19.8 se inició con Java 21, idioma inglés, proyecto ficticio demo-snackup-sprint9 y host 127.0.0.1:8080. Las pruebas no escribieron en la base real.",
+        "Flutter aprobó 23 pruebas: cinco de referencias QR, siete del servicio climático, cuatro de arranque y siete de recuperación de contraseña. Se simularon respuestas y errores para comprobar la lógica sin depender de cuentas reales.",
+        "Firestore aprobó las 40 comprobaciones del script, incluyendo preparación de datos. Verificó permisos por rol, precios y totales, stock agotado, transiciones y cancelaciones, eliminación exclusiva del dueño, conservación de pedidos históricos y límites de ocho y nueve productos. El primer intento detectó la operación inválida list + list; el caso de ocho productos detectó además exceso de evaluaciones. Ambas regresiones quedaron corregidas.",
+        "flutter analyze --no-pub --no-fatal-infos terminó con código 0 y sin errores ni advertencias. Quedaron 195 avisos informativos de estilo, APIs obsoletas y otros lints. Este resultado no equivale a un análisis sin avisos.",
+        "GitHub Actions completó la compilación en Ubuntu con Java 17 y Flutter 3.32.4. Se descargó el APK y coincidió su SHA256 con el generado en CI. apksigner verificó firmas v1 y v2. aapt confirmó com.example.snackup, versionName 1.0.0, versionCode 10, minSdk 23 y targetSdk 36. La firma es Android Debug para evaluación académica.",
+        "APK: SnackUP-1.0.0+10.apk. Tamaño: 79297538 bytes.",
+        "SHA256: 50e7b8945b1f13d28b8be92a0ecefd0b2b004e3a403ffe02627a739c680a0358",
+        "Compilación y registros: https://github.com/Gabino-RG/SnackUP-core/actions/runs/46070359806"
+      ],
+      "table": {
+        "headers": [
+          "Verificación",
+          "Resultado",
+          "Evidencia"
+        ],
+        "rows": [
+          [
+            "Dependencias Flutter",
+            "Resueltas",
+            "flutter pub get"
+          ],
+          [
+            "Pruebas Flutter",
+            "23 aprobadas",
+            "docs/evidencias/flutter-tests.txt"
+          ],
+          [
+            "Reglas Firestore",
+            "40 comprobaciones aprobadas",
+            "docs/evidencias/firestore-tests.txt"
+          ],
+          [
+            "Análisis Dart",
+            "0 errores y 0 advertencias",
+            "195 avisos informativos"
+          ],
+          [
+            "APK y firma",
+            "Generado y verificado",
+            "docs/evidencias/android-apk.txt"
+          ],
+          [
+            "Instalación en teléfono",
+            "Pendiente",
+            "Modelo, Android y captura por registrar"
+          ],
+          [
+            "Servicios publicados y ambos roles",
+            "Pendiente",
+            "Demostración con cuentas de prueba"
+          ]
+        ]
+      }
+    },
+    {
+      "title": "10 Guion de demostración de ocho minutos",
+      "table": {
+        "headers": [
+          "Tiempo",
+          "Demostración"
+        ],
+        "rows": [
+          [
+            "0:00–1:00",
+            "Presentar integrantes, problema y APK instalado; mostrar versión y acceso estudiantil."
+          ],
+          [
+            "1:00–2:00",
+            "Consultar negocios y clima; abrir detalle, favorito y búsqueda."
+          ],
+          [
+            "2:00–3:00",
+            "Editar carrito y enviar pedido; mostrar actualización persistida en nube."
+          ],
+          [
+            "3:00–4:00",
+            "Entrar como negocio; consultar pedido y actualizar estado a preparación y listo."
+          ],
+          [
+            "4:00–5:00",
+            "Rechazar QR de otro pedido; escanear el correcto y mostrar entrega completada."
+          ],
+          [
+            "5:00–6:00",
+            "Demostrar alta, edición y eliminación confirmada de un producto temporal del negocio."
+          ],
+          [
+            "6:00–7:00",
+            "Mostrar permiso de cámara denegado, alternativa manual y manejo de fallo del clima."
+          ],
+          [
+            "7:00–8:00",
+            "Mostrar pruebas, historial Git y documentación; explicar pendientes con precisión."
+          ]
+        ]
+      },
+      "paragraphs": [],
+      "bullets": []
+    },
+    {
+      "title": "11 Preparación y checklist de entrega",
+      "bullets": [
+        "Scrum Master: subir APK descargable y documentación integrada; los demás integrantes marcan la asignación como entregada.",
+        "Confirmar el día asignado: martes 1 o jueves 3 de diciembre de 2026. Todos los integrantes deben asistir presencialmente y puntuales.",
+        "Llevar Android con batería, conexión, APK probado, cuentas de demostración y acceso autorizado a Firebase y bases de datos. Presentar cualquier interfaz complementaria necesaria.",
+        "Actualizar GitHub mediante el flujo del equipo; conservar evidencia de commits y revisión. Registrar versión, nombre del APK, firma, hash y prueba de instalación.",
+        "Agregar documentos de Sprints anteriores, capturas y bitácora real. Revisar que el enlace permita descargar el APK y que los archivos correspondan a la misma revisión."
+      ],
+      "paragraphs": []
+    },
+    {
+      "title": "12 Limitaciones y trabajo pendiente",
+      "paragraphs": [
+        "El inventario se valida al pedir, pero no se descuenta ni reserva automáticamente: pedidos simultáneos pueden superar existencias. La propiedad del correo institucional no se verifica mediante emailVerified. Los métodos Efectivo, Tarjeta y Vale son una selección del pedido; no acreditan una pasarela de cobro.",
+        "Falta integrar los documentos de Sprints anteriores del equipo, completar sus datos y confirmar que la arquitectura descrita corresponde a la seleccionada en el curso. El APK ya fue generado en GitHub Actions; falta instalarlo, recorrer ambos roles y comprobar los servicios y reglas publicados. No se realizaron cambios de despliegue en Firebase durante esta preparación."
+      ],
+      "bullets": []
+    },
+    {
+      "title": "13 Fuentes y trazabilidad",
+      "paragraphs": [
+        "Base revisada: Gabino-RG/SnackUP-core, sprint9, commit 04865e07e4cd7a2068c183b44741c915894a5623. Código del APK: ff8b54d2a826171e0098669b5a9f2da04d97124c. Las mejoras se revisan en el pull request 27, rama codex/sprint10-entrega. Las actualizaciones posteriores de documentación no modifican el binario.",
+        "Pull request de revisión: https://github.com/Gabino-RG/SnackUP-core/pull/27",
+        "Repositorio base: https://github.com/Gabino-RG/SnackUP-core/tree/sprint9",
+        "Firebase y protección de datos: https://firebase.google.com/support/privacy",
+        "Reglas Firebase y listas: https://firebase.google.com/docs/reference/rules/rules.List",
+        "Configuración Google Services: https://firebase.google.com/docs/android/google-services-plugin-and-file",
+        "Compilación e instalación Android: https://docs.flutter.dev/deployment/android",
+        "API Open-Meteo: https://open-meteo.com/en/docs"
+      ]
+    }
+  ],
+  "branch": "codex/sprint10-entrega",
+  "code_commit": "ff8b54d2a826171e0098669b5a9f2da04d97124c",
+  "ci_url": "https://github.com/Gabino-RG/SnackUP-core/actions/runs/46070359806",
+  "apk_sha256": "50e7b8945b1f13d28b8be92a0ecefd0b2b004e3a403ffe02627a739c680a0358"
+}

@@ -1,3 +1,4 @@
+import '../../widgets/product_photo.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -23,7 +24,9 @@ class _CartScreenState extends State<CartScreen> {
   Future<void> _pickTime() async {
     final TimeOfDay? picked = await showTimePicker(
       context: context,
-      initialTime: TimeOfDay.fromDateTime(DateTime.now().add(const Duration(minutes: 30))),
+      initialTime: TimeOfDay.fromDateTime(
+        DateTime.now().add(const Duration(minutes: 30)),
+      ),
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
@@ -47,45 +50,51 @@ class _CartScreenState extends State<CartScreen> {
 
   Future<bool> _showConfirmDialog(String title, String content) async {
     return await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(
-          title,
-          style: AppText.h3.copyWith(color: AppColors.textPrimary),
-        ),
-        content: Text(
-          content,
-          style: AppText.body.copyWith(color: AppColors.textSecondary),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(
-              'Cancelar',
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            title: Text(
+              title,
+              style: AppText.h3.copyWith(color: AppColors.textPrimary),
+            ),
+            content: Text(
+              content,
               style: AppText.body.copyWith(color: AppColors.textSecondary),
             ),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-            ),
-            child: Text(
-              'Confirmar',
-              style: AppText.body.copyWith(
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: Text(
+                  'Cancelar',
+                  style: AppText.body.copyWith(color: AppColors.textSecondary),
+                ),
               ),
-            ),
+              ElevatedButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                ),
+                child: Text(
+                  'Confirmar',
+                  style: AppText.body.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
-    ) ?? false;
+        ) ??
+        false;
   }
 
-  Future<void> _placeOrder(List<QueryDocumentSnapshot> cartDocs, double totalPrice) async {
+  Future<void> _placeOrder(
+    List<QueryDocumentSnapshot> cartDocs,
+    double totalPrice,
+  ) async {
     final userId = FirebaseAuth.instance.currentUser?.uid;
     if (userId == null) return;
 
@@ -102,37 +111,54 @@ class _CartScreenState extends State<CartScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final allBusinessIds = cartDocs.map((doc) => (doc.data() as Map<String, dynamic>)['businessId']).toSet();
+      final allBusinessIds = cartDocs
+          .map((doc) => (doc.data() as Map<String, dynamic>)['businessId'])
+          .toSet();
       if (allBusinessIds.length > 1) {
-        _showError('Tu carrito tiene productos de varias tiendas. Por favor, haz pedidos separados.');
+        _showError(
+          'Tu carrito tiene productos de varias tiendas. Por favor, haz pedidos separados.',
+        );
         setState(() => _isLoading = false);
         return;
       }
       final String businessId = allBusinessIds.first;
 
-      final userDoc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .get();
       if (!userDoc.exists || userDoc.data() == null) {
         _showError('Error: No se encontraron tus datos de usuario.');
         setState(() => _isLoading = false);
         return;
       }
       final userData = userDoc.data()!;
-      
+
       final firestore = FirebaseFirestore.instance;
-      final products = await Future.wait(cartDocs.map((doc) =>
-          firestore.collection('products').doc(doc.id).get(
-            const GetOptions(source: Source.server),
-          )));
+      final products = await Future.wait(
+        cartDocs.map(
+          (doc) => firestore
+              .collection('products')
+              .doc(doc.id)
+              .get(const GetOptions(source: Source.server)),
+        ),
+      );
       final orderItems = <Map<String, dynamic>>[];
       for (final (index, doc) in cartDocs.indexed) {
         final data = doc.data() as Map<String, dynamic>;
         final product = products[index].data();
         final quantity = data['quantity'];
         final stock = product?['stock'];
-        if (product == null || product['isAvailable'] != true ||
-            product['businessId'] != businessId || stock is! int ||
-            quantity is! int || quantity < 1 || quantity > stock) {
-          _showError('Revisa las cantidades y el stock antes de hacer tu pedido.');
+        if (product == null ||
+            product['isAvailable'] != true ||
+            product['businessId'] != businessId ||
+            stock is! int ||
+            quantity is! int ||
+            quantity < 1 ||
+            quantity > stock) {
+          _showError(
+            'Revisa las cantidades y el stock antes de hacer tu pedido.',
+          );
           return;
         }
         if (product['price'] != data['price']) {
@@ -152,12 +178,15 @@ class _CartScreenState extends State<CartScreen> {
       if (_selectedTime != null) {
         final now = DateTime.now();
         final scheduledDateTime = DateTime(
-          now.year, now.month, now.day,
-          _selectedTime!.hour, _selectedTime!.minute,
+          now.year,
+          now.month,
+          now.day,
+          _selectedTime!.hour,
+          _selectedTime!.minute,
         );
         pickupTimestamp = Timestamp.fromDate(scheduledDateTime);
       }
-      
+
       final orderData = {
         'businessId': businessId,
         'userId': userId,
@@ -178,15 +207,16 @@ class _CartScreenState extends State<CartScreen> {
       for (var doc in cartDocs) {
         batch.delete(doc.reference);
       }
-      
+
       await batch.commit();
 
       _showSuccess('¡Pedido realizado con éxito!');
-
     } on FirebaseException catch (error) {
-      _showError(error.code == 'permission-denied'
-          ? 'Revisa la disponibilidad de los productos y que la cafetería esté abierta.'
-          : 'No se pudo completar el pedido. Revisa tu conexión.');
+      _showError(
+        error.code == 'permission-denied'
+            ? 'Revisa la disponibilidad de los productos y que la cafetería esté abierta.'
+            : 'No se pudo completar el pedido. Revisa tu conexión.',
+      );
     } catch (e) {
       _showError('Error al crear el pedido: ${e.toString()}');
     } finally {
@@ -241,11 +271,11 @@ class _CartScreenState extends State<CartScreen> {
           if (snapshot.hasError) {
             return _buildErrorState('Error al cargar el carrito');
           }
-          
+
           if (snapshot.connectionState == ConnectionState.waiting) {
             return _buildLoadingState();
           }
-          
+
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
             return _buildEmptyState();
           }
@@ -287,9 +317,7 @@ class _CartScreenState extends State<CartScreen> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: AppColors.primary.withOpacity(0.1),
-        border: Border(
-          bottom: BorderSide(color: AppColors.borders, width: 1),
-        ),
+        border: Border(bottom: BorderSide(color: AppColors.borders, width: 1)),
       ),
       child: Row(
         children: [
@@ -312,16 +340,12 @@ class _CartScreenState extends State<CartScreen> {
               children: [
                 Text(
                   'Tu pedido',
-                  style: AppText.h3.copyWith(
-                    color: AppColors.textPrimary,
-                  ),
+                  style: AppText.h3.copyWith(color: AppColors.textPrimary),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   '$itemCount ${itemCount == 1 ? 'producto' : 'productos'} en tu pedido',
-                  style: AppText.notes.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
+                  style: AppText.notes.copyWith(color: AppColors.textSecondary),
                 ),
               ],
             ),
@@ -364,25 +388,18 @@ class _CartScreenState extends State<CartScreen> {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: Image.network(
-                  item['imageUrl'] ?? 'https://via.placeholder.com/100',
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      color: AppColors.componentBase,
-                      child: Icon(
-                        Icons.fastfood_rounded,
-                        color: AppColors.textSecondary.withOpacity(0.4),
-                        size: 24,
-                      ),
-                    );
-                  },
+                child: ProductPhoto(
+                  productId: (item['productId'] as String?) ?? doc.id,
+                  hasPhoto: item['hasPhoto'] == true,
+                  legacyUrl: item['imageUrl'] as String?,
+                  width: 60,
+                  height: 60,
                 ),
               ),
             ),
-            
+
             const SizedBox(width: 16),
-            
+
             // INFORMACIÓN DEL PRODUCTO
             Expanded(
               child: Column(
@@ -401,7 +418,10 @@ class _CartScreenState extends State<CartScreen> {
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.primary.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(6),
@@ -446,9 +466,9 @@ class _CartScreenState extends State<CartScreen> {
                 ],
               ),
             ),
-            
+
             const SizedBox(width: 12),
-            
+
             // BOTÓN DE ELIMINAR
             IconButton(
               icon: Icon(
@@ -458,8 +478,8 @@ class _CartScreenState extends State<CartScreen> {
               ),
               onPressed: () async {
                 final confirmed = await _showConfirmDialog(
-                  'Eliminar Producto', 
-                  '¿Quieres eliminar "${item['name']}" del carrito?'
+                  'Eliminar Producto',
+                  '¿Quieres eliminar "${item['name']}" del carrito?',
                 );
                 if (confirmed) {
                   doc.reference.delete();
@@ -472,14 +492,15 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  Widget _buildCheckoutArea(double totalPrice, List<QueryDocumentSnapshot> cartDocs) {
+  Widget _buildCheckoutArea(
+    double totalPrice,
+    List<QueryDocumentSnapshot> cartDocs,
+  ) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: AppColors.background,
-        border: Border(
-          top: BorderSide(color: AppColors.borders, width: 1),
-        ),
+        border: Border(top: BorderSide(color: AppColors.borders, width: 1)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.1),
@@ -514,13 +535,18 @@ class _CartScreenState extends State<CartScreen> {
                   value: _selectedPaymentMethod,
                   isExpanded: true,
                   underline: const SizedBox(),
-                  icon: Icon(Icons.arrow_drop_down_rounded, color: AppColors.textSecondary),
+                  icon: Icon(
+                    Icons.arrow_drop_down_rounded,
+                    color: AppColors.textSecondary,
+                  ),
                   items: _paymentMethods.map((method) {
                     return DropdownMenuItem(
                       value: method,
                       child: Text(
                         method,
-                        style: AppText.body.copyWith(color: AppColors.textPrimary),
+                        style: AppText.body.copyWith(
+                          color: AppColors.textPrimary,
+                        ),
                       ),
                     );
                   }).toList(),
@@ -533,7 +559,7 @@ class _CartScreenState extends State<CartScreen> {
               ),
             ],
           ),
-          
+
           const SizedBox(height: 16),
 
           // HORA DE RECOGIDA
@@ -558,7 +584,9 @@ class _CartScreenState extends State<CartScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            _selectedTime == null ? 'Pedir Ahora (ASAP)' : 'Programado',
+                            _selectedTime == null
+                                ? 'Pedir Ahora (ASAP)'
+                                : 'Programado',
                             style: AppText.body.copyWith(
                               fontWeight: FontWeight.w600,
                               color: AppColors.textPrimary,
@@ -566,7 +594,7 @@ class _CartScreenState extends State<CartScreen> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            _selectedTime != null 
+                            _selectedTime != null
                                 ? 'Recoger a las: ${_selectedTime!.format(context)}'
                                 : 'Recoger lo antes posible',
                             style: AppText.notes.copyWith(
@@ -577,9 +605,14 @@ class _CartScreenState extends State<CartScreen> {
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
-                        color: _selectedTime == null ? AppColors.primary : AppColors.accent,
+                        color: _selectedTime == null
+                            ? AppColors.primary
+                            : AppColors.accent,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
@@ -605,14 +638,12 @@ class _CartScreenState extends State<CartScreen> {
                 onPressed: () => setState(() => _selectedTime = null),
                 child: Text(
                   'Quitar hora programada',
-                  style: AppText.notes.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
+                  style: AppText.notes.copyWith(color: AppColors.textSecondary),
                 ),
               ),
             ),
           ],
-          
+
           const SizedBox(height: 20),
           const Divider(height: 1, color: AppColors.borders),
           const SizedBox(height: 16),
@@ -637,11 +668,13 @@ class _CartScreenState extends State<CartScreen> {
               ),
             ],
           ),
-          
+
           const SizedBox(height: 16),
 
           ElevatedButton(
-            onPressed: _isLoading ? null : () => _placeOrder(cartDocs, totalPrice),
+            onPressed: _isLoading
+                ? null
+                : () => _placeOrder(cartDocs, totalPrice),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
@@ -653,29 +686,29 @@ class _CartScreenState extends State<CartScreen> {
               shadowColor: AppColors.primary.withOpacity(0.3),
             ),
             child: _isLoading
-              ? SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
-                )
-              : Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.check_circle_rounded, size: 20),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Confirmar Pedido',
-                      style: AppText.body.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                        fontSize: 16,
-                      ),
+                ? SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
                     ),
-                  ],
-                ),
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.check_circle_rounded, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Confirmar Pedido',
+                        style: AppText.body.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
           ),
         ],
       ),
@@ -697,9 +730,7 @@ class _CartScreenState extends State<CartScreen> {
             const SizedBox(height: 16),
             Text(
               message,
-              style: AppText.h3.copyWith(
-                color: AppColors.textPrimary,
-              ),
+              style: AppText.h3.copyWith(color: AppColors.textPrimary),
               textAlign: TextAlign.center,
             ),
           ],
@@ -717,9 +748,7 @@ class _CartScreenState extends State<CartScreen> {
           const SizedBox(height: 16),
           Text(
             'Cargando tu carrito...',
-            style: AppText.body.copyWith(
-              color: AppColors.textSecondary,
-            ),
+            style: AppText.body.copyWith(color: AppColors.textSecondary),
           ),
         ],
       ),
@@ -749,17 +778,13 @@ class _CartScreenState extends State<CartScreen> {
             const SizedBox(height: 24),
             Text(
               'Tu carrito está vacío',
-              style: AppText.h3.copyWith(
-                color: AppColors.textPrimary,
-              ),
+              style: AppText.h3.copyWith(color: AppColors.textPrimary),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 12),
             Text(
               'Agrega algunos productos deliciosos para comenzar',
-              style: AppText.body.copyWith(
-                color: AppColors.textSecondary,
-              ),
+              style: AppText.body.copyWith(color: AppColors.textSecondary),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 20),

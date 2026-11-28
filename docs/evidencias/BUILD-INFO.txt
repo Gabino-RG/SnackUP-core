@@ -1,0 +1,4 @@
+Commit: ff8b54d2a826171e0098669b5a9f2da04d97124c
+Version: 1.0.0+10
+Flutter: 3.32.4
+Signature: academic debug key

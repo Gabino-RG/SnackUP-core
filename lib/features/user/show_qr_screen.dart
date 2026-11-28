@@ -3,15 +3,14 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:snackup/theme/app_colors.dart';
 import 'package:snackup/theme/app_text.dart';
+import '../delivery_qr.dart';
 
 class ShowQrScreen extends StatelessWidget {
   final String orderId;
-  final String qrData;
 
   const ShowQrScreen({
     super.key,
     required this.orderId,
-    required this.qrData,
   });
 
   @override
@@ -45,14 +44,14 @@ class ShowQrScreen extends StatelessWidget {
           
           final order = snapshot.data!.data() as Map<String, dynamic>;
           final String status = order['status'] ?? '';
-          final String numeroDeControl = order['userNumeroDeControl'] ?? '0000';
-          final double totalPrice = order['totalPrice'] ?? 0.0;
+          final double totalPrice = (order['totalPrice'] as num?)?.toDouble() ?? 0.0;
           final List<dynamic> items = order['items'] ?? [];
           final Timestamp? createdAt = order['createdAt'] as Timestamp?;
 
           // CERRAR PANTALLA SI EL PEDIDO ESTÁ COMPLETADO O CANCELADO
           if (status == 'completed' || status == 'cancelled') {
             Future.microtask(() {
+              if (!context.mounted) return;
               if (Navigator.of(context).canPop()) {
                 Navigator.of(context).pop();
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -79,7 +78,6 @@ class ShowQrScreen extends StatelessWidget {
           
           return _buildQrContent(
             context,
-            numeroDeControl,
             totalPrice,
             items,
             createdAt,
@@ -91,7 +89,6 @@ class ShowQrScreen extends StatelessWidget {
 
   Widget _buildQrContent(
     BuildContext context,
-    String numeroDeControl,
     double totalPrice,
     List<dynamic> items,
     Timestamp? createdAt,
@@ -172,7 +169,7 @@ class ShowQrScreen extends StatelessWidget {
                       ),
                     ),
                     child: QrImageView(
-                      data: qrData,
+                      data: deliveryQrPayload(orderId),
                       version: QrVersions.auto,
                       size: 220,
                       backgroundColor: Colors.white,
@@ -189,7 +186,7 @@ class ShowQrScreen extends StatelessWidget {
 
                   const SizedBox(height: 24),
 
-                  // NÚMERO DE CONTROL DE RESPUESTA
+                  // REFERENCIA DEL PEDIDO PARA LA ENTREGA MANUAL
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -199,18 +196,19 @@ class ShowQrScreen extends StatelessWidget {
                     child: Column(
                       children: [
                         Text(
-                          'Si el QR no funciona, usa este número:',
+                          'Si el QR no funciona, muestra este código del pedido:',
                           style: AppText.notes.copyWith(
                             color: AppColors.textSecondary,
                           ),
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 8),
-                        Text(
-                          numeroDeControl,
+                        SelectableText(
+                          orderId,
+                          textAlign: TextAlign.center,
                           style: AppText.h1.copyWith(
                             color: AppColors.primary,
-                            fontSize: 28,
+                            fontSize: 20,
                             fontWeight: FontWeight.w700,
                           ),
                         ),

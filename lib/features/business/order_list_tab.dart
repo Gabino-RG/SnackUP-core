@@ -68,17 +68,6 @@ class _OrderListTabState extends State<OrderListTab> {
     }
   }
 
-  Color _getStatusColor() {
-    switch (widget.status) {
-      case 'pending': return AppColors.warning;
-      case 'preparing': return AppColors.tertiary;
-      case 'ready': return AppColors.primary;
-      case 'completed': return AppColors.success;
-      case 'cancelled': return AppColors.error;
-      default: return AppColors.textSecondary;
-    }
-  }
-
   IconData _getStatusIcon() {
     switch (widget.status) {
       case 'pending': return Icons.access_time_rounded;

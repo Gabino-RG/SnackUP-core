@@ -1,3 +1,4 @@
+import '../../widgets/product_photo.dart';
 import '../firestore_list_support.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -33,13 +34,16 @@ class ManageMenuScreen extends StatelessWidget {
         stream: productsStream,
         builder: (context, snapshot) {
           if (snapshot.hasError) {
-            return _buildErrorState('Error al cargar productos', snapshot.error);
+            return _buildErrorState(
+              'Error al cargar productos',
+              snapshot.error,
+            );
           }
-          
+
           if (snapshot.connectionState == ConnectionState.waiting) {
             return _buildLoadingState();
           }
-          
+
           if (snapshot.data!.docs.isEmpty) {
             return _buildEmptyState(context);
           }
@@ -50,11 +54,12 @@ class ManageMenuScreen extends StatelessWidget {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          Navigator.of(context).push(MaterialPageRoute(
-            builder: (context) => AddEditProductScreen(
-              businessId: businessId,
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) =>
+                  AddEditProductScreen(businessId: businessId),
             ),
-          ));
+          );
         },
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
@@ -79,9 +84,7 @@ class ManageMenuScreen extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               message,
-              style: AppText.body.copyWith(
-                color: AppColors.textSecondary,
-              ),
+              style: AppText.body.copyWith(color: AppColors.textSecondary),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
@@ -103,15 +106,11 @@ class ManageMenuScreen extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          CircularProgressIndicator(
-            color: AppColors.primary,
-          ),
+          CircularProgressIndicator(color: AppColors.primary),
           const SizedBox(height: 16),
           Text(
             'Cargando menú...',
-            style: AppText.body.copyWith(
-              color: AppColors.textSecondary,
-            ),
+            style: AppText.body.copyWith(color: AppColors.textSecondary),
           ),
         ],
       ),
@@ -140,27 +139,24 @@ class ManageMenuScreen extends StatelessWidget {
           const SizedBox(height: 24),
           Text(
             'Tu menú está vacío',
-            style: AppText.h3.copyWith(
-              color: AppColors.textPrimary,
-            ),
+            style: AppText.h3.copyWith(color: AppColors.textPrimary),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 12),
           Text(
             'Agrega tu primer producto para comenzar a recibir pedidos',
-            style: AppText.body.copyWith(
-              color: AppColors.textSecondary,
-            ),
+            style: AppText.body.copyWith(color: AppColors.textSecondary),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 32),
           ElevatedButton(
             onPressed: () {
-              Navigator.of(context).push(MaterialPageRoute(
-                builder: (context) => AddEditProductScreen(
-                  businessId: businessId,
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) =>
+                      AddEditProductScreen(businessId: businessId),
                 ),
-              ));
+              );
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
@@ -190,7 +186,10 @@ class ManageMenuScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildProductList(BuildContext context, List<QueryDocumentSnapshot> docs) {
+  Widget _buildProductList(
+    BuildContext context,
+    List<QueryDocumentSnapshot> docs,
+  ) {
     return CustomScrollView(
       slivers: [
         // HEADER INFORMATIVO
@@ -201,9 +200,7 @@ class ManageMenuScreen extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppColors.tertiary.withOpacity(0.1),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: AppColors.tertiary.withOpacity(0.3),
-              ),
+              border: Border.all(color: AppColors.tertiary.withOpacity(0.3)),
             ),
             child: Row(
               children: [
@@ -229,65 +226,59 @@ class ManageMenuScreen extends StatelessWidget {
 
         // LISTA DE PRODUCTOS AGRUPADOS
         SliverList(
-          delegate: SliverChildBuilderDelegate(
-            (context, index) {
-              final product = docs[index].data()! as Map<String, dynamic>;
-              final String category = product['category'] ?? 'SIN CATEGORÍA';
-              
-              bool isNewCategory = index == 0 || 
-                  (docs[index-1].data()! as Map<String, dynamic>)['category'] != category;
+          delegate: SliverChildBuilderDelegate((context, index) {
+            final product = docs[index].data()! as Map<String, dynamic>;
+            final String category = product['category'] ?? 'SIN CATEGORÍA';
 
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // ENCABEZADO DE CATEGORÍA
-                  if (isNewCategory)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              category,
-                              style: AppText.body.copyWith(
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.primary,
-                                fontSize: 14,
-                              ),
+            bool isNewCategory =
+                index == 0 ||
+                (docs[index - 1].data()! as Map<String, dynamic>)['category'] !=
+                    category;
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ENCABEZADO DE CATEGORÍA
+                if (isNewCategory)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            category,
+                            style: AppText.body.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primary,
+                              fontSize: 14,
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Container(
-                              height: 2,
-                              color: AppColors.borders,
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Container(height: 2, color: AppColors.borders),
+                        ),
+                      ],
                     ),
-                  
-                  // TARJETA DE PRODUCTO
-                  _buildProductCard(context, docs[index]),
-                ],
-              );
-            },
-            childCount: docs.length,
-          ),
+                  ),
+
+                // TARJETA DE PRODUCTO
+                _buildProductCard(context, docs[index]),
+              ],
+            );
+          }, childCount: docs.length),
         ),
 
         // ESPACIO FINAL PARA FAB
-        const SliverToBoxAdapter(
-          child: SizedBox(height: 80),
-        ),
+        const SliverToBoxAdapter(child: SizedBox(height: 80)),
       ],
     );
   }
@@ -308,12 +299,14 @@ class ManageMenuScreen extends StatelessWidget {
         elevation: 1,
         child: InkWell(
           onTap: () {
-            Navigator.of(context).push(MaterialPageRoute(
-              builder: (context) => AddEditProductScreen(
-                businessId: product['businessId'],
-                productId: doc.id,
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => AddEditProductScreen(
+                  businessId: product['businessId'],
+                  productId: doc.id,
+                ),
               ),
-            ));
+            );
           },
           borderRadius: BorderRadius.circular(16),
           child: Padding(
@@ -330,14 +323,13 @@ class ManageMenuScreen extends StatelessWidget {
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: imageUrl.isNotEmpty
-                        ? Image.network(
-                            imageUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) =>
-                                _buildImagePlaceholder(),
-                          )
-                        : _buildImagePlaceholder(),
+                    child: ProductPhoto(
+                      productId: doc.id,
+                      hasPhoto: product['hasPhoto'] == true,
+                      legacyUrl: imageUrl,
+                      width: 70,
+                      height: 70,
+                    ),
                   ),
                 ),
 
@@ -459,22 +451,6 @@ class ManageMenuScreen extends StatelessWidget {
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildImagePlaceholder() {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.componentBase,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Center(
-        child: Icon(
-          Icons.fastfood_rounded,
-          color: AppColors.textSecondary.withOpacity(0.4),
-          size: 30,
         ),
       ),
     );
